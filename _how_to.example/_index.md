@@ -1,21 +1,26 @@
 # - 創作技法ファイル (how_to/)
 1. novelcore.md  
    - 一般的な小説の文法
-2. novel_structure.md  
+3. novel_structure.md  
    - 一般的な小説構造のデータベース
-3. epsode_common.md
+4. epsode_common.md
    - 一般的な小説構造のデータベース、恋愛や親愛要素が多い
-4. rewrite.md
+5. rewrite.md, word_change.md
    - 文章校正の時に使う
-5. name_creature.json
+6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする
-6. world_wear.md
+7. world_wear.md
    - 世界の色彩や、人物デザインを考えるときの参考にする 
-7. reader.md
+8. reader.md
    - 小説の書評・下読みを行うときに使うレビュアープロンプト  
    - 評価観点（キャラクター、プロットの完成度、文章力、わかりやすさ、独創性など）と、5段階評価・読後感の期待値・改善サイクルといった出力フォーマットを定義する
-   - Reading Modeの記述を参考にする。ログの出力も必ず行う。
-8. tag.md
-   - キャラクターごとにルールを用いて画像タグを作成する
-9．manga.md,manga_tag.md
+   - First Reader Modeの記述を参考にする。ログの出力も必ず行う。
+9. standard_reader.md
+   - 一般読者の「興味」と「第一印象」を判定するためのプロンプト。ペルソナに基づき、冒頭の掴みや読み飛ばしの有無をシビアに評価する。
+10. tag.md
+   - キャラクターごとに_how_to\tag.md のルールを用いて画像タグを作成する
+11．manga.md,manga_tag.md
    - マンガのコマ割りを行う時に用います
+12. meta.md
+   - 小説のメタ情報を管理する。外部投稿用（キャッチコピー、紹介文、タグ）と内部管理用（執筆ステータス、AIへの引き継ぎ指示、伏線管理）の両方を扱う。
+   - 執筆の開始時・終了時に参照・更新することで、長期的な執筆の継続性を担保する。
