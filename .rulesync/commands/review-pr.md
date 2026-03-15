@@ -5,13 +5,13 @@ targets: ["*"]
 
 target_pr = $ARGUMENTS
 
-If target_pr is not provided, use the PR of the current branch.
+target_pr が指定されていない場合、現在のブランチのPRを使用する。
 
-Execute the following in parallel:
+以下の項目を並行して実行する：
 
-1. Check code quality and style consistency
-2. Review test coverage
-3. Verify documentation updates
-4. Check for potential bugs or security issues
+1. コード品質とスタイルの一貫性を確認する
+2. テストカバレッジをレビューする
+3. ドキュメントの更新を確認する
+4. 潜在的なバグやセキュリティ問題をチェックする
 
-Then provide a summary of findings and suggestions for improvement.
+その後、発見事項と改善提案の概要を提供する。
