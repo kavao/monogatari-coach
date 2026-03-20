@@ -26,20 +26,49 @@ npm install -g rulesync
 
 これにより、プロジェクト内のルールファイルが同期・共通化されます。
 
-**2. Pythonの導入と `howto_init.py` の実行**
+**2. uv の導入（Python 運用の前提）**
 
-次に、必ず `howto_init.py` を実行してください。
-このスクリプトを実行することで、`_how_to.example` から `_how_to` ディレクトリに必要なテンプレートファイル（創作技法ファイルなど）がコピーされ、執筆環境が初期化されます。
-※すでにファイルが存在する場合は上書きされません。
+本プロジェクトの Python スクリプト（`howto_init.py`、`sync_rules.py`）は **uv** を前提にした運用を推奨します。uv は高速な Python パッケージ・プロジェクトマネージャで、Python 本体のインストールや仮想環境の管理を簡潔に行えます。
 
-Python 3.x がインストールされている環境で、以下のコマンドを実行してください。
+- uv 公式: https://docs.astral.sh/uv/
 
-- Python 3.x
-https://www.python.org/downloads/
+**uv のインストール**
+
+- **Windows（PowerShell・推奨）**  
+  以下を実行したあと、**新しい PowerShell ウィンドウ**を開いて `uv --version` で確認してください。
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+- **Windows（WinGet）**
+
+```powershell
+winget install --id=astral-sh.uv -e
+```
+
+- **macOS / Linux**
 
 ```bash
-python howto_init.py
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
+
+uv を入れたら、プロジェクトルート（`monocri`）で次に進みます。
+
+**3. Python スクリプトの実行（uv 前提）**
+
+- **初回セットアップ: `howto_init.py`**  
+  必ず一度実行してください。`_how_to.example` から `_how_to` へテンプレート（創作技法ファイルなど）がコピーされ、執筆環境が初期化されます。既存ファイルは上書きされません。
+
+```bash
+uv run python howto_init.py
+```
+
+- **補足**  
+  uv は Python 3.x を自動で用意するため、別途 python.org から Python をインストールしていなくても実行できます。既にシステムに Python がある場合も、`uv run` でプロジェクト用の実行環境が使われます。
+
+- **uv を使わない場合**  
+  Python 3.x を https://www.python.org/downloads/ からインストールし、`python howto_init.py` および `python sync_rules.py` をプロジェクトルートで実行してください。
 
 ## 🛠️ ルール同期の管理 (Rule Sync)
 
@@ -56,10 +85,10 @@ python howto_init.py
    - MCP設定: `.rulesync/mcp.json`
    - フック設定: `.rulesync/hooks.json`
    - 無視設定: `.rulesync/.aiignore`
-2. 以下のコマンドを実行して設定ファイルを再生成します：
+2. 以下のコマンドを実行して設定ファイルを再生成します（uv 導入済みの場合）：
 
 ```bash
-python sync_rules.py
+uv run python sync_rules.py
 ```
 
 これにより、最新のルールがプロジェクト全体に適用されます。
