@@ -8,8 +8,8 @@ writers/*
 !writers/000_default/writer_profile.md
 novels/*
 !novels/.gitkeep
-!novels/import/
-!novels/import/.gitkeep
+!novels/_import/
+!novels/_import/.gitkeep
 !novels/000_old_man_next_door's_cake/
 !novels/000_old_man_next_door's_cake/*
 !novels/000_old_man_next_door's_cake/**   # サブフォルダまで許可
