@@ -66,6 +66,11 @@ c. プロフィールについても深く掘り下げてください。
 小説の執筆は必ずファイルに出力してください。1回当たりの執筆は8000文字以上を目安にしてください｡分量が不足しそうな場合には、作業配分を考えた上で回数を分けて出力を行ってください。
 前半の後半のような場合には追記する形などファイルへの更新対応も考慮してください。
 
+**小説本文の文字数カウント（公式）**  
+- **目安・査証ログ・チャットでの分量報告**に使う数値は、推測やエディタの目安ではなく、リポジトリ同梱の **`tools/novel_char_count.py`** の実行結果を正とする。  
+- 定義（全角・半角・Markdown 記号の扱い、フロントマター除外の既定など）はスキル **`novel-char-count`**（`.rulesync/skills/novel-char-count/SKILL.md`）に従う。  
+- 可能な環境では、執筆・推敲の節目でターミナルから本スクリプトを実行し、**章ごとの文字数・合計**を根拠として判断する（実行不能な場合のみ、その旨を明記したうえで代替判断とする）。
+
 1. proposal.md
    - 小説企画書
    - 作品名、ログライン、ターゲット層、あらすじ、キャラクター紹介、作品の3つの魅力など
@@ -257,10 +262,12 @@ manga/manga_XX.md の各コマについて出力してください。
 2. 新規novelコード発行 
 3. 必要ドキュメントの参照  
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など  
-4. novel_text.mdの初稿作成 
+4. novel_text.mdの初稿作成
+   - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
 5. 原稿のドキュメントはバックアップを取って( _novel_text_backup 以下)から、
 6. reader.mdを使って各文章の清書を行う｡同じファイル名のの内容を置き換えていく
 7. 文章校正の時には、rewrite.md を使う。出力先は `_novel_text_re_/` 以下に、元ファイルと同じ名前で出力してください。まずは作業計画を立ててから、次の会話で校正した内容を出力いたします。
+   - 校正前後の分量比較が必要なときも、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
 
 ```mermaid
 flowchart TD
@@ -268,6 +275,7 @@ flowchart TD
     AssignWriter --> ReferDocs[Refer to Documents]
     ReferDocs --> DraftText[Draft novel_text.md]
     DraftText --> WritingDone[Draft Completed]
+```
 
 ### 2.4 Meta Management Mode（メタ情報管理）
 執筆の「継続性」を担保し、外部投稿に向けた準備を行います。管理ファイルは各作品フォルダ直下の `_meta.md` です。
@@ -307,6 +315,7 @@ flowchart TD
 2. **校正の実行**:
    - `rewrite.md` のルールを適用し、1.5倍程度の分量を目約にリライトを行う。
    - 三点リーダー（……）や句点のルール（「」内は句点なし）を厳守する。
+   - 分量の達成度は `tools/novel_char_count.py` でリライト前後を数え、コードポイント基準の増減として確認する（スキル `novel-char-count` 参照）。
 3. **バックアップと更新**:
    - 元の原稿は `_novel_text_backup/` に退避し、必要に応じてファイルを更新する。
 
@@ -389,6 +398,8 @@ flowchart TD
 _workingspace/log/(YYYYMM).mdファイルは、作業ログである。西暦4桁、月2桁の形式のファイル名で、必ず最後尾にデータの追記を行います。
 会話を行う度に、何のファイルを更新したのかについて記録を追記していきます。年月が変わったとき次のファイルに移ります
 書き方の例：2025-12-04 10:00: 関連ファイル（design_specification.md, character.md, pinkdark.md, novelcore.md）を読み込み。ユーザークエリに基づき、冒険小説のあらすじを3つ計画。次に、これをdesign_specification.mdに反映し、ストーリーを拡張予定。
+
+執筆・推敲の記録に**文字数**を書く場合は、`tools/novel_char_count.py` を実行した**集計値**（章別・合計など）を根拠として併記する（定義はスキル `novel-char-count` に従う）。
 
 #### 査証ログで何をcaptureすべきか
 - 重要な実装パス

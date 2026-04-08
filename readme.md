@@ -28,7 +28,7 @@ npm install -g rulesync
 
 **2. uv の導入（Python 運用の前提）**
 
-本プロジェクトの Python スクリプト（`howto_init.py`、`sync_rules.py`）は **uv** を前提にした運用を推奨します。uv は高速な Python パッケージ・プロジェクトマネージャで、Python 本体のインストールや仮想環境の管理を簡潔に行えます。
+本プロジェクトの Python スクリプト（主に `howto_init.py`）は **uv** を前提にした運用を推奨します。ルール類の再生成は **npm グローバルの `rulesync` CLI** が担当します（下記「ルール同期」参照）。uv は高速な Python パッケージ・プロジェクトマネージャで、Python 本体のインストールや仮想環境の管理を簡潔に行えます。
 
 - uv 公式: https://docs.astral.sh/uv/
 
@@ -68,7 +68,40 @@ uv run python howto_init.py
   uv は Python 3.x を自動で用意するため、別途 python.org から Python をインストールしていなくても実行できます。既にシステムに Python がある場合も、`uv run` でプロジェクト用の実行環境が使われます。
 
 - **uv を使わない場合**  
-  Python 3.x を https://www.python.org/downloads/ からインストールし、`python howto_init.py` および `python sync_rules.py` をプロジェクトルートで実行してください。
+  Python 3.x を https://www.python.org/downloads/ からインストールし、プロジェクトルートで `python howto_init.py` を実行してください。`.rulesync/` を変更したあとの再生成は `rulesync generate`（npm グローバル）を使います。
+
+**4. 文字数カウント（`tools/novel_char_count.py`）**
+
+小説本文（`novels/**/_novel_text/novel_text*.md`）の**公式の文字数**を、UTF-8 読み込み・Unicode NFC 正規化のうえで **コードポイント 1 つ = 1 文字**として数えます。全角・半角・Markdown の記号はすべて同じ基準でカウントします。既定では YAML フロントマター（先頭の `---` … `---`）は除外します。
+
+プロジェクトルート（`monocri`）で実行します。
+
+```bash
+# 1 作品フォルダ内の全 novel_text*.md
+uv run python tools/novel_char_count.py novels/NNN_作品タイトル
+```
+
+```bash
+# novels/ 以下の全作品をまとめて
+uv run python tools/novel_char_count.py --all
+```
+
+```bash
+# 単一ファイル
+uv run python tools/novel_char_count.py novels/NNN_作品/_novel_text/novel_text01.md
+```
+
+uv を使わない場合は `python tools/novel_char_count.py ...` で同様に指定できます。
+
+**主なオプション**
+
+| オプション | 説明 |
+|------------|------|
+| `--all` | `novels/` 配下の全作品の `_novel_text/novel_text*.md` を対象 |
+| `--repo-root パス` | リポジトリルート（未指定時は `tools/` の親ディレクトリ） |
+| `--keep-front-matter` | フロントマターを本文に含めて数える（既定は除外） |
+
+AI エージェント向けの運用定義は `.rulesync/skills/novel-char-count/SKILL.md` にあり、ルール全体では `.rulesync/rules/overview.md`（小説本文の文字数カウント（公式））と対応しています。`.rulesync/` を編集したあと `rulesync generate` を実行すると、Cursor / Claude / Copilot / Kilo など向けのルール・スキル・MCP 等が再生成されます。
 
 ## 🛠️ ルール同期の管理 (Rule Sync)
 
@@ -79,22 +112,32 @@ uv run python howto_init.py
 - ルールを更新したい場合は、必ず `.rulesync/` ディレクトリ配下のソースファイルを編集してください。
 
 ### 更新の手順
-1. 実行により `.rulesync/` 内の該当ファイルを踏襲します：
+1. 編集するのは **ソース**である `.rulesync/` 配下だけにします：
    - 指示文の追加・修正: `.rulesync/**/*.md`
    - スキルの定義: `.rulesync/skills/*/SKILL.md`
    - MCP設定: `.rulesync/mcp.json`
    - フック設定: `.rulesync/hooks.json`
    - 無視設定: `.rulesync/.aiignore`
-2. 以下のコマンドを実行して設定ファイルを再生成します（uv 導入済みの場合）：
+2. **プロジェクトルート**（`monocri`）で、`npm install -g rulesync` 済みの CLI から次を実行します。
 
 ```bash
-uv run python sync_rules.py
+rulesync generate
 ```
 
-これにより、最新のルールがプロジェクト全体に適用されます。
+引数なしの `generate` は、対応ツール向けに **ルール・スキル・MCP・コマンド・サブエージェント・フック・ignore** などをまとめて再生成します（現行の rulesync の既定動作）。
+
+よく使うオプション：
+
+| オプション | 用途 |
+|------------|------|
+| `-V` / `--verbose` | どのファイルを書いたか詳細表示 |
+| `--check` | 生成物が最新か検査のみ（未更新なら終了コード 1） |
+| `--dry-run` | 書き込みせず変更内容の確認 |
+
+3. **任意（後方互換）**: 従来どおり `uv run python sync_rules.py` でも同じ再生成が走ります（内部でシェル経由で `rulesync generate -V` を実行し、Windows の `rulesync.cmd` も確実に起動します）。新規手順としては上記 `rulesync generate` を推奨します。
 
 ## サポート
-現時点では、Cursor、Claude CLI、Kilo code を中心に確認しております。
+現時点では、Cursor、Claude CLI、CODEX、Kilo code を中心に確認しております。
 
 ## 全体構造
 
