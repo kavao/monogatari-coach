@@ -41,6 +41,45 @@ def normalize_tag_body(raw: str) -> str:
     return s
 
 
+def extract_tags_from_step1(step1: str) -> list[str]:
+    """
+    Step1 本文から、コマ順にプロンプト英語行を抽出する。
+
+    優先:
+      - `- **tag**：` の次行にあるバッククォート1行（Monogatari Coach の現行 manga 形式）
+    フォールバック:
+      - `tag:` ～ `和訳:`（旧形式）
+    """
+    tags: list[str] = []
+    for m in re.finditer(
+        r"-\s*\*\*tag\*\*[：:]\s*\r?\n\s*`([^`]+)`",
+        step1,
+        flags=re.MULTILINE,
+    ):
+        body = normalize_tag_body(m.group(1))
+        if body:
+            tags.append(body)
+    if tags:
+        return tags
+    for m in re.finditer(
+        r"tag:\s*\r?\n([\s\S]*?)\r?\n和訳:",
+        step1,
+    ):
+        body = normalize_tag_body(m.group(1))
+        if body:
+            tags.append(body)
+    return tags
+
+
+def extract_step1_block(page_body: str) -> str | None:
+    """`### Step1` / `## step1` から次の Step2 手前まで。"""
+    m = re.search(
+        r"(?ms)^#{1,3}\s*Step1[^\n]*\r?\n(.*?)(?=^#{1,3}\s*Step2\b)",
+        page_body,
+    )
+    return m.group(1) if m else None
+
+
 def extract_manga_jobs_for_file(md_path: Path) -> list[dict[str, str]]:
     """
     1 つの manga_XX.md から、Page ごとの step1 内の各コマ tag を順に抽出。
@@ -49,29 +88,21 @@ def extract_manga_jobs_for_file(md_path: Path) -> list[dict[str, str]]:
     text = md_path.read_text(encoding="utf-8")
     jobs: list[dict[str, str]] = []
 
+    # `## Page 1` のみ／`## Page 1 — タイトル` の1行見出しの両方に対応
     page_iter = re.finditer(
-        r"## Page\s+(\d+)\s*\r?\n([\s\S]*?)(?=\r?\n## Page\s+\d+|\Z)",
+        r"## Page\s+(\d+)\s*[^\n]*\r?\n([\s\S]*?)(?=\r?\n## Page\s+\d+|\Z)",
         text,
     )
     for pm in page_iter:
         page_num = int(pm.group(1))
         page_body = pm.group(2)
-        sm = re.search(
-            r"## step1\s*([\s\S]*?)(?=## step2\s*\r?\n)",
-            page_body,
-        )
-        if not sm:
+        step1 = extract_step1_block(page_body)
+        if not step1:
             continue
-        step1 = sm.group(1)
+        tag_lines = extract_tags_from_step1(step1)
         koma_idx = 0
-        for tm in re.finditer(
-            r"tag:\s*\r?\n([\s\S]*?)\r?\n和訳:",
-            step1,
-        ):
+        for body in tag_lines:
             koma_idx += 1
-            body = normalize_tag_body(tm.group(1))
-            if not body:
-                continue
             prefix = f"{stem}_p{page_num:02d}_k{koma_idx:02d}"
             jobs.append(
                 {

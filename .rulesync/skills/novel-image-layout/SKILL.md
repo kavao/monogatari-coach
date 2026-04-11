@@ -12,8 +12,8 @@ targets: ["*"]
 `.rulesync/rules/overview.md` の **Tag Mode / Manga Tag Mode** にある「画像ストック（推奨）」を、**フォルダだけ先に機械的に用意**する。
 
 - **タグ**: `tag/kazuki.md` と同名の **`tag/kazuki/`** に、そのキャラの生成画像をすべて保存する。
-- **漫画**: `manga/manga_01.md` に対応する **`manga/_assets/manga_01/`** に、そのページのコマ画像を保存する。
-- **コマ別**に分けたい場合は、同一ベースの下に **`k01`, `k02`, …**（ゼロ埋め幅は `--panels` の桁に合わせる）。
+- **漫画**: `manga/manga_01.md` に対応する **`manga/_assets/manga_01/`** に、そのページのコマ画像を保存する。**既定運用ではこの直下を使う。**
+- **`k01`, `k02`, …** は、コマ別に手で整理したい場合だけ作る**任意**の補助フォルダ。通常運用では不要。
 
 Markdown の中身の解析や画像のコピーは**行わない**（ディレクトリの scaffold / パス表示のみ）。
 
@@ -27,13 +27,13 @@ Markdown の中身の解析や画像のコピーは**行わない**（ディレ�
 python tools/novel_image_layout.py scaffold novels/051_神のダンジョンβテスター
 ```
 
-**コマ用サブフォルダも同時作成**（各 `manga_XX` ごとに `k01` … `k12`）:
+**任意でコマ用サブフォルダも同時作成**（各 `manga_XX` ごとに `k01` … `k12`。通常は不要）:
 
 ```bash
 python tools/novel_image_layout.py scaffold novels/051_神のダンジョンβテスター --panels 12
 ```
 
-**作成せず、推奨 `output_dir` だけ表示**（params JSON を書くときのコピー用）:
+**作成せず、推奨 `output_dir` だけ表示**（params JSON を書くときのコピー用。通常は直下パスだけ使う）:
 
 ```bash
 python tools/novel_image_layout.py paths novels/051_神のダンジョンβテスター
@@ -44,10 +44,10 @@ python tools/novel_image_layout.py paths novels/051_神のダンジョンβテ�
 
 ## Forge との連携
 
-- **`forge_generate`** の `output_dir` に、上記の **`tag/<romaji>`** または **`manga/_assets/<manga_XX>`**（または **`.../k03`** など）を指定する。
+- **`forge_generate`** の `output_dir` に、上記の **`tag/<romaji>`** または **`manga/_assets/<manga_XX>`** を指定する。`k03` などは手動でコマ別に分けたい場合だけ使う。
 - `file_prefix` には同一コマ内で重複しにくいよう **`manga_01_k03`** のように章ファイル名＋コマ番号を含めると追跡しやすい（スキル **`forge-txt2img`** 参照）。
 - **`tag/*.md` から Danbooru 行だけを読み、`tag/<romaji>/` にシーン別1枚ずつ**出す場合は `tools/forge_novel_tag_batch.py <作品フォルダ>`（`--dry-run` で抽出確認のみ）。
-- **`manga/manga_*.md` の各コマ**（`## Page` → `## step1` 内の `tag:` … `和訳:`）を `manga/_assets/<manga_XX>/` に出す場合は `tools/forge_novel_manga_batch.py <作品フォルダ>`。ファイル名接頭辞は `manga_01_p02_k03`（ページ・コマ番号）。
+- **`manga/manga_*.md` の各コマ**（`## Page` → `## step1` 内の `tag:` … `和訳:`）を `manga/_assets/<manga_XX>/` に出す場合は `tools/forge_novel_manga_batch.py <作品フォルダ>`。**既定ではこの直下に保存され、`k01` などは使わない。** ファイル名接頭辞は `manga_01_p02_k03`（ページ・コマ番号）。
 
 ## 関連パス
 

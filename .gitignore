@@ -9,6 +9,7 @@ writers/*
 novels/*
 !novels/.gitkeep
 !novels/_import/
+novels/_import/*
 !novels/_import/.gitkeep
 !novels/000_old_man_next_door's_cake/
 !novels/000_old_man_next_door's_cake/*
