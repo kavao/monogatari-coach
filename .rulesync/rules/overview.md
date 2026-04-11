@@ -66,6 +66,10 @@ c. プロフィールについても深く掘り下げてください。
 小説の執筆は必ずファイルに出力してください。指定がない限りは1テキストファイル当たりの執筆は4000文字を目安にしてください｡分量が不足しそうな場合には、作業配分を考えた上で回数を分けて出力を行ってください。
 前半の後半のような場合には追記する形などファイルへの更新対応も考慮してください。
 
+**会話だけに本文を出さない（執筆の根源ルール）**  
+- **本文の正本は `novels/.../_novel_text/novel_text*.md`**。チャット欄への貼り付けだけで執筆を完了とみなさない。  
+- クライアントで **Auto 以外の LLM を選ぶ**と、**会話にだけ書く**傾向が出やすい。執筆ターンの **末尾** に、**更新ファイルパスの明示**と、**`Read` による再読込**または **`tools/novel_char_count.py` による確認**を行う（詳細は **§2.3.1**・スキル **`novel-text-file-output`**）。
+
 **小説本文の文字数カウント（公式）**  
 - **目安・査証ログ・チャットでの分量報告**に使う数値は、推測やエディタの目安ではなく、リポジトリ同梱の **`tools/novel_char_count.py`** の実行結果を正とする。  
 - 定義（全角・半角・Markdown 記号の扱い、フロントマター除外の既定など）はスキル **`novel-char-count`**（`.rulesync/skills/novel-char-count/SKILL.md`）に従う。  
@@ -90,17 +94,25 @@ c. プロフィールについても深く掘り下げてください。
    - 小説本文は章ごとに別ファイルにしてください。小説の執筆は必ずファイルに出力してください。
      第1章は novel_text01.md、第2章は novel_text02.md、第3章は novel_text03.md のように番号を増やしていってください。
      もし章の下に項があった場合は第1章1項は novel_text01_1.md、第1章2項は novel_text01_2.mdのように"_"を追加して番号を増やしてください。前半､後半に分けるといった場合でも_1,_2のようにファイル名を分けて、3回に分ける場合は_1,_2,_3のようにファイル名を分けるようにしてください
+   - **`_how_to/rewrite.md` による清書（文章校正）の成果物**は、初稿と混線しないよう **`_novel_text_re_/novel_textXX.md`** に、**上記と同一のファイル名**で出力する（§2.5・スキル **`novel-refinement-output`**）。
 7. _reader/  
    - 小説ごとの詳細な書評ファイルを格納するフォルダ  
    - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`reader/YYYYMMDD_HHMM.md`）で保存する
 8．tag/(charakuter_name).md
    - キャラクターごとに_how_to\tag.md のルールを用いて画像タグを作成する
+   - 生成画像は **`tag/<romaji>/`（タグ MD と同名の英字フォルダ）** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
 9. manga/manga_XX.md
    - 小説本文と同じようには章ごとに別ファイルにしてください。小説の執筆は必ずファイルに出力してください。
      元となる小説の章、項と同じになるように調整して、もし章の下に項があった場合も小説と同様のルール付けでお願いします。もし章の下に項があった場合は第1章1項は manga_01_1.md、第1章2項は manga_01_2.mdのように"_"を追加して番号を増やしてください。
+   - コマ画像は **`manga/_assets/<manga_XX>/`（必要なら `k01` などコマ別サブフォルダ）** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
 10. _meta.md
    - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
    - `_how_to/meta.md` のフォーマットに従って生成・更新される。
+
+**執筆前の資料・ディレクトリ確認（曖昧にしない）**  
+- 原則、**`novel_text` 以外**が揃ってから本文執筆に入る（上記 1〜5・7・10 と、空でもよい **`_novel_text/`**・**`_reader/`**）。  
+- エージェントは Writing Mode に入る前、または執筆指示を受けた直後に **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、**終了コード 0** を確認する（詳細はスキル **`novel-project-readiness`**）。  
+- Tag Mode 済みを必須にする場合は **`--require-tag`**、漫画フォルダまで揃えたい場合は **`--require-manga-dir`** を付ける。
 
 ---
 
@@ -196,6 +208,11 @@ flowchart TD
 - `novels/[novel_code]_[novel_title]/tag/` にキャラクターごとのファイルを作成する。  
   例：`novels/001_.../tag/allen.md` のように、**英字（ローマ字）名**をファイル名にする。
 
+#### 画像ストック（キャラクター別・推奨）
+- タグ Markdown（`tag/<romaji>.md`）と**同名の英字サブフォルダ**を `tag/` 配下に用意し、**そのキャラクター由来の生成画像をすべてそこに集約**する。  
+  例：`tag/kazuki.md` → 画像は `tag/kazuki/` に保存（Forge 等は `output_dir` に `novels/.../tag/kazuki` を指定）。  
+- フォルダの一括作成・パス表示はスキル **`novel-image-layout`**（`tools/novel_image_layout.py`）に従う。
+
 #### 手動手順（明確化）
 1. **前提チェック**  
    - `novels/[...]/character.md` が作成済みで、外見・年齢・職業・体格・服装・特徴（髪/目/肌/種族/小物）まで十分に書かれていることを確認する。  
@@ -212,6 +229,8 @@ flowchart TD
    - タグとcaptionには**必ず英語のキャラ名**を含める。  
 5. **分割運用**  
    - 出力が長い場合は、キャラ単位で分割して順に作成する（途中で止めない）。
+6. **外見タグの一貫性（推奨）**  
+   - `character.md` に基づき、目・髪・肌・種族など**固定特徴**が各状況の Danbooru 行に**漏れなく**入っているか、キャラ間の取り違えがないかを確認する（スキル **`novel-tag-character-consistency`**）。
 
 #### “コマンド（指示文）”テンプレ（チャットで使う）
 以下のように指示されたら Tag Mode を実行する（または自分から提案し、直ちに実行する）：
@@ -225,6 +244,13 @@ _how_to/tag.md のルールに従い、各人物について
 「通常時／戦闘時／（必要なら）水着（該当があれば）」を出力してください。
 ```
 
+#### Forge 画像生成（txt2img）の事前確認
+- **`tools/forge_generate.py`** および **`tools/forge_novel_tag_batch.py`** / **`tools/forge_novel_manga_batch.py`** で Stable Diffusion Forge に画像生成を依頼する**前**に、エージェントは次を確認する。
+  1. **Forge の UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系か**（REST API は UI で選択中のモデルに追従するため、ブラウザの表示と一致させる）。
+  2. リポジトリの **`config/forge_config.json`** の **`active_model_family`** が、そのモデル族と一致しているか。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
+  3. **CFG Scale の目安**: FLUX 系は **`default_cfg_scale` 1** 前後、SDXL 系は **7** 前後（同ファイルの **`presets.flux`** / **`presets.sdxl`** に定義）。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
+- 運用の詳細・Flux 特有のパラメータはスキル **`forge-txt2img`**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
+
 ### 2.2.2 Manga Tag Mode（漫画タグ出力：マンガ構成案確定後／一括生成前）
 マンガの構成案（`manga_XX.md`のStep 1）に基づき、抽象的な構図を **Step 2** で出力する。  
 原則として、**マンガの構成・コマ割りが確定した後（Writing/Mangaの一部）**に必ず行う。
@@ -237,6 +263,13 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### 出力先（必須）
 - `novels/[novel_code]_[novel_title]/manga/manga_XX.md` 内に、Step 1（構成案）に続けて Step 2を出力、または追記する。
+
+#### 画像ストック（漫画・コマ単位・推奨）
+- 各 `manga_XX.md`（章・ページ単位の構成ファイル）に対応する **専用フォルダ**を `manga/_assets/` 配下に置き、そのファイルに含まれる**各コマ分の生成画像をそこに展開**する。  
+  例：`manga/manga_01.md` のコマ用画像 → `manga/_assets/manga_01/`（`forge_generate` の `file_prefix` に `manga_01_p02_k03` のように **ファイル名＋ページ番号＋コマ番号**を含め、同一フォルダに保存すると整理しやすい）。  
+- **`novel_image_layout.py scaffold --panels N` が作る `k01` など**は **「1ページ内のコマ用スロット」**の任意フォルダであり、**ページ番号（`## Page`）の 1〜8 とは対応しない**。`forge_novel_manga_batch.py` の既定保存先は **`manga/_assets/<manga_XX>/` 直下**；**ページごとに分けたい場合**は **`--subdir-by-page`**（`p01`, `p02`, …）を使う。  
+- フォルダの一括作成・推奨パスはスキル **`novel-image-layout`**（`tools/novel_image_layout.py`）に従う。  
+- **構成 MD の `tag:` ブロックから一括生成**する場合は **`tools/forge_novel_manga_batch.py`**（スキル **`forge-txt2img`** に手順あり）。
 
 #### 手動手順（明確化）
 1. **前提チェック**  
@@ -258,16 +291,18 @@ manga/manga_XX.md の各コマについて出力してください。
 ```
 
 ### 2.3 Writing Mode
-1. 作家のアサイン
+1. **執筆前チェック（推奨・新規作品では必須に近い）**  
+   - **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、必須ファイル・`_novel_text/`・`_reader/`・`config` 整合が **OK** であることを確認する（スキル **`novel-project-readiness`**）。  
+2. 作家のアサイン
    - 適切な作家を選定し、対応する`writer_profile.md`を確認  
-2. 新規novelコード発行 
-3. 必要ドキュメントの参照  
+3. 新規novelコード発行 
+4. 必要ドキュメントの参照  
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など  
-4. novel_text.mdの初稿作成
+5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
-5. 原稿のドキュメントはバックアップを取って( _novel_text_backup 以下)から、
-6. reader.mdを使って各文章の清書を行う｡同じファイル名のの内容を置き換えていく
-7. 文章校正の時には、rewrite.md を使う。出力先は `_novel_text_re_/` 以下に、元ファイルと同じ名前で出力してください。まずは作業計画を立ててから、次の会話で校正した内容を出力いたします。
+6. 原稿のドキュメントはバックアップを取って( _novel_text_backup 以下)から、
+7. reader.mdを使って各文章の清書を行う｡同じファイル名のの内容を置き換えていく
+8. 文章校正の時には、`rewrite.md` を使う。**出力先は `_novel_text_re_/`** に、**`_novel_text/` 内の元ファイルと同じ名前**で書き出す（詳細はスキル **`novel-refinement-output`**）。まずは作業計画を立ててから、校正稿をファイルへ出力する。
    - 校正前後の分量比較が必要なときも、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
 
 ```mermaid
@@ -277,6 +312,16 @@ flowchart TD
     ReferDocs --> DraftText[Draft novel_text.md]
     DraftText --> WritingDone[Draft Completed]
 ```
+
+### 2.3.1 本文出力の確認（会話だけにしない）
+
+- **問題**: モデルや UI の組み合わせによっては、小説本文を **会話欄にだけ** 出力し、**`_novel_text/*.md` を更新しない**ことがある（**Auto 以外・別 LLM 選択時**で起きやすい）。
+- **必須**: 執筆のたびに **`novels/<作品>/_novel_text/novel_text*.md`** へ **ファイル書き込み**（新規・追記・置換）する。本文の正本は **常にリポジトリ上のファイル**とする。
+- **確認**（執筆ターンの末尾で実施）:
+  1. 更新した **ファイルパス**をチャットに明記する。
+  2. **`Read` で当該ファイルを読み返す**（末尾でよい）、または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、**保存内容と分量が意図どおりか**を確認する。
+  3. **`_workingspace/log/`** や **`_meta.md`** に進捗・文字数を書く場合は、**ファイルに存在する事実**に基づく（会話の記憶のみに頼らない）。
+- **詳細**: スキル **`novel-text-file-output`**（`.rulesync/skills/novel-text-file-output/SKILL.md`）。
 
 ### 2.4 Meta Management Mode（メタ情報管理）
 執筆の「継続性」を担保し、外部投稿に向けた準備を行います。管理ファイルは各作品フォルダ直下の `_meta.md` です。
@@ -298,7 +343,7 @@ flowchart TD
 ```
 
 ### 2.5 Writing Mode Refinement（清書・文章校正）
-初稿の文章を磨き上げ、文学的価値と没入感を高めるフェーズです。
+初稿の文章を磨き上げ、文学的価値と没入感を高めるフェーズです。**手順・入出力の固定ルールはスキル `novel-refinement-output` を正とする。**
 
 #### 目的
 - `_how_to/rewrite.md` のルールに基づき、文章をより自然で豊かに再構成する。
@@ -307,8 +352,10 @@ flowchart TD
 #### 参照ルール（必須）
 - `_how_to/rewrite.md` を必ず参照し、その指示（主語の省略、文体の修正、シーンの心得など）に従う。
 
-#### 出力先（必須）
-- 各作品ディレクトリ内の `_novel_text/` 配下に、元ファイルと同じ名前で出力する。
+#### 入出力（必須）
+- **入力（リライト元）**: `novels/<作品>/_novel_text/novel_textXX.md`（項付きは同じ命名規則）。
+- **出力（rewrite 適用後の清書稿）**: `novels/<作品>/_novel_text_re_/novel_textXX.md` — **ファイル名は入力と同一**。初稿の正本 `_novel_text/` とは**別ディレクトリ**に置き、混線を防ぐ。
+- **`_novel_text` へ清書を反映**（初稿の上書き）する場合は、**先に** `_novel_text_backup/` へ当該 `novel_textXX.md` を退避してから行う（スキル **`novel-refinement-output`** の「反映」節）。
 
 #### 手動手順（明確化）
 1. **作業計画の立案**:
@@ -316,9 +363,10 @@ flowchart TD
 2. **校正の実行**:
    - `rewrite.md` のルールを適用し、1.5倍程度の分量を目約にリライトを行う。
    - 三点リーダー（……）や句点のルール（「」内は句点なし）を厳守する。
-   - 分量の達成度は `tools/novel_char_count.py` でリライト前後を数え、コードポイント基準の増減として確認する（スキル `novel-char-count` 参照）。
-3. **バックアップと更新**:
-   - 元の原稿は `_novel_text_backup/` に退避し、必要に応じてファイルを更新する。
+   - 成果物は **`_novel_text_re_/`** に、**`_novel_text/` と同じファイル名**で保存する（会話だけに書かない）。
+   - 分量の達成度は `tools/novel_char_count.py` でリライト前（`_novel_text/`）後（`_novel_text_re_/`）を数え、コードポイント基準の増減として確認する（スキル `novel-char-count` 参照）。
+3. **初稿の正本を更新する場合**:
+   - 必要に応じて `_novel_text_backup/` に元ファイルを退避し、ユーザー合意のうえ `_novel_text/` を更新する（詳細は **`novel-refinement-output`**）。
 
 ### 2.6 First Reader Mode（下読み・足きり判定）
 - 書評は、原則として **コメント（チャット本文）ではなく、`reader/YYYYMMDD_HHMM.md` の書評ファイルに出力**すること。

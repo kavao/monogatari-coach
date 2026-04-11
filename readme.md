@@ -136,6 +136,31 @@ rulesync generate
 
 3. **任意（後方互換）**: 従来どおり `uv run python sync_rules.py` でも同じ再生成が走ります（内部でシェル経由で `rulesync generate -V` を実行し、Windows の `rulesync.cmd` も確実に起動します）。新規手順としては上記 `rulesync generate` を推奨します。
 
+### Cursor 向けスキル（`.rulesync/skills`）の使い方
+
+本リポジトリでは、エージェント向けの**手順・制約・ツール呼び出し**を **スキル**として `.rulesync/skills/<スキル名>/SKILL.md` にまとめています。編集するのは常にこの **ソース**で、**`rulesync generate` 後**に Cursor / Claude など各環境向けの定義が更新されます（生成物を直接いじらない運用は「ルール同期」と同じです）。
+
+**チャットでの使い方の例**
+
+- 作業内容に合わせて、スキル名やファイルパスを明示すると読み込みやすくなります。  
+  例: 「`.rulesync/skills/novel-char-count/SKILL.md` に従って `tools/novel_char_count.py` を実行して」  
+  例: 「タグ画像を `tag/<romaji>/` に出す。`novel-image-layout` と `forge-txt2img` の手順で」
+- スキルは**任意参照**ではなく、ルール側（`AGENTS.md` / `overview.md` 等）から「該当タスクでは SKILL を読め」と指示されている場合があります。そのときは **必ず `SKILL.md` を開いてから**ツールを実行してください。
+
+**主なスキル一覧**（詳細は各 `SKILL.md`）
+
+| スキル | 用途の要約 | 主なツール・パス |
+|--------|------------|------------------|
+| **novel-char-count** | 小説本文の**公式文字数**（コードポイント・NFC・フロントマター除外など） | `tools/novel_char_count.py` |
+| **novel-code-allocate** | `novels/` の **novel_code 採番**（max+1）・`config.md` 整合の検証 | `tools/novel_code_allocate.py` |
+| **workspace-audit-log** | `_workingspace/log/YYYYMM.md` への**査証ログ追記**（専用スクリプト） | `tools/workspace_audit_log.py` |
+| **weighted-pick** | JSON から**重み付き抽選**（均等・相対確率など） | `tools/json_weighted_pick.py` |
+| **forge-txt2img** | **Stable Diffusion Forge** の txt2img（API）、**Flux 時は CFG / scheduler / distilled** を UI と揃える注意 | `tools/forge_generate.py`、`config/forge_config.json`、`tools/fixtures/forge_params*.json` |
+| **novel-image-layout** | **`tag/<romaji>/`** と **`manga/_assets/<manga_XX>/`** のフォルダ規約・scaffold、タグ／漫画の**一括画像** | `tools/novel_image_layout.py`、`tools/forge_novel_tag_batch.py`、`tools/forge_novel_manga_batch.py` |
+| **project-context** | リポジトリの前提・制約の要約（エージェントのコンテキスト用） | （ドキュメント中心） |
+
+補足: **画像のモデル・VAE は API の JSON には含まれず**、Forge を起動したあと**ブラウザで選んだ Checkpoint 等**がそのまま使われます。`forge-txt2img` の **Flux** 節と `forge_config.json` を UI の数値と揃えてください。
+
 ## サポート
 現時点では、Cursor、Claude CLI、CODEX、Kilo code を中心に確認しております。
 

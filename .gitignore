@@ -26,3 +26,5 @@ progress.md
 CLAUDE.md
 AGENTS.md
 .serena/*
+outputs/
+logs/
