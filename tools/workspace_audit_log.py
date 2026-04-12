@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-_workingspace/log/(YYYYMM).md 査証ログ — 追記専用（公式用）。
+_workingspace 配下の月次 Markdown — 追記専用（公式用）。
 
-- 既存内容の上書き・削除は行わない（追記は open(..., 'a') のみ）。
-- 新規月ファイルは、存在しないか空のときだけ先頭に「# 査証ログ YYYY年M月」を書き込む。
-- エントリ1行形式: 「- YYYY-MM-DD HH:MM: 本文」
+- **査証ログ**: `log/(YYYYMM).md` — スキル workspace-audit-log
+- **横断ナレッジ日記**: `diary/(YYYYMM).md` — スキル workspace-diary
 
-定義・運用はスキル workspace-audit-log（.rulesync/skills/workspace-audit-log/SKILL.md）に従う。
+いずれも既存内容の上書き・削除は行わない（追記は open(..., "a") のみ）。
+新規月ファイルは、存在しないか空のときだけ先頭に月見出しを1回書き込む。
+エントリ1行形式: 「- YYYY-MM-DD HH:MM: 本文」
+
+定義・運用は各スキル（.rulesync/skills/workspace-audit-log|workspace-diary/SKILL.md）に従う。
 """
 
 from __future__ import annotations
@@ -17,7 +20,13 @@ import json
 import re
 import sys
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
+
+
+class MonthlyTarget(str, Enum):
+    AUDIT = "audit"
+    DIARY = "diary"
 
 
 def repo_root() -> Path:
@@ -29,12 +38,28 @@ def log_dir(root: Path | None = None) -> Path:
     return r / "_workingspace" / "log"
 
 
-def month_file_path(year: int, month: int, root: Path | None = None) -> Path:
-    return log_dir(root) / f"{year:04d}{month:02d}.md"
+def diary_dir(root: Path | None = None) -> Path:
+    r = root or repo_root()
+    return r / "_workingspace" / "diary"
 
 
-def format_month_header(year: int, month: int) -> str:
-    return f"# 査証ログ {year}年{month}月\n\n"
+def month_file_path(
+    year: int,
+    month: int,
+    *,
+    target: MonthlyTarget,
+    root: Path | None = None,
+) -> Path:
+    name = f"{year:04d}{month:02d}.md"
+    if target is MonthlyTarget.AUDIT:
+        return log_dir(root) / name
+    return diary_dir(root) / name
+
+
+def format_month_header(year: int, month: int, *, target: MonthlyTarget) -> str:
+    if target is MonthlyTarget.AUDIT:
+        return f"# 査証ログ {year}年{month}月\n\n"
+    return f"# 日記（横断ナレッジ） {year}年{month}月\n\n"
 
 
 def normalize_message(text: str) -> str:
@@ -65,13 +90,14 @@ def parse_year_month(s: str | None) -> tuple[int, int] | None:
 def append_entry(
     message: str,
     *,
+    target: MonthlyTarget,
     file_year: int,
     file_month: int,
     stamp: datetime,
     root: Path | None = None,
     dry_run: bool = False,
 ) -> dict[str, str | bool]:
-    path = month_file_path(file_year, file_month, root)
+    path = month_file_path(file_year, file_month, target=target, root=root)
     msg = normalize_message(message)
     date_s = stamp.strftime("%Y-%m-%d")
     time_s = stamp.strftime("%H:%M")
@@ -89,16 +115,17 @@ def append_entry(
             if f.read(1) != b"\n":
                 prefix_newline = True
 
+    hdr = format_month_header(file_year, file_month, target=target)
     chunks: list[str] = []
     if is_new:
-        chunks.append(format_month_header(file_year, file_month))
+        chunks.append(hdr)
     elif prefix_newline:
         chunks.append("\n")
     chunks.append(line)
     payload = "".join(chunks)
 
     display_line = (
-        (format_month_header(file_year, file_month) if is_new else "")
+        (hdr if is_new else "")
         + (("\n" if prefix_newline and not is_new else ""))
         + line
     ).rstrip("\n")
@@ -133,7 +160,7 @@ def parse_at(s: str) -> datetime:
     )
 
 
-def cmd_append(args: argparse.Namespace) -> int:
+def _run_append_cmd(args: argparse.Namespace, *, target: MonthlyTarget) -> int:
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
     if args.message is not None:
         message = args.message
@@ -155,6 +182,7 @@ def cmd_append(args: argparse.Namespace) -> int:
     try:
         r = append_entry(
             message,
+            target=target,
             file_year=file_year,
             file_month=file_month,
             stamp=stamp,
@@ -173,11 +201,20 @@ def cmd_append(args: argparse.Namespace) -> int:
             print(r["line"])
             print(f"→ {r['path']}")
         else:
-            print(f"追記しました: {r['path']}")
+            label = "査証ログ" if target is MonthlyTarget.AUDIT else "日記"
+            print(f"追記しました ({label}): {r['path']}")
     return 0
 
 
-def cmd_path(args: argparse.Namespace) -> int:
+def cmd_append(args: argparse.Namespace) -> int:
+    return _run_append_cmd(args, target=MonthlyTarget.AUDIT)
+
+
+def cmd_diary_append(args: argparse.Namespace) -> int:
+    return _run_append_cmd(args, target=MonthlyTarget.DIARY)
+
+
+def _run_path_cmd(args: argparse.Namespace, *, target: MonthlyTarget) -> int:
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
     now = datetime.now()
     ym = parse_year_month(args.year_month)
@@ -185,7 +222,7 @@ def cmd_path(args: argparse.Namespace) -> int:
         y, m = ym
     else:
         y, m = now.year, now.month
-    p = month_file_path(y, m, root)
+    p = month_file_path(y, m, target=target, root=root)
     if args.json:
         print(
             json.dumps(
@@ -202,19 +239,38 @@ def cmd_path(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_verify(args: argparse.Namespace) -> int:
-    root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
-    ld = log_dir(root)
-    strict = getattr(args, "strict", False)
-    if not ld.is_dir():
-        print(f"NG: log ディレクトリがありません: {ld}", file=sys.stderr)
+def cmd_path(args: argparse.Namespace) -> int:
+    return _run_path_cmd(args, target=MonthlyTarget.AUDIT)
+
+
+def cmd_diary_path(args: argparse.Namespace) -> int:
+    return _run_path_cmd(args, target=MonthlyTarget.DIARY)
+
+
+def _verify_monthly_files(
+    base: Path,
+    *,
+    first_line_prefix: str,
+    kind_label: str,
+    strict: bool,
+    allow_missing_dir: bool = False,
+) -> int:
+    if not base.is_dir():
+        if allow_missing_dir:
+            print(
+                f"OK: {kind_label} ディレクトリは未作成です（初回追記で作成されます）: {base}"
+            )
+            return 0
+        print(f"NG: {kind_label} ディレクトリがありません: {base}", file=sys.stderr)
         return 1
 
     errors: list[str] = []
     warnings: list[str] = []
-    md_files = sorted(ld.glob("*.md"))
+    md_files = sorted(base.glob("*.md"))
     for p in md_files:
         if p.name.startswith("."):
+            continue
+        if p.name.upper() == "README.MD":
             continue
         if not re.match(r"^\d{6}\.md$", p.name):
             errors.append(f"想定外のファイル名（YYYYMM.md 以外）: {p.name}")
@@ -224,8 +280,10 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if not lines:
             errors.append(f"{p.name}: 空ファイル")
             continue
-        if not lines[0].startswith("# 査証ログ "):
-            errors.append(f"{p.name}: 1行目が「# 査証ログ …」ではありません")
+        if not lines[0].startswith(first_line_prefix):
+            errors.append(
+                f"{p.name}: 1行目が「{first_line_prefix}…」ではありません: {lines[0][:60]}"
+            )
         for i, line in enumerate(lines[1:], start=2):
             if not line.strip():
                 continue
@@ -252,13 +310,74 @@ def cmd_verify(args: argparse.Namespace) -> int:
         for e in errors:
             print(f"NG: {e}", file=sys.stderr)
         return 1
-    print(f"OK: {len(md_files)} ファイルを検査 ({ld})" + (" [strict]" if strict else ""))
+    print(
+        f"OK: {len(md_files)} ファイルを検査 ({base}) [{kind_label}]"
+        + (" [strict]" if strict else "")
+    )
     return 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    strict = getattr(args, "strict", False)
+    return _verify_monthly_files(
+        log_dir(root),
+        first_line_prefix="# 査証ログ ",
+        kind_label="log",
+        strict=strict,
+        allow_missing_dir=False,
+    )
+
+
+def cmd_diary_verify(args: argparse.Namespace) -> int:
+    root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    strict = getattr(args, "strict", False)
+    return _verify_monthly_files(
+        diary_dir(root),
+        first_line_prefix="# 日記（横断ナレッジ） ",
+        kind_label="diary",
+        strict=strict,
+        allow_missing_dir=True,
+    )
+
+
+def _add_append_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "message",
+        nargs="?",
+        default=None,
+        help="本文（省略時は標準入力）",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="書き込まず内容だけ表示",
+    )
+    p.add_argument(
+        "--json",
+        action="store_true",
+    )
+    p.add_argument(
+        "--year-month",
+        type=str,
+        default=None,
+        help="追記先ファイルの年月 YYYYMM（既定: 今日の年月）",
+    )
+    p.add_argument(
+        "--at",
+        dest="at",
+        type=parse_at,
+        default=None,
+        help="エントリの日時（既定: 実行時刻）。YYYY-MM-DD HH:MM",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="_workingspace/log 査証ログへ追記（追記モードのみ）"
+        description=(
+            "_workingspace/log（査証ログ）および _workingspace/diary（横断ナレッジ日記）"
+            "へ追記（追記モードのみ）"
+        )
     )
     parser.add_argument(
         "--repo-root",
@@ -270,37 +389,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     pa = sub.add_parser("append", help="査証ログに1行追記")
-    pa.add_argument(
-        "message",
-        nargs="?",
-        default=None,
-        help="本文（省略時は標準入力）",
-    )
-    pa.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="書き込まず内容だけ表示",
-    )
-    pa.add_argument(
-        "--json",
-        action="store_true",
-    )
-    pa.add_argument(
-        "--year-month",
-        type=str,
-        default=None,
-        help="追記先ファイルの年月 YYYYMM（既定: 今日の年月）",
-    )
-    pa.add_argument(
-        "--at",
-        dest="at",
-        type=parse_at,
-        default=None,
-        help="エントリの日時（既定: 実行時刻）。YYYY-MM-DD HH:MM",
-    )
+    _add_append_flags(pa)
     pa.set_defaults(func=cmd_append)
 
-    pp = sub.add_parser("path", help="指定月のログファイルの絶対パスを表示")
+    pp = sub.add_parser("path", help="指定月の査証ログファイルの絶対パスを表示")
     pp.add_argument("--json", action="store_true")
     pp.add_argument(
         "--year-month",
@@ -320,6 +412,37 @@ def main(argv: list[str] | None = None) -> int:
         help="各行を公式形式（日付+時刻+本文）に厳密照合（移行前ログは WARN になりうる）",
     )
     pv.set_defaults(func=cmd_verify)
+
+    p_diary = sub.add_parser(
+        "diary",
+        help="横断ナレッジ日記（_workingspace/diary/YYYYMM.md）の追記・検査",
+    )
+    d_sub = p_diary.add_subparsers(dest="diary_action", required=True)
+
+    da = d_sub.add_parser("append", help="日記に1行追記")
+    _add_append_flags(da)
+    da.set_defaults(func=cmd_diary_append)
+
+    dp = d_sub.add_parser("path", help="指定月の日記ファイルの絶対パスを表示")
+    dp.add_argument("--json", action="store_true")
+    dp.add_argument(
+        "--year-month",
+        type=str,
+        default=None,
+        help="YYYYMM（既定: 今日の年月）",
+    )
+    dp.set_defaults(func=cmd_diary_path)
+
+    dv = d_sub.add_parser(
+        "verify",
+        help="diary 配下の *.md の体裁を検査（読み取り専用）",
+    )
+    dv.add_argument(
+        "--strict",
+        action="store_true",
+        help="各行を公式形式に厳密照合",
+    )
+    dv.set_defaults(func=cmd_diary_verify)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -87,6 +87,7 @@ python tools/workspace_audit_log.py append --dry-run "本文"
 
 ## 関連パス
 
-- スクリプト: `tools/workspace_audit_log.py`
+- スクリプト: `tools/workspace_audit_log.py`（`append` / `path` / `verify` は査証ログ用）
 - 保存先: `_workingspace/log/YYYYMM.md`
 - ルール記述: `.rulesync/rules/overview.md`（査証ログ）
+- **横断ナレッジ日記**（別スキル）: `workspace-diary` — `workspace_audit_log.py diary append` などで `_workingspace/diary/YYYYMM.md` へ追記

@@ -1,4 +1,5 @@
 {
+  "provider": "forge",
   "prompt": "1girl, school uniform",
   "negative_prompt": "lowres, blurry",
   "seed": null,

@@ -29,6 +29,19 @@ for %%F in ("%SRC%\*") do (
 )
 
 echo.
+echo Preparing environment template files...
+if exist ".env.example" (
+  if not exist ".env" (
+    echo   Copying .env.example ^> .env
+    copy ".env.example" ".env" >nul
+  ) else (
+    echo   Skipping .env ^(already exists^)
+  )
+) else (
+  echo   Skipping .env.example ^(source not found^)
+)
+
+echo.
 echo Initialization finished.
 
 :END

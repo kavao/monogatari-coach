@@ -1,9 +1,15 @@
 __pycache__/
 _how_to/*
 !_how_to/.gitkeep
+# _workingspace: 査証ログ・日記の月次 *.md はコミットしない。README（と .gitkeep）のみ追跡
 _workingspace/*
 !_workingspace/.gitkeep
-!_workingspace/log/.gitkeep
+!_workingspace/log/
+_workingspace/log/*
+!_workingspace/log/README.md
+!_workingspace/diary/
+_workingspace/diary/*
+!_workingspace/diary/README.md
 writers/*
 !writers/000_default/writer_profile.md
 novels/*
@@ -24,8 +30,13 @@ progress.md
 .kilocode/*
 .cursorignore
 .mcp.json
+.env
 CLAUDE.md
 AGENTS.md
 .serena/*
 outputs/
 logs/
+
+# LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
+tools_temp/*
+!tools_temp/README.md

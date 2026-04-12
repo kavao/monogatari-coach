@@ -1,5 +1,5 @@
 {
-  "provider": "forge",
+  "provider": "novelai",
   "prompt": "1girl, fantasy, detailed",
   "negative_prompt": "lowres, blurry, bad hands",
   "seed": 123456789,
@@ -7,8 +7,10 @@
   "height": 1024,
   "steps": 28,
   "cfg_scale": 6.5,
-  "sampler_name": "Euler a",
-  "output_dir": "outputs/forge",
-  "file_prefix": "forge",
+  "sampler_name": "k_euler_ancestral",
+  "model": "nai-diffusion-4-5-full",
+  "uc_preset": 0,
+  "output_dir": "outputs/novelai",
+  "file_prefix": "novelai",
   "count": 1
 }

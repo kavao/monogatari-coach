@@ -19,6 +19,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+PROVIDER_CHOICES = ("forge", "novelai", "grok")
+TAG_PROVIDER_ENV = "MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT"
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
@@ -32,6 +35,67 @@ DEFAULT_NEGATIVE = (
     "lowres, worst quality, jpeg artifacts, blurry, bad hands, bad anatomy, "
     "extra fingers, watermark, username, text, logo"
 )
+
+
+def load_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_dotenv(path: Path) -> dict[str, str]:
+    env: dict[str, str] = {}
+    if not path.is_file():
+        return env
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+            value = value[1:-1]
+        env[key] = value
+    return env
+
+
+def load_root_config(root: Path) -> dict:
+    cfg_path = root / "config" / "image_generation.json"
+    if cfg_path.is_file():
+        raw = load_json(cfg_path)
+        if "providers" in raw:
+            return raw
+        return {"default_provider": "forge", "providers": {"forge": raw}}
+    legacy_cfg_path = root / "config" / "forge_config.json"
+    if legacy_cfg_path.is_file():
+        raw = load_json(legacy_cfg_path)
+        return {"default_provider": "forge", "providers": {"forge": raw}}
+    return {"default_provider": "forge", "providers": {"forge": {}}}
+
+
+def validate_provider(provider: str, *, source: str) -> str:
+    normalized = provider.strip().lower()
+    if normalized not in PROVIDER_CHOICES:
+        allowed = ", ".join(PROVIDER_CHOICES)
+        raise ValueError(
+            f"{source} の provider {provider!r} は未対応です。available: {allowed}"
+        )
+    return normalized
+
+
+def resolve_batch_provider(root: Path, args_provider: str | None) -> str:
+    if args_provider:
+        return validate_provider(args_provider, source="CLI --provider")
+    dotenv_map = load_dotenv(root / ".env")
+    env_provider = dotenv_map.get(TAG_PROVIDER_ENV)
+    if env_provider:
+        return validate_provider(env_provider, source=f".env {TAG_PROVIDER_ENV}")
+    root_cfg = load_root_config(root)
+    return validate_provider(
+        str(root_cfg.get("default_provider", "forge")),
+        source="config default_provider",
+    )
 
 
 def extract_sections(md_text: str) -> list[tuple[int, str]]:
@@ -108,6 +172,26 @@ def main(argv: list[str] | None = None) -> int:
         help="negative_prompt（既定は汎用）",
     )
     p.add_argument(
+        "--provider",
+        choices=PROVIDER_CHOICES,
+        default=None,
+        help=(
+            "生成プロバイダ。未指定時は .env の "
+            f"{TAG_PROVIDER_ENV}、無ければ config/image_generation.json の "
+            "default_provider を使う"
+        ),
+    )
+    p.add_argument(
+        "--aspect-ratio",
+        default=None,
+        help="Forge/Grok 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）",
+    )
+    p.add_argument(
+        "--resolution",
+        default=None,
+        help="Grok 用の解像度（例: 1k, 2k）",
+    )
+    p.add_argument(
         "--min-section",
         type=int,
         default=None,
@@ -127,6 +211,11 @@ def main(argv: list[str] | None = None) -> int:
         novel = (root / novel).resolve()
     if not novel.is_dir():
         print(f"error: ディレクトリがありません: {novel}", file=sys.stderr)
+        return 2
+    try:
+        provider = resolve_batch_provider(root, args.provider)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 2
 
     try:
@@ -150,10 +239,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(f"novel: {novel}")
+    print(f"provider: {provider}")
     print(f"jobs: {len(jobs)}")
 
     for job in jobs:
         payload = {
+            "provider": provider,
             "prompt": job["prompt"],
             "negative_prompt": args.negative_prompt,
             "output_dir": job["output_dir"],
@@ -161,6 +252,10 @@ def main(argv: list[str] | None = None) -> int:
             "count": 1,
             "seed": None,
         }
+        if args.aspect_ratio is not None:
+            payload["aspect_ratio_preset"] = args.aspect_ratio
+        if args.resolution is not None:
+            payload["resolution"] = args.resolution
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {job['output_dir']}")
             print(f"    prompt[:120]: {payload['prompt'][:120]}...")
