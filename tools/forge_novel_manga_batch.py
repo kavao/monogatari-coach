@@ -88,16 +88,20 @@ def load_dotenv(path: Path) -> dict[str, str]:
 
 def load_root_config(root: Path) -> dict:
     cfg_path = root / "config" / "image_generation.json"
-    if cfg_path.is_file():
-        raw = load_json(cfg_path)
-        if "providers" in raw:
-            return raw
-        return {"default_provider": "forge", "providers": {"forge": raw}}
-    legacy_cfg_path = root / "config" / "forge_config.json"
-    if legacy_cfg_path.is_file():
-        raw = load_json(legacy_cfg_path)
-        return {"default_provider": "forge", "providers": {"forge": raw}}
-    return {"default_provider": "forge", "providers": {"forge": {}}}
+    if not cfg_path.is_file():
+        raise FileNotFoundError(
+            f"config/image_generation.json が見つかりません: {cfg_path}"
+        )
+    raw = load_json(cfg_path)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{cfg_path} は JSON オブジェクトである必要があります")
+    if "providers" in raw:
+        if not isinstance(raw.get("providers"), dict):
+            raise ValueError(f"{cfg_path} の providers はオブジェクトである必要があります")
+        return raw
+    raise ValueError(
+        f"{cfg_path} は providers キーを持つ image_generation 形式である必要があります"
+    )
 
 
 def validate_provider(provider: str, *, source: str) -> str:

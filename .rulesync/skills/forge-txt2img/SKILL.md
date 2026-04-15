@@ -56,7 +56,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を�
 - Forge / WebUI を **`--api` 付き**で起動する（これが無いと `/sdapi/v1/txt2img` が **HTTP 404** になり、Gradio の「Running on http://127.0.0.1:7860」だけでは足りないことがある）。
   - 例: `webui-user.bat` で `set COMMANDLINE_ARGS=--api` のあと起動。
 - 疎通確認: `python tools/forge_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
-- 設定はリポジトリルートの **`config/image_generation.json`**。Forge / NovelAI の両 provider をここで管理する。旧 **`config/forge_config.json`** は後方互換として読めるが、新規編集は `image_generation.json` を正本にする。
+- 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/forge_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
 - **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「Forge 画像生成（txt2img）の事前確認」）。
 
 ### Forge + Flux（ブラウザと API を揃える）

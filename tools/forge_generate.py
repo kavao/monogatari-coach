@@ -12,7 +12,7 @@
   - POST /v1/images/generations（Bearer token は .env の XAI_API_KEY を使用）
   - `b64_json` または URL 応答を保存
 
-設定は config/image_generation.json（既定）または旧 config/forge_config.json（後方互換）。
+設定は config/image_generation.json（既定・必須。`--config` で別パスも可）。
 仕様・運用: .rulesync/skills/forge-txt2img/SKILL.md
 """
 
@@ -921,10 +921,7 @@ def main(argv: list[str] | None = None) -> int:
         "--config",
         type=Path,
         default=None,
-        help=(
-            "設定 JSON（既定: config/image_generation.json、"
-            "無ければ旧 config/forge_config.json）"
-        ),
+        help="設定 JSON（既定: config/image_generation.json）",
     )
     parser.add_argument(
         "--provider",
@@ -962,10 +959,12 @@ def main(argv: list[str] | None = None) -> int:
 
     root = repo_root()
     default_cfg_path = root / "config" / "image_generation.json"
-    legacy_cfg_path = root / "config" / "forge_config.json"
-    cfg_path = args.config or (default_cfg_path if default_cfg_path.is_file() else legacy_cfg_path)
+    cfg_path = args.config or default_cfg_path
     if not cfg_path.is_file():
-        print(f"設定が見つかりません: {cfg_path}", file=sys.stderr)
+        print(
+            f"設定が見つかりません: {cfg_path}（リポジトリ直下に config/image_generation.json を置く）",
+            file=sys.stderr,
+        )
         return 2
 
     if args.params:

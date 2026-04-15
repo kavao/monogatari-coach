@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-作品フォルダの tag/*.md から「Danbooru Tags:」行を抽出し、Forge txt2img を連続実行する。
+作品フォルダの tag/*.md から「Danbooru Tags:」行を抽出し、画像生成 API を連続実行する。
 
-前提: config/forge_config.json・Forge --api 起動（tools/forge_generate.py と同じ）
+実装: 各ジョブは `tools/forge_generate.py` を子プロセスで呼び出す（provider は CLI / `.env` / `config/image_generation.json` で解決）。
+
+前提:
+- Forge: WebUI/Forge を `--api` 付きで起動し、`config/image_generation.json` の `providers.forge.base_url` が指す先に疎通できること
+- NovelAI / Grok: リポジトリ直下の `.env` に各 `auth_env`（例: `NOVELAI_ACCESS_TOKEN`）が入っていること
 
 MD の推奨書式: _how_to/tag.md「Markdown ファイル形式（機械抽出と整合）」、
 スキル novel-tag-md-format（.rulesync/skills/novel-tag-md-format/SKILL.md）。
@@ -62,16 +66,20 @@ def load_dotenv(path: Path) -> dict[str, str]:
 
 def load_root_config(root: Path) -> dict:
     cfg_path = root / "config" / "image_generation.json"
-    if cfg_path.is_file():
-        raw = load_json(cfg_path)
-        if "providers" in raw:
-            return raw
-        return {"default_provider": "forge", "providers": {"forge": raw}}
-    legacy_cfg_path = root / "config" / "forge_config.json"
-    if legacy_cfg_path.is_file():
-        raw = load_json(legacy_cfg_path)
-        return {"default_provider": "forge", "providers": {"forge": raw}}
-    return {"default_provider": "forge", "providers": {"forge": {}}}
+    if not cfg_path.is_file():
+        raise FileNotFoundError(
+            f"config/image_generation.json が見つかりません: {cfg_path}"
+        )
+    raw = load_json(cfg_path)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{cfg_path} は JSON オブジェクトである必要があります")
+    if "providers" in raw:
+        if not isinstance(raw.get("providers"), dict):
+            raise ValueError(f"{cfg_path} の providers はオブジェクトである必要があります")
+        return raw
+    raise ValueError(
+        f"{cfg_path} は providers キーを持つ image_generation 形式である必要があります"
+    )
 
 
 def validate_provider(provider: str, *, source: str) -> str:

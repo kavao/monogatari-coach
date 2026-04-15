@@ -270,8 +270,9 @@ _how_to/tag.md のルールに従い、各人物について
 #### Forge 画像生成（txt2img）の事前確認
 - **`tools/forge_generate.py`** および **`tools/forge_novel_tag_batch.py`** / **`tools/forge_novel_manga_batch.py`** で Stable Diffusion Forge に画像生成を依頼する**前**に、エージェントは次を確認する。
   1. **Forge の UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系か**（REST API は UI で選択中のモデルに追従するため、ブラウザの表示と一致させる）。
-  2. リポジトリの **`config/forge_config.json`** の **`active_model_family`** が、そのモデル族と一致しているか。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
-  3. **CFG Scale の目安**: FLUX 系は **`default_cfg_scale` 1** 前後、SDXL 系は **7** 前後（同ファイルの **`presets.flux`** / **`presets.sdxl`** に定義）。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
+  2. リポジトリ直下に **`config/image_generation.json` が存在すること**を確認する（画像生成系スクリプトの**設定正本**）。続けて **`providers.forge.active_model_family`** が UI のモデル族と一致しているかを見る。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
+  3. **CFG Scale の目安**: FLUX 系は **`providers.forge.presets.flux.default_cfg_scale` が 1** 前後、SDXL 系は **`providers.forge.presets.sdxl.default_cfg_scale` が 7** 前後（同プリセット定義に `sampler` / `scheduler` / `distilled_cfg_scale` 等も含まれる）。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
+  4. **疎通確認**: `python tools/forge_generate.py --probe`（既定 `default_provider` や CLI の `--provider` によって **接続先が変わる**点に注意。Forge だけ見たいなら **`--provider forge`** を明示するのが安全）。
 - 運用の詳細・Flux 特有のパラメータはスキル **`forge-txt2img`**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
 
 ### 2.2.2 Manga Tag Mode（漫画タグ出力：マンガ構成案確定後／一括生成前）
