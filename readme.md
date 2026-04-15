@@ -44,6 +44,8 @@ MONOCRI_GROK_MODEL_TIER_DEFAULT=standard
   [`.rulesync/rules/overview.md`](.rulesync/rules/overview.md)
 - スキルの正本:
   [`.rulesync/skills/`](.rulesync/skills/)
+- 人物命名の入口:
+  [`.rulesync/skills/character-naming/SKILL.md`](.rulesync/skills/character-naming/SKILL.md)
 - 創作技法テンプレートの正本:
   [`_how_to.example/`](_how_to.example/)
 - ローカル試行:
