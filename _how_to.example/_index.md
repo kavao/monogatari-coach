@@ -7,6 +7,8 @@
    - 一般的な小説構造のデータベース、恋愛や親愛要素が多い
 5. rewrite.md, word_change.md
    - 文章校正の時に使う
+   - 清書稿は `_novel_text_backup/` に旧版を退避したうえで `_novel_text/` を直接更新する
+   - 旧版は `_novel_text_backup/` に **`<元ファイル名>_vNNN.md`** 形式で退避する
    - 清書稿の保存先・バックアップ・`_novel_text` への反映はスキル **novel-refinement-output**（`.rulesync/skills/novel-refinement-output/SKILL.md`）と **`.rulesync/rules/overview.md` §2.5** を参照
 6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする

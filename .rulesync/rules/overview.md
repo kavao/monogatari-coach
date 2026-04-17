@@ -381,9 +381,9 @@ step2から1ページ丸ごと出力してください。
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など  
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
-6. 原稿のドキュメントはバックアップを取って( _novel_text_backup 以下)から、
+6. 原稿のドキュメントはバックアップを取って( `_novel_text_backup/` 以下、`<元ファイル名>_vNNN.md` 形式で版番号を付与)から、
 7. reader.mdを使って各文章の清書を行う｡同じファイル名のの内容を置き換えていく
-8. 文章校正の時には、`rewrite.md` を使う。**出力先は `_novel_text_re_/`** に、**`_novel_text/` 内の元ファイルと同じ名前**で書き出す（詳細はスキル **`novel-refinement-output`**）。まずは作業計画を立ててから、校正稿をファイルへ出力する。
+8. 文章校正の時には、`rewrite.md` を使う。**先に `_novel_text_backup/` に旧版を退避し、その後 `_novel_text/` 内の元ファイルと同じ名前で上書きする**（詳細はスキル **`novel-refinement-output`**）。まずは作業計画を立ててから、校正稿をファイルへ出力する。
    - 校正前後の分量比較が必要なときも、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
 
 ```mermaid
@@ -435,8 +435,8 @@ flowchart TD
 
 #### 入出力（必須）
 - **入力（リライト元）**: `novels/<作品>/_novel_text/novel_textXX.md`（項付きは同じ命名規則）。
-- **出力（rewrite 適用後の清書稿）**: `novels/<作品>/_novel_text_re_/novel_textXX.md` — **ファイル名は入力と同一**。初稿の正本 `_novel_text/` とは**別ディレクトリ**に置き、混線を防ぐ。
-- **`_novel_text` へ清書を反映**（初稿の上書き）する場合は、**先に** `_novel_text_backup/` へ当該 `novel_textXX.md` を退避してから行う（スキル **`novel-refinement-output`** の「反映」節）。
+- **出力（rewrite 適用後の清書稿）**: `novels/<作品>/_novel_text/novel_textXX.md` — **ファイル名は入力と同一**。清書稿は正本として `_novel_text/` を直接更新する。
+- **更新前の旧版退避**: **先に** `_novel_text_backup/` へ当該 `novel_textXX.md` を **`<元ファイル名>_vNNN.md`** の形式で退避してから行う（スキル **`novel-refinement-output`** の「反映」節）。
 
 #### 手動手順（明確化）
 1. **作業計画の立案**:
@@ -444,10 +444,10 @@ flowchart TD
 2. **校正の実行**:
    - `rewrite.md` のルールを適用し、1.5倍程度の分量を目約にリライトを行う。
    - 三点リーダー（……）や句点のルール（「」内は句点なし）を厳守する。
-   - 成果物は **`_novel_text_re_/`** に、**`_novel_text/` と同じファイル名**で保存する（会話だけに書かない）。
-   - 分量の達成度は `tools/novel_char_count.py` でリライト前（`_novel_text/`）後（`_novel_text_re_/`）を数え、コードポイント基準の増減として確認する（スキル `novel-char-count` 参照）。
+   - 成果物は **`_novel_text/`** を直接更新する形で保存する（会話だけに書かない）。
+   - 分量の達成度は `tools/novel_char_count.py` で更新後の **`_novel_text/`** を数え、コードポイント基準で確認する（スキル `novel-char-count` 参照）。
 3. **初稿の正本を更新する場合**:
-   - 必要に応じて `_novel_text_backup/` に元ファイルを退避し、ユーザー合意のうえ `_novel_text/` を更新する（詳細は **`novel-refinement-output`**）。
+   - `_novel_text_backup/` に元ファイルを **`<元ファイル名>_vNNN.md`** の形式で退避してから `_novel_text/` を更新する（詳細は **`novel-refinement-output`**）。
 
 ### 2.6 First Reader Mode（下読み・足きり判定）
 - 書評は、原則として **コメント（チャット本文）ではなく、`reader/YYYYMMDD_HHMM.md` の書評ファイルに出力**すること。
