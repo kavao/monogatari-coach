@@ -40,3 +40,6 @@ logs/
 # LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
 tools_temp/*
 !tools_temp/README.md
+
+# manga-prompt-ir Pythonパッケージ（ローカル実行用・デプロイ対象外）
+tools/manga_prompt_ir/

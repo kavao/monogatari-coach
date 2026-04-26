@@ -16,10 +16,10 @@ def repo_root() -> Path:
 
 
 def load_models():
-    skill_root = repo_root() / ".rulesync" / "skills" / "manga-prompt-ir"
-    sys.path.insert(0, str(skill_root))
-    from schemas.character import CharacterPrompt
-    from schemas.manga_page import MangaPagePrompt
+    tools_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(tools_dir))
+    from manga_prompt_ir.schemas.character import CharacterPrompt
+    from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 
     return CharacterPrompt, MangaPagePrompt
 

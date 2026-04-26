@@ -20,9 +20,9 @@ targets: ["*"]
 
 ## 正本の優先順位
 
-1. `schemas/*.py`: Pydantic v2 モデル。構造・必須項目・型の正本。
-2. `examples/*.yaml`: 人間が編集する入力例。作品ごとの YAML はこの形に寄せる。
-3. `converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
+1. `tools/manga_prompt_ir/schemas/*.py`: Pydantic v2 モデル。構造・必須項目・型の正本。
+2. `tools/manga_prompt_ir/examples/*.yaml`: 人間が編集する入力例。作品ごとの YAML はこの形に寄せる。
+3. `tools/manga_prompt_ir/converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
 4. 従来の `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換の出力・移行元として扱う。
 
 ## 運用方針
@@ -65,10 +65,10 @@ targets: ["*"]
 python -m pip install -r requirements.txt
 ```
 
-スキル内サンプルの検証:
+スキーマ・コンバーターのテスト:
 
 ```bash
-python -m pytest .rulesync/skills/manga-prompt-ir/tests
+python -m pytest tools/manga_prompt_ir/tests
 ```
 
 作品フォルダ内のIR検証:

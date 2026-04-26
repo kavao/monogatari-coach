@@ -18,6 +18,8 @@
 - 新規タグ設計時に、YAML/JSON/Pydantic を優先する根拠が `.rulesync/` にある。
 - Markdown 互換運用も破棄されていない。
 
+> **2026-04-26 更新**: Python 実装（schemas/、converters/、tests/、examples/）は `tools/manga_prompt_ir/` パッケージへ移動済み。`.rulesync/skills/manga-prompt-ir/` には SKILL.md・MIGRATION.md のみ残す。
+
 ## Phase 2: 作品フォルダへの導入
 
 作品ごとに次の配置を採用する。
