@@ -32,6 +32,7 @@ def render_page_prompt(
     panel_parts: list[str] = []
     for panel in page.panels:
         panel_parts.append(_panel_to_text(panel, characters))
+        tags.extend(panel.prompt_tags)
         for subject in panel.subjects:
             if subject.character_id and subject.character_id in characters:
                 character = characters[subject.character_id]

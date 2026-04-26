@@ -1,3 +1,23 @@
+## 構造化IR優先（manga-prompt-ir）
+
+新規の漫画ページ・漫画コマは、まず **`manga-prompt-ir`** の `MangaPagePrompt` 構造へ落とす。
+
+- 人間編集用の正本: `novels/<作品>/manga/pages/manga_XX_pYY.yaml`
+- 既存バッチ互換: `novels/<作品>/manga/manga_XX.md`
+- `manga_XX.md` は `tools/forge_novel_manga_batch.py` のための互換出力層として扱う
+- 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
+
+YAML IR では、少なくとも次を分離して持つ。
+
+- `meta`: ページ/コマ用途、読み順、比率
+- `manga`: 画風、ページレイアウト、文字描画方針
+- `scene`: 場所、時間、背景
+- `character_ids`: 登場人物の `character_id`
+- `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`
+- `technical.negative_tags`: ページ側の negative tags
+
+`Step1` / `Step2` を書く場合も、正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
+
 ## step1 
 stable diffusion,novelaiで漫画1ページを描画してもらうような、タグを作成してください、カラーのページにしたいです。
 nanobanana, GptImage1のようなツールでもそのまま使えることを考えています。

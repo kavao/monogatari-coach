@@ -123,6 +123,8 @@ class Panel(BaseModel):
     lighting: Lighting = Field(default_factory=Lighting)
     text: PanelText = Field(default_factory=PanelText)
     mood_atmosphere: list[str] = Field(default_factory=list)
+    prompt_tags: list[str] = Field(default_factory=list)
+    translation: str | None = None
     continuity_notes: str | None = None
 
     @field_validator("subjects")

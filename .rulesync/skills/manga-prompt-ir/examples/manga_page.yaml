@@ -59,6 +59,10 @@ panels:
     mood_atmosphere:
       - quiet tension
       - mysterious
+    prompt_tags:
+      - phone_screen_light
+      - quiet_tension
+    translation: 和紀が深夜の自室でスマホ通知に気づく導入コマ。
   - panel_id: 2
     summary: 中段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。
     subjects:

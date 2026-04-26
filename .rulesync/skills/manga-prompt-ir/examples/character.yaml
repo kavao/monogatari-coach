@@ -48,6 +48,17 @@ manga_rules:
     - 髪色を黒以外にしない
     - スマホを別の固定小物に置き換えない
   closeup_rules: 目元アップでは疲労感と観察眼を残す
+prompt_variants:
+  - variant_id: normal
+    title: 通常時
+    description: 通常立ち絵。固定特徴と衣装を確認する。
+    danbooru_tags:
+      - Kazuki
+      - 1boy
+      - black_hair
+      - brown_eyes
+    caption: Kazuki, stable character reference.
+    translation: 和紀の通常時。
 negative_tags:
   - extra_fingers
   - bad_hands

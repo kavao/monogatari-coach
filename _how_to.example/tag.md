@@ -1,3 +1,21 @@
+## 構造化IR優先（manga-prompt-ir）
+
+新規のキャラクター画像タグは、まず **`manga-prompt-ir`** の `CharacterPrompt` 構造へ落とす。
+
+- 人間編集用の正本: `novels/<作品>/tag/characters/<character_id>.yaml`
+- 既存バッチ互換: `novels/<作品>/tag/<romaji>.md`
+- 互換 Markdown は `tools/forge_novel_tag_batch.py` のための出力層として扱う
+- 中間データは作り直し可能だが、**日本語の意味・固定特徴・変更禁止・状況別タグ**は失わない
+
+`tag/<romaji>.md` を直接書く場合でも、将来 YAML 化しやすいように、各状況について次を明確にする。
+
+- `character_id`
+- 日本語の状況説明
+- 固定特徴（髪・目・肌・体格・種族・固定小物）
+- 状況別 Danbooru Tags
+- Caption
+- 和訳
+
 登場人物を描画ＡＩに依頼するための補助ツールです。
 ひとまず、物語のタイトルについて表示を出してから、最初にプロフィールの詳細を反映し、状況に応じた写実的な描写で人物の描写をしてください
 事前に変換リストに基づいて単語を適切に変換してください。

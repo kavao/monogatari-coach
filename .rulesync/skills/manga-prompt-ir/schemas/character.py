@@ -49,6 +49,17 @@ class CharacterMangaRules(BaseModel):
     closeup_rules: str | None = None
 
 
+class CharacterPromptVariant(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    variant_id: str
+    title: str
+    description: str
+    danbooru_tags: list[str] = Field(default_factory=list)
+    caption: str | None = None
+    translation: str | None = None
+
+
 class CharacterPrompt(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -62,6 +73,7 @@ class CharacterPrompt(BaseModel):
     costume: CharacterCostume = Field(default_factory=CharacterCostume)
     personality: CharacterPersonality = Field(default_factory=CharacterPersonality)
     manga_rules: CharacterMangaRules = Field(default_factory=CharacterMangaRules)
+    prompt_variants: list[CharacterPromptVariant] = Field(default_factory=list)
     negative_tags: list[str] = Field(default_factory=list)
 
     def fixed_prompt_tags(self) -> list[str]:
