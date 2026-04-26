@@ -27,6 +27,14 @@ globs: ["**/*"]
 - **`tools/`** には**共有・正規運用**のスクリプトのみ置く。正規表現の再検証、マンガ `manga_*.md` の Step1／Step2 抽出ロジックの試作、`forge_generate.py` / `forge_novel_manga_batch.py` などの**コピーを弄る検証**は、**`tools/` を直接編集せず**、必要なファイルを **`tools_temp/` にコピーして**から編集・実行する。
 - 試行で得た改善を本番へ取り込むときは、**`tools/`** または **`.rulesync/rules/`・`.rulesync/skills/`** へ**意図を整理してから**反映する（一時スクリプトをそのまま `tools/` へリネームしてコミットしない。差分が明確なパッチや新規正式ツールとして入れる）。
 
+### スキルへの Python 追加ルール（重要）
+- **`.rulesync/skills/<skill_name>/` に Python ファイルを置かない。** スキルディレクトリに置けるのは `SKILL.md`・`MIGRATION.md` などの **Markdown 文書のみ**とする。
+- スキルに Python 実装が必要な場合は、**`tools/` 配下に正式ツールとして配置する**。
+  - 単独スクリプト: `tools/<tool_name>.py`
+  - パッケージ（複数モジュール）: `tools/<package_name>/`（`__init__.py` を置き Python パッケージとして扱う）
+- スキルの `SKILL.md` からは `tools/` のパスを参照する形で記述する（例: `tools/manga_prompt_ir/schemas/character.py`）。
+- **Git 管理外にする場合**は `.gitignore` で `tools/<package_name>/` を除外し、`git rm --cached` でインデックスからも外す。
+
 ---
 
 ## 1. Monogatari Coachのファイル構成

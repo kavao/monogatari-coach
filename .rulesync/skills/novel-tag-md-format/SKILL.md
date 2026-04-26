@@ -38,6 +38,13 @@ targets: ["*"]
 1. キャラクター固定特徴・禁止変更項目・negative tags は `manga-prompt-ir` の YAML/Pydantic を優先する。
 2. 既存バッチ抽出の互換性は、この Markdown 規約を優先する。
 
+## Tag Mode の運用ルールは `_how_to/tag.md` を正とする
+
+このスキル（`novel-tag-md-format`）は **Markdown 互換層のフォーマット維持**に専念し、タグ内容のルール（何を固定にするか／状況別に何を入れるか等）は **`_how_to/tag.md` 側を正本**として運用する。
+
+- **Tag Mode のチェックリスト**: `_how_to/tag.md` の **「Tag Mode チェックリスト」**節を参照し、その内容を YAML IR（`tag/characters/*.yaml`）と互換 MD（`tag/*.md`）へ反映する。
+- **ここにタグ内容ルールを重複記載しない**: ルールの二重管理による不整合を避けるため、タグ内容の判断基準は `_how_to/tag.md` に集約する。
+
 ## 検証
 
 Markdown 互換フォーマットの構文確認（旧ツール向け）:

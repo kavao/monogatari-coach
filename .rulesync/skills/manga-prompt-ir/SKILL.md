@@ -37,6 +37,38 @@ targets: ["*"]
 - `negative_tags` はキャラクター側とページ側の両方に持たせ、最終レンダリング時に結合する。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
 
+## 重要: キャラクターの「固定タグ」と「バリアントタグ」の分離（混入事故防止）
+
+`CharacterPrompt` の固定タグは、レンダリング時に **常に全バリアントへ注入される**前提で運用する。
+具体的には、`tools/manga_prompt_ir/schemas/character.py` の `CharacterPrompt.fixed_prompt_tags()` が返す次が、毎回（=水着でも治療服でも）混ざり得る。
+
+- `character_tags`
+- `costume.outfit_tags`
+- `manga_rules.consistency_tags`
+- `appearance.species_features`
+- `appearance.distinctive_features`
+
+そのため、`costume.outfit_tags`（固定側）に **通常服（平服）** を入れると、**水着バリアントにも通常服タグが混ざる**などの矛盾が発生し得る。
+
+### ルール（推奨）
+
+- **固定に入れてよい（全シーン不変）**
+  - 髪色・髪型の核（例: black_hair / silver_hair）
+  - 目色、肌、体格の核（例: brown_eyes / fair_skin）
+  - 種族特徴（例: pointed_ears 等）
+  - 固定小物（例: 星型ヘアピン等、常に付ける前提のもの）
+  - 「絶対に変えてはいけない」一貫性タグ（`manga_rules.consistency_tags` / `manga_rules.do_not_change`）
+
+- **固定に入れない（バリアントへ寄せる）**
+  - 通常服／水着／鎧など、**状況で切り替わる衣装タグ**
+  - standing / sitting のような姿勢タグ（状況で変わる）
+  - 屋外・屋内・背景（作品側/コマ側で管理）
+
+### 実装メモ（確認ポイント）
+
+この混入は「base_caption」というフィールド名の有無に関わらず、**固定タグの合成方式**が原因で起きる。
+スキル運用では、固定タグ＝不変、バリアントタグ＝可変、という分離で事故を防ぐ。
+
 ## 移行ルール
 
 既存の Markdown 資産は、すぐに破棄しない。

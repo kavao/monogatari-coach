@@ -57,7 +57,7 @@ _UC_V45_CURATED: dict[int, str] = {
         "glowing eyes, negative space, blank page"
     ),
     7: (
-        "nsfw, {worst quality}, distracting watermark, unfinished, bad quality, "
+        "{worst quality}, distracting watermark, unfinished, bad quality, "
         "{widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, "
         "sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, "
         "[[horror (theme)]], comic"
@@ -66,16 +66,16 @@ _UC_V45_CURATED: dict[int, str] = {
 _UC_V45_FULL: dict[int, str] = {
     3: "",
     4: (
-        "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, "
+        "lowres, artistic error, film grain, scan artifacts, worst quality, "
         "bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, "
         "multiple views, logo, too many watermarks, negative space, blank page"
     ),
     5: (
-        "nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, "
+        "lowres, artistic error, scan artifacts, worst quality, bad quality, "
         "jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"
     ),
     6: (
-        "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, "
+        "lowres, artistic error, film grain, scan artifacts, worst quality, "
         "bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, "
         "multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, "
         "glowing eyes, bad anatomy"
@@ -97,12 +97,12 @@ _UC_V4_CURATED: dict[int, str] = {
 _UC_V4_FULL: dict[int, str] = {
     3: "",
     4: (
-        "nsfw, blurry, lowres, error, film grain, scan artifacts, worst quality, "
+        "blurry, lowres, error, film grain, scan artifacts, worst quality, "
         "bad quality, jpeg artifacts, very displeasing, chromatic aberration, multiple views, logo, "
         "too many watermarks, white blank page, blank page"
     ),
     5: (
-        "nsfw, blurry, lowres, error, worst quality, bad quality, jpeg artifacts, "
+        "blurry, lowres, error, worst quality, bad quality, jpeg artifacts, "
         "very displeasing, white blank page, blank page"
     ),
 }
