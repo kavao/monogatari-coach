@@ -1,11 +1,11 @@
 ---
 name: manga-tag-quality-gate
 description: >-
-  Manga Tag Mode で manga/manga_XX.md の Step1 / Step2 を作成・改稿するときに、
+  Manga Tag Mode で manga/pages/*.yaml の漫画ページIRを作成・改稿するときに、
   「誰が」「誰に」「どこで」「何をしているか」「どのセリフが誰のものか」に加え、
   コマ割り・ページレイアウト（コマ数、段・大小、読み順、構図語）が明確かを点検する。
   部分アップや身体の一部だけのコマでも意味が読めるように品質ゲートをかける。
-  漫画タグの新規作成、改稿、生成前チェックで使う。
+  manga/manga_XX.md の Step1 / Step2 は検証後に必要時のみ出す互換出力として扱う。
 targets: ["*"]
 ---
 
@@ -13,7 +13,7 @@ targets: ["*"]
 
 漫画タグは、絵として雰囲気が出ていても、**主語・相手・行為・セリフの帰属**が抜けると生成結果が破綻しやすい。
 
-本スキルは `manga/manga_XX.md` の **Step1 / Step2** に対して、
+本スキルは `manga/pages/*.yaml` の漫画ページIRに対して、
 
 - 誰が写っているか
 - 誰と誰の関係か
@@ -24,22 +24,26 @@ targets: ["*"]
 
 を最低限読める状態まで整えるための品質ゲートを定義する。
 
+`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/forge_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
+
 ## 正本・参照
 
 | 正本 | 用途 |
 |------|------|
-| `novels/<作品>/manga/manga_XX.md` | 点検対象の Step1 / Step2 本文 |
-| `manga-prompt-ir` の `manga_page.yaml` | YAML/JSON 化後のページ定義正本。`panels[]`・`subjects[]`・`text`・`composition` を検証する。 |
+| `novels/<作品>/_novel_text/novel_textXX*.md` | 場面・人物・会話・小道具・順序の本文根拠 |
+| `novels/<作品>/manga/pages/manga_XX_pYY.yaml` | 点検対象のページ定義正本。`panels[]`・`subjects[]`・`text`・`composition` を検証する。 |
 | `novels/<作品>/character.md` | 登場人物の正式名称・関係性・固定設定 |
-| `novels/<作品>/tag/<romaji>.md` | 外見・状況タグの正 |
+| `novels/<作品>/tag/characters/<character_id>.yaml` | 外見・状況タグの構造化正本 |
+| `novels/<作品>/tag/<romaji>.md` | 外見・状況タグの互換出力・英語タグ参考 |
+| `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
 | `_how_to/manga.md` | Step1 / Step2 の出力基準 |
 | `_how_to/manga_tag.md` | コマタグ表現の参考 |
 
 ## 使う場面
 
-- Manga Tag Mode で `manga_XX.md` を新規作成した直後
 - `manga_page.yaml` を新規作成・改稿した直後
-- 既存の `step1` / `step2` を改稿するとき
+- `manga/pages/*.yaml` から互換 Markdown を出力する直前
+- 既存の `step1` / `step2` を YAML へ移行するとき
 - 画像生成前に「意味が落ちていないか」を見直したいとき
 
 ## 品質ゲート
@@ -172,7 +176,7 @@ Step2 では、**意味語ではなく、見える配置語へ言い換える**�
 
 ## 改稿手順
 
-1. `manga_XX.md` の各 Page を上から読む
+1. 対象本文と `manga/pages/*.yaml` の各 Page を上から読む
 2. コマごとに次を確認する
    - 誰
    - 相手
@@ -181,14 +185,15 @@ Step2 では、**意味語ではなく、見える配置語へ言い換える**�
    - セリフ話者
 3. 欠けた要素を、冗長にしすぎない範囲で補う
 4. 部分アップのコマは「何を伝えるカットか」を1句足す
-5. Step2 は抽象度を保ちつつ、人物帰属と役割だけは残す
-6. Step2 に抽象名詞しかない場合は、見える構図へ言い換える
-7. Step1 のページ先頭でコマ数・コマ割り宣言を確認し、Step2 では **段・大小・読み順（または均等割＋順序）** が追えるか確認する
-8. YAML 化済みの場合は、`panels[].composition.layout` または `manga.panel_layout` に段・大小・読み順の情報があるか確認する
+5. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか確認する
+6. `panels[].composition.layout` または `manga.panel_layout` に段・大小・読み順の情報があるか確認する
+7. 互換出力する場合だけ、Step1 のページ先頭でコマ数・コマ割り宣言を確認し、Step2 では **段・大小・読み順（または均等割＋順序）** が追えるか確認する
+8. Step2 に抽象名詞しかない場合は、見える構図へ言い換える
 
 ## 禁止事項
 
 - 雰囲気だけで主語を失ったままにしない
+- YAML があるのに、Markdown の Step1 / Step2 だけを直接新規作成・修正して正本扱いしない
 - 部位カットを、所有者不明のまま置かない
 - セリフを、誰が話しているか不明のまま置かない
 - Step2 の抽象化を理由に、人物関係やコマの意味まで削らない

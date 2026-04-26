@@ -1,9 +1,10 @@
 ---
 name: manga-tag-character-sync
 description: >-
-  Manga Tag Mode で manga/manga_XX.md の各コマタグを作成するときに、
-  character.md と tag/<romaji>.md を正として固定外見・服装・小物・種族特徴を継承し、
-  コマごとの状況タグへ矛盾なく反映する。漫画タグ作成時や改稿時に使う。
+  Manga Tag Mode で manga/pages/*.yaml の漫画ページIRを作成・改稿するときに、
+  character.md と tag/characters/*.yaml を正として固定外見・服装・小物・種族特徴を継承し、
+  コマごとの subjects / prompt_tags へ矛盾なく反映する。
+  manga/manga_XX.md は必要時のみ生成する互換出力として扱う。
 targets: ["*"]
 ---
 
@@ -11,34 +12,40 @@ targets: ["*"]
 
 漫画タグはコマごとに状況やアングルが変わる一方で、**同一人物の識別に必要な固定特徴**はぶらしてはいけない。
 
-本スキルは、`manga/manga_XX.md` の各コマタグを作るときに、**`character.md` と `tag/<romaji>.md` を先に読み、固定特徴を毎コマへ反映する手順**を固定する。
+本スキルは、`manga/pages/*.yaml` の漫画ページIRを作るときに、**`character.md` と `tag/characters/*.yaml` を先に読み、固定特徴を毎コマへ反映する手順**を固定する。
+
+`manga/manga_XX.md` は `tools/forge_novel_manga_batch.py` 向けの互換出力であり、Manga Tag Mode の初手で直接新規作成する正本ではない。既存 Markdown は移行・比較・生成直前の互換確認にだけ使う。
 
 ## 正本・参照
 
 | 正本 | 用途 |
 |------|------|
-| `novels/<作品>/character.md` | 外見・体格・服装・種族・持ち物の確定記述。ここに無い特徴を漫画タグだけで増やさない。 |
-| `manga-prompt-ir` の `character.yaml` | YAML/JSON 化後のキャラクター定義正本。`character_id` を主キーにして漫画ページから参照する。 |
-| `novels/<作品>/tag/<romaji>.md` | Danbooru Tags の実運用形。固定外見を英語タグへ落とした基準として使う。 |
-| `manga-prompt-ir` の `manga_page.yaml` | YAML/JSON 化後の漫画ページ定義正本。コマ・人物・セリフ・効果音を分離する。 |
+| `novels/<作品>/tag/characters/<character_id>.yaml` | YAML/JSON 化後のキャラクター定義正本。`character_id` を主キーにして漫画ページから参照する。 |
+| `novels/<作品>/character.md` | 外見・体格・服装・種族・持ち物のプロフィール正本。ここに無い特徴を漫画タグだけで増やさない。 |
+| `novels/<作品>/_novel_text/novel_textXX*.md` | そのページの場面・人物・会話・小道具の本文根拠。漫画ページIR作成時に参照する。 |
+| `novels/<作品>/manga/pages/manga_XX_pYY.yaml` | 漫画ページ定義正本。コマ・人物・セリフ・効果音・タグを分離する。 |
+| `novels/<作品>/tag/<romaji>.md` | Danbooru Tags の互換運用形。英語タグへの落とし方の参考として使う。 |
+| `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
 | `_how_to/manga.md` | コマ構成・出力形式・抽象度の基準。 |
 | `_how_to/manga_tag.md` | 漫画向けタグ表現の参考。 |
 
 ## 反映の優先順位
 
-1. **固定特徴**は、構造化定義がある場合は `manga-prompt-ir` の `character.yaml` を最上位の正とする。
+1. **固定特徴**は、構造化定義がある場合は `tag/characters/<character_id>.yaml` を最上位の正とする。
 2. 構造化定義がない作品では `character.md` を正とする。
-3. **英語タグへの落とし方**は `character.yaml` の `character_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を継承する。
-4. コマごとの状況・構図・アクションは、構造化定義がある場合は `manga_page.yaml`、ない場合は `manga/manga_XX.md` の内容に従う。
-5. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。
+3. **英語タグへの落とし方**は `character.yaml` の `character_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を参考にする。
+4. コマごとの状況・構図・アクションは、本文と `manga/pages/*.yaml` の内容に従う。
+5. 既存 `manga/manga_XX.md` は、YAML が無い場合の移行元または互換出力の確認先に限って参照する。
+6. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。
 
 ## 手順
 
 ### 1. 対象キャラを確定する
 
-- その `manga_XX.md` に出る人物を洗い出す。
-- YAML 化済みの場合は、`manga_page.yaml` の `character_ids` と `panels[].subjects[].character_id` を先に確認する。
-- 各人物について、対応する `tag/<romaji>.md` があるか確認する。
+- 対象本文（`_novel_text/novel_textXX*.md`）と `manga/pages/*.yaml` から、ページに出る人物を洗い出す。
+- YAML 化済みの場合は、`character_ids` と `panels[].subjects[].character_id` を先に確認する。
+- 各人物について、対応する `tag/characters/<character_id>.yaml` と、必要に応じて `tag/<romaji>.md` があるか確認する。
+- 既存 `manga/manga_XX.md` は、旧運用から移行するときだけ人物確認の補助として読む。
 
 ### 2. 固定特徴を抜き出す
 
@@ -52,9 +59,10 @@ targets: ["*"]
 - 種族・耳・角・羽・尻尾など
 - 固定小物: 眼鏡、リボン、武器、アクセサリ
 
-### 3. `tag/<romaji>.md` から継承タグを作る
+### 3. 継承タグを作る
 
-- Danbooru Tags 行を見て、**状況が変わっても残すべきタグ**を拾う。
+- `tag/characters/<character_id>.yaml` の `character_tags` / `manga_rules.consistency_tags` から、**状況が変わっても残すべきタグ**を拾う。
+- 互換タグが必要な場合は `tag/<romaji>.md` の Danbooru Tags 行も確認する。
 - 服装がシーンで変わる場合でも、**顔・髪・目・肌・種族・固定小物**は原則維持する。
 - 漫画タグでは、必要ならタグを少し短くしてよいが、**識別に必要なタグは落とさない**。
 
@@ -82,8 +90,9 @@ targets: ["*"]
 ユーザーから漫画タグ作成を受けたときは、次の意図で実行する。
 
 ```text
-character.md と tag/*.md を正として固定特徴を継承し、
-manga/manga_XX.md の各コマタグへ矛盾なく反映する。
+_novel_text と tag/characters/*.yaml / character.md を正として固定特徴を継承し、
+manga/pages/*.yaml の subjects / prompt_tags へ矛盾なく反映する。
+manga/manga_XX.md は必要時のみ互換出力する。
 ```
 
 ## 関連

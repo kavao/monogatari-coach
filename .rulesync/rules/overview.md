@@ -281,6 +281,8 @@ _how_to/tag.md のルールに従い、各人物について
 小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、漫画ページ用の YAML IR を作成する。既存バッチを使う場合は、YAML IR から `manga_XX.md` の Step1 / Step2 互換形式へ出力する。
 原則として、**本文または構成案が確定した後（Writing/Mangaの一部）**、画像一括生成の前に必ず行う。
 
+**禁止**: Manga Tag Mode の初手として `manga/manga_XX.md` を直接新規作成しない。`manga/manga_XX.md` は検証済み YAML IR からの互換出力、または旧運用からの移行元としてだけ扱う。
+
 #### 目的
 - 各コマの状況、人物、アクションを正確に言語化し、AI画像生成（NovelAI/Stable Diffusion等）で一貫性のある漫画を生成可能にする。
 - 新規・刷新後の運用では、ページ・コマ・人物・テキスト要素を YAML/JSON/Pydantic の構造化定義（スキル `manga-prompt-ir`）へ落とし、必要に応じて既存 `manga_XX.md` の Step1 / Step2 へ互換出力する。
@@ -289,12 +291,13 @@ _how_to/tag.md のルールに従い、各人物について
 - `_how_to/manga_tag.md` および `_how_to/manga.md` を必ず参照し、同ファイルのルール・出力形式に従う。
 - 構造化漫画タグを作る場合は、スキル **`manga-prompt-ir`** の `schemas/manga_page.py` と `examples/manga_page.yaml` を正本にする。
 - **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従う。刷新後の優先順位は、`tag/characters/<character_id>.yaml` → `character.md` → `tag/<romaji>.md` とし、互換 Markdown は最終的な画像生成バッチ向けの参照先として扱う。
-- **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、`step1` / `step2` の品質を点検する。
+- **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、まず YAML IR の品質を点検する。`step1` / `step2` は互換出力後の確認対象とする。
 
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/manga/pages/manga_XX_pYY.yaml` に作成する。
 - **互換出力（Markdown）**: `novels/[novel_code]_[novel_title]/manga/manga_XX.md` に出力、または追記する。
   - 既存の `tools/forge_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。
+  - Markdown を手作業で正本化しない。修正は YAML IR 側へ入れ、再エクスポートする。
 
 #### 手動手順（明確化）
 1. **前提チェック**

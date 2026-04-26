@@ -7,6 +7,9 @@
 - `manga_XX.md` は `tools/forge_novel_manga_batch.py` のための互換出力層として扱う
 - 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
 
+**Manga Tag Mode の初手は YAML IR 作成です。**
+`manga/manga_XX.md` を直接新規作成して正本にしないでください。Markdown が必要な場合は、YAML 検証後に「互換出力」「Markdown出力」「画像生成バッチ準備」として生成します。
+
 YAML IR では、少なくとも次を分離して持つ。
 
 - `meta`: ページ/コマ用途、読み順、比率
@@ -16,9 +19,11 @@ YAML IR では、少なくとも次を分離して持つ。
 - `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`
 - `technical.negative_tags`: ページ側の negative tags
 
-`Step1` / `Step2` を書く場合も、正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
+`Step1` / `Step2` は `manga/manga_XX.md` 互換出力の形式名です。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
 
-## step1 
+## 互換出力: step1
+以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。新規の漫画タグ作成では、先に `manga/pages/manga_XX_pYY.yaml` を作成・検証してからこの形へエクスポートしてください。
+
 stable diffusion,novelaiで漫画1ページを描画してもらうような、タグを作成してください、カラーのページにしたいです。
 nanobanana, GptImage1のようなツールでもそのまま使えることを考えています。
 タグ生成の際にはmanga_tag.mdも確認し参考にしてください
@@ -75,7 +80,7 @@ nanobanana, GptImage1のようなツールでもそのまま使えることを�
 **英語の `tag:` 行**: コマ位置は**日本語のコマ説明**で担う。タグに `vertical panel` 等を毎コマ足す必要はない（上記「機械的に毎回入れない」に同じ）。
 
 「自然言語で状況説明＋箇条書きでコマを並べる」スタイル
-## step1 での出力例
+## 互換出力: step1 での出力例
 ```
 ## step1
 カラー漫画、1ページ6〜8コマ、少年ジャンプ風の迫力あるバトルシーン、日本の漫画のコマ割り
@@ -113,7 +118,9 @@ final victory pose manga panel, shonen jump climax scene, bloodied black-haired 
 
 ```
 
-## step2 
+## 互換出力: step2
+以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。ページ生成向けの抽象レイアウトも、正本は YAML IR の `manga.panel_layout` / `panels[].composition` に保持します。
+
 nanobanana, GptImage1のようなツールで、コマ割りと抽象度をのみ出す形
 抽象度を上げる、「何をしている」という具体的な行動や接触描写を排除し、純粋に構図・位置関係・アングル・表情の配置だけに絞る
 日本の漫画のコマ割りについては必ず指定してください
@@ -137,7 +144,7 @@ nanobanana, GptImage1のようなツールで、コマ割りと抽象度をの�
 
 以下のような出力でお願いします
 
-## step2 での出力例
+## 互換出力: step2 での出力例
 ```
 ## step2
 カラーマンガ、1ページ5コマ、日本の漫画のコマ割り
@@ -232,6 +239,7 @@ nanobanana, GptImage1のようなツールで、コマ割りと抽象度をの�
 - **step1 は「コマ生成」用**です。各コマを個別画像として出す前提で、**Forge / NovelAI / Grok** の入力元に使います。
 - **step1 は「精密ページ生成」用**にも使えます。各コマの詳細指示を保ったまま **1ページ全体を1枚にまとめたい場合**は、**Grok** の入力元として使います。
 - **step2 は「ページ生成」用**です。1ページ全体を1枚の漫画画像として出す前提で、**Grok** の入力元に使います。
+- **step1 / step2 は生成入力用の互換出力**です。Manga Tag Mode では、まず YAML IR を作り、検証後に必要な形式へ出力します。
 - **step1 / step2 からページ生成するとき**は、作品の **`tag/*.md`** にある通常時 Danbooru Tags を固定特徴アンカーとして参照できるよう、**本文中にキャラ名を明記**してください。
 - **Nanobanana は導入予定のページ生成系**として想定します。導入後は step2 の入力先に加えます。
 - **Nanobanana 導入後は step1 / step2 のページ生成系入力先に加える想定**です。
