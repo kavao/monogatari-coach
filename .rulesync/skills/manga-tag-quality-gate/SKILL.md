@@ -29,6 +29,7 @@ targets: ["*"]
 | 正本 | 用途 |
 |------|------|
 | `novels/<作品>/manga/manga_XX.md` | 点検対象の Step1 / Step2 本文 |
+| `manga-prompt-ir` の `manga_page.yaml` | YAML/JSON 化後のページ定義正本。`panels[]`・`subjects[]`・`text`・`composition` を検証する。 |
 | `novels/<作品>/character.md` | 登場人物の正式名称・関係性・固定設定 |
 | `novels/<作品>/tag/<romaji>.md` | 外見・状況タグの正 |
 | `_how_to/manga.md` | Step1 / Step2 の出力基準 |
@@ -37,6 +38,7 @@ targets: ["*"]
 ## 使う場面
 
 - Manga Tag Mode で `manga_XX.md` を新規作成した直後
+- `manga_page.yaml` を新規作成・改稿した直後
 - 既存の `step1` / `step2` を改稿するとき
 - 画像生成前に「意味が落ちていないか」を見直したいとき
 
@@ -48,6 +50,7 @@ targets: ["*"]
 
 - `和紀の手元` のように、**部位だけのカットでも所有者を明示**する
 - `誰かの手`, `人物の横顔` のような曖昧語で終わらせない
+- YAML では `panels[].subjects[]` に最低1件入れ、人物なら `character_id` を付ける
 
 ### 2. 関係の明示
 
@@ -74,6 +77,7 @@ targets: ["*"]
 
 - Step1 では、セリフの前後どちらでもよいので話者が読める文脈を置く
 - Step2 では、吹き出しを置く想定がある場合は **どの人物の発話か** を構図説明側で分かるようにする
+- YAML では `text.dialogue[].speaker` を必須にし、モノローグ・ナレーション・効果音と混ぜない
 
 ### 5. 部分アップの意味付け
 
@@ -180,6 +184,7 @@ Step2 では、**意味語ではなく、見える配置語へ言い換える**�
 5. Step2 は抽象度を保ちつつ、人物帰属と役割だけは残す
 6. Step2 に抽象名詞しかない場合は、見える構図へ言い換える
 7. Step1 のページ先頭でコマ数・コマ割り宣言を確認し、Step2 では **段・大小・読み順（または均等割＋順序）** が追えるか確認する
+8. YAML 化済みの場合は、`panels[].composition.layout` または `manga.panel_layout` に段・大小・読み順の情報があるか確認する
 
 ## 禁止事項
 

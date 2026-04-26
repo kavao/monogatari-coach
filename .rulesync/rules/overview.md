@@ -65,7 +65,9 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
        - キャラクターごとにルールを用いて画像タグを作成する
     10．manga.md,manga_tag.md
        - マンガのコマ割りを行う時に用います
-11. meta.md
+    11. manga-prompt-ir
+       - キャラクタータグ・漫画ページタグを YAML/JSON/Pydantic の中間表現として扱うための正本スキル。新規の構造化タグ生成では `.rulesync/skills/manga-prompt-ir/` を優先し、既存 Markdown は互換出力として扱う。
+12. meta.md
        - 外部投稿用メタ（カクヨム等）と内部管理用メタ（執筆ステータス、AI引き継ぎ指示）を管理します。執筆の節目で必ず更新・参照します。
   - **編集時の原則**:
     - **正本は `_how_to.example/`** にある。
@@ -223,9 +225,11 @@ flowchart TD
 
 #### 目的
 - 本文執筆と並行して「人物像」をぶらさず、画像生成（NovelAI/Stable Diffusion等）にすぐ渡せる状態を作る。
+- 新規・刷新後の運用では、まず YAML/JSON/Pydantic の構造化定義（スキル `manga-prompt-ir`）へ落とし、必要に応じて既存の `tag/<romaji>.md` へ互換出力する。
 
 #### 参照ルール（必須）
 - `_how_to/tag.md` を必ず参照し、同ファイルのルール・出力形式に従う。
+- 構造化タグを作る場合は、スキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` を正本にする。
 
 #### 出力先（必須）
 - `novels/[novel_code]_[novel_title]/tag/` にキャラクターごとのファイルを作成する。  
@@ -281,9 +285,11 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### 目的
 - 各コマの状況、人物、アクションを正確に言語化し、AI画像生成（NovelAI/Stable Diffusion等）で一貫性のある漫画を生成可能にする。
+- 新規・刷新後の運用では、ページ・コマ・人物・テキスト要素を YAML/JSON/Pydantic の構造化定義（スキル `manga-prompt-ir`）へ落とし、必要に応じて既存 `manga_XX.md` の Step1 / Step2 へ互換出力する。
 
 #### 参照ルール（必須）
 - `_how_to/manga_tag.md` および `_how_to/manga.md` を必ず参照し、同ファイルのルール・出力形式に従う。
+- 構造化漫画タグを作る場合は、スキル **`manga-prompt-ir`** の `schemas/manga_page.py` と `examples/manga_page.yaml` を正本にする。
 - **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従い、`character.md` と `tag/<romaji>.md` を正として漫画タグへ反映する。
 - **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、`step1` / `step2` の品質を点検する。
 

@@ -200,6 +200,8 @@ python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテス�
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider novelai
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --max-section 4
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-stem yuma --min-section 5 --max-section 7
 ```
 
 **一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/`）** は `tools/forge_novel_manga_batch.py` を使う。

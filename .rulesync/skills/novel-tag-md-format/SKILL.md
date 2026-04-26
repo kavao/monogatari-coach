@@ -2,13 +2,16 @@
 name: novel-tag-md-format
 description: >-
   novels/<作品>/tag/<romaji>.md の見出し・Danbooru Tags 行・インデントを
-  tools/forge_novel_tag_batch.py と整合させる正規フォーマット。Tag Mode 執筆時に従う。
+  tools/forge_novel_tag_batch.py と整合させる互換フォーマット。Tag Mode 執筆時に従う。
 targets: ["*"]
 ---
 
 ## 目的
 
 `_how_to/tag.md` の内容（プロンプト・タグの作り方）に加え、**ファイルの Markdown 構造を一定に保ち**、次を曖昧にしない。
+
+新規設計では、キャラクタータグの構造正本はスキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` に寄せる。  
+このスキルは、既存の `tools/forge_novel_tag_batch.py` と `tag/<romaji>.md` を使うための **Markdown 互換層**として残す。
 
 - **`tools/forge_novel_tag_batch.py`** が `tag/*.md` から **Danbooru 行を抜き漏れなく抽出**できること。
 - 人間の編集・差分でも **セクション境界がブレない**こと。
@@ -25,7 +28,12 @@ targets: ["*"]
 
 ## 人間向けの全文
 
-**`_how_to/tag.md`** のセクション **「Markdown ファイル形式（`tag/<romaji>.md`・機械抽出と整合）」** が正本。矛盾したら **tag.md を優先**する。
+構造化入力の正本は **`manga-prompt-ir`**。既存 Markdown 形式の詳細は、**`_how_to/tag.md`** のセクション **「Markdown ファイル形式（`tag/<romaji>.md`・機械抽出と整合）」** を参照する。
+
+矛盾した場合の判断:
+
+1. キャラクター固定特徴・禁止変更項目・negative tags は `manga-prompt-ir` の YAML/Pydantic を優先する。
+2. 既存バッチ抽出の互換性は、この Markdown 規約を優先する。
 
 ## 検証
 

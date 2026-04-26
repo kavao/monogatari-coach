@@ -211,6 +211,16 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="番号付きセクションの上限（含む）。未指定なら制限なし",
     )
+    p.add_argument(
+        "--only-stem",
+        nargs="*",
+        default=None,
+        metavar="STEM",
+        help=(
+            "tag/<stem>.md の stem のみ処理（例: --only-stem yuma）。"
+            "複数可。未指定なら tag/*.md すべて。"
+        ),
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -236,6 +246,11 @@ def main(argv: list[str] | None = None) -> int:
         lo = args.min_section if args.min_section is not None else -10**9
         hi = args.max_section if args.max_section is not None else 10**9
         jobs = [j for j in jobs if lo <= int(j["section_no"]) <= hi]
+
+    if args.only_stem:
+        allowed = {s.strip() for s in args.only_stem if s and str(s).strip()}
+        if allowed:
+            jobs = [j for j in jobs if j["stem"] in allowed]
 
     if not jobs:
         print("error: Danbooru Tags を1件も抽出できませんでした", file=sys.stderr)

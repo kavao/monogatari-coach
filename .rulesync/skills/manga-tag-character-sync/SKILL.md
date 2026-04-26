@@ -18,22 +18,26 @@ targets: ["*"]
 | 正本 | 用途 |
 |------|------|
 | `novels/<作品>/character.md` | 外見・体格・服装・種族・持ち物の確定記述。ここに無い特徴を漫画タグだけで増やさない。 |
+| `manga-prompt-ir` の `character.yaml` | YAML/JSON 化後のキャラクター定義正本。`character_id` を主キーにして漫画ページから参照する。 |
 | `novels/<作品>/tag/<romaji>.md` | Danbooru Tags の実運用形。固定外見を英語タグへ落とした基準として使う。 |
+| `manga-prompt-ir` の `manga_page.yaml` | YAML/JSON 化後の漫画ページ定義正本。コマ・人物・セリフ・効果音を分離する。 |
 | `_how_to/manga.md` | コマ構成・出力形式・抽象度の基準。 |
 | `_how_to/manga_tag.md` | 漫画向けタグ表現の参考。 |
 
 ## 反映の優先順位
 
-1. **固定特徴**は `character.md` を最上位の正とする。
-2. **英語タグへの落とし方**は `tag/<romaji>.md` を優先して継承する。
-3. コマごとの状況・構図・アクションは `manga/manga_XX.md` の内容に従う。
-4. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。
+1. **固定特徴**は、構造化定義がある場合は `manga-prompt-ir` の `character.yaml` を最上位の正とする。
+2. 構造化定義がない作品では `character.md` を正とする。
+3. **英語タグへの落とし方**は `character.yaml` の `character_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を継承する。
+4. コマごとの状況・構図・アクションは、構造化定義がある場合は `manga_page.yaml`、ない場合は `manga/manga_XX.md` の内容に従う。
+5. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。
 
 ## 手順
 
 ### 1. 対象キャラを確定する
 
 - その `manga_XX.md` に出る人物を洗い出す。
+- YAML 化済みの場合は、`manga_page.yaml` の `character_ids` と `panels[].subjects[].character_id` を先に確認する。
 - 各人物について、対応する `tag/<romaji>.md` があるか確認する。
 
 ### 2. 固定特徴を抜き出す
