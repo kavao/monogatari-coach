@@ -50,10 +50,10 @@ novels/<作品>/
 - `tools/novel_prompt_ir_validate.py`
   - YAML を Pydantic で検証する。
   - 参照されている `character_id` が存在するか確認する。
-- `tools/novel_prompt_ir_render.py`
-  - YAML から自然文プロンプト、タグ列、negative tags、テキスト要素を出力する。
 - `tools/novel_prompt_ir_export_md.py`
   - YAML から既存互換の `tag/<romaji>.md` / `manga/manga_XX.md` ブロックを出力する。
+
+2026-04-26 時点で、上記2本を正式 `tools/` として追加済み。
 
 ## Phase 4: 既存バッチの入力拡張
 

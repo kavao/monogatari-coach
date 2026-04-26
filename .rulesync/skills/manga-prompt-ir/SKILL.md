@@ -59,13 +59,35 @@ targets: ["*"]
 
 ## 参考コマンド
 
-依存パッケージが入っている環境で実行する。
+依存パッケージはリポジトリルートで導入する。
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+スキル内サンプルの検証:
 
 ```bash
 python -m pytest .rulesync/skills/manga-prompt-ir/tests
 ```
 
-依存関係の想定:
+作品フォルダ内のIR検証:
+
+```bash
+python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>
+```
+
+YAML/JSON IR から既存バッチ互換 Markdown を出力:
+
+```bash
+python tools/novel_prompt_ir_export_md.py \
+  --character novels/<作品>/tag/characters/<character_id>.yaml \
+  --manga-page novels/<作品>/manga/pages/manga_01_p01.yaml \
+  --output-dir tools_temp/ir_export_sample \
+  --manga-stem manga_01
+```
+
+依存関係:
 
 - Pydantic v2
 - PyYAML

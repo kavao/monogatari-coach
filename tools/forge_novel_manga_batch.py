@@ -273,6 +273,16 @@ def load_character_anchors(novel_dir: Path) -> list[dict[str, object]]:
     return anchors
 
 
+def alias_matches_text(alias: str, text: str, lowered: str) -> bool:
+    alias = alias.strip()
+    if not alias:
+        return False
+    if re.search(r"[A-Za-z0-9_]", alias):
+        pattern = rf"(?<![A-Za-z0-9_]){re.escape(alias.lower())}(?![A-Za-z0-9_])"
+        return re.search(pattern, lowered) is not None
+    return alias in text
+
+
 def detect_relevant_anchors(
     anchors: Iterable[dict[str, object]],
     text: str,
@@ -281,12 +291,7 @@ def detect_relevant_anchors(
     lowered = text.lower()
     for anchor in anchors:
         aliases = anchor.get("aliases", [])
-        if any(
-            alias and (
-                alias in text or alias.lower() in lowered
-            )
-            for alias in aliases
-        ):
+        if any(isinstance(alias, str) and alias_matches_text(alias, text, lowered) for alias in aliases):
             relevant.append(anchor)
     return relevant
 
@@ -342,6 +347,14 @@ def build_character_anchor_csv(
                 seen.add(token)
                 parts.append(token)
     return ", ".join(parts)
+
+
+def remove_text_element_lines(text: str) -> str:
+    return "\n".join(
+        line
+        for line in text.splitlines()
+        if not re.match(r"\s*-\s*(セリフ|モノローグ|ナレーション|効果音)[：:]", line)
+    )
 
 
 def resolve_page_style_helper(
@@ -400,6 +413,20 @@ def extract_panel_context_entries(step1: str) -> list[dict[str, str]]:
     )
     for match in matches:
         body = match.group(2).strip()
+        tag_match = re.search(
+            r"(?ms)-\s*\*\*tag\*\*[：:]\s*\r?\n\s*`([^`]+)`",
+            body,
+        )
+        if tag_match:
+            prompt = normalize_tag_body(tag_match.group(1))
+            context = re.sub(
+                r"(?ms)-\s*\*\*tag\*\*[：:]\s*\r?\n\s*`[^`]+`\s*\r?\n（日本語訳[：:][^\n]*）?",
+                "",
+                body,
+            ).strip()
+            if prompt:
+                entries.append({"prompt": prompt, "context": context})
+            continue
         tag_match = re.search(
             r"(?ms)tag:\s*\r?\n([\s\S]*?)(?:\r?\n和訳[：:]|\r?\n（日本語訳[：:])",
             body,
@@ -488,7 +515,8 @@ def extract_manga_jobs_for_file(
             koma_idx += 1
             body = entry["prompt"]
             context = entry["context"]
-            anchor_csv = build_character_anchor_csv(character_anchors, context)
+            anchor_context = f"{body}\n{remove_text_element_lines(context)}"
+            anchor_csv = build_character_anchor_csv(character_anchors, anchor_context)
             prefix = f"{stem}_p{page_num:02d}_k{koma_idx:02d}"
             full_prompt = (
                 f"{STYLE_PREFIX}{anchor_csv}, {body}"
@@ -738,6 +766,10 @@ def main(argv: list[str] | None = None) -> int:
             " provider=grok ならページ生成向け補助文を自動付与"
         ),
     )
+    p.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
+    p.add_argument("--max-page", type=int, default=None, help="処理する Page 番号の上限（含む）")
+    p.add_argument("--min-koma", type=int, default=None, help="処理するコマ番号の下限（含む）。ページ生成ジョブは koma=0")
+    p.add_argument("--max-koma", type=int, default=None, help="処理するコマ番号の上限（含む）。ページ生成ジョブは koma=0")
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -773,6 +805,18 @@ def main(argv: list[str] | None = None) -> int:
             " Step2 本文の形式を確認）",
             file=sys.stderr,
         )
+        return 2
+    jobs = [
+        job for job in jobs
+        if (
+            (args.min_page is None or int(job["page"]) >= args.min_page)
+            and (args.max_page is None or int(job["page"]) <= args.max_page)
+            and (args.min_koma is None or int(job["koma"]) >= args.min_koma)
+            and (args.max_koma is None or int(job["koma"]) <= args.max_koma)
+        )
+    ]
+    if not jobs:
+        print("error: 指定範囲に該当するジョブが0件です", file=sys.stderr)
         return 2
 
     forge = root / "tools" / "forge_generate.py"
