@@ -1,8 +1,11 @@
 ---
 name: novel-tag-md-format
 description: >-
+  tag/characters/<character_id>.yaml（YAML IR）からエクスポートされた
   novels/<作品>/tag/<romaji>.md の見出し・Danbooru Tags 行・インデントを
-  tools/forge_novel_tag_batch.py と整合させる互換フォーマット。Tag Mode 執筆時に従う。
+  tools/forge_novel_tag_batch.py と整合させる互換Markdown層維持スキル。
+  キャラクタータグの正本は manga-prompt-ir の YAML IR であり、このスキルは
+  既存バッチ向けの互換フォーマットを保つために使う。
 targets: ["*"]
 ---
 
@@ -37,11 +40,18 @@ targets: ["*"]
 
 ## 検証
 
+Markdown 互換フォーマットの構文確認（旧ツール向け）:
+
 ```bash
-python tools/forge_novel_tag_batch.py novels/<作品フォルダ> --dry-run
+python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/characters/<id>.yaml --output-dir tools_temp/ir_export_sample
 ```
 
-ジョブ数 0 や `Danbooru Tags を1件も抽出できませんでした` のときは、見出し形式・`Danbooru Tags:` の行・改行位置を見直す。
+`forge_novel_tag_batch.py` は YAML IR を直接読むため、Markdown の Danbooru 行を抽出する検証ステップは不要になった。
+YAML IR の構造検証は次のコマンドで行う:
+
+```bash
+python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>
+```
 
 ## 関連
 

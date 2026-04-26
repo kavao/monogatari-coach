@@ -21,6 +21,62 @@ YAML IR では、少なくとも次を分離して持つ。
 
 `Step1` / `Step2` は `manga/manga_XX.md` 互換出力の形式名です。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
 
+## YAML IR の最小構造例
+
+以下は `manga/pages/manga_01_p01.yaml` の最小構造例です。詳細な定義は `manga-prompt-ir` スキルの `schemas/manga_page.py` と `examples/manga_page.yaml` を参照してください。
+
+```yaml
+manga_id: "manga_01"
+page_number: 1
+meta:
+  purpose: "コマ生成（step1-panels）"
+  read_order: "右から左"
+manga:
+  style: "カラー漫画、少年ジャンプ風"
+  panel_layout: "上段=コマ1（ワイド）｜中段=コマ2・3横並び｜下段=コマ4（大ゴマ）"
+scene:
+  location: "廃工場の内部"
+  time: "夜、非常灯のみ"
+  background_tags: "abandoned factory interior, emergency lighting, dark atmosphere"
+character_ids:
+  - "rei"
+  - "luna"
+panels:
+  - panel_number: 1
+    summary: "零が敵の群れを睨む。上段・横幅ほぼ全体の大ゴマ"
+    subjects:
+      - character_id: "rei"
+        action: "剣を構えて敵の群れを正面から睨む"
+        expression: "鋭い目つき、傷だらけ"
+    composition:
+      layout: "上段・横幅全体"
+      camera: "ローアングル"
+      shot_type: "wide"
+    text:
+      dialogue:
+        - speaker: "rei"
+          line: "来い……全部まとめて斬ってやる"
+    prompt_tags: "dynamic wide angle manga panel, shonen jump style, dramatic low angle shot, black-haired scarred swordsman Rei gripping sword tightly, sharp intense eyes glaring forward, blazing fire background"
+technical:
+  negative_tags: "low quality, blurry, deformed"
+```
+
+## YAML → Step1 / Step2 のフロー
+
+```
+[本文 _novel_text/novel_textXX.md]
+  ↓ 読み込み・コマ化
+[manga/pages/manga_XX_pYY.yaml]  ← 正本（ここを編集する）
+  ↓ tools/novel_prompt_ir_validate.py（型・参照検証）
+  ↓ tools/novel_prompt_ir_export_md.py（互換出力）
+[manga/manga_XX.md]  ← 互換出力（バッチ生成向け・直接編集しない）
+  ├─ Step1  → tools/forge_novel_manga_batch.py --source step1-panels（コマ生成）
+  ├─ Step1  → --source step1-pages（精密ページ生成）
+  └─ Step2  → --source step2-pages（ページ生成）
+```
+
+**修正は必ず YAML IR 側へ入れ、再エクスポートして `manga_XX.md` を更新する。`manga_XX.md` を直接書き換えて正本扱いにしない。**
+
 ## 互換出力: step1
 以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。新規の漫画タグ作成では、先に `manga/pages/manga_XX_pYY.yaml` を作成・検証してからこの形へエクスポートしてください。
 

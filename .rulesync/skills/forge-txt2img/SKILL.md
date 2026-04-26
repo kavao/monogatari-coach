@@ -13,6 +13,31 @@ targets: ["*"]
 
 v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`** を使って REST API に接続する。
 
+## プロバイダ解決の優先順位（LLM 向け確認手順）
+
+ユーザーが `--provider` を明示しない場合、バッチツールは次の順でプロバイダを決定する。
+
+| 優先順 | 参照先 | 対象ツール・用途 |
+|--------|--------|-----------------|
+| 1 | CLI `--provider` | すべてのバッチ・単体生成 |
+| 2 | `.env` の環境変数（下表） | バッチツールのデフォルト |
+| 3 | `config/image_generation.json` の `default_provider` | フォールバック（既定 `forge`） |
+
+### `.env` の環境変数（用途別）
+
+| 環境変数 | 対象ツール・用途 |
+|----------|-----------------|
+| `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `forge_novel_tag_batch.py`（キャラタグ一括生成） |
+| `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-panels / step1-pages` |
+| `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages` |
+| `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
+| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | Grok のモデル tier（`standard` / `pro`） |
+
+**LLMへの指針**: 画像生成を案内する前に、上記の `.env` 値を確認する（`Read` または `tools/workspace_audit_log.py` 相当で `.env` キーを参照）。`config` の `default_provider: "forge"` はフォールバックであり、`.env` に設定がある場合は `.env` が優先される。  
+プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
+
+---
+
 ## 漫画生成の用語整理
 
 - **コマ生成**:
@@ -176,13 +201,15 @@ EOF
 type params.json | python tools/forge_generate.py --json
 ```
 
-## キャラ `tag/*.md` の書式（ブレ防止）
+## キャラタグ正本（YAML IR）の書式（ブレ防止）
 
-一括生成 **`tools/forge_novel_tag_batch.py`** は、`tag/*.md` 内の **番号付き見出し**と **`Danbooru Tags:` 直後の1行**を機械抽出する。**見出しレベル・インデント・タグを何行に折るか**がブレるとジョブが空になる。
+一括生成 **`tools/forge_novel_tag_batch.py`** は、`tag/characters/*.yaml`（YAML IR）を直接読む。`tag/<romaji>.md` は参照しない。
 
-- **正本**: `_how_to/tag.md` の **「Markdown ファイル形式（`tag/<romaji>.md`・機械抽出と整合）」**
-- **短いチェックリスト**: スキル **`novel-tag-md-format`**（`.rulesync/skills/novel-tag-md-format/SKILL.md`）
-- 執筆後は必ず **`--dry-run`** でジョブ数を確認する。
+- **正本**: `tag/characters/<character_id>.yaml`（スキル **`manga-prompt-ir`** の `schemas/character.py` / `examples/character.yaml`）
+- **固定タグ**: `character_tags`・`costume.outfit_tags`・`manga_rules.consistency_tags`・`appearance.species_features`・`appearance.distinctive_features` を結合
+- **バリアント**: `prompt_variants[].danbooru_tags`（`variant_id` ごと）
+- **YAML 構造の検証**: スキル **`novel-tag-character-consistency`** および `python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`
+- 実行前は必ず **`--dry-run`** でジョブ数・プロバイダ・プロンプト先頭を確認する。
 
 ## ワークフロー（タグ → 画像）
 
@@ -191,17 +218,19 @@ type params.json | python tools/forge_generate.py --json
 3. `params.json` を1枚ごと、または `count` で連続生成。
 4. 生成結果の PNG を、該当 `manga_XX.md` または `tag/*.md` の節に**ファイル名で参照**するメモを追記すると追跡しやすい。
 
-**一括（`tag/*.md` の Danbooru 行 → 各 `tag/<romaji>/` へ1枚ずつ）** は `tools/forge_novel_tag_batch.py` を使う（スキル **`novel-image-layout`** のフォルダ規約と整合）。
+**一括（`tag/characters/*.yaml` の `prompt_variants` → 各 `tag/<char_id>/` へ1枚ずつ）** は `tools/forge_novel_tag_batch.py` を使う（スキル **`novel-image-layout`** のフォルダ規約と整合）。
 
 ```bash
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター
+# プロバイダは .env の MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT を使う（未設定なら config の default_provider）
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --dry-run
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider novelai
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok
 python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --max-section 4
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-stem yuma --min-section 5 --max-section 7
+# キャラ・バリアントを絞る（YAML IR の character_id / variant_id を指定）
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki el --variant-id normal battle
+python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --variant-id normal
 ```
 
 **一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/`）** は `tools/forge_novel_manga_batch.py` を使う。
@@ -241,7 +270,7 @@ python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテス
 ## 関連パス
 
 - スクリプト: `tools/forge_generate.py`
-- タグ一括: `tools/forge_novel_tag_batch.py`（`tag/*.md` の Danbooru Tags を抽出して連続 txt2img）
+- タグ一括: `tools/forge_novel_tag_batch.py`（`tag/characters/*.yaml` の `prompt_variants` を YAML 直読みして連続 txt2img）
 - 漫画一括: `tools/forge_novel_manga_batch.py`（`manga/manga_*.md` の step1 内 `tag:` ブロックをコマ順に txt2img）
 - 設定: `config/image_generation.json`, `.env`
 - 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/grok_params.example.json`

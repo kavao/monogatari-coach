@@ -123,13 +123,16 @@ c. プロフィールについても深く掘り下げてください。
 7. _reader/  
    - 小説ごとの詳細な書評ファイルを格納するフォルダ  
    - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`reader/YYYYMMDD_HHMM.md`）で保存する
-8．tag/(charakuter_name).md
-   - キャラクターごとに_how_to\tag.md のルールを用いて画像タグを作成する
-   - 生成画像は **`tag/<romaji>/`（タグ MD と同名の英字フォルダ）** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
-9. manga/manga_XX.md
-   - 小説本文と同じようには章ごとに別ファイルにしてください。小説の執筆は必ずファイルに出力してください。
-     元となる小説の章、項と同じになるように調整して、もし章の下に項があった場合も小説と同様のルール付けでお願いします。もし章の下に項があった場合は第1章1項は manga_01_1.md、第1章2項は manga_01_2.mdのように"_"を追加して番号を増やしてください。
-   - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する。**既定運用ではこの直下を使い、`k01` などのコマ別サブフォルダは通常不要**。特殊な整理目的で手動分割したい場合のみ任意で用いる（詳細は §2.2.2・スキル **novel-image-layout**）
+8. tag/characters/<character_id>.yaml（キャラクタータグ正本・YAML IR）
+   - キャラクターごとの外見・衣装・固定タグ・禁止変更項目を YAML IR として管理する（スキル **manga-prompt-ir**）
+   - `_how_to/tag.md` のルールに従い、通常時・状況別バリアントを定義する
+   - **互換出力**: `tag/<romaji>.md`（`tools/forge_novel_tag_batch.py` 向け Danbooru Tags 行）
+   - 生成画像は **`tag/<romaji>/`** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
+9. manga/pages/manga_XX_pYY.yaml（漫画タグ正本・YAML IR）
+   - 小説本文と対応する章・項ごとに、1ページ分の定義を YAML IR として管理する（スキル **manga-prompt-ir**）
+   - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
+   - **互換出力**: `manga/manga_XX.md`（`tools/forge_novel_manga_batch.py` 向け Step1 / Step2）
+   - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
 10. _meta.md
    - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
    - `_how_to/meta.md` のフォーマットに従って生成・更新される。
