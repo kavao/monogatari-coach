@@ -8,6 +8,7 @@ Monogatari Coach は、小説執筆の企画、設計、執筆、推敲、評価
 - [Getting Started](docs/getting-started/index.md)
 - [Image Generation](docs/image-generation/index.md)
 - [Workflow](docs/workflow/index.md)
+- [指示出しベースのワークフロー（コピペ用）](docs/workflow/instruction-driven.md)
 - [Project Structure](docs/project-structure/index.md)
 - [Operations](docs/operations/index.md)
 - [Community](docs/community/index.md)

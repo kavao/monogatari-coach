@@ -1,31 +1,33 @@
 # Workflow
 
-Monogatari Coach の制作フローを見渡すためのページです。ここは案内用で、運用上の正本は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
+Monogatari Coach を「どう動かすか」をユーザー視点で把握するためのページです。
+まずは **指示文（コピペ）**で進められるページを起点にしてください。
 
-## モード一覧
+- **最重要**: [指示出しベースのワークフロー](instruction-driven.md)
 
-1. Source Material Intake Mode
-   `source_material/` や `novels/_import/` を展開して作品フォルダへ落とし込む
-2. Reqruit Mode
-   作家・読者・評価者などの役割を整える
-3. Plan Mode
-   企画、設計、Tag Mode、Manga Tag Mode を進める
-4. Writing Mode
-   本文を `_novel_text/` に出力する
-5. Meta Management Mode
-   `_meta.md` を更新して進捗と引き継ぎを残す
-6. Writing Mode Refinement
-   `_novel_text_re_/` に清書版を出力する
-7. First Reader Mode / Interest Check Mode
-   下読みと一般読者視点の評価を行う
+運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
 
-## 重要な原則
+## ユーザー視点の流れ（何を指示するか）
 
-- 会話だけに本文を書いて終えない
-- 本文の正本は `novels/.../_novel_text/novel_text*.md`
-- 執筆前は `tools/novel_project_check.py` による確認を推奨
-- 文字数報告は `tools/novel_char_count.py` の結果を正とする
-- Tag / Manga / Meta の関連ファイルは作品フォルダ内で分離管理する
+1. **既存資料があるなら取り込む**
+   - `source_material/` や `novels/_import/` を起点に「作品フォルダへ展開して」と指示する
+2. **制作の設計（Plan）を固める**
+   - `proposal.md` / `design_specification.md` / `character.md` / `world.md` などを作って、と指示する
+3. **本文を書く（Writing）**
+   - `_novel_text/novel_text*.md` に必ずファイル出力して、と指示する
+4. **メタを残す（Meta）**
+   - `_meta.md` を更新して進捗と引き継ぎを残して、と指示する
+5. **必要になったら派生モードへ**
+   - 画像タグ（Tag Mode）や漫画（Manga Tag Mode）を「必要になったタイミングで」指示する
+6. **品質を上げる**
+   - 清書（文章校正）や下読み（書評）を、保存先ファイルを指定して指示する
+
+## 重要な約束（ユーザー視点）
+
+- **私は、本文を会話だけで終わらせません。** 必ず `novels/.../_novel_text/novel_text*.md` に保存された状態を正とします。
+- **私は、執筆前にプロジェクトの不足がないか確認します。** 可能なら `tools/novel_project_check.py` で機械チェックします。
+- **私は、文字数の根拠を統一します。** 文字数は `tools/novel_char_count.py` の結果を正として扱います。
+- **私は、成果物の置き場所を混ぜません。** Tag / Manga / Meta は作品フォルダ内で分離して管理します。
 
 ## 詳細参照
 
