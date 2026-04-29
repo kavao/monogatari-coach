@@ -348,6 +348,8 @@ _how_to/tag.md のルールに従い、各人物について
  `manga/pages/*.yaml` の `manga.panel_layout` と各コマ要約から Step2 相当のページ指示を組み立て、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step2-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
 - **背景概念生成**:
  `manga/pages/*.yaml` の `background_concepts[]` を使い、**人物なしの背景・空間設計**を先に出す運用を指す。`tools/forge_novel_manga_batch.py` では **`--source background-concepts`** に対応し、未指定時の推奨 provider は **Grok**。必要に応じて `--provider openai` も選べる。
+- **Codex / ChatGPT 内蔵画像生成**:
+ 会話上の内蔵 `image_gen` ツールで1枚ずつ試作する運用を指す。OpenAI API を直接叩く `provider=openai` とは別物であり、`OPENAI_API_KEY` は不要。生成画像は `C:\Users\Owner\.codex\generated_images\...` に保存されるため、作品で使う場合は `tools/codex_builtin_image_archive.py` で `novels/<作品>/manga/_assets/<manga_XX>/` へコピーし、JSONメタを残す。
 - **既定動作**:
  ユーザーの依頼が曖昧で、ページ全体かコマ単位かが読み取れない場合は、**まずコマ生成を既定**とする。
 - **ページ生成を優先する語**:
@@ -368,6 +370,8 @@ _how_to/tag.md のルールに従い、各人物について
  **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
 - **背景概念生成（background-concepts）**:
  **Grok** を既定とし、必要に応じて **OpenAI** を選べる。背景・空間設計を先に作り、ページ生成やコマ生成の参照に使う。
+- **内蔵画像生成（Codex / ChatGPT）**:
+ API provider ではなく、会話の `image_gen` を使った単発試作として扱う。保存時は `tools/codex_builtin_image_archive.py` で作品フォルダへコピーする。
 - **固定特徴・状況タグの注入**:
  `tools/forge_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
 - **推奨分担（Step1 コマ／ページ系）**:

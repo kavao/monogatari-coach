@@ -122,6 +122,30 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 - 既定モデルは `config` の `providers.openai.default_model` で管理する。`gpt-image-2` のような次世代名を直接固定せず、`openai` provider の `model` を config で差し替える。
 - YAMLをそのまま読ませる漫画ページ生成や、背景概念のような構造化プロンプトに向く。タグ列だけに強く寄せたい場合は NovelAI / Forge を優先する。
 
+## Codex / ChatGPT 内蔵画像生成の保管
+
+ユーザーが「会話で画像を作って」「Codex内蔵の画像生成で試して」など、API provider ではなく **内蔵 `image_gen` ツール**を意図している場合は、`provider=openai` ではなく会話側の画像生成ツールを使う。
+
+内蔵画像生成は API キーを必要とせず、生成画像は既定で `C:\Users\Owner\.codex\generated_images\...` に保存される。作品で使う画像は、この既定保存先のままにせず、作品フォルダへコピーして保管する。
+
+推奨手順:
+
+1. 内蔵 `image_gen` で画像を生成する。
+2. 生成後、`C:\Users\Owner\.codex\generated_images\...` の画像ファイルを確認する。
+3. `tools/codex_builtin_image_archive.py` で作品フォルダへコピーし、同名 JSON メタを残す。
+
+例:
+
+```bash
+python tools/codex_builtin_image_archive.py \
+  --source "C:/Users/Owner/.codex/generated_images/<id>/<file>.png" \
+  --dest-dir "novels/<作品>/manga/_assets/manga_01" \
+  --prefix "manga_01_p01_k01_builtin_imagegen" \
+  --note "Codex内蔵画像生成で試作した漫画コマ"
+```
+
+この運用は、`tools/forge_generate.py provider=openai` とは別物として扱う。`provider=openai` は OpenAI API 直叩き、内蔵 `image_gen` は ChatGPT/Codex 会話上の生成機能である。
+
 ## 保存先の約束（推奨）
 
 `.rulesync/rules/overview.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
