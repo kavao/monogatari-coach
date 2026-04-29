@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-作品フォルダの manga/manga_*.md から、各 Page の Step1 / Step2 を抽出し、
+作品フォルダの manga/pages/*.yaml または manga/manga_*.md から、各 Page の Step1 / Step2 相当を抽出し、
 画像生成プロバイダへ連続実行する。
 
 保存先: manga/_assets/<manga_stem>/ （既定・file_prefix は <stem>_p<page>_k<koma>）。
@@ -23,9 +23,13 @@ import tempfile
 from pathlib import Path
 from typing import Iterable
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok")
+import yaml
+
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "openai")
+INPUT_CHOICES = ("yaml", "markdown")
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP2_PROVIDER_ENV = "MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT"
+MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
 
 
 def repo_root() -> Path:
@@ -65,6 +69,33 @@ STEP1_PAGE_GROK_STYLE_HELPER = """\
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_yaml(path: Path) -> dict:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"YAML root must be a mapping: {path}")
+    return data
+
+
+def as_list(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def unique(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value))
+
+
+def normalize_tag(value) -> str:
+    return str(value).strip().replace(" ", "_")
+
+
+def join_tags(values: list) -> str:
+    return ", ".join(unique([normalize_tag(value) for value in values if value]))
 
 
 def load_dotenv(path: Path) -> dict[str, str]:
@@ -118,14 +149,17 @@ def resolve_batch_provider(root: Path, source: str, args_provider: str | None) -
     if args_provider:
         return validate_provider(args_provider, source="CLI --provider")
     dotenv_map = load_dotenv(root / ".env")
-    env_name = (
-        MANGA_STEP2_PROVIDER_ENV
-        if source == "step2-pages"
-        else MANGA_STEP1_PROVIDER_ENV
-    )
+    if source == "background-concepts":
+        env_name = MANGA_BACKGROUND_PROVIDER_ENV
+    elif source == "step2-pages":
+        env_name = MANGA_STEP2_PROVIDER_ENV
+    else:
+        env_name = MANGA_STEP1_PROVIDER_ENV
     env_provider = dotenv_map.get(env_name)
     if env_provider:
         return validate_provider(env_provider, source=f".env {env_name}")
+    if source == "background-concepts":
+        return validate_provider("grok", source="background-concepts default")
     root_cfg = load_root_config(root)
     return validate_provider(
         str(root_cfg.get("default_provider", "forge")),
@@ -271,6 +305,400 @@ def load_character_anchors(novel_dir: Path) -> list[dict[str, object]]:
         if parsed:
             anchors.append(parsed)
     return anchors
+
+
+def load_character_ir_map(novel_dir: Path) -> dict[str, dict]:
+    character_dir = novel_dir / "tag" / "characters"
+    if not character_dir.is_dir():
+        return {}
+    characters: dict[str, dict] = {}
+    for path in sorted(character_dir.glob("*.yaml")):
+        character = load_yaml(path)
+        character_id = character.get("character_id")
+        if character_id:
+            characters[str(character_id)] = character
+    return characters
+
+
+def selected_subject_variant_id(subject: dict) -> str | None:
+    for key in ("prompt_variant_id", "costume_variant", "variant_id"):
+        value = subject.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def find_character_variant(character: dict, variant_id: str | None) -> dict | None:
+    if not variant_id:
+        return None
+    for variant in as_list(character.get("prompt_variants")):
+        if isinstance(variant, dict) and variant.get("variant_id") == variant_id:
+            return variant
+    return None
+
+
+def character_ir_tags(character: dict, variant_id: str | None = None) -> list[str]:
+    variant = find_character_variant(character, variant_id)
+    if variant:
+        appearance = character.get("appearance") or {}
+        tags: list[str] = []
+        tags.extend(str(v) for v in as_list(character.get("character_tags")))
+        tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+        tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+        tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
+        return unique(tags)
+
+    appearance = character.get("appearance") or {}
+    costume = character.get("costume") or {}
+    rules = character.get("manga_rules") or {}
+    tags: list[str] = []
+    tags.extend(str(v) for v in as_list(character.get("character_tags")))
+    tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
+    tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
+    tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+    tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+    return unique(tags)
+
+
+def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
+    return (str(character_id or ""), str(variant_id or ""))
+
+
+def page_snapshot_map(page: dict) -> dict[tuple[str, str], dict]:
+    snapshots: dict[tuple[str, str], dict] = {}
+    for snapshot in as_list(page.get("character_snapshots")):
+        if not isinstance(snapshot, dict):
+            continue
+        cid = snapshot.get("character_id")
+        if not cid:
+            continue
+        key = snapshot_key(str(cid), snapshot.get("selected_variant_id"))
+        snapshots[key] = snapshot
+        snapshots.setdefault(snapshot_key(str(cid), None), snapshot)
+    return snapshots
+
+
+def subject_snapshot(page: dict, subject: dict) -> dict | None:
+    cid = subject.get("character_id")
+    if not cid:
+        return None
+    snapshots = page_snapshot_map(page)
+    variant_id = selected_subject_variant_id(subject)
+    return snapshots.get(snapshot_key(str(cid), variant_id)) or snapshots.get(snapshot_key(str(cid), None))
+
+
+def snapshot_tags(snapshot: dict) -> list[str]:
+    tags: list[str] = []
+    tags.extend(str(v) for v in as_list(snapshot.get("fixed_tags")))
+    tags.extend(str(v) for v in as_list(snapshot.get("variant_tags")))
+    return unique(tags)
+
+
+SINGLE_PANEL_BLOCKLIST_EXACT = {
+    "color manga page",
+    "japanese manga panel layout",
+    "clear panel borders",
+    "manga page",
+    "panel layout",
+}
+
+SINGLE_PANEL_BLOCKLIST_SUBSTRINGS = (
+    "panel border",
+    "panel borders",
+    "panel layout",
+    "manga panel",
+    "top panel",
+    "bottom panel",
+    "left panel",
+    "right panel",
+    "page layout",
+    "color manga page",
+    "1ページ",
+    "コマ割り",
+    "コマ構成",
+    "上段",
+    "中段",
+    "下段",
+    "大コマ",
+    "小コマ",
+)
+
+
+def is_single_panel_layout_tag(value: str) -> bool:
+    normalized = value.strip().lower().replace("_", " ")
+    if not normalized:
+        return True
+    if normalized in SINGLE_PANEL_BLOCKLIST_EXACT:
+        return True
+    return any(part in normalized for part in SINGLE_PANEL_BLOCKLIST_SUBSTRINGS)
+
+
+def filter_single_panel_tags(values: list[str]) -> list[str]:
+    return [value for value in values if not is_single_panel_layout_tag(value)]
+
+
+def character_display_name(character: dict, character_id: str) -> str:
+    name = character.get("name") or character_id
+    name_en = character.get("name_en") or character_id
+    if name_en and name_en != name:
+        return f"{name}（{name_en}）"
+    return str(name)
+
+
+def subject_text_from_ir(subject: dict, characters: dict[str, dict]) -> str:
+    cid = subject.get("character_id")
+    if cid and cid in characters:
+        base = character_display_name(characters[cid], cid)
+    else:
+        base = str(subject.get("description") or subject.get("type") or "subject")
+    details = [
+        str(subject.get("description") or ""),
+        str(subject.get("pose_action") or ""),
+        str(subject.get("expression") or ""),
+        str(subject.get("position") or ""),
+    ]
+    return "、".join([base] + [value for value in details if value])
+
+
+def yaml_panel_tags(
+    page: dict,
+    panel: dict,
+    characters: dict[str, dict],
+    *,
+    single_panel: bool = False,
+) -> list[str]:
+    manga = page.get("manga") or {}
+    scene = panel.get("scene") or page.get("scene") or {}
+    composition = panel.get("composition") or {}
+    camera = panel.get("camera") or {}
+    lighting = panel.get("lighting") or {}
+    tags: list[str] = []
+    tags.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
+    tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
+    tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
+    tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
+    tags.extend(
+        str(v)
+        for v in [
+            scene.get("location"),
+            scene.get("time_of_day"),
+            scene.get("weather"),
+            composition.get("framing"),
+            composition.get("focus"),
+            composition.get("perspective"),
+            camera.get("angle"),
+            camera.get("shot_size"),
+            lighting.get("quality"),
+            lighting.get("mood_effect"),
+        ]
+        if v
+    )
+    if not single_panel and composition.get("layout"):
+        tags.append(str(composition.get("layout")))
+    for subject in as_list(panel.get("subjects")):
+        if not isinstance(subject, dict):
+            continue
+        cid = subject.get("character_id")
+        snapshot = subject_snapshot(page, subject)
+        if snapshot:
+            tags.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
+            tags.extend(snapshot_tags(snapshot))
+        elif cid and cid in characters:
+            character = characters[cid]
+            tags.append(str(character.get("name_en") or cid))
+            tags.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
+        else:
+            tags.append(str(subject.get("description") or subject.get("type") or "subject"))
+        tags.extend(
+            str(v)
+            for v in [subject.get("pose_action"), subject.get("expression"), subject.get("position")]
+            if v
+        )
+    tags.extend(str(v) for v in as_list(panel.get("mood_atmosphere")))
+    tags = unique(tags)
+    if single_panel:
+        tags = filter_single_panel_tags(tags)
+    return tags
+
+
+def yaml_text_lines(panel: dict) -> list[str]:
+    text = panel.get("text") or {}
+    lines: list[str] = []
+    for item in as_list(text.get("dialogue")):
+        if isinstance(item, dict):
+            lines.append(f"- セリフ: {item.get('speaker', '不明')}「{item.get('content', '')}」")
+    for item in as_list(text.get("monologue")):
+        lines.append(f"- モノローグ: {item}")
+    for item in as_list(text.get("narration")):
+        lines.append(f"- ナレーション: {item}")
+    for item in as_list(text.get("sfx")):
+        if isinstance(item, dict):
+            meaning = f"（{item.get('meaning')}）" if item.get("meaning") else ""
+            lines.append(f"- 効果音: {item.get('content', '')}{meaning}")
+    return lines
+
+
+def yaml_page_stem(path: Path, page: dict) -> str:
+    manga_id = page.get("manga_id")
+    if manga_id:
+        return str(manga_id)
+    match = re.match(r"(.+)_p\d+$", path.stem)
+    return match.group(1) if match else path.stem
+
+
+def yaml_page_number(path: Path, fallback: int) -> int:
+    match = re.search(r"_p(\d+)$", path.stem)
+    return int(match.group(1)) if match else fallback
+
+
+def yaml_render_instruction_block(page: dict) -> str:
+    instruction = page.get("render_instruction") or {}
+    if not isinstance(instruction, dict):
+        return ""
+    lines: list[str] = []
+    for key in (
+        "prompt_header",
+        "task",
+        "panel_policy",
+        "character_policy",
+        "text_policy",
+        "output_policy",
+    ):
+        value = instruction.get(key)
+        if value:
+            lines.append(str(value))
+    for note in as_list(instruction.get("notes")):
+        if note:
+            lines.append(str(note))
+    return "\n".join(dict.fromkeys(lines))
+
+
+def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: int) -> str:
+    meta = page.get("meta") or {}
+    manga = page.get("manga") or {}
+    scene = page.get("scene") or {}
+    panels = as_list(page.get("panels"))
+    reading_order = meta.get("reading_order", "right_to_left")
+    panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
+    instruction_block = yaml_render_instruction_block(page)
+    lines = [
+        f"Page {page_number}",
+        instruction_block,
+        f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
+        f"ページ構成: {panel_layout}",
+        f"共通舞台: {scene.get('location', '')} / {scene.get('time_of_day', '')} / {scene.get('background_notes', '')}",
+        "",
+    ]
+    lines = [line for line in lines if line]
+    for panel in panels:
+        if not isinstance(panel, dict):
+            continue
+        subjects = [
+            subject_text_from_ir(subject, characters)
+            for subject in as_list(panel.get("subjects"))
+            if isinstance(subject, dict)
+        ]
+        comp = panel.get("composition") or {}
+        camera = panel.get("camera") or {}
+        lines.extend(
+            [
+                f"コマ{panel.get('panel_id', '?')}: {panel.get('summary', '')}",
+                f"- 人物・対象: {' / '.join(subjects)}",
+                f"- 構図: {comp.get('layout', '')} / {comp.get('framing', '')} / {comp.get('focus', '')} / {camera.get('angle', '')}",
+                *yaml_text_lines(panel),
+                f"- tag: {join_tags(yaml_panel_tags(page, panel, characters))}",
+                f"- 日本語訳: {panel.get('translation') or panel.get('summary', '')}",
+                "",
+            ]
+        )
+    return "\n".join(lines).strip()
+
+
+def yaml_page_step2_text(page: dict, page_number: int) -> str:
+    meta = page.get("meta") or {}
+    manga = page.get("manga") or {}
+    panels = as_list(page.get("panels"))
+    reading_order = meta.get("reading_order", "right_to_left")
+    panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
+    lines = [
+        f"Page {page_number}",
+        f"1ページ{len(panels)}コマ。{panel_layout}。読み順は {reading_order}。",
+    ]
+    for panel in panels:
+        if isinstance(panel, dict):
+            comp = panel.get("composition") or {}
+            lines.append(
+                f"- コマ{panel.get('panel_id', '?')}: {comp.get('layout', '')}。{panel.get('summary', '')}"
+            )
+    return "\n".join(lines).strip()
+
+
+def yaml_background_concept_jobs(page: dict, stem: str, page_num: int) -> list[dict[str, str]]:
+    scene = page.get("scene") or {}
+    technical = page.get("technical") or {}
+    page_negative = join_tags(as_list(technical.get("negative_tags")))
+    jobs: list[dict[str, str]] = []
+    for index, concept in enumerate(as_list(page.get("background_concepts")), start=1):
+        if not isinstance(concept, dict):
+            continue
+        concept_id = str(concept.get("concept_id") or f"bg{index:02d}")
+        title = str(concept.get("title") or concept_id)
+        description = str(concept.get("description") or "")
+        prompt = str(concept.get("prompt") or description)
+        if not prompt:
+            continue
+        negative = join_tags(as_list(concept.get("negative_tags")))
+        negative_line = ", ".join(v for v in [page_negative, negative] if v)
+        body = "\n".join(
+            line
+            for line in [
+                "背景コンセプト生成。人物を主役にせず、漫画ページで使う背景・空間設計として描く。",
+                f"Page {page_num} / {title}",
+                f"共通舞台: {scene.get('location', '')} / {scene.get('time_of_day', '')} / {scene.get('background_notes', '')}",
+                f"説明: {description}" if description else "",
+                f"背景プロンプト: {prompt}",
+                f"用途: {concept.get('usage', '')}" if concept.get("usage") else "",
+                f"避ける要素: {negative_line}" if negative_line else "",
+            ]
+            if line
+        )
+        jobs.append(
+            {
+                "stem": stem,
+                "page": str(page_num),
+                "koma": "0",
+                "prefix": f"{stem}_p{page_num:02d}_{concept_id}",
+                "prompt": body,
+                "output_subdir": "backgrounds",
+            }
+        )
+    return jobs
+
+
+def yaml_character_anchor_block(page: dict, characters: dict[str, dict]) -> str:
+    lines = ["キャラクター固定特徴（tag/characters/*.yaml 準拠）:"]
+    seen: set[str] = set()
+    for panel in as_list(page.get("panels")):
+        if not isinstance(panel, dict):
+            continue
+        for subject in as_list(panel.get("subjects")):
+            if not isinstance(subject, dict):
+                continue
+            cid = subject.get("character_id")
+            if not cid or cid in seen:
+                continue
+            snapshot = subject_snapshot(page, subject)
+            if not snapshot and cid not in characters:
+                continue
+            seen.add(cid)
+            character = characters.get(cid, {})
+            tags = join_tags(snapshot_tags(snapshot) if snapshot else character_ir_tags(character, selected_subject_variant_id(subject)))
+            if tags:
+                variant_id = selected_subject_variant_id(subject)
+                label_base = str(snapshot.get("name") or snapshot.get("name_en") or cid) if snapshot else character_display_name(character, cid)
+                label = f"{label_base} / {variant_id}" if variant_id else label_base
+                lines.append(f"- {label}: {tags}")
+    return "\n".join(lines) if len(lines) > 1 else ""
 
 
 def alias_matches_text(alias: str, text: str, lowered: str) -> bool:
@@ -690,9 +1118,138 @@ def iter_manga_jobs(
     return all_jobs
 
 
+def iter_yaml_manga_jobs(
+    novel_dir: Path,
+    only_stem: str | None,
+    source: str,
+    provider: str,
+    style_helper: str | None,
+) -> list[dict[str, str]]:
+    manga_dir = novel_dir / "manga"
+    pages_dir = manga_dir / "pages"
+    if not pages_dir.is_dir():
+        raise FileNotFoundError(f"manga/pages/ がありません: {pages_dir}")
+    characters = load_character_ir_map(novel_dir)
+    paths = sorted(pages_dir.glob("*.yaml"))
+    if only_stem:
+        paths = [
+            path for path in paths
+            if re.match(rf"{re.escape(only_stem)}(?:_p\d+)?$", path.stem)
+        ]
+        if not paths:
+            raise FileNotFoundError(
+                f"manga/pages/{only_stem}_p*.yaml が見つかりません: {pages_dir}"
+            )
+
+    all_jobs: list[dict[str, str]] = []
+    for index, path in enumerate(paths, start=1):
+        page = load_yaml(path)
+        panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
+        if not panels:
+            continue
+        stem = yaml_page_stem(path, page)
+        page_num = yaml_page_number(path, index)
+        base = (manga_dir / "_assets" / stem).resolve()
+        if source == "background-concepts":
+            for job in yaml_background_concept_jobs(page, stem, page_num):
+                job["output_dir"] = (base / job.pop("output_subdir", "backgrounds")).as_posix()
+                all_jobs.append(job)
+        elif source == "step2-pages":
+            body = yaml_page_step2_text(page, page_num)
+            helper = resolve_page_style_helper(provider, "step2-pages", style_helper)
+            anchor_block = yaml_character_anchor_block(page, characters)
+            instruction_block = yaml_render_instruction_block(page)
+            extra_text = "\n\n".join(blk for blk in (instruction_block, helper, anchor_block) if blk)
+            prompt = (
+                f"以下は漫画1ページ分の構成指示です。"
+                f"日本の漫画のコマ割りとして、ページ全体を1枚で生成してください。\n\n"
+                f"{extra_text}\n\n{body}" if extra_text else
+                f"以下は漫画1ページ分の構成指示です。"
+                f"日本の漫画のコマ割りとして、ページ全体を1枚で生成してください。\n\n"
+                f"{body}"
+            )
+            all_jobs.append(
+                {
+                    "stem": stem,
+                    "page": str(page_num),
+                    "koma": "00",
+                    "prefix": f"{stem}_p{page_num:02d}",
+                    "prompt": prompt,
+                    "output_dir": base.as_posix(),
+                }
+            )
+        elif source == "step1-pages":
+            body = yaml_page_step1_text(page, characters, page_num)
+            helper = resolve_page_style_helper(provider, "step1-pages", style_helper)
+            anchor_block = yaml_character_anchor_block(page, characters)
+            extra_text = "\n\n".join(blk for blk in (helper, anchor_block) if blk)
+            prompt = (
+                f"以下は漫画1ページ分の詳細指示です。"
+                f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
+                f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。\n\n"
+                f"{extra_text}\n\n{body}" if extra_text else
+                f"以下は漫画1ページ分の詳細指示です。"
+                f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
+                f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。\n\n"
+                f"{body}"
+            )
+            all_jobs.append(
+                {
+                    "stem": stem,
+                    "page": str(page_num),
+                    "koma": "00",
+                    "prefix": f"{stem}_p{page_num:02d}_step1page",
+                    "prompt": prompt,
+                    "output_dir": base.as_posix(),
+                }
+            )
+        else:
+            for panel_index, panel in enumerate(panels, start=1):
+                tags = join_tags(yaml_panel_tags(page, panel, characters, single_panel=True))
+                if not tags:
+                    continue
+                all_jobs.append(
+                    {
+                        "stem": stem,
+                        "page": str(page_num),
+                        "koma": str(panel_index),
+                        "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
+                        "prompt": STYLE_PREFIX + tags,
+                        "output_dir": base.as_posix(),
+                    }
+                )
+    return all_jobs
+
+
+def iter_jobs_by_input(
+    novel_dir: Path,
+    only_stem: str | None,
+    source: str,
+    provider: str,
+    style_helper: str | None,
+    input_kind: str,
+    *,
+    no_character_anchors: bool = False,
+) -> tuple[str, list[dict[str, str]]]:
+    if input_kind == "yaml":
+        return "yaml", iter_yaml_manga_jobs(novel_dir, only_stem, source, provider, style_helper)
+    if input_kind == "markdown":
+        if source == "background-concepts":
+            raise ValueError("background-concepts は YAML 入力専用です")
+        return "markdown", iter_manga_jobs(
+            novel_dir,
+            only_stem,
+            source,
+            provider,
+            style_helper,
+            no_character_anchors=no_character_anchors,
+        )
+    raise ValueError(f"unsupported input kind: {input_kind}")
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        description="manga/manga_*.md の Step1/Step2 を使って画像生成"
+        description="manga/pages/*.yaml または manga/manga_*.md の Step1/Step2 相当を使って画像生成"
     )
     p.add_argument(
         "novel_dir",
@@ -708,16 +1265,27 @@ def main(argv: list[str] | None = None) -> int:
         "--manga-stem",
         default=None,
         metavar="STEM",
-        help="1 ファイルだけ（例: manga_01）",
+        help="1 系列だけ（例: manga_01。YAMLなら manga_01_p*.yaml、Markdownなら manga_01.md）",
+    )
+    p.add_argument(
+        "--input",
+        choices=INPUT_CHOICES,
+        default="yaml",
+        help=(
+            "入力形式。既定は yaml で、manga/pages/*.yaml を必須入力として読む。"
+            " 旧Markdown運用が必要な場合だけ markdown を明示する"
+        ),
     )
     p.add_argument(
         "--source",
-        choices=("step1-panels", "step1-pages", "step2-pages"),
+        choices=("step1-panels", "step1-pages", "step2-pages", "background-concepts"),
         default="step1-panels",
         help=(
-            "入力元。step1-panels は Step1 の tag: をコマ単位で使用、"
-            "step1-pages は Step1 全体を精密ページ生成の1ジョブとして使用、"
-            "step2-pages は Step2 全体をページ単位の1ジョブとして使用"
+            "入力元。YAML入力では step1-panels は panels[].prompt_tags 等をコマ単位で使用、"
+            "step1-pages はYAMLから組み立てた詳細ページ指示を使用、"
+            "step2-pages はYAMLから組み立てた抽象ページ指示を使用、"
+            "background-concepts は background_concepts[] を背景案として使用。"
+            "Markdown入力では従来どおり Step1/Step2 を読む"
         ),
     )
     p.add_argument(
@@ -786,23 +1354,24 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        jobs = iter_manga_jobs(
+        input_used, jobs = iter_jobs_by_input(
             novel,
             args.manga_stem,
             args.source,
             provider,
             args.style_helper,
+            args.input,
             no_character_anchors=args.no_character_anchors,
         )
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
     if not jobs:
         print(
-            "error: ジョブが0件です（source=step1-panels なら tag:/和訳:、"
-            "source=step1-pages なら Step1 本文、source=step2-pages なら"
-            " Step2 本文の形式を確認）",
+            "error: ジョブが0件です（YAML入力なら manga/pages/*.yaml の panels、"
+            "Markdown入力なら source=step1-panels は tag:/和訳:、"
+            "source=step1-pages は Step1 本文、source=step2-pages は Step2 本文の形式を確認）",
             file=sys.stderr,
         )
         return 2
@@ -825,6 +1394,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(f"novel: {novel}")
+    print(f"input: {input_used}")
     print(f"provider: {provider}")
     print(f"jobs: {len(jobs)}")
 

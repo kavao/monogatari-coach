@@ -62,6 +62,8 @@ targets: ["*"]
 ### 3. 継承タグを作る
 
 - `tag/characters/<character_id>.yaml` の `character_tags` / `manga_rules.consistency_tags` から、**状況が変わっても残すべきタグ**を拾う。
+- 服装・状態差分がある場合は、`manga/pages/*.yaml` の `panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかを入れ、`tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。
+- ページYAMLを単体で読める原盤にする場合は、`tools/novel_prompt_ir_embed_snapshots.py novels/<作品>` を実行し、`character_snapshots` にそのページで使う固定特徴・衣装・バリアントタグを埋め込む。
 - 互換タグが必要な場合は `tag/<romaji>.md` の Danbooru Tags 行も確認する。
 - 服装がシーンで変わる場合でも、**顔・髪・目・肌・種族・固定小物**は原則維持する。
 - 漫画タグでは、必要ならタグを少し短くしてよいが、**識別に必要なタグは落とさない**。

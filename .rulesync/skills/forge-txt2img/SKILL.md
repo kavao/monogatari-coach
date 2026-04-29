@@ -1,7 +1,7 @@
 ---
 name: forge-txt2img
 description: >-
-  Stable Diffusion Forge / NovelAI / Grok(xAI) の REST API へ
+  Stable Diffusion Forge / NovelAI / Grok(xAI) / OpenAI Images API の REST API へ
   tools/forge_generate.py で txt2img。タグ生成後に画像を outputs または
   作品フォルダへ保存する。
 targets: ["*"]
@@ -9,9 +9,9 @@ targets: ["*"]
 
 ## 目的
 
-`_how_to/manga_tag.md` / `manga.md` で **漫画タグ**、`_how_to/tag.md` で **キャラクタータグ**を用意した**あと**、同じプロンプト思想で **Forge / NovelAI / Grok** で画像を生成し、リポジトリ内の決めたフォルダにストックする。
+`_how_to/manga_tag.md` / `manga.md` で **漫画タグ**、`_how_to/tag.md` で **キャラクタータグ**を用意した**あと**、同じプロンプト思想で **Forge / NovelAI / Grok / OpenAI** で画像を生成し、リポジトリ内の決めたフォルダにストックする。
 
-v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`** を使って REST API に接続する。
+v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `openai`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`**、OpenAI は **`OPENAI_API_KEY`** を使って REST API に接続する。
 
 ## プロバイダ解決の優先順位（LLM 向け確認手順）
 
@@ -30,6 +30,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を�
 | `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `forge_novel_tag_batch.py`（キャラタグ一括生成） |
 | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-panels / step1-pages` |
 | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages` |
+| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source background-concepts`（未指定時は Grok） |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
 | `MONOCRI_GROK_MODEL_TIER_DEFAULT` | Grok のモデル tier（`standard` / `pro`） |
 
@@ -55,20 +56,23 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を�
 
 | モード | `forge_novel_manga_batch.py` | 推奨プロバイダ | `tag/*.md` 自動注入 |
 |--------|------------------------------|----------------|---------------------|
-| **コマ生成（Step1）** | `--source step1-panels`（既定） | **Forge（ローカル）** または **NovelAI** | **オン（既定）でよい**。NovelAI 向けに **`--no-character-anchors` は原則不要**（コマ単体で `tag:`＋注入で固定特徴を揃える想定）。 |
-| **精密ページ生成** | `--source step1-pages` | **Grok**（正式対応） | 注入オンを既定とするが、**拒否が出る場合**は `_how_to/manga.md` の Step2 的な言い換えに寄せる／**`--no-character-anchors`** を検討。 |
-| **ページ生成** | `--source step2-pages` | **Grok**（正式対応） | 同上。Step2 本文はもともと**モデレーションに触れにくい抽象レイアウト**を想定。 |
+| **コマ生成（Step1）** | `--source step1-panels`（既定） | **Forge（ローカル）** / **NovelAI** / **OpenAI** | **オン（既定）でよい**。NovelAI 向けに **`--no-character-anchors` は原則不要**（コマ単体で `tag:`＋注入で固定特徴を揃える想定）。 |
+| **精密ページ生成** | `--source step1-pages` | **Grok** または **OpenAI** | 注入オンを既定とするが、**拒否が出る場合**は `_how_to/manga.md` の Step2 的な言い換えに寄せる／**`--no-character-anchors`** を検討。 |
+| **ページ生成** | `--source step2-pages` | **Grok** または **OpenAI** | 同上。Step2 本文はもともと**モデレーションに触れにくい抽象レイアウト**を想定。 |
+| **背景概念生成** | `--source background-concepts` | **Grok**（既定）または **OpenAI** | `manga/pages/*.yaml` の `background_concepts[]` を使い、人物なしの背景・空間設計を先に起こす。 |
 
 **Grok が「必要になる」流れ**: 1ページを1枚にまとめる **step1-pages / step2-pages** は、**Forge／NovelAI をページ生成の正式先に含めない**既定のため、**クラウドでページ丸ごとを出すときは Grok** を使う。コマ単体の Step1 は **Forge か NovelAI** で足りる、という分担。
 
 ## 漫画生成の API 対応範囲（2026-04-12 時点）
 
 - **コマ生成**:
-  **Forge / NovelAI / Grok** に対応。
+  **Forge / NovelAI / Grok / OpenAI** に対応。
 - **精密ページ生成**:
-  **Grok** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
+  **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
 - **ページ生成**:
-  **Grok** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
+  **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
+- **背景概念生成**:
+  **Grok** を既定とし、必要に応じて **OpenAI** を選べる。YAML の `background_concepts[]` を入力にする。
 - **固定特徴・状況タグの自動注入**:
   **`step1-panels` / `step1-pages` / `step2-pages`** では、作品フォルダの **`tag/*.md`** を参照し、本文に登場が見えるキャラごとに **状況に最も近い Danbooru Tags ブロック**を prompt へ自動注入する。本文側には **キャラ名** と、必要なら **オンボーディング / βテスト開始 / 緊急修復** などの状況語を明記しておくと安定しやすい。
 - **注入のオフ（`--no-character-anchors`）**:
@@ -110,6 +114,14 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を�
 - このリポジトリでは `providers.grok.aspect_ratio_presets` により、`square`、`manga_b5_portrait`、`story_vertical` などの preset 名でも切り替えられる。**B5 実寸そのものは xAI の公式 ratio ではない**ため、`manga_b5_portrait` は **`3:4`** の近似 preset。
 - 既定実装は **`response_format: "b64_json"`** で受け、URL の失効前にそのまま保存する。
 
+## 前提（OpenAI Images API）
+
+- `.env` に **`OPENAI_API_KEY`** を記入する。
+- 設定は **`config/image_generation.json`** の `providers.openai`。既定の通信先は `https://api.openai.com/v1/images/generations`。
+- params JSON か CLI で **`provider=openai`** を選ぶ。
+- 既定モデルは `config` の `providers.openai.default_model` で管理する。`gpt-image-2` のような次世代名を直接固定せず、`openai` provider の `model` を config で差し替える。
+- YAMLをそのまま読ませる漫画ページ生成や、背景概念のような構造化プロンプトに向く。タグ列だけに強く寄せたい場合は NovelAI / Forge を優先する。
+
 ## 保存先の約束（推奨）
 
 `.rulesync/rules/overview.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
@@ -132,6 +144,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok`** を�
 - **Forge の任意**: `scheduler`, `distilled_cfg_scale`, `aspect_ratio_preset`
 - **NovelAI の任意**: `model`, `action`, `uc_preset`, `quality_toggle`, `params_version`, `sm`, `sm_dyn`
 - **Grok の任意**: `model`, `response_format`, `aspect_ratio`, `aspect_ratio_preset`, `resolution`
+- **OpenAI の任意**: `model`, `size`, `quality`, `background`, `output_format`, `response_format`, `moderation`
 
 Forge は **`save_images: false` / `send_images: true`**、NovelAI は zip または JSON 応答を Python 側で保存する。保存名:
 

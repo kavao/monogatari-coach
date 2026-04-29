@@ -61,11 +61,17 @@ novels/<作品>/
 
 `tools/forge_novel_tag_batch.py` と `tools/forge_novel_manga_batch.py` に、Markdown 入力と並行して YAML 入力を追加する。
 
-推奨:
+2026-04-29 時点で、`tools/forge_novel_manga_batch.py` は `--input yaml|markdown` を持ち、既定は `yaml` とする。YAML 入力では `--source step1-panels` / `step1-pages` / `step2-pages` を、`panels[]` と `manga.panel_layout` から直接ジョブ化する。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
 
-- 既定は当面 Markdown のまま維持する。
-- `--source yaml` または `--ir` を明示したときだけ YAML を読む。
-- 互換性が十分に取れた後、YAML を既定候補へ昇格する。
+2026-04-29 更新: `manga/pages/*.yaml` に `render_instruction` を追加し、YAML単体で漫画1ページ分の作画依頼書として読める形へ寄せる。Markdown廃止後は、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を Step1 相当の原盤として扱う。
+
+2026-04-29 更新: `background_concepts[]` を追加し、Grok / OpenAI へ人物なしの背景・空間設計を渡す入口を設ける。`tools/forge_novel_manga_batch.py --source background-concepts` は YAML 入力専用で、未指定時の provider は Grok とする。
+
+残タスク:
+
+- `tools/forge_novel_tag_batch.py` にも同様の YAML 直読入力を追加する。
+- 既存作品で `manga/manga_XX.md` しか無いものは、必要に応じて `manga/pages/*.yaml` へ移行する。
+- Markdown は外部確認・旧運用互換のため残すが、画像生成の既定入力は YAML とする。
 
 ## Phase 5: 品質ゲートの自動化
 
@@ -77,6 +83,8 @@ YAML 構造を使って、次を機械チェックする。
 - ページ全体か各コマにレイアウト情報がある。
 - `character_id` 参照が `tag/characters/*.yaml` に存在する。
 - キャラクター固定タグが登場コマへ注入される。
+
+2026-04-29 時点で、`tools/novel_prompt_ir_validate.py` は意味品質の不足を `Quality warnings` として検出する。`--strict-quality` 指定時は警告も失敗扱いにする。
 
 ## 保留事項
 

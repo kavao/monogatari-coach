@@ -138,6 +138,7 @@ c. プロフィールについても深く掘り下げてください。
    - 生成画像は **`tag/<romaji>/`** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
 9. manga/pages/manga_XX_pYY.yaml（漫画タグ正本・YAML IR）
    - 小説本文と対応する章・項ごとに、1ページ分の定義を YAML IR として管理する（スキル **manga-prompt-ir**）
+   - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
    - **互換出力**: `manga/manga_XX.md`（`tools/forge_novel_manga_batch.py` 向け Step1 / Step2）
    - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
@@ -318,10 +319,13 @@ _how_to/tag.md のルールに従い、各人物について
 2. **本文から YAML IR を作成**
    - スキル **`manga-prompt-ir`** に従い、`manga/pages/` 配下に各ページの YAML ファイルを作成する。
    - 小説本文から、ページ化する出来事、セリフ、感情の変化、伏線、小道具、場面転換を抽出し、各コマの場所、人物、状態、アクション、セリフ、レイアウト（段・大小）として定義する。
+   - `render_instruction` に「このYAMLを漫画1ページ分の作画依頼書として扱う」こと、`panels[]` の読み順、`manga.panel_layout` の反映、`character_snapshots` の外見継承、`text` の吹き出し・効果音扱いを明記する。
    - 登場キャラについては `character.md` と `tag/characters/<character_id>.yaml` を読み、**髪・目・肌・種族・体格・固定小物などの固定特徴を各コマへ継承**する（スキル **`manga-tag-character-sync`**）。
-   - `panels[].subjects[]`、`text.dialogue[]`、`composition`、`camera`、`prompt_tags` などに分解し、YAML 内で Step1 / Step2 相当の情報が再構成できる状態にする。
+   - 服装・状態差分が必要なコマでは、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかを明示し、`tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と対応させる。
+   - ページYAML単体で内容が分かるよう、`tools/novel_prompt_ir_embed_snapshots.py novels/<作品フォルダ>` で `character_snapshots` を埋め込み、そのページで使う外見・衣装・バリアントタグを固定する。
+   - `render_instruction`、`panels[].subjects[]`、`text.dialogue[]`、`composition`、`camera`、`prompt_tags` などに分解し、YAML 内で Step1 / Step2 相当の情報が再構成できる状態にする。Markdown廃止後は、この YAML 全体を Step1 相当の作画依頼として扱う。
 3. **検証**
-   - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造を確認する。
+   - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造、主語・行為・構図・セリフ話者・ページレイアウトの不足警告を確認する。本番生成前は **`--strict-quality`** を付け、品質警告も失敗扱いにする。
    - 主語・関係・セリフ帰属・部分アップの意味付け・コマ割りは、スキル **`manga-tag-quality-gate`** の観点で点検する。
 4. **Markdown へのエクスポート**
    - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。
@@ -337,11 +341,13 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### 生成モードの用語統一（必須）
 - **コマ生成**:
- `manga_XX.md` の **Step1** を使い、**各コマを別画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-panels`** に対応する。
+ `manga/pages/*.yaml` の `panels[]` を使い、**各コマを別画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-panels`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。コマ単体生成では `japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`上段` / `中段` / `下段` / `大コマ` などのページ・コマ割りタグは内部で除外し、1枚絵のコマとして描かせる。
 - **精密ページ生成**:
- `manga_XX.md` の **Step1 全体**を使い、**各コマの詳細指示を保持したまま 1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-pages`** に対応する。
+ `manga/pages/*.yaml` の詳細情報から Step1 相当のページ指示を組み立て、**各コマの詳細指示を保持したまま 1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
 - **ページ生成**:
- `manga_XX.md` の **Step2** を使い、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step2-pages`** に対応する。
+ `manga/pages/*.yaml` の `manga.panel_layout` と各コマ要約から Step2 相当のページ指示を組み立て、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step2-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
+- **背景概念生成**:
+ `manga/pages/*.yaml` の `background_concepts[]` を使い、**人物なしの背景・空間設計**を先に出す運用を指す。`tools/forge_novel_manga_batch.py` では **`--source background-concepts`** に対応し、未指定時の推奨 provider は **Grok**。必要に応じて `--provider openai` も選べる。
 - **既定動作**:
  ユーザーの依頼が曖昧で、ページ全体かコマ単位かが読み取れない場合は、**まずコマ生成を既定**とする。
 - **ページ生成を優先する語**:
@@ -355,15 +361,17 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### API対応の整理（2026-04-12 時点）
 - **コマ生成（Step1 / step1-panels）**:
- **Forge / NovelAI / Grok** で運用可能。各コマを独立画像として保存する。
+ **Forge / NovelAI / Grok / OpenAI** で運用可能。各コマを独立画像として保存する。
 - **精密ページ生成（Step1 / step1-pages）**:
- **Grok** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
+ **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
 - **ページ生成（Step2 / step2-pages）**:
- **Grok** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
+ **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
+- **背景概念生成（background-concepts）**:
+ **Grok** を既定とし、必要に応じて **OpenAI** を選べる。背景・空間設計を先に作り、ページ生成やコマ生成の参照に使う。
 - **固定特徴・状況タグの注入**:
- `tools/forge_novel_manga_batch.py` は、作品フォルダの **`tag/*.md`** を参照し、**コマ生成（step1-panels）** と **ページ生成（step1-pages / step2-pages）** の両方で、本文に登場が見えるキャラクターについて **状況に最も近い Danbooru Tags ブロック**を自動選択して prompt に注入する。ページ本文やコマ本文には、できるだけ **キャラ名（和名または英名）** と **状況語（例: オンボーディング、βテスト開始、緊急修復）** を明記しておく。
+ `tools/forge_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
 - **推奨分担（Step1 コマ／ページ系）**:
- **コマ生成（step1-panels）** は **Forge または NovelAI** で **`tag` 注入オン（既定）** でよく、**NovelAI 向けに `--no-character-anchors` を必須とはしない**。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）で Grok を使う流れ**では、`_how_to/manga.md` の Step2（抽象レイアウト）を前提にし、**拒否時のみ** `--no-character-anchors` や文言調整を検討する（詳細はスキル **`forge-txt2img`**）。
+ **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では Grok / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **Grok** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`forge-txt2img`**）。
 - **ページ生成の非対応範囲**:
  **Forge / NovelAI** は、このリポジトリの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。これらは **コマ生成向け provider** として扱う。
 

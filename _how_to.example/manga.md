@@ -3,8 +3,9 @@
 新規の漫画ページ・漫画コマは、まず **`manga-prompt-ir`** の `MangaPagePrompt` 構造へ落とす。
 
 - 人間編集用の正本: `novels/<作品>/manga/pages/manga_XX_pYY.yaml`
-- 既存バッチ互換: `novels/<作品>/manga/manga_XX.md`
-- `manga_XX.md` は `tools/forge_novel_manga_batch.py` のための互換出力層として扱う
+- 画像生成バッチ入力: `tools/forge_novel_manga_batch.py --input yaml`（既定。`manga/pages/*.yaml` を必須入力として読む）
+- 既存Markdown互換: `novels/<作品>/manga/manga_XX.md`
+- `manga_XX.md` は古い運用・外部確認・Markdown互換が必要な場合の出力層として扱う
 - 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
 
 **Manga Tag Mode の初手は YAML IR 作成です。**
@@ -19,7 +20,17 @@ YAML IR では、少なくとも次を分離して持つ。
 - `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`
 - `technical.negative_tags`: ページ側の negative tags
 
-`Step1` / `Step2` は `manga/manga_XX.md` 互換出力の形式名です。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
+`Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
+
+キャラクターの服装・状態差分は、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかで明示する。値は `tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。指定がある場合、画像生成バッチは基本衣装ではなく該当バリアントの `danbooru_tags` を優先して注入する。
+
+ページYAMLを単体で読める原盤にするため、`character_snapshots` にそのページで使う登場人物の外見・衣装・バリアントタグを埋め込む。作成・更新は次で行う。
+
+```bash
+python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
+```
+
+生成バッチは `character_snapshots` があればこれを最優先し、無い場合だけ `tag/characters/*.yaml` を参照する。
 
 ## YAML IR の最小構造例
 
@@ -46,6 +57,7 @@ panels:
     summary: "零が敵の群れを睨む。上段・横幅ほぼ全体の大ゴマ"
     subjects:
       - character_id: "rei"
+        variant_id: "battle"
         action: "剣を構えて敵の群れを正面から睨む"
         expression: "鋭い目つき、傷だらけ"
     composition:
@@ -61,21 +73,26 @@ technical:
   negative_tags: "low quality, blurry, deformed"
 ```
 
-## YAML → Step1 / Step2 のフロー
+## YAML → 画像生成のフロー
 
 ```
 [本文 _novel_text/novel_textXX.md]
   ↓ 読み込み・コマ化
 [manga/pages/manga_XX_pYY.yaml]  ← 正本（ここを編集する）
-  ↓ tools/novel_prompt_ir_validate.py（型・参照検証）
+  ↓ tools/novel_prompt_ir_validate.py（型・参照・意味品質の不足検出）
+  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-panels（コマ生成）
+  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-pages（精密ページ生成）
+  └─ tools/forge_novel_manga_batch.py --input yaml --source step2-pages（ページ生成）
+
+必要な場合だけ:
   ↓ tools/novel_prompt_ir_export_md.py（互換出力）
-[manga/manga_XX.md]  ← 互換出力（バッチ生成向け・直接編集しない）
-  ├─ Step1  → tools/forge_novel_manga_batch.py --source step1-panels（コマ生成）
-  ├─ Step1  → --source step1-pages（精密ページ生成）
-  └─ Step2  → --source step2-pages（ページ生成）
+[manga/manga_XX.md]  ← Markdown互換出力（直接編集しない）
 ```
 
-**修正は必ず YAML IR 側へ入れ、再エクスポートして `manga_XX.md` を更新する。`manga_XX.md` を直接書き換えて正本扱いにしない。**
+**修正は必ず YAML IR 側へ入れる。Markdown互換が必要なときだけ再エクスポートして `manga_XX.md` を更新する。`manga_XX.md` を直接書き換えて正本扱いにしない。**
+
+画像生成の通常運用では `--input yaml` を省略しても YAML 入力になる。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
+本番生成前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を通し、主語・行為・セリフ話者・構図・ページレイアウトの不足警告を失敗扱いにする。
 
 ## 互換出力: step1
 以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。新規の漫画タグ作成では、先に `manga/pages/manga_XX_pYY.yaml` を作成・検証してからこの形へエクスポートしてください。

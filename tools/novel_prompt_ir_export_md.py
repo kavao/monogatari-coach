@@ -46,7 +46,34 @@ def join_tags(values: list[Any]) -> str:
     return ", ".join(unique([normalize_tag(value) for value in values if value]))
 
 
-def character_tags(character: dict[str, Any]) -> list[str]:
+def selected_subject_variant_id(subject: dict[str, Any]) -> str | None:
+    for key in ("prompt_variant_id", "costume_variant", "variant_id"):
+        value = subject.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def find_character_variant(character: dict[str, Any], variant_id: str | None) -> dict[str, Any] | None:
+    if not variant_id:
+        return None
+    for variant in as_list(character.get("prompt_variants")):
+        if isinstance(variant, dict) and variant.get("variant_id") == variant_id:
+            return variant
+    return None
+
+
+def character_tags(character: dict[str, Any], variant_id: str | None = None) -> list[str]:
+    variant = find_character_variant(character, variant_id)
+    if variant:
+        appearance = character.get("appearance") or {}
+        tags: list[str] = []
+        tags.extend(str(v) for v in as_list(character.get("character_tags")))
+        tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+        tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+        tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
+        return unique(tags)
+
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
     rules = character.get("manga_rules") or {}
@@ -56,6 +83,40 @@ def character_tags(character: dict[str, Any]) -> list[str]:
     tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
     tags.extend(str(v) for v in as_list(appearance.get("species_features")))
     tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+    return unique(tags)
+
+
+def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
+    return (str(character_id or ""), str(variant_id or ""))
+
+
+def page_snapshot_map(page: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    snapshots: dict[tuple[str, str], dict[str, Any]] = {}
+    for snapshot in as_list(page.get("character_snapshots")):
+        if not isinstance(snapshot, dict):
+            continue
+        cid = snapshot.get("character_id")
+        if not cid:
+            continue
+        key = snapshot_key(str(cid), snapshot.get("selected_variant_id"))
+        snapshots[key] = snapshot
+        snapshots.setdefault(snapshot_key(str(cid), None), snapshot)
+    return snapshots
+
+
+def subject_snapshot(page: dict[str, Any], subject: dict[str, Any]) -> dict[str, Any] | None:
+    cid = subject.get("character_id")
+    if not cid:
+        return None
+    snapshots = page_snapshot_map(page)
+    variant_id = selected_subject_variant_id(subject)
+    return snapshots.get(snapshot_key(str(cid), variant_id)) or snapshots.get(snapshot_key(str(cid), None))
+
+
+def snapshot_tags(snapshot: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+    tags.extend(str(v) for v in as_list(snapshot.get("fixed_tags")))
+    tags.extend(str(v) for v in as_list(snapshot.get("variant_tags")))
     return unique(tags)
 
 
@@ -193,9 +254,13 @@ def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str
         if not isinstance(subject, dict):
             continue
         cid = subject.get("character_id")
-        if cid and cid in characters:
+        snapshot = subject_snapshot(page, subject)
+        if snapshot:
+            tags.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
+            tags.extend(snapshot_tags(snapshot))
+        elif cid and cid in characters:
             tags.append(str(characters[cid].get("name_en") or cid))
-            tags.extend(character_tags(characters[cid]))
+            tags.extend(character_tags(characters[cid], selected_subject_variant_id(subject)))
         else:
             tags.append(str(subject.get("description") or subject.get("type") or "subject"))
         tags.extend(str(v) for v in [subject.get("pose_action"), subject.get("expression"), subject.get("position")] if v)

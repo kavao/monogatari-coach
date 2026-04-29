@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-画像生成クライアント（Forge / NovelAI）。
+画像生成クライアント（Forge / NovelAI / Grok / OpenAI）。
 
 - provider=forge:
   - POST /sdapi/v1/txt2img（save_images は使わず、返却 base64 を自前保存）
@@ -10,6 +10,9 @@
   - zip 応答を展開して PNG を保存
 - provider=grok:
   - POST /v1/images/generations（Bearer token は .env の XAI_API_KEY を使用）
+  - `b64_json` または URL 応答を保存
+- provider=openai:
+  - POST /v1/images/generations（Bearer token は .env の OPENAI_API_KEY を使用）
   - `b64_json` または URL 応答を保存
 
 設定は config/image_generation.json（既定・必須。`--config` で別パスも可）。
@@ -33,7 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "openai")
 FORGE_MODEL_FAMILY_ENV = "MONOCRI_FORGE_MODEL_FAMILY_DEFAULT"
 GROK_MODEL_TIER_ENV = "MONOCRI_GROK_MODEL_TIER_DEFAULT"
 
@@ -433,6 +436,16 @@ def run_probe(provider: str, provider_cfg: dict[str, Any], timeout: float) -> No
         print(f"  configured generate_path={generate_path}")
         return
 
+    if provider == "openai":
+        print(
+            "OpenAI Images API は probe 用の専用 health endpoint を前提にしていないため、"
+            "dry-run または実際の生成で疎通確認してください。"
+        )
+        generate_path = str(provider_cfg.get("generate_path", "/images/generations"))
+        print(f"  configured generate_path={generate_path}")
+        print(f"  auth_env={provider_cfg.get('auth_env', 'OPENAI_API_KEY')}")
+        return
+
     raise ValueError(f"未対応 provider: {provider}")
 
 
@@ -617,6 +630,28 @@ def merge_provider_defaults(
         )
         return out
 
+    if provider == "openai":
+        out["model"] = params.get("model", provider_cfg["default_model"])
+        size = params.get("size")
+        if not size:
+            size = f"{out['width']}x{out['height']}"
+        out["size"] = str(size)
+        out["quality"] = str(params.get("quality", provider_cfg.get("default_quality", "high")))
+        out["background"] = str(
+            params.get("background", provider_cfg.get("default_background", "auto"))
+        )
+        out["output_format"] = str(
+            params.get("output_format", provider_cfg.get("default_output_format", "png"))
+        )
+        response_format = params.get("response_format", provider_cfg.get("default_response_format"))
+        if response_format is not None:
+            out["response_format"] = str(response_format)
+        if "moderation" in params or "default_moderation" in provider_cfg:
+            moderation = params.get("moderation", provider_cfg.get("default_moderation"))
+            if moderation is not None:
+                out["moderation"] = str(moderation)
+        return out
+
     raise ValueError(f"未対応 provider: {provider}")
 
 
@@ -731,6 +766,25 @@ def build_grok_payload(merged: dict[str, Any]) -> dict[str, Any]:
         payload["aspect_ratio"] = merged["aspect_ratio"]
     if merged.get("resolution"):
         payload["resolution"] = merged["resolution"]
+    return payload
+
+
+def build_openai_payload(merged: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": merged["model"],
+        "prompt": merged["prompt"],
+        "n": merged["count"],
+        "size": merged["size"],
+        "quality": merged["quality"],
+    }
+    if merged.get("background") and merged["background"] != "auto":
+        payload["background"] = merged["background"]
+    if merged.get("output_format"):
+        payload["output_format"] = merged["output_format"]
+    if merged.get("response_format"):
+        payload["response_format"] = merged["response_format"]
+    if merged.get("moderation"):
+        payload["moderation"] = merged["moderation"]
     return payload
 
 
@@ -905,6 +959,57 @@ def save_grok_response(
     return saved
 
 
+def save_openai_response(
+    *,
+    resp: dict[str, Any],
+    merged: dict[str, Any],
+    payload: dict[str, Any],
+    provider_cfg: dict[str, Any],
+    out_dir: Path,
+    timeout: float,
+) -> list[dict[str, Any]]:
+    data = resp.get("data") or []
+    if not data:
+        raise RuntimeError("OpenAI 応答から data を取得できませんでした")
+
+    min_png = int(provider_cfg.get("min_png_bytes", 512))
+    saved: list[dict[str, Any]] = []
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_format = str(merged.get("output_format") or "png").lower()
+    suffix = ".jpg" if output_format in {"jpeg", "jpg"} else f".{output_format}"
+    for idx, item in enumerate(data, start=1):
+        if not isinstance(item, dict):
+            raise RuntimeError("OpenAI 応答 data の形式が未対応です")
+        image_bytes: bytes
+        source: str
+        if item.get("b64_json"):
+            image_bytes = base64.b64decode(str(item["b64_json"]))
+            source = "b64_json"
+        elif item.get("url"):
+            source = str(item["url"])
+            _, image_bytes, _ = http_get_bytes(source, timeout)
+        else:
+            raise RuntimeError("OpenAI 応答 item に b64_json/url がありません")
+        if len(image_bytes) < min_png:
+            raise RuntimeError(f"OpenAI の返却画像が異常に小さい ({len(image_bytes)} bytes)")
+        stem = f"{merged['file_prefix']}_{ts}_{idx:02d}"
+        image_path = out_dir / f"{stem}{suffix}"
+        meta_path = out_dir / f"{stem}.json"
+        image_path.write_bytes(image_bytes)
+        meta = {
+            "provider": "openai",
+            "openai_payload_request": payload,
+            "saved_image": str(image_path),
+            "param_merged": {k: v for k, v in merged.items() if k != "prompt"},
+            "prompt": merged["prompt"],
+            "response_item": item,
+            "image_source": source,
+        }
+        write_json(meta_path, meta)
+        saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
+    return saved
+
+
 def print_dry_run(provider: str, api_url: str, payload: dict[str, Any]) -> None:
     print(
         json.dumps(
@@ -916,7 +1021,7 @@ def print_dry_run(provider: str, api_url: str, payload: dict[str, Any]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="画像生成（Forge / NovelAI）")
+    parser = argparse.ArgumentParser(description="画像生成（Forge / NovelAI / Grok / OpenAI）")
     parser.add_argument(
         "--config",
         type=Path,
@@ -1182,6 +1287,46 @@ def main(argv: list[str] | None = None) -> int:
             return 4
         except Exception as e:
             append_log(log_path, f"ERROR provider=grok {e!r}")
+            print(f"リクエスト失敗: {e}", file=sys.stderr)
+            return 5
+    elif provider == "openai":
+        auth_env = str(provider_cfg.get("auth_env", "OPENAI_API_KEY"))
+        token = resolve_env_value(auth_env, dotenv_map)
+        if not token and not args.dry_run:
+            print(
+                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
+                file=sys.stderr,
+            )
+            return 2
+        base_url = str(provider_cfg.get("base_url", "https://api.openai.com/v1")).rstrip("/")
+        generate_path = str(provider_cfg.get("generate_path", "/images/generations"))
+        api_url = f"{base_url}{generate_path}"
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        payload = build_openai_payload(merged)
+        if args.dry_run:
+            print_dry_run(provider, api_url, payload)
+            return 0
+        try:
+            _, raw, _ = http_post_json(api_url, payload, timeout, headers=headers)
+            resp = parse_json_response(raw)
+            saved.extend(
+                save_openai_response(
+                    resp=resp,
+                    merged=merged,
+                    payload=payload,
+                    provider_cfg=provider_cfg,
+                    out_dir=out_dir,
+                    timeout=timeout,
+                )
+            )
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            msg = f"HTTP {e.code}: {body[:2000]}"
+            append_log(log_path, f"FAIL provider=openai {msg}")
+            print(msg, file=sys.stderr)
+            return 4
+        except Exception as e:
+            append_log(log_path, f"ERROR provider=openai {e!r}")
             print(f"リクエスト失敗: {e}", file=sys.stderr)
             return 5
     else:

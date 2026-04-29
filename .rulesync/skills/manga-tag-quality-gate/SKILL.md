@@ -26,6 +26,10 @@ targets: ["*"]
 
 `manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/forge_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
 
+Markdown廃止後は、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなす。`render_instruction` には、YAMLを1ページ漫画として描くこと、コマ順・コマ割りを守ること、キャラクター固定外見を継承すること、テキスト要素の扱いを明記する。
+
+ただし **コマ生成（`step1-panels`）** は、各コマを1枚の単独画像として出す運用であり、ページ全体のコマ割りタグをそのまま入れない。`japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`1ページ4コマ`、`上段` / `中段` / `下段` / `大コマ` などはページ生成用の情報であり、コマ単体生成では内部フィルタで落とす。構図として残すのは `close-up`、`medium shot`、`long shot`、被写体、場所、行為、表情、照明などに寄せる。
+
 ## 正本・参照
 
 | 正本 | 用途 |
@@ -153,6 +157,7 @@ Step2 では、**意味語ではなく、見える配置語へ言い換える**�
 **Step1 で確認すること**
 
 - ページ先頭に **「1ページNコマ」** と **日本の漫画のコマ割り**（またはそれに相当する宣言）があるか。
+- YAML原盤では `render_instruction.prompt_header` と `render_instruction.panel_policy` に、ページ全体の作画依頼とコマ割りの扱いがあるか。
 - 各コマに **構図語**（アオリ／フカン／アップ／ロング 等）があり、**縦方向の読み順**（上→下）や **横並び時の順** が自然に追えるか。
 - `_how_to/manga.md` の注意どおり、**不要なら** `vertical` / `horizontal` など画角ラベルの機械付与はしなくてよい。ただし **意図の欠如**（コマ数も無い）とは区別する。
 

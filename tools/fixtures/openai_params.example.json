@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "prompt": "A single Japanese manga panel, clean line art, cinematic lighting, one character entering a divine dungeon lobby",
+  "output_dir": "outputs/openai",
+  "file_prefix": "openai_manga_panel",
+  "count": 1,
+  "model": "gpt-image-1.5",
+  "size": "1024x1024",
+  "quality": "high",
+  "output_format": "png"
+}

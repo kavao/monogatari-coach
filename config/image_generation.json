@@ -156,6 +156,25 @@
         "wide": "16:9",
         "auto": "auto"
       }
+    },
+    "openai": {
+      "base_url": "https://api.openai.com/v1",
+      "generate_path": "/images/generations",
+      "timeout_sec": 300,
+      "max_count": 4,
+      "min_png_bytes": 512,
+      "auth_env": "OPENAI_API_KEY",
+      "default_model": "gpt-image-1.5",
+      "default_width": 1024,
+      "default_height": 1024,
+      "default_steps": 0,
+      "default_cfg_scale": 0,
+      "default_sampler_name": "",
+      "default_quality": "high",
+      "default_background": "auto",
+      "default_output_format": "png",
+      "default_response_format": null,
+      "allowed_samplers": []
     }
   }
 }
