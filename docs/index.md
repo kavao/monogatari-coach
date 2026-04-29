@@ -11,7 +11,7 @@ Monogatari Coach のドキュメント入口です。ルートの `README.md` �
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
 - [Project Structure](project-structure/index.md)
-  リポジトリ構成、正本の所在、主要ディレクトリ
+  リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
 - [Operations](operations/index.md)
   rulesync、査証ログ、ローカル試行、日常運用
 - [Community](community/index.md)
