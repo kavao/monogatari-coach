@@ -25,9 +25,11 @@ from typing import Iterable
 
 import yaml
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok", "openai")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai")
+_GROK_FAMILY = frozenset({"grok", "grok_pro"})
 INPUT_CHOICES = ("yaml", "markdown")
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
+MANGA_STEP1_PAGES_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT"
 MANGA_STEP2_PROVIDER_ENV = "MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT"
 MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
 
@@ -153,13 +155,15 @@ def resolve_batch_provider(root: Path, source: str, args_provider: str | None) -
         env_name = MANGA_BACKGROUND_PROVIDER_ENV
     elif source == "step2-pages":
         env_name = MANGA_STEP2_PROVIDER_ENV
+    elif source == "step1-pages":
+        env_name = MANGA_STEP1_PAGES_PROVIDER_ENV
     else:
         env_name = MANGA_STEP1_PROVIDER_ENV
     env_provider = dotenv_map.get(env_name)
     if env_provider:
         return validate_provider(env_provider, source=f".env {env_name}")
-    if source == "background-concepts":
-        return validate_provider("grok", source="background-concepts default")
+    if source in ("step1-pages", "step2-pages", "background-concepts"):
+        return validate_provider("grok_pro", source=f"{source} default")
     root_cfg = load_root_config(root)
     return validate_provider(
         str(root_cfg.get("default_provider", "forge")),
@@ -573,6 +577,63 @@ def yaml_render_instruction_block(page: dict) -> str:
     return "\n".join(dict.fromkeys(lines))
 
 
+def trim_prompt_to_byte_limit(prompt: str, max_bytes: int) -> str:
+    """
+    UTF-8 バイト数が max_bytes を超えるプロンプトを段階的に圧縮する。
+    step1-pages の Grok 向け主用途。
+    圧縮順: render_instruction 行 → tag 行 → 日本語訳 行 → 末尾カット
+    """
+    if len(prompt.encode("utf-8")) <= max_bytes:
+        return prompt
+
+    lines = prompt.splitlines()
+
+    # フェーズ1: render_instruction ブロック（このYAMLは〜で始まる段落）を除去
+    def _is_ri_line(line: str) -> bool:
+        triggers = (
+            "このYAMLを、漫画1ページ分の作画依頼書として扱う",
+            "panels[]の順番とpanel_idを守り",
+            "character_snapshotsの外見",
+            "text.dialogue",
+            "1枚の完成漫画ページとして",
+            "prompt_tagsは各コマの",
+            "technical.negative_tags",
+            "sceneはページ共通の",
+            "render_instruction",
+            "作画補助:",
+            "panel_policy:",
+            "character_policy:",
+            "text_policy:",
+            "output_policy:",
+            "notes:",
+            "- prompt_tags",
+            "- technical",
+            "- sceneは",
+        )
+        s = line.strip()
+        return any(s.startswith(t) or t in s for t in triggers)
+
+    trimmed = [l for l in lines if not _is_ri_line(l)]
+    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
+        return "\n".join(trimmed)
+
+    # フェーズ2: 「- tag:」行を除去（キャラ固定タグはanchor_blockで補完）
+    trimmed = [l for l in trimmed if not l.strip().startswith("- tag:")]
+    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
+        return "\n".join(trimmed)
+
+    # フェーズ3: 「- 日本語訳:」行を除去（summaryと重複）
+    trimmed = [l for l in trimmed if not l.strip().startswith("- 日本語訳:")]
+    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
+        return "\n".join(trimmed)
+
+    # フェーズ4: バイト上限での末尾カット（最終手段）
+    encoded = "\n".join(trimmed).encode("utf-8")
+    truncated = encoded[:max_bytes].decode("utf-8", errors="ignore")
+    last_nl = truncated.rfind("\n")
+    return truncated[:last_nl] + "\n[...省略]" if last_nl > 0 else truncated
+
+
 def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: int) -> str:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
@@ -792,9 +853,9 @@ def resolve_page_style_helper(
 ) -> str:
     if style_helper is not None:
         return style_helper.strip()
-    if provider == "grok" and source == "step2-pages":
+    if provider in _GROK_FAMILY and source == "step2-pages":
         return STEP2_GROK_STYLE_HELPER.strip()
-    if provider == "grok" and source == "step1-pages":
+    if provider in _GROK_FAMILY and source == "step1-pages":
         return STEP1_PAGE_GROK_STYLE_HELPER.strip()
     return ""
 
@@ -1130,6 +1191,20 @@ def iter_yaml_manga_jobs(
     if not pages_dir.is_dir():
         raise FileNotFoundError(f"manga/pages/ がありません: {pages_dir}")
     characters = load_character_ir_map(novel_dir)
+    # プロバイダごとのプロンプトバイト上限を config から取得
+    # novel_dir = novels/<作品名>/ → 2階層上がプロジェクトルート
+    _project_root = novel_dir.resolve()
+    for _ in range(4):
+        if (_project_root / "config" / "image_generation.json").is_file():
+            break
+        _project_root = _project_root.parent
+    try:
+        root_cfg = load_root_config(_project_root)
+    except (FileNotFoundError, ValueError):
+        root_cfg = {}
+    max_prompt_bytes: int | None = (
+        root_cfg.get("providers", {}).get(provider, {}).get("max_prompt_bytes")
+    )
     paths = sorted(pages_dir.glob("*.yaml"))
     if only_stem:
         paths = [
@@ -1183,16 +1258,14 @@ def iter_yaml_manga_jobs(
             helper = resolve_page_style_helper(provider, "step1-pages", style_helper)
             anchor_block = yaml_character_anchor_block(page, characters)
             extra_text = "\n\n".join(blk for blk in (helper, anchor_block) if blk)
-            prompt = (
+            intro = (
                 f"以下は漫画1ページ分の詳細指示です。"
                 f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
-                f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。\n\n"
-                f"{extra_text}\n\n{body}" if extra_text else
-                f"以下は漫画1ページ分の詳細指示です。"
-                f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
-                f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。\n\n"
-                f"{body}"
+                f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。"
             )
+            prompt = f"{intro}\n\n{extra_text}\n\n{body}" if extra_text else f"{intro}\n\n{body}"
+            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+                prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             all_jobs.append(
                 {
                     "stem": stem,

@@ -281,12 +281,17 @@ _how_to/tag.md のルールに従い、各人物について
 「通常時／戦闘時／（必要なら）水着（該当があれば）」を出力してください。
 ```
 
-#### Forge 画像生成（txt2img）の事前確認
-- **`tools/forge_generate.py`** および **`tools/forge_novel_tag_batch.py`** / **`tools/forge_novel_manga_batch.py`** で Stable Diffusion Forge に画像生成を依頼する**前**に、エージェントは次を確認する。
-  1. **Forge の UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系か**（REST API は UI で選択中のモデルに追従するため、ブラウザの表示と一致させる）。
-  2. リポジトリ直下に **`config/image_generation.json` が存在すること**を確認する（画像生成系スクリプトの**設定正本**）。続けて **`providers.forge.active_model_family`** が UI のモデル族と一致しているかを見る。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
-  3. **CFG Scale の目安**: FLUX 系は **`providers.forge.presets.flux.default_cfg_scale` が 1** 前後、SDXL 系は **`providers.forge.presets.sdxl.default_cfg_scale` が 7** 前後（同プリセット定義に `sampler` / `scheduler` / `distilled_cfg_scale` 等も含まれる）。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
-  4. **疎通確認**: `python tools/forge_generate.py --probe`（既定 `default_provider` や CLI の `--provider` によって **接続先が変わる**点に注意。Forge だけ見たいなら **`--provider forge`** を明示するのが安全）。
+#### 画像生成（txt2img）の事前確認
+- **`tools/forge_generate.py`** および **`tools/forge_novel_tag_batch.py`** / **`tools/forge_novel_manga_batch.py`** で画像生成を依頼する**前**に、エージェントは**必ず次の順で**確認する。
+  1. **プロジェクトルートの `.env` を `Read` で開き、実際に使うプロバイダと APIキーを確認する**。`MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT`（コマ生成）や `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT`（精密ページ生成。既定 `grok_pro`）などが設定されていれば、それが `config/image_generation.json` の `default_provider` より優先される。**この手順を省略して Forge の疎通確認から始めると、設定済みの NovelAI / grok_pro を見落とす。**
+  2. リポジトリ直下に **`config/image_generation.json` が存在すること**を確認する（画像生成系スクリプトの**設定正本**）。
+  3. **プロバイダが Forge の場合のみ**、以下を追加確認する。
+     - UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系かを確認し、**`providers.forge.active_model_family`** と一致させる。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
+     - **CFG Scale の目安**: FLUX 系は約 1、SDXL 系は約 7。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
+     - **疎通確認**: `python tools/forge_generate.py --probe --provider forge`。
+  4. **`--dry-run` を実行してユーザーに確認を取る（必須）**。本番実行の直前に、対象バッチスクリプトへ `--dry-run` を付けて実行し、出力された **プロバイダ名・モデル・ジョブ数・保存先** をチャットに示す。ユーザーが「OK」「進めて」などの明示的な承認を返してから本番（`--dry-run` なし）を実行する。承認なしに本番実行を開始しない。
+     - 例（漫画ページ）: `python tools/forge_novel_manga_batch.py novels/<作品> --manga-stem manga_01 --source step1-pages --dry-run`
+     - 例（キャラタグ）: `python tools/forge_novel_tag_batch.py novels/<作品> --dry-run`
 - 運用の詳細・Flux 特有のパラメータはスキル **`forge-txt2img`**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
 
 ### 2.2.2 Manga Tag Mode（漫画タグ出力：本文参照後／一括生成前）
@@ -354,28 +359,41 @@ _how_to/tag.md のルールに従い、各人物について
  ユーザーの依頼が曖昧で、ページ全体かコマ単位かが読み取れない場合は、**まずコマ生成を既定**とする。
 - **ページ生成を優先する語**:
  「ページ全体」「1ページ丸ごと」「ページ単位」「step2」「ページ生成」「ページ丸ごとを出力」。
+ また、**「ページ」が成果物の単位として明示されている場合**もページ生成を優先する。具体的には「ページの作成」「ページを作る」「ページを出力」「漫画のページ」のように **「ページ」が動詞の目的語や成果物として使われている**表現を含む。「コマ」や「パネル」への言及がなく「ページ」だけが出力単位として挙げられていれば、ページ生成を優先してよい。
 - **精密ページ生成を優先する語**:
  「step1をそのままページ化」「step1からページ生成」「精密ページ生成」「詳細コマ指示でページ生成」「各コマ情報を保ったまま1ページ化」。
 - **コマ生成を優先する語**:
  「各コマ」「コマごと」「パネル単位」「step1」「コマ生成」「コマを個別に出力」。
 - **曖昧さが残る場合**:
- 「漫画を生成して」「漫画画像を出して」だけでは不足とみなし、**コマ生成が既定**であることを踏まえて処理する。ただし同一依頼内に **Step2 / ページ全体** の語が見える場合は **ページ生成を優先**する。
+ 「漫画を生成して」「漫画画像を出して」のように「ページ」も「コマ」も出てこない場合のみ、**コマ生成が既定**であることを踏まえて処理する。ただし同一依頼内に **Step2 / ページ全体 / ページ生成優先語** が見える場合は **ページ生成を優先**する。
+ なお、「ページ」が出力単位として使われているにもかかわらず step1-pages（精密）か step2-pages（要約）かが不明なときは、一言確認してからどちらで生成するかを決める。
 
-#### API対応の整理（2026-04-12 時点）
+#### Grok provider の使い分け（grok / grok_pro）
+
+`config/image_generation.json` では Grok を 2 エントリに分ける。
+
+| provider | モデル | 主な用途 |
+|----------|--------|---------|
+| `grok` | `grok-imagine-image`（standard） | キャラタグ一括など単体画像 |
+| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages / background-concepts）|
+
+ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として同一 API エンドポイントを共有する。`.env` では `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro`、`MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro`、`MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok_pro` を設定することで、漫画ページ系は自動的に pro モデルへルーティングされる。
+
+#### API対応の整理（2026-04-29 時点）
 - **コマ生成（Step1 / step1-panels）**:
  **Forge / NovelAI / Grok / OpenAI** で運用可能。各コマを独立画像として保存する。
 - **精密ページ生成（Step1 / step1-pages）**:
- **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
+ **grok_pro / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
 - **ページ生成（Step2 / step2-pages）**:
- **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
+ **grok_pro / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
 - **背景概念生成（background-concepts）**:
- **Grok** を既定とし、必要に応じて **OpenAI** を選べる。背景・空間設計を先に作り、ページ生成やコマ生成の参照に使う。
+ **grok_pro** を既定とし、必要に応じて **OpenAI** を選べる。背景・空間設計を先に作り、ページ生成やコマ生成の参照に使う。
 - **内蔵画像生成（Codex / ChatGPT）**:
  API provider ではなく、会話の `image_gen` を使った単発試作として扱う。保存時は `tools/codex_builtin_image_archive.py` で作品フォルダへコピーする。
 - **固定特徴・状況タグの注入**:
  `tools/forge_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
 - **推奨分担（Step1 コマ／ページ系）**:
- **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では Grok / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **Grok** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`forge-txt2img`**）。
+ **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では grok_pro / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **grok_pro** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`forge-txt2img`**）。
 - **ページ生成の非対応範囲**:
  **Forge / NovelAI** は、このリポジトリの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。これらは **コマ生成向け provider** として扱う。
 

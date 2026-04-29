@@ -35,7 +35,8 @@ except ImportError:
     print("error: PyYAML が必要です。pip install pyyaml", file=sys.stderr)
     sys.exit(2)
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro")
+_GROK_FAMILY = frozenset({"grok", "grok_pro"})
 TAG_PROVIDER_ENV = "MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT"
 
 STYLE_PREFIX = (

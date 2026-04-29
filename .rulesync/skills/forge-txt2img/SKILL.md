@@ -15,6 +15,11 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 ## プロバイダ解決の優先順位（LLM 向け確認手順）
 
+> **⚠️ LLM 必須アクション（最初に行う）**  
+> 画像生成を案内・実行する前に、必ずプロジェクトルートの **`.env` を `Read` で開き**、実際に使うプロバイダと APIキーを確認する。  
+> `config/image_generation.json` の `default_provider: "forge"` はあくまでフォールバックであり、`.env` に設定がある場合は **`.env` が優先**される。  
+> `.env` を読まずに Forge の疎通確認（`--probe`）から始めると、設定済みの NovelAI / Grok / OpenAI を見落とす原因になる。
+
 ユーザーが `--provider` を明示しない場合、バッチツールは次の順でプロバイダを決定する。
 
 | 優先順 | 参照先 | 対象ツール・用途 |
@@ -28,14 +33,28 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | 環境変数 | 対象ツール・用途 |
 |----------|-----------------|
 | `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `forge_novel_tag_batch.py`（キャラタグ一括生成） |
-| `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-panels / step1-pages` |
-| `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages` |
-| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source background-concepts`（未指定時は Grok） |
+| `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-panels`（コマ生成） |
+| `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
+| `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
+| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source background-concepts`（既定 `grok_pro`） |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
-| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | Grok のモデル tier（`standard` / `pro`） |
+| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `pro`）。`grok_pro` を直接使う運用では不要 |
 
-**LLMへの指針**: 画像生成を案内する前に、上記の `.env` 値を確認する（`Read` または `tools/workspace_audit_log.py` 相当で `.env` キーを参照）。`config` の `default_provider: "forge"` はフォールバックであり、`.env` に設定がある場合は `.env` が優先される。  
+### grok と grok_pro の使い分け
+
+`config/image_generation.json` では Grok を **2つの provider エントリ**に分けて管理する。
+
+| provider | 使用モデル | 主な用途 |
+|----------|-----------|----------|
+| `grok` | `grok-imagine-image`（standard） | キャラタグ一括生成など単体画像 |
+| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages / background-concepts） |
+
+ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として認識し、API 呼び出しは同じ xAI エンドポイントを共有する。プロバイダ名の違いが `config/image_generation.json` の `default_model` を切り替える唯一の手段であり、`MONOCRI_GROK_MODEL_TIER_DEFAULT` はオーバーライド手段として残すが、**漫画向けは `grok_pro` を直接指定するほうが意図が明確**。
+
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
+
+> **⚠️ ユーザー確認（必須）**  
+> プロバイダ・モデル・ジョブ数が確定したら、**本番実行前に必ず `--dry-run` の結果をチャットに示し、ユーザーの明示的な承認（「OK」「進めて」等）を得てから**本番（`--dry-run` なし）を実行する。承認なしの本番実行は禁止。
 
 ---
 
@@ -54,14 +73,14 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 本リポジトリの**既定の運用イメージ**は次のとおり。
 
-| モード | `forge_novel_manga_batch.py` | 推奨プロバイダ | `tag/*.md` 自動注入 |
-|--------|------------------------------|----------------|---------------------|
-| **コマ生成（Step1）** | `--source step1-panels`（既定） | **Forge（ローカル）** / **NovelAI** / **OpenAI** | **オン（既定）でよい**。NovelAI 向けに **`--no-character-anchors` は原則不要**（コマ単体で `tag:`＋注入で固定特徴を揃える想定）。 |
-| **精密ページ生成** | `--source step1-pages` | **Grok** または **OpenAI** | 注入オンを既定とするが、**拒否が出る場合**は `_how_to/manga.md` の Step2 的な言い換えに寄せる／**`--no-character-anchors`** を検討。 |
-| **ページ生成** | `--source step2-pages` | **Grok** または **OpenAI** | 同上。Step2 本文はもともと**モデレーションに触れにくい抽象レイアウト**を想定。 |
-| **背景概念生成** | `--source background-concepts` | **Grok**（既定）または **OpenAI** | `manga/pages/*.yaml` の `background_concepts[]` を使い、人物なしの背景・空間設計を先に起こす。 |
+| モード | `forge_novel_manga_batch.py` | 推奨プロバイダ | `.env` デフォルト変数 |
+|--------|------------------------------|----------------|----------------------|
+| **コマ生成（Step1）** | `--source step1-panels`（既定） | **NovelAI** / **Forge** / **OpenAI** | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai` |
+| **精密ページ生成** | `--source step1-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro` |
+| **ページ生成** | `--source step2-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro` |
+| **背景概念生成** | `--source background-concepts` | **grok_pro**（既定）または **OpenAI** | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok_pro` |
 
-**Grok が「必要になる」流れ**: 1ページを1枚にまとめる **step1-pages / step2-pages** は、**Forge／NovelAI をページ生成の正式先に含めない**既定のため、**クラウドでページ丸ごとを出すときは Grok** を使う。コマ単体の Step1 は **Forge か NovelAI** で足りる、という分担。
+**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** で足りる。1ページを1枚にまとめる **step1-pages / step2-pages / background-concepts** は **`grok_pro`（proモデル）を既定**とする。`grok`（standard）はキャラタグ一括など単体画像向けに保持する。
 
 ## 漫画生成の API 対応範囲（2026-04-12 時点）
 
@@ -86,7 +105,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
   - 例: `webui-user.bat` で `set COMMANDLINE_ARGS=--api` のあと起動。
 - 疎通確認: `python tools/forge_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
 - 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/forge_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
-- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「Forge 画像生成（txt2img）の事前確認」）。
+- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「画像生成（txt2img）の事前確認」）。
 
 ### Forge + Flux（ブラウザと API を揃える）
 
@@ -113,6 +132,37 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 - 画像モデルは **`grok-imagine-image`**。`aspect_ratio`、`resolution`、`n`、`response_format` が公式に案内されている。
 - このリポジトリでは `providers.grok.aspect_ratio_presets` により、`square`、`manga_b5_portrait`、`story_vertical` などの preset 名でも切り替えられる。**B5 実寸そのものは xAI の公式 ratio ではない**ため、`manga_b5_portrait` は **`3:4`** の近似 preset。
 - 既定実装は **`response_format: "b64_json"`** で受け、URL の失効前にそのまま保存する。
+
+### Grok プロンプト上限と自動圧縮（step1-pages で必須）
+
+Grok の API は **プロンプトの上限が約 8000 UTF-8 バイト**（公式仕様は文字数ではなくバイト数）。日本語は 1 文字 3 バイトのため、YAML IR から組み立てた step1-pages プロンプト（`render_instruction` ＋ パネル詳細 ＋ キャラ固定タグ）は **4 ページ分すべてが上限を超えることが多い**。
+
+`config/image_generation.json` の **`providers.grok.max_prompt_bytes`** にバイト上限（既定 **`7800`**）を設定しておくと、`tools/forge_novel_manga_batch.py` が step1-pages ジョブ組み立て時に **自動圧縮**（`trim_prompt_to_byte_limit`）を適用する。
+
+圧縮は次の 4 フェーズを順番に試み、上限に収まった時点で停止する：
+
+| フェーズ | 除去対象 | 節約効果の目安 |
+|----------|----------|---------------|
+| 1 | `render_instruction` ブロック行 | 中〜大（YAML IR 由来の作画依頼文） |
+| 2 | `- tag:` 行（キャラ固定タグ列） | 大（繰り返しキャラ登場で特に効く） |
+| 3 | `- 日本語訳:` 行 | 中（日本語訳付きタグ行） |
+| 4 | バイト数ベースの末尾切り捨て + `[...省略]` | 最終手段 |
+
+**設定確認コマンド**:
+
+```bash
+# config に max_prompt_bytes が設定されているか確認
+python -c "import json; d=json.load(open('config/image_generation.json')); print(d['providers']['grok'].get('max_prompt_bytes', '未設定'))"
+```
+
+**圧縮結果の確認**（dry-run で実際のプロンプトバイト数を見る）:
+
+```bash
+python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター \
+  --manga-stem manga_01 --source step1-pages --provider grok --dry-run
+```
+
+**注意**: `max_prompt_bytes` が未設定のまま step1-pages を Grok へ送ると **HTTP 400（プロンプト上限超過）** が返る。必ず `config/image_generation.json` の `providers.grok.max_prompt_bytes` を確認してから実行すること。
 
 ## 前提（OpenAI Images API）
 
@@ -300,6 +350,7 @@ python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテス
 - **HTTP 404**（`{"detail":"Not Found"}`）→ **REST API 未登録**。`--api` 付きで Forge を再起動し、`--probe` で `/sdapi/v1/samplers` が 200 になるか確認。
 - **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/forge_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
 - **NovelAI が HTTP 500（`Internal Server Error` のみ）** → `nai-diffusion-4*` 系は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/forge_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
+- **Grok が HTTP 400（プロンプト上限超過）** → xAI API はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。`config/image_generation.json` の `providers.grok.max_prompt_bytes`（既定 `7800`）が設定されていれば `tools/forge_novel_manga_batch.py` が自動圧縮する。設定が **未設定**の場合は `7800` を追加してから再実行する（詳細は「Grok プロンプト上限と自動圧縮」節）。
 - **Grok の URL 応答が期限切れ** → xAI docs でも生成 URL は一時的。`response_format: "b64_json"` を優先し、即保存する。
 - HTTP その他 4xx/5xx → レスポンス先頭を stderr に表示。
 - **返却 PNG が異常に小さい**（既定 512 バイト未満）→ **exit 8**。Forge は `image_generation.json` の Flux 向け数値・VAE・モデルを UI と揃えて再試行。NovelAI は prompt / sampler / model の組み合わせを見直す。

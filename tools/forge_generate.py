@@ -36,9 +36,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok", "openai")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai")
+_GROK_FAMILY = frozenset({"grok", "grok_pro"})
 FORGE_MODEL_FAMILY_ENV = "MONOCRI_FORGE_MODEL_FAMILY_DEFAULT"
-GROK_MODEL_TIER_ENV = "MONOCRI_GROK_MODEL_TIER_DEFAULT"
 
 
 # NovelAI nai-diffusion-4 / 4.5 系の UC プリセット文字列（参考用）。
@@ -265,15 +265,6 @@ def normalize_forge_family(raw_value: Any, *, source: str) -> str:
     raise ValueError(f"{source} の Forge モデル族 {raw_value!r} は未対応です。available: sdxl, flux")
 
 
-def normalize_grok_model_tier(raw_value: Any, *, source: str) -> str:
-    tier = str(raw_value).strip().lower()
-    if tier in ("standard", "std", "default", "normal"):
-        return "standard"
-    if tier in ("pro",):
-        return "pro"
-    raise ValueError(f"{source} の Grok モデル種別 {raw_value!r} は未対応です。available: standard, pro")
-
-
 def apply_provider_env_overrides(
     provider: str,
     provider_cfg: dict[str, Any],
@@ -288,22 +279,6 @@ def apply_provider_env_overrides(
                 source=f".env/{FORGE_MODEL_FAMILY_ENV}",
             )
         return apply_forge_model_preset(out)
-
-    if provider == "grok":
-        raw_tier = resolve_env_value(GROK_MODEL_TIER_ENV, dotenv_map)
-        if not raw_tier:
-            return out
-        tier = normalize_grok_model_tier(
-            raw_tier,
-            source=f".env/{GROK_MODEL_TIER_ENV}",
-        )
-        aliases = out.get("model_aliases")
-        if isinstance(aliases, dict):
-            alias_model = aliases.get(tier)
-            if alias_model:
-                out["default_model"] = str(alias_model)
-        out["default_model_tier"] = tier
-        return out
 
     return out
 
@@ -427,7 +402,7 @@ def run_probe(provider: str, provider_cfg: dict[str, Any], timeout: float) -> No
         print(f"  configured generate_path={generate_path}")
         return
 
-    if provider == "grok":
+    if provider in _GROK_FAMILY:
         print(
             "Grok / xAI Images API は probe 用の専用 health endpoint を前提にしていないため、"
             "dry-run または実際の生成で疎通確認してください。"
@@ -610,7 +585,7 @@ def merge_provider_defaults(
             out["v4_use_coords"] = bool(params["v4_use_coords"])
         return out
 
-    if provider == "grok":
+    if provider in _GROK_FAMILY:
         out["model"] = params.get("model", provider_cfg["default_model"])
         out["response_format"] = params.get(
             "response_format", provider_cfg.get("default_response_format", "b64_json")
@@ -1249,7 +1224,7 @@ def main(argv: list[str] | None = None) -> int:
                 append_log(log_path, f"ERROR provider=novelai seed={seed_i} {e!r}")
                 print(f"リクエスト失敗: {e}", file=sys.stderr)
                 return 5
-    elif provider == "grok":
+    elif provider in _GROK_FAMILY:
         auth_env = str(provider_cfg.get("auth_env", "XAI_API_KEY"))
         token = resolve_env_value(auth_env, dotenv_map)
         if not token and not args.dry_run:
