@@ -50,6 +50,7 @@ description: >-
 4. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル）。
 5. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
 6. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
+   - **部分加筆・シーンの途中挿入**でも手順 3〜6 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
 
 ## 査証・メタ
 
