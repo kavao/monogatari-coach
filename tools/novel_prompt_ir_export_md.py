@@ -15,12 +15,11 @@ import yaml
 _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
-from forge_novel_manga_batch import (
+from image_provider_novel_manga_batch import (
     build_step2_panel_line,
     comma_split_tags,
     filter_single_panel_tags,
     join_novelai_pipe_tag_line,
-    join_tags as forge_join_tags,
     yaml_panel_tags_novelai_split,
 )
 from manga_prompt_ir.scene_prompt import (
@@ -246,7 +245,7 @@ def subject_text(subject: dict[str, Any], characters: dict[str, dict[str, Any]])
 
 
 def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str, dict[str, Any]]) -> list[str]:
-    """互換 Markdown の Step1 タグ行用。forge_novel_manga_batch.yaml_panel_tags(..., single_panel=True) と整合させる。"""
+    """互換 Markdown の Step1 タグ行用。image_provider_novel_manga_batch.yaml_panel_tags(..., single_panel=True) と整合させる。"""
     manga = page.get("manga") or {}
     scene = panel.get("scene") or page.get("scene") or {}
     composition = panel.get("composition") or {}
@@ -291,7 +290,7 @@ def panel_tag_line_for_export(
     *,
     novelai_pipe_tags: bool,
 ) -> str:
-    """Step1 のタグ1行。novelai_pipe_tags 時は forge と同じ base | キャラごとのセグメント分割。"""
+    """Step1 のタグ1行。novelai_pipe_tags 時は image provider と同じ base | キャラごとのセグメント分割。"""
     if novelai_pipe_tags:
         btags, char_segs = yaml_panel_tags_novelai_split(page, panel, characters, single_panel=True)
         return join_novelai_pipe_tag_line(btags, char_segs)
@@ -429,7 +428,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Step1 の tag 行を NovelAI 向け「ベース | キャラクター」形式で出力する"
-            "（forge_novel_manga_batch の YAML step1-panels・novelai と同じ分割）"
+            "（image_provider_novel_manga_batch の YAML step1-panels・novelai と同じ分割）"
         ),
     )
     parser.add_argument(

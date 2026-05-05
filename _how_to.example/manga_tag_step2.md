@@ -29,7 +29,7 @@
 
 `novel_prompt_ir_validate.py` は**言い換え内容を検証しない**（上の表どおりかは見ない）。日本語の意味づけ・品質の正本は、引き続き **`panels[].step2_summary`**（無ければ `summary`）や手で整えた互換 Markdown の本文に**人が書き込む**こととする。
 
-一方、**表に列挙した語の機械置換**は、ルール YAML（本表と同期）を **`forge_novel_manga_batch.py`**（`--source step2-pages`）および **`novel_prompt_ir_export_md.py`** が、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成・エクスポート直前の Step2 本文**へ適用する（**`--no-step2-paraphrase`** で無効化。IR は変えない）。**既定 `apply_mode: whole_text`** では `avoid` に一度でも一致したら**そのコマの要約全文**を `use` に差し替える。文中だけ置換する従来動作は YAML に **`apply_mode: substring`**。
+一方、**表に列挙した語の機械置換**は、ルール YAML（本表と同期）を **`image_provider_novel_manga_batch.py`**（`--source step2-pages`）および **`novel_prompt_ir_export_md.py`** が、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成・エクスポート直前の Step2 本文**へ適用する（**`--no-step2-paraphrase`** で無効化。IR は変えない）。**既定 `apply_mode: whole_text`** では `avoid` に一度でも一致したら**そのコマの要約全文**を `use` に差し替える。文中だけ置換する従来動作は YAML に **`apply_mode: substring`**。
 
 **ルール YAML の場所（優先順）**: （1）環境変数 **`MONOCRI_STEP2_PARAPHRASE_RULES`**、（2）**`_how_to/step2_paraphrase_rules.yaml`**、（3）**`tools/manga_prompt_ir/data/step2_paraphrase_rules.yaml`**。表を増やしたら `avoid` / `use` を追記し、**長い `avoid` を先に**並べる。
 

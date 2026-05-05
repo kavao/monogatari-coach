@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 _TOOLS = Path(__file__).resolve().parents[2]
 if str(_TOOLS) not in sys.path:

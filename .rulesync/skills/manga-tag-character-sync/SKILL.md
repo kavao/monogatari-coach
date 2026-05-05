@@ -14,7 +14,7 @@ targets: ["*"]
 
 本スキルは、`manga/pages/*.yaml` の漫画ページIRを作るときに、**`character.md` と `tag/characters/*.yaml` を先に読み、固定特徴を毎コマへ反映する手順**を固定する。
 
-`manga/manga_XX.md` は `tools/forge_novel_manga_batch.py` 向けの**互換出力（人間向けの可読副本）**であり、Manga Tag Mode の初手で直接新規作成して**唯一の正本**にしない。既存 Markdown は移行・比較・推敲・生成直前の確認に使う。
+`manga/manga_XX.md` は `tools/image_provider_novel_manga_batch.py` 向けの**互換出力（人間向けの可読副本）**であり、Manga Tag Mode の初手で直接新規作成して**唯一の正本**にしない。既存 Markdown は移行・比較・推敲・生成直前の確認に使う。
 
 ## 正本・参照
 
@@ -101,4 +101,4 @@ manga/manga_XX.md は必要時に YAML からエクスポートする（人間�
 
 - ルール: `.rulesync/rules/overview.md` の Manga Tag Mode
 - 画像タグ整合: スキル `novel-tag-character-consistency`
-- 画像生成: スキル `forge-txt2img`
+- 画像生成: スキル `image-provider（旧 forge-txt2img）`

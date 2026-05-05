@@ -6,7 +6,7 @@
 - **エージェント・執筆支援**: ページYAMLの `panels[].prompt_tags` を新規作成・改稿するときは、`.rulesync/skills/manga-prompt-ir/SKILL.md` の「`_how_to/manga_tag.md` との役割分担」に従い、**必ず本ファイルの運用コピー（通常は `_how_to/manga_tag.md`）を開いて**からタグを書く。置き換えリストは **ツールが自動では適用しない**ため、**YAML に明示的に書き込む**まで未完了とみなす。
 - **variant の3キー優先・スナップショット・validate**: `manga.md` の「バリアントとタグ注入の優先」節と `tools/novel_prompt_ir_validate.py`。ここでは繰り返さない。
 - **`scene` の日本語＋ `location_en` 等**: プロンプト用英語行の運用は従来どおり。ページ組み立ての本体は `manga.md`。
-- **保存ファイルの `pNN`**: ページ番号はページYAML**ファイル名**の `_pNN` から（`forge_novel_manga_batch.py`）。詳細はルート **`AGENTS.md`** の漫画アセットの節。
+- **保存ファイルの `pNN`**: ページ番号はページYAML**ファイル名**の `_pNN` から（`image_provider_novel_manga_batch.py`）。詳細はルート **`AGENTS.md`** の漫画アセットの節。
 
 コマに載せる意味のチェック（タグ形式より日本語の意味）:
 
@@ -22,7 +22,7 @@
 
 ## コマ別ネガ（Negative prompt の出し分け）
 
-コマ単位の画像生成（`forge_novel_manga_batch.py --source step1-panels`）では、**ネガティブプロンプトは `panels[].prompt_tags`（ポジティブ側のタグ列）には書かない**。次の YAML フィールドと CLI で制御する。
+コマ単位の画像生成（`image_provider_novel_manga_batch.py --source step1-panels`）では、**ネガティブプロンプトは `panels[].prompt_tags`（ポジティブ側のタグ列）には書かない**。次の YAML フィールドと CLI で制御する。
 
 | 指定 | 置き場所 | 役割 |
 |------|----------|------|
@@ -31,7 +31,7 @@
 | `panels[].negative_tags` | コマごと | **そのコマだけ**に追加する断片 |
 | `panels[].omit_negative_tags` | コマごと | 合成の**前**に、基底＋`technical` から**除く**断片（他コマでは残る） |
 
-合成の順序・正本は `.rulesync/skills/manga-prompt-ir/SKILL.md` と `tools/forge_novel_manga_batch.py`。
+合成の順序・正本は `.rulesync/skills/manga-prompt-ir/SKILL.md` と `tools/image_provider_novel_manga_batch.py`。
 
 ### split screen など「コマによって禁止したい／例外的に許したい」場合
 

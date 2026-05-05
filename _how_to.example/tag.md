@@ -5,14 +5,14 @@
 
 - 人間編集用の正本: `novels/<作品>/tag/characters/<character_id>.yaml`
 - 人間向けの副本・既存バッチ互換: `novels/<作品>/tag/<romaji>.md`
-- 互換 Markdown は `tools/forge_novel_tag_batch.py` 向けの抽出形式に加え、**手作業でのタグ確認・差分レビュー・可読参照**に用いる
+- 互換 Markdown は `tools/image_provider_novel_tag_batch.py` 向けの抽出形式に加え、**手作業でのタグ確認・差分レビュー・可読参照**に用いる
 - 中間データは作り直し可能だが、**日本語の意味・固定特徴・変更禁止・状況別タグ**は失わない
 
 ---
 
 ## Tag Mode チェックリスト（`tag.md` を実際のタグへ「効かせる」）
 
-> 注意: `tag.md` はルール文書であり、画像生成ツールが自動で読み込む設定ファイルではない。  
+> 注意: `tag.md` はルール文書であり、画像生成ツールが自動で読み込む設定ファイルではない。
 > **「効かせる」＝YAML IR（`tag/characters/*.yaml`）または互換 MD（`tag/*.md`）へ反映した**という意味になる。
 > 以降は、その反映漏れを防ぐためのチェックリストである。
 
@@ -32,7 +32,7 @@
 - **迷ったら `costume.outfit_tags: []`**（空配列）にし、衣装は各バリアントの `danbooru_tags` のみで表現する。
 - **常に身につける固定小物**（例: 取り外さない指輪）だけを `outfit_tags` に置く運用は可。**状況で外すリボンや首飾り**は、外れるバリアントでは `danbooru_tags` 側にのみ書く。
 
-**関連ツール**: `tools/forge_novel_tag_batch.py`（キャラ一括画像）、`tools/novel_prompt_ir_export_md.py`（互換 `tag/<romaji>.md` 出力）は上記の固定合成に従う。漫画側では `tools/novel_prompt_ir_embed_snapshots.py` がスナップショットを埋め込むため、IR の誤りは **キャラタグと漫画コマの両方**に波及しうる。
+**関連ツール**: `tools/image_provider_novel_tag_batch.py`（キャラ一括画像）、`tools/novel_prompt_ir_export_md.py`（互換 `tag/<romaji>.md` 出力）は上記の固定合成に従う。漫画側では `tools/novel_prompt_ir_embed_snapshots.py` がスナップショットを埋め込むため、IR の誤りは **キャラタグと漫画コマの両方**に波及しうる。
 
 ### 2) 状況バリアント（最低限）
 
@@ -95,7 +95,7 @@ glowing_irisが含まれるタグについては、目が輝くというのは�
 
 ## Markdown ファイル形式（`tag/<romaji>.md`・機械抽出と整合）
 
-作品フォルダに **`novels/<作品>/tag/<romaji>.md`** として保存するときは、人間が読みやすいことに加え、**`tools/forge_novel_tag_batch.py`（Forge 一括 txt2img）** が安定して **Danbooru 行を取り出せる**形に揃える。ブレると一括でスキップされたり、意図しないブロック分割になる。
+作品フォルダに **`novels/<作品>/tag/<romaji>.md`** として保存するときは、人間が読みやすいことに加え、**`tools/image_provider_novel_tag_batch.py`（Forge 一括 txt2img）** が安定して **Danbooru 行を取り出せる**形に揃える。ブレると一括でスキップされたり、意図しないブロック分割になる。
 
 ### ファイル先頭
 
@@ -131,10 +131,10 @@ glowing_irisが含まれるタグについては、目が輝くというのは�
 リポジトリルートで、対象作品パスを渡して **ドライラン**する。ジョブ数と `prompt` 先頭が表示されれば抽出OK。
 
 ```bash
-python tools/forge_novel_tag_batch.py novels/<作品フォルダ名> --dry-run
+python tools/image_provider_novel_tag_batch.py novels/<作品フォルダ名> --dry-run
 ```
 
-詳細な運用はスキル **`novel-tag-md-format`**（`.rulesync/skills/novel-tag-md-format/SKILL.md`）および **`forge-txt2img`** を参照。
+詳細な運用はスキル **`novel-tag-md-format`**（`.rulesync/skills/novel-tag-md-format/SKILL.md`）および **`image-provider（旧 forge-txt2img）`** を参照。
 
 出力例となります
 ```
@@ -174,6 +174,3 @@ A sporty young woman with splashed orange short hair and sparkling amber eyes we
 ```
 
 次に、作風、画風タグについて、全体で共通で適用するとよい物を挙げます。
-
-
-

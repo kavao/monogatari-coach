@@ -7,7 +7,7 @@
 保存先: manga/_assets/<manga_stem>/ （既定・file_prefix は <stem>_p<page>_k<koma>）。
   --subdir-by-page 指定時は manga/_assets/<manga_stem>/p<page>/ に保存（任意。本リポジトリの推奨運用は章単位の直下のみ）。
   novel_image_layout の k01.. は「1ページ内のコマ用スロット」用の任意フォルダで、本スクリプト既定では未使用。
-前提: config/image_generation.json・各 provider の準備完了（tools/forge_generate.py と同じ）
+前提: config/image_generation.json・各 provider の準備完了（tools/image_provider_generate.py と同じ）
 
 `tag/*.md` からのキャラ固定特徴の自動注入は、**`--no-character-anchors`** で無効化できる（NovelAI 等でポリシー拒否が出るとき、step1 の `tag:` だけを送りたいとき）。
 
@@ -36,7 +36,7 @@ if str(_TOOLS_DIR) not in sys.path:
 
 
 def _safe_print_stdout(text: str) -> None:
-    """Windows cp932 等で forge の stdout に含まれる文字が print できず落ちるのを防ぐ。"""
+    """Windows cp932 等で image provider の stdout に含まれる文字が print できず落ちるのを防ぐ。"""
     if not text:
         return
     try:
@@ -56,7 +56,7 @@ from manga_prompt_ir.scene_prompt import (
     subject_tag_line_token,
 )
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 INPUT_CHOICES = ("yaml", "markdown")
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
@@ -281,7 +281,9 @@ def resolve_batch_provider(root: Path, source: str, args_provider: str | None) -
     env_provider = dotenv_map.get(env_name)
     if env_provider:
         return validate_provider(env_provider, source=f".env {env_name}")
-    if source in ("step1-pages", "step2-pages", "background-concepts"):
+    if source == "background-concepts":
+        return validate_provider("grok", source=f"{source} default")
+    if source in ("step1-pages", "step2-pages"):
         return validate_provider("grok_pro", source=f"{source} default")
     root_cfg = load_root_config(root)
     return validate_provider(
@@ -464,12 +466,12 @@ def character_ir_tags(character: dict, variant_id: str | None = None) -> list[st
     variant = find_character_variant(character, variant_id)
     if variant:
         appearance = character.get("appearance") or {}
-        tags: list[str] = []
-        tags.extend(str(v) for v in as_list(character.get("character_tags")))
-        tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-        tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-        tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
-        return unique(tags)
+        variant_tags: list[str] = []
+        variant_tags.extend(str(v) for v in as_list(character.get("character_tags")))
+        variant_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+        variant_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+        variant_tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
+        return unique(variant_tags)
 
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
@@ -989,12 +991,18 @@ def yaml_page_step2_text(
     return "\n".join(lines).strip()
 
 
-def yaml_background_concept_jobs(page: dict, stem: str, page_num: int) -> list[dict[str, str]]:
+def yaml_background_concept_jobs(
+    page: dict,
+    stem: str,
+    page_num: int,
+    yaml_path: Path,
+) -> list[dict[str, object]]:
     scene = page.get("scene") or {}
+    meta = page.get("meta") or {}
     loc_bg, tod_bg, _wx_bg = scene_prompt_location_time_weather(scene)
     technical = page.get("technical") or {}
     page_negative = join_tags(as_list(technical.get("negative_tags")))
-    jobs: list[dict[str, str]] = []
+    jobs: list[dict[str, object]] = []
     for index, concept in enumerate(as_list(page.get("background_concepts")), start=1):
         if not isinstance(concept, dict):
             continue
@@ -1026,7 +1034,23 @@ def yaml_background_concept_jobs(page: dict, stem: str, page_num: int) -> list[d
                 "koma": "0",
                 "prefix": f"{stem}_p{page_num:02d}_{concept_id}",
                 "prompt": body,
+                "negative_prompt": negative_line,
                 "output_subdir": "backgrounds",
+                "metadata": {
+                    "kind": "background-reference",
+                    "source": "background-concepts",
+                    "manga_yaml": yaml_path.as_posix(),
+                    "source_text_file": meta.get("source_text_file"),
+                    "page": page_num,
+                    "manga_stem": stem,
+                    "concept_id": concept_id,
+                    "concept_title": title,
+                    "scene_name": scene.get("name") or scene.get("location"),
+                    "scene_location": scene.get("location"),
+                    "scene_location_en": scene.get("location_en"),
+                    "usage": concept.get("usage"),
+                    "provider_hint": concept.get("provider_hint"),
+                },
             }
         )
     return jobs
@@ -1075,7 +1099,7 @@ def detect_relevant_anchors(
     relevant: list[dict[str, object]] = []
     lowered = text.lower()
     for anchor in anchors:
-        aliases = anchor.get("aliases", [])
+        aliases = as_list(anchor.get("aliases"))
         if any(isinstance(alias, str) and alias_matches_text(alias, text, lowered) for alias in aliases):
             relevant.append(anchor)
     return relevant
@@ -1099,7 +1123,7 @@ def build_character_anchor_block(
 
 def select_anchor_variant(anchor: dict[str, object], context_text: str) -> dict[str, object]:
     lowered = context_text.lower()
-    variants = anchor.get("variants", [])
+    variants = [variant for variant in as_list(anchor.get("variants")) if isinstance(variant, dict)]
     best_variant = variants[0] if variants else {"title": "通常時", "danbooru": anchor["danbooru"]}
     best_score = -1
     for variant in variants:
@@ -1107,7 +1131,7 @@ def select_anchor_variant(anchor: dict[str, object], context_text: str) -> dict[
         title = str(variant.get("title", ""))
         if title and title in context_text:
             score += 6
-        for keyword in variant.get("keywords", []):
+        for keyword in as_list(variant.get("keywords")):
             if keyword and (keyword in context_text or keyword in lowered):
                 score += 1
         if score > best_score:
@@ -1526,7 +1550,7 @@ def iter_yaml_manga_jobs(
         page_num = yaml_page_number(path, index)
         base = (manga_dir / "_assets" / stem).resolve()
         if source == "background-concepts":
-            for job in yaml_background_concept_jobs(page, stem, page_num):
+            for job in yaml_background_concept_jobs(page, stem, page_num, path):
                 job["output_dir"] = (base / job.pop("output_subdir", "backgrounds")).as_posix()
                 all_jobs.append(job)
         elif source == "step2-pages":
@@ -1662,7 +1686,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--dry-run",
         action="store_true",
-        help="forge に送らず、抽出したジョブだけ表示",
+        help="image provider に送らず、抽出したジョブだけ表示",
     )
     p.add_argument(
         "--manga-stem",
@@ -1835,9 +1859,9 @@ def main(argv: list[str] | None = None) -> int:
 
     aspect_effective = manga_grok_pro_effective_aspect_ratio(args.aspect_ratio, provider)
 
-    forge = root / "tools" / "forge_generate.py"
-    if not forge.is_file():
-        print(f"error: {forge} がありません", file=sys.stderr)
+    provider_cli = root / "tools" / "image_provider_generate.py"
+    if not provider_cli.is_file():
+        print(f"error: {provider_cli} がありません", file=sys.stderr)
         return 2
 
     print(f"novel: {novel}")
@@ -1870,6 +1894,8 @@ def main(argv: list[str] | None = None) -> int:
             "count": 1,
             "seed": None,
         }
+        if job.get("metadata"):
+            payload["metadata"] = job["metadata"]
         if aspect_effective is not None:
             payload["aspect_ratio_preset"] = aspect_effective
         if args.resolution is not None:
@@ -1902,7 +1928,7 @@ def main(argv: list[str] | None = None) -> int:
                 r = subprocess.run(
                     [
                         sys.executable,
-                        str(forge),
+                        str(provider_cli),
                         "--params",
                         str(tf_path),
                         "--json",
@@ -1929,12 +1955,12 @@ def main(argv: list[str] | None = None) -> int:
             if r is not None:
                 print(r.stderr or r.stdout, file=sys.stderr)
                 print(
-                    f"error: forge が失敗しました ({job['prefix']}) code={r.returncode}",
+                    f"error: image provider が失敗しました ({job['prefix']}) code={r.returncode}",
                     file=sys.stderr,
                 )
                 return r.returncode or 1
             else:
-                print(f"error: forge の実行に失敗しました ({job['prefix']})", file=sys.stderr)
+                print(f"error: image provider の実行に失敗しました ({job['prefix']})", file=sys.stderr)
                 return 1
         _safe_print_stdout(r.stdout.strip())
 

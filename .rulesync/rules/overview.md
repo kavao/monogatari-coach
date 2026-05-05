@@ -38,7 +38,7 @@ globs: ["**/*"]
 
 ### ローカル試行用（`tools_temp/`）
 - LLM や手元での**試行錯誤用の一時領域**は、リポジトリ直下の **`tools_temp/`** を使う。**フォルダ内のファイルは原則 Git 管理外**（`tools_temp/README.md` のみ追跡。`.gitignore` で `tools_temp/*` を無視し README を例外指定）。案内文はルート `readme.md` の「ローカル試行用」節および **`tools_temp/README.md`** にある。
-- **`tools/`** には**共有・正規運用**のスクリプトのみ置く。正規表現の再検証、マンガ `manga_*.md` の Step1／Step2 抽出ロジックの試作、`forge_generate.py` / `forge_novel_manga_batch.py` などの**コピーを弄る検証**は、**`tools/` を直接編集せず**、必要なファイルを **`tools_temp/` にコピーして**から編集・実行する。
+- **`tools/`** には**共有・正規運用**のスクリプトのみ置く。正規表現の再検証、マンガ `manga_*.md` の Step1／Step2 抽出ロジックの試作、`image_provider_generate.py` / `image_provider_novel_manga_batch.py` などの**コピーを弄る検証**は、**`tools/` を直接編集せず**、必要なファイルを **`tools_temp/` にコピーして**から編集・実行する。
 - 試行で得た改善を本番へ取り込むときは、**`tools/`** または **`.rulesync/rules/`・`.rulesync/skills/`** へ**意図を整理してから**反映する（一時スクリプトをそのまま `tools/` へリネームしてコミットしない。差分が明確なパッチや新規正式ツールとして入れる）。
 
 ### スキルへの Python 追加ルール（重要）
@@ -56,30 +56,30 @@ globs: ["**/*"]
 Monogatari Coachは、必要なファイルとオプションのコンテキストファイルで構成され、すべてMarkdownフォーマットになっています。ファイルは明確な階層構造で相互に構築されています：
 
 #### - 作家ファイル (writers/[writer_code]_[writer_name]/)
-1. writer_profile.md  
-   - 作家（writer）の基本情報と文体・作風をまとめて記録する  
+1. writer_profile.md
+   - 作家（writer）の基本情報と文体・作風をまとめて記録する
    - 経歴、得意ジャンル、執筆スタイル、一人称、口調、その作家特有の創作傾向やアイディアの方向性など
-   
-なお、標準の無属性作家として `writers/000_default/writer_profile.md` を1つ用意しておき、  
+
+なお、標準の無属性作家として `writers/000_default/writer_profile.md` を1つ用意しておき、
 特に作家指定がないときはこの「標準作家プロフィール」を参照する。
 
 #### - 創作技法ファイル (_how_to/)
-- `_how_to/_index.md`  
-  - 創作技法ファイルのインデックス､これを必ず基準として参照します。どのような技法リファレンスを使うかはプロジェクトごと・ユーザーごとに異なるため、**このファイルをユーザーが自由に編集・カスタムしてよい**。  
+- `_how_to/_index.md`
+  - 創作技法ファイルのインデックス､これを必ず基準として参照します。どのような技法リファレンスを使うかはプロジェクトごと・ユーザーごとに異なるため、**このファイルをユーザーが自由に編集・カスタムしてよい**。
   - 初期状態では、次のような代表的ファイルが例として記載されている（実体は `_how_to/` 配下の各ファイルにある）:
-    1. `novelcore.md`  
+    1. `novelcore.md`
        - 一般的な小説の文法
     2. `novel_structure.md`
-       - 一般的な小説構造のデータベース  
-    3. `epsode_common.md`  
-       - 一般的な小説構造のデータベース、恋愛や親愛要素が多い  
-    4. `rewrite.md`  
-       - 文章校正の時に使う  
-    5. `name_creature.json`  
-       - 人名、クリーチャー名を考えるときの参考にする  
-    6. `world_wear.md`  
-       - 世界の色彩や、人物デザインを考えるときの参考にする  
-    7. `reader.md`  
+       - 一般的な小説構造のデータベース
+    3. `epsode_common.md`
+       - 一般的な小説構造のデータベース、恋愛や親愛要素が多い
+    4. `rewrite.md`
+       - 文章校正の時に使う
+    5. `name_creature.json`
+       - 人名、クリーチャー名を考えるときの参考にする
+    6. `world_wear.md`
+       - 世界の色彩や、人物デザインを考えるときの参考にする
+    7. `reader.md`
        - 小説の書評・下読みを行うときに使うレビュアープロンプト。評価観点（キャラクター、プロットの完成度、文章力、わかりやすさ、独創性など）や、5段階評価・読後感の期待値・改善サイクルといった出力フォーマットを定義する。First Reader Modeの記述を参考にし、ログの出力も必ず行うこと。
     8. `standard_reader.md`
        - 一般読者の「興味」と「第一印象」を判定するためのプロンプト。ペルソナに基づき、冒頭の掴みや読み飛ばしの有無をシビアに評価する。
@@ -113,15 +113,15 @@ c. プロフィールについても深く掘り下げてください。
 小説の執筆は必ずファイルに出力してください。指定がない限りは1テキストファイル当たりの執筆は4000文字を目安にしてください｡分量が不足しそうな場合には、作業配分を考えた上で回数を分けて出力を行ってください。
 前半の後半のような場合には追記する形などファイルへの更新対応も考慮してください。
 
-**会話だけに本文を出さない（執筆の根源ルール）**  
-- **本文の正本は `novels/.../_novel_text/novel_text*.md`**。チャット欄への貼り付けだけで執筆を完了とみなさない。  
-- **「執筆完了」「保存した」** 等は、**スキル `novel-text-file-output` の「執筆『完了』の定義」**（`_novel_text` への書き込みに続き、`Read` または `novel_char_count.py` で確認した **後**）に限ってユーザーへ伝えてよい。  
-- **追記・シーン挿入・項ファイル（`novel_textXX_Y.md`）への加筆**も例外なく **正本は `_novel_text/*.md`** とする。チャットに追加文だけ出してファイルを更新していない状態は **未反映**。詳細はスキル **`novel-text-file-output`** の「追記・挿入・シーン追加」。  
+**会話だけに本文を出さない（執筆の根源ルール）**
+- **本文の正本は `novels/.../_novel_text/novel_text*.md`**。チャット欄への貼り付けだけで執筆を完了とみなさない。
+- **「執筆完了」「保存した」** 等は、**スキル `novel-text-file-output` の「執筆『完了』の定義」**（`_novel_text` への書き込みに続き、`Read` または `novel_char_count.py` で確認した **後**）に限ってユーザーへ伝えてよい。
+- **追記・シーン挿入・項ファイル（`novel_textXX_Y.md`）への加筆**も例外なく **正本は `_novel_text/*.md`** とする。チャットに追加文だけ出してファイルを更新していない状態は **未反映**。詳細はスキル **`novel-text-file-output`** の「追記・挿入・シーン追加」。
 - クライアントで **Auto 以外の LLM を選ぶ**と、**会話にだけ書く**傾向が出やすい。執筆ターンの **末尾** に、**更新ファイルパスの明示**と、**`Read` による再読込**または **`tools/novel_char_count.py` による確認**を行う（詳細は **§2.3.1**・スキル **`novel-text-file-output`**）。
 
-**小説本文の文字数カウント（公式）**  
-- **目安・査証ログ・チャットでの分量報告**に使う数値は、推測やエディタの目安ではなく、リポジトリ同梱の **`tools/novel_char_count.py`** の実行結果を正とする。  
-- 定義（全角・半角・Markdown 記号の扱い、フロントマター除外の既定など）はスキル **`novel-char-count`**（`.rulesync/skills/novel-char-count/SKILL.md`）に従う。  
+**小説本文の文字数カウント（公式）**
+- **目安・査証ログ・チャットでの分量報告**に使う数値は、推測やエディタの目安ではなく、リポジトリ同梱の **`tools/novel_char_count.py`** の実行結果を正とする。
+- 定義（全角・半角・Markdown 記号の扱い、フロントマター除外の既定など）はスキル **`novel-char-count`**（`.rulesync/skills/novel-char-count/SKILL.md`）に従う。
 - 可能な環境では、執筆・推敲の節目でターミナルから本スクリプトを実行し、**章ごとの文字数・合計**を根拠として判断する（実行不能な場合のみ、その旨を明記したうえで代替判断とする）。
 
 1. proposal.md
@@ -139,32 +139,32 @@ c. プロフィールについても深く掘り下げてください。
 5. world.md
    - 世界観情報
    - 概要（世界の成り立ち、ジャンル、テーマ）、地理・自然環境、歴史・年表、社会構造・政治、経済・産業、文化・風習・生活様式、人種・種族・民族、技術・魔法、組織・団体
-6. _novel_text/novel_textXX.md  
+6. _novel_text/novel_textXX.md
    - 小説本文は章ごとに別ファイルにしてください。小説の執筆は必ずファイルに出力してください。
      第1章は novel_text01.md、第2章は novel_text02.md、第3章は novel_text03.md のように番号を増やしていってください。
      もし章の下に項があった場合は第1章1項は novel_text01_1.md、第1章2項は novel_text01_2.mdのように"_"を追加して番号を増やしてください。前半､後半に分けるといった場合でも_1,_2のようにファイル名を分けて、3回に分ける場合は_1,_2,_3のようにファイル名を分けるようにしてください
    - **`_how_to/rewrite.md` による清書（文章校正）の成果物**は、初稿と混線しないよう **`_novel_text_re_/novel_textXX.md`** に、**上記と同一のファイル名**で出力する（§2.5・スキル **`novel-refinement-output`**）。
-7. _reader/  
-   - 小説ごとの詳細な書評ファイルを格納するフォルダ  
+7. _reader/
+   - 小説ごとの詳細な書評ファイルを格納するフォルダ
    - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`reader/YYYYMMDD_HHMM.md`）で保存する
 8. tag/characters/<character_id>.yaml（キャラクタータグ正本・YAML IR）
    - キャラクターごとの外見・衣装・固定タグ・禁止変更項目を YAML IR として管理する（スキル **manga-prompt-ir**）
    - `_how_to/tag.md` のルールに従い、通常時・状況別バリアントを定義する
-   - **互換出力（人間向けの副本・バッチ互換）**: `tag/<romaji>.md`（`tools/forge_novel_tag_batch.py` 向け Danbooru Tags 行。手作業での確認・差分レビューにも用いる）
+   - **互換出力（人間向けの副本・バッチ互換）**: `tag/<romaji>.md`（`tools/image_provider_novel_tag_batch.py` 向け Danbooru Tags 行。手作業での確認・差分レビューにも用いる）
    - 生成画像は **`tag/<romaji>/`** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
 9. manga/pages/manga_XX_pYY.yaml（漫画タグ正本・YAML IR）
    - 小説本文と対応する章・項ごとに、1ページ分の定義を YAML IR として管理する（スキル **manga-prompt-ir**）
    - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
-   - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/forge_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
+   - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/image_provider_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
    - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
 10. _meta.md
    - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
    - `_how_to/meta.md` のフォーマットに従って生成・更新される。
 
-**執筆前の資料・ディレクトリ確認（曖昧にしない）**  
-- 原則、**`novel_text` 以外**が揃ってから本文執筆に入る（上記 1〜5・7・10 と、空でもよい **`_novel_text/`**・**`_reader/`**）。  
-- エージェントは Writing Mode に入る前、または執筆指示を受けた直後に **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、**終了コード 0** を確認する（詳細はスキル **`novel-project-readiness`**）。  
+**執筆前の資料・ディレクトリ確認（曖昧にしない）**
+- 原則、**`novel_text` 以外**が揃ってから本文執筆に入る（上記 1〜5・7・10 と、空でもよい **`_novel_text/`**・**`_reader/`**）。
+- エージェントは Writing Mode に入る前、または執筆指示を受けた直後に **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、**終了コード 0** を確認する（詳細はスキル **`novel-project-readiness`**）。
 - Tag Mode 済みを必須にする場合は **`--require-tag`**、漫画フォルダまで揃えたい場合は **`--require-manga-dir`** を付ける。
 
 ---
@@ -175,47 +175,47 @@ c. プロフィールについても深く掘り下げてください。
 小説を「ゼロから起こす」のではなく、既存の原資料（メモ、プロット、設定、下書き、台詞案、世界観、人物表、箇条書き）を **`source_material/` を一次情報源として** `novels/` 配下のMonogatari Coach形式に「展開」してから制作を進める。
 
 #### 発動条件（どちらかを満たす）
-1. ユーザーから「この資料を元に落とし込んで」「source_materialを使って」、「元資料を使って」等の指示がある  
-2. 作業予定地（プロジェクト直下）にフォルダ **`source_material/`** が存在する  
+1. ユーザーから「この資料を元に落とし込んで」「source_materialを使って」、「元資料を使って」等の指示がある
+2. 作業予定地（プロジェクト直下）にフォルダ **`source_material/`** が存在する
 3. `novels/_import/` 配下にインポート対象（フォルダ／資料群）が置かれている（他ツール出力・過去原稿の取り込み口として扱う）
 
 #### 最優先の判断（重要）
-- 既存の `novels/` に「同一作品のフォルダ」が存在する場合: **上書き前に必ずバックアップを作成**し、更新対象を明示してから差分更新する（例：`_novel_text_backup/` への退避）。  
-- 既存の `novels/` に該当作品が無い場合: **新規作品として展開**する（新規 `novel_code` を採番）。  
-- 判断が割れる場合（資料に作品名が複数、対象が不明、別作品混在など）: **先に資料の“作品分割案”を作り、最小限の質問（1〜3個）だけ行う**。  
+- 既存の `novels/` に「同一作品のフォルダ」が存在する場合: **上書き前に必ずバックアップを作成**し、更新対象を明示してから差分更新する（例：`_novel_text_backup/` への退避）。
+- 既存の `novels/` に該当作品が無い場合: **新規作品として展開**する（新規 `novel_code` を採番）。
+- 判断が割れる場合（資料に作品名が複数、対象が不明、別作品混在など）: **先に資料の“作品分割案”を作り、最小限の質問（1〜3個）だけ行う**。
 
 #### 取り込み手順（やること）
-1. **資料の全量把握**  
-   - `source_material/` または `novels/_import/` 配下のファイル・フォルダを読み、何が「確定情報」で何が「候補／メモ」かを区別する。  
-   - 複数作品が入っている場合は、原則として **サブフォルダ単位＝1作品** とみなす（例：`source_material/014_聖痕の絆と冒険の空/`）。  
-2. **資料→Monogatari Coachの対応表を作る（内部判断の軸）**  
-   - 作品名／ログライン／あらすじ → `proposal.md`  
-   - テーマ／コンセプト／章構成／相関図 → `design_specification.md`  
-   - 世界設定／用語／地理／歴史 → `world.md`  
-   - 登場人物表／口調／背景／課題 → `character.md`  
-   - 本文・下書き・シーン案 → `_novel_text/novel_textXX.md`（章単位へ分割・整形）  
-3. **novels配下へ展開（生成・更新）**  
-   - `novels/[novel_code]_[novel_title]/` を作成（または更新）し、必要ファイルを揃える。  
-   - `config.md` には `novel_ID` と `writer_code` を必ず入れる（writer指定が無ければ `writers/000_default`）。  
-4. **原資料の保全（混線防止）**  
-   - 原資料は改変せず、必要に応じて作品フォルダ内に **参照用の退避先** を作る（例：`novels/.../_source_material/`）  
-   - 以後は「原資料」ではなく「展開済みファイル」を正とし、改稿・執筆を進める。  
-   - `novels/_import/` を受け口として使う場合も同様に、取り込み後は `novels/.../_source_material/` へ参照用に退避し、`novels/_import/` は「入力置き場」として残す（または整理・アーカイブ）ことで混線を防ぐ。  
+1. **資料の全量把握**
+   - `source_material/` または `novels/_import/` 配下のファイル・フォルダを読み、何が「確定情報」で何が「候補／メモ」かを区別する。
+   - 複数作品が入っている場合は、原則として **サブフォルダ単位＝1作品** とみなす（例：`source_material/014_聖痕の絆と冒険の空/`）。
+2. **資料→Monogatari Coachの対応表を作る（内部判断の軸）**
+   - 作品名／ログライン／あらすじ → `proposal.md`
+   - テーマ／コンセプト／章構成／相関図 → `design_specification.md`
+   - 世界設定／用語／地理／歴史 → `world.md`
+   - 登場人物表／口調／背景／課題 → `character.md`
+   - 本文・下書き・シーン案 → `_novel_text/novel_textXX.md`（章単位へ分割・整形）
+3. **novels配下へ展開（生成・更新）**
+   - `novels/[novel_code]_[novel_title]/` を作成（または更新）し、必要ファイルを揃える。
+   - `config.md` には `novel_ID` と `writer_code` を必ず入れる（writer指定が無ければ `writers/000_default`）。
+4. **原資料の保全（混線防止）**
+   - 原資料は改変せず、必要に応じて作品フォルダ内に **参照用の退避先** を作る（例：`novels/.../_source_material/`）
+   - 以後は「原資料」ではなく「展開済みファイル」を正とし、改稿・執筆を進める。
+   - `novels/_import/` を受け口として使う場合も同様に、取り込み後は `novels/.../_source_material/` へ参照用に退避し、`novels/_import/` は「入力置き場」として残す（または整理・アーカイブ）ことで混線を防ぐ。
 
 #### 命名・採番ルール（原則）
-- `novel_code` は `novels/` 内で振られているの最大番号+1を基本とする。  
-- 作品名が資料内で揺れる場合は、暫定名でもよいが `config.md` に「資料上の別名」もメモとして残す。  
+- `novel_code` は `novels/` 内で振られているの最大番号+1を基本とする。
+- 作品名が資料内で揺れる場合は、暫定名でもよいが `config.md` に「資料上の別名」もメモとして残す。
 - **厳密な採番・検証**はリポジトリ同梱の **`tools/novel_code_allocate.py`** の結果を正とする（定義・手順はスキル **`novel-code-allocate`**（`.rulesync/skills/novel-code-allocate/SKILL.md`）に従う）。
 
 #### このモードの目的
-資料の熱（原作者の勢い）を失わず、情報の所在を一本化して「迷わず書ける状態」にする。  
+資料の熱（原作者の勢い）を失わず、情報の所在を一本化して「迷わず書ける状態」にする。
 
 ### 2.1 Reqruit Mode
-新たな小説執筆・編集・評価・鑑賞が始まる前に、作家のメンバーを追加します。  
-- チェックポイント  
-  1. 既存メンバーの分野や個性を確認  
-  2. 多様性やバランスを考慮し、新たに募集するメンバーを選定  
-  3. 必要に応じてファイルを作成 (`writer_prompt.md` など)  
+新たな小説執筆・編集・評価・鑑賞が始まる前に、作家のメンバーを追加します。
+- チェックポイント
+  1. 既存メンバーの分野や個性を確認
+  2. 多様性やバランスを考慮し、新たに募集するメンバーを選定
+  3. 必要に応じてファイルを作成 (`writer_prompt.md` など)
 
 #### フローチャート
 
@@ -231,11 +231,11 @@ flowchart TD
 ```
 
 ### 2.2 Plan Mode
-1. 必要なMonogatari Coachファイルの確認  
-2. 不足ドキュメントの作成  
-   - 企画書（proposal.md）、設計書（design_specification.md）など  
-3. Feedback  
-   - すでにある小説作品の`judge_result.md`や`impression.md`を、該当する作家の`writer_profile.md`（文体・作風の記述）に反映  
+1. 必要なMonogatari Coachファイルの確認
+2. 不足ドキュメントの作成
+   - 企画書（proposal.md）、設計書（design_specification.md）など
+3. Feedback
+   - すでにある小説作品の`judge_result.md`や`impression.md`を、該当する作家の`writer_profile.md`（文体・作風の記述）に反映
 
 ```mermaid
 flowchart TD
@@ -248,7 +248,7 @@ flowchart TD
 ```
 
 ### 2.2.1 Tag Mode（画像タグ作成：プロフィール作成後／本文執筆前）
-登場人物のプロフィール（`character.md`）を基に、画像生成AI向けのタグとcaptionを **キャラクター別ファイル**として作成する。  
+登場人物のプロフィール（`character.md`）を基に、画像生成AI向けのタグとcaptionを **キャラクター別ファイル**として作成する。
 原則として、**プロフィール作成後（Planの一部）〜本文執筆前（Writingの直前）**に必ず行う。
 
 #### 目的
@@ -262,7 +262,7 @@ flowchart TD
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/tag/characters/<character_id>.yaml` に作成する。
 - **互換出力（Markdown・人間向けの副本）**: `novels/[novel_code]_[novel_title]/tag/<romaji>.md` に作成する。
-  - 既存の `tools/forge_novel_tag_batch.py` 等のバッチツールはこの Markdown を参照する。手作業でのタグ確認・差分レビュー・外部ツール連携のための可読形として継続利用する。
+  - 既存の `tools/image_provider_novel_tag_batch.py` 等のバッチツールはこの Markdown を参照する。手作業でのタグ確認・差分レビュー・外部ツール連携のための可読形として継続利用する。
 
 #### 画像ストック（キャラクター別・推奨）
 - タグ Markdown（`tag/<romaji>.md`）と同名の英字サブフォルダを `tag/` 配下に用意し、そのキャラクター由来の生成画像をすべてそこに集約する。
@@ -298,25 +298,25 @@ _how_to/tag.md のルールに従い、各人物について
 ```
 
 #### 画像生成（txt2img）の事前確認
-- **`tools/forge_generate.py`** および **`tools/forge_novel_tag_batch.py`** / **`tools/forge_novel_manga_batch.py`** で画像生成を依頼する**前**に、エージェントは**必ず次の順で**確認する。
+- **`tools/image_provider_generate.py`** および **`tools/image_provider_novel_tag_batch.py`** / **`tools/image_provider_novel_manga_batch.py`** で画像生成を依頼する**前**に、エージェントは**必ず次の順で**確認する。
   1. **プロジェクトルートの `.env` を `Read` で開き、実際に使うプロバイダと APIキーを確認する**。`MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT`（コマ生成）や `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT`（精密ページ生成。既定 `grok_pro`）などが設定されていれば、それが `config/image_generation.json` の `default_provider` より優先される。**この手順を省略して Forge の疎通確認から始めると、設定済みの NovelAI / grok_pro を見落とす。**
   2. リポジトリ直下に **`config/image_generation.json` が存在すること**を確認する（画像生成系スクリプトの**設定正本**）。
   3. **プロバイダが Forge の場合のみ**、以下を追加確認する。
      - UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系かを確認し、**`providers.forge.active_model_family`** と一致させる。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
      - **CFG Scale の目安**: FLUX 系は約 1、SDXL 系は約 7。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
-     - **疎通確認**: `python tools/forge_generate.py --probe --provider forge`。
+     - **疎通確認**: `python tools/image_provider_generate.py --probe --provider forge`。
   4. **`--dry-run` を実行してユーザーに確認を取る（必須）**。本番実行の直前に、対象バッチスクリプトへ `--dry-run` を付けて実行し、出力された **プロバイダ名・モデル・ジョブ数・保存先** をチャットに示す。ユーザーが「OK」「進めて」などの明示的な承認を返してから本番（`--dry-run` なし）を実行する。承認なしに本番実行を開始しない。
-     - 例（漫画ページ）: `python tools/forge_novel_manga_batch.py novels/<作品> --manga-stem manga_01 --source step1-pages --dry-run`
-     - 例（キャラタグ）: `python tools/forge_novel_tag_batch.py novels/<作品> --dry-run`
+     - 例（漫画ページ）: `python tools/image_provider_novel_manga_batch.py novels/<作品> --manga-stem manga_01 --source step1-pages --dry-run`
+     - 例（キャラタグ）: `python tools/image_provider_novel_tag_batch.py novels/<作品> --dry-run`
   5. **計画提示で一度停止（実行継続ルールの例外）**: スキル **`novel-text-file-output`** の「ツール予告したら同一ターンで進める」は **画像生成には適用しない**。`--dry-run` の結果をチャットに示した **この時点では本番を実行しない**。ユーザー承認があるまで待つ。
-  6. **本番後の完了確認**: 承認後に本番を実行したら、**`--dry-run` で示した保存先**に期待どおり **画像ファイルが出力されている**ことを **`Glob` / ディレクトリ確認** 等で検証してから「生成完了」と述べる。詳細はスキル **`forge-txt2img`** の「生成『完了』の定義」。
-- 運用の詳細・Flux 特有のパラメータはスキル **`forge-txt2img`**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
+  6. **本番後の完了確認**: 承認後に本番を実行したら、**`--dry-run` で示した保存先**に期待どおり **画像ファイルが出力されている**ことを **`Glob` / ディレクトリ確認** 等で検証してから「生成完了」と述べる。詳細はスキル **`image-provider（旧 forge-txt2img）`** の「生成『完了』の定義」。
+- 運用の詳細・Flux 特有のパラメータはスキル **`image-provider`（旧 `forge-txt2img`）**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
 
 ### 2.2.2 Manga Tag Mode（漫画タグ出力：本文参照後／一括生成前）
 小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、漫画ページ用の YAML IR を作成する。既存バッチを使う場合は、YAML IR から `manga_XX.md` の Step1 / Step2 互換形式へ出力する。
 原則として、**本文または構成案が確定した後（Writing/Mangaの一部）**、画像一括生成の前に必ず行う。
 
-**禁止**: Manga Tag Mode の初手として `manga/manga_XX.md` を直接新規作成して正本にしないこと。`manga/manga_XX.md` は、検証済み YAML IR からエクスポートした**人間向けの副本**（Step1 / Step2 の可読形）および **`tools/forge_novel_manga_batch.py` 連携用**であり、あわせて旧来の Markdown から IR へ移行するときの参照元として扱う。
+**禁止**: Manga Tag Mode の初手として `manga/manga_XX.md` を直接新規作成して正本にしないこと。`manga/manga_XX.md` は、検証済み YAML IR からエクスポートした**人間向けの副本**（Step1 / Step2 の可読形）および **`tools/image_provider_novel_manga_batch.py` 連携用**であり、あわせて旧来の Markdown から IR へ移行するときの参照元として扱う。
 
 #### 目的
 - 各コマの状況、人物、アクションを正確に言語化し、AI画像生成（NovelAI/Stable Diffusion等）で一貫性のある漫画を生成可能にする。
@@ -331,7 +331,7 @@ _how_to/tag.md のルールに従い、各人物について
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/manga/pages/manga_XX_pYY.yaml` に作成する。
 - **互換出力（Markdown・人間向けの副本）**: `novels/[novel_code]_[novel_title]/manga/manga_XX.md` に出力、または追記する。
-  - 既存の `tools/forge_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。ページ単位の可読参照・手作業での Step1/Step2 推敲・外部連携に引き続き用いる。
+  - 既存の `tools/image_provider_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。ページ単位の可読参照・手作業での Step1/Step2 推敲・外部連携に引き続き用いる。
   - データの正本は YAML IR とし、Markdown を**唯一の正本として**手作業で増殖させない。修正は YAML IR 側へ入れ、再エクスポートする。
 
 #### 手動手順（明確化）
@@ -351,7 +351,7 @@ _how_to/tag.md のルールに従い、各人物について
    - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造、主語・行為・構図・セリフ話者・ページレイアウトの不足警告を確認する。本番生成前は **`--strict-quality`** を付け、品質警告も失敗扱いにする。
    - 主語・関係・セリフ帰属・部分アップの意味付け・コマ割りは、スキル **`manga-tag-quality-gate`** の観点で点検する。
 4. **Markdown へのエクスポート**
-   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。**`--manga-page` で漫画ファイルを出すときは、既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け **`ベース | キャラ`** 形式にし、`forge_novel_manga_batch`・NovelAI・step1-panels と形状を揃える。省略すると Step1 がカンマ一列のみになる）。Step2 ブロックはこのフラグでは変わらないが、手順統一のため同じコマンドで付けてよい。
+   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。**`--manga-page` で漫画ファイルを出すときは、既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け **`ベース | キャラ`** 形式にし、`image_provider_novel_manga_batch`・NovelAI・step1-panels と形状を揃える。省略すると Step1 がカンマ一列のみになる）。Step2 ブロックはこのフラグでは変わらないが、手順統一のため同じコマンドで付けてよい。
    - Markdown 出力後に改めて手作業で Step2 を作り直すのではなく、YAML IR 側を修正して再エクスポートする。
 
 #### 画像ストック（漫画・コマ単位・推奨）
@@ -359,19 +359,19 @@ _how_to/tag.md のルールに従い、各人物について
   - 例: `manga/manga_01.md` の画像 → `manga/_assets/manga_01/`
   - コマ生成では `file_prefix` に `manga_01_p02_k03` のようにファイル名・ページ番号・コマ番号を含める。
 - 既定・推奨運用は **`manga/_assets/<manga_XX>/` 直下のみ**とする。画像の分類は**章（`manga_XX`＝`manga/manga_XX` 系列）まで**で足り、**ページ単位のサブフォルダ（`p01/`, `p02/` 等）を作ることをルール化・手順の既定にしない**。
-- `tools/forge_novel_manga_batch.py` の **`--subdir-by-page`** は、**例外的に**同一直下にファイルが多すぎるなどの理由で分けたい場合だけ使う**任意オプション**（LLM やドキュメントで「ページごとにフォルダ分けする」と**推奨扱いにしない**）。通常は `file_prefix`（例: `manga_01_p02_k03`）でページ・コマを区別する。
+- `tools/image_provider_novel_manga_batch.py` の **`--subdir-by-page`** は、**例外的に**同一直下にファイルが多すぎるなどの理由で分けたい場合だけ使う**任意オプション**（LLM やドキュメントで「ページごとにフォルダ分けする」と**推奨扱いにしない**）。通常は `file_prefix`（例: `manga_01_p02_k03`）でページ・コマを区別する。
 - `novel_image_layout.py scaffold --panels N` が作る `k01` などは、1ページ内のコマ用スロットとして手動整理したい場合だけ使う任意フォルダであり、通常運用では不要。
 - フォルダの一括作成・推奨パスはスキル **`novel-image-layout`**（`tools/novel_image_layout.py`）に従う。
 
 #### 生成モードの用語統一（必須）
 - **コマ生成**:
- `manga/pages/*.yaml` の `panels[]` を使い、**各コマを別画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-panels`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。コマ単体生成では `japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`上段` / `中段` / `下段` / `大コマ` などのページ・コマ割りタグは内部で除外し、1枚絵のコマとして描かせる。
+ `manga/pages/*.yaml` の `panels[]` を使い、**各コマを別画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step1-panels`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。コマ単体生成では `japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`上段` / `中段` / `下段` / `大コマ` などのページ・コマ割りタグは内部で除外し、1枚絵のコマとして描かせる。
 - **精密ページ生成**:
- `manga/pages/*.yaml` の詳細情報から Step1 相当のページ指示を組み立て、**各コマの詳細指示を保持したまま 1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step1-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
+ `manga/pages/*.yaml` の詳細情報から Step1 相当のページ指示を組み立て、**各コマの詳細指示を保持したまま 1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step1-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
 - **ページ生成**:
- `manga/pages/*.yaml` の `manga.panel_layout` と各コマ要約から Step2 相当のページ指示を組み立て、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/forge_novel_manga_batch.py` では **`--source step2-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
+ `manga/pages/*.yaml` の `manga.panel_layout` と各コマ要約から Step2 相当のページ指示を組み立て、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step2-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
 - **背景概念生成**:
- `manga/pages/*.yaml` の `background_concepts[]` を使い、**人物なしの背景・空間設計**を先に出す運用を指す。`tools/forge_novel_manga_batch.py` では **`--source background-concepts`** に対応し、未指定時の推奨 provider は **Grok**。必要に応じて `--provider openai` も選べる。
+ `manga/pages/*.yaml` の `background_concepts[]` を使い、**人物なしの背景・空間設計**を先に出す運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source background-concepts`** に対応し、未指定時の推奨 provider は **Grok**。必要に応じて `--provider openai` も選べる。
 - **Codex / ChatGPT 内蔵画像生成**:
  会話上の内蔵 `image_gen` ツールで1枚ずつ試作する運用を指す。OpenAI API を直接叩く `provider=openai` とは別物であり、`OPENAI_API_KEY` は不要。生成画像は `C:\Users\Owner\.codex\generated_images\...` に保存されるため、作品で使う場合は `tools/codex_builtin_image_archive.py` で `novels/<作品>/manga/_assets/<manga_XX>/` へコピーし、JSONメタを残す。
 - **既定動作**:
@@ -410,9 +410,9 @@ _how_to/tag.md のルールに従い、各人物について
 - **内蔵画像生成（Codex / ChatGPT）**:
  API provider ではなく、会話の `image_gen` を使った単発試作として扱う。保存時は `tools/codex_builtin_image_archive.py` で作品フォルダへコピーする。
 - **固定特徴・状況タグの注入**:
- `tools/forge_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
+ `tools/image_provider_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
 - **推奨分担（Step1 コマ／ページ系）**:
- **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では grok_pro / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **grok_pro** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`forge-txt2img`**）。
+ **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では grok_pro / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **grok_pro** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`image-provider（旧 forge-txt2img）`**）。
 - **ページ生成の非対応範囲**:
  **Forge / NovelAI** は、このリポジトリの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。これらは **コマ生成向け provider** として扱う。
 
@@ -449,13 +449,13 @@ step2から1ページ丸ごと出力してください。
 ```
 
 ### 2.3 Writing Mode
-1. **執筆前チェック（推奨・新規作品では必須に近い）**  
-   - **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、必須ファイル・`_novel_text/`・`_reader/`・`config` 整合が **OK** であることを確認する（スキル **`novel-project-readiness`**）。  
+1. **執筆前チェック（推奨・新規作品では必須に近い）**
+   - **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、必須ファイル・`_novel_text/`・`_reader/`・`config` 整合が **OK** であることを確認する（スキル **`novel-project-readiness`**）。
 2. 作家のアサイン
-   - 適切な作家を選定し、対応する`writer_profile.md`を確認  
-3. 新規novelコード発行 
-4. 必要ドキュメントの参照  
-   - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など  
+   - 適切な作家を選定し、対応する`writer_profile.md`を確認
+3. 新規novelコード発行
+4. 必要ドキュメントの参照
+   - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
 6. 原稿のドキュメントはバックアップを取って( `_novel_text_backup/` 以下、`<元ファイル名>_vNNN.md` 形式で版番号を付与)から、
@@ -508,7 +508,7 @@ flowchart TD
 #### 応答の継続（宣言のみで終えない）
 - 「旧版を退避してから加筆します」「ツールで退避→加筆→確認を行います」などと述べた場合、**前置きだけで応答を終えず**、同一ターンで可能な限りツール実行（退避・`_novel_text/` 更新・確認）まで進める。
 - 応答が続く場合は **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
-- **例外（画像生成）**: **`forge_generate.py`**・**`forge_novel_tag_batch.py`**・**`forge_novel_manga_batch.py`** 等は **上記の「続行」とは逆に**、§2.2.1「画像生成（txt2img）の事前確認」およびスキル **`forge-txt2img`** に従い、**計画と `--dry-run` で一度止め**、ユーザー承認後にのみ本番実行する。
+- **例外（画像生成）**: **`image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は **上記の「続行」とは逆に**、§2.2.1「画像生成（txt2img）の事前確認」およびスキル **`image-provider（旧 forge-txt2img）`** に従い、**計画と `--dry-run` で一度止め**、ユーザー承認後にのみ本番実行する。
 - 詳細はスキル **`novel-refinement-output`**（「計画表明だけで終わらない」）・**`novel-text-file-output`**（「ツール予告と応答の継続」）。
 
 #### 目的
@@ -594,16 +594,16 @@ Monogatari Coachの更新は、以下の場合に発生する：
 ```mermaid
 flowchart TD
     Start[Update Process]
-    
+
     subgraph Process
         P1[Review ALL Files]
         P2[Document Current State]
         P3[Clarify Next Steps]
         P4[Update _workingspace/diary/ & log/]
-        
+
         P1 --> P2 --> P3 --> P4
     end
-    
+
     Start --> Process
 ```
 

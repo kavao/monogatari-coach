@@ -30,7 +30,7 @@ targets: ["*"]
 
 創作技法は `_how_to/manga.md` に置き、**コマンド・検証・バッチ・ネガ合成・export フラグ**など運用手順は `docs/` に分離している。
 
-- **`docs/image-generation/manga-prompt-ir.md`**: `novel_prompt_ir_validate.py` / `novel_prompt_ir_embed_snapshots.py` / `novel_prompt_ir_export_md.py`（`--novelai-pipe-tags` 等）、`forge_novel_manga_batch.py` の `--source`、コマ単位ネガの合成順。
+- **`docs/image-generation/manga-prompt-ir.md`**: `novel_prompt_ir_validate.py` / `novel_prompt_ir_embed_snapshots.py` / `novel_prompt_ir_export_md.py`（`--novelai-pipe-tags` 等）、`image_provider_novel_manga_batch.py` の `--source`、コマ単位ネガの合成順。
 - **`docs/image-generation/manga-tag-generation.md`**: 互換 `manga/manga_XX.md` の Step1/Step2 長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。
 
 ## 運用方針
@@ -44,15 +44,15 @@ targets: ["*"]
 - 漫画ページ YAML を単体で画像モデルへ渡す運用では、`render_instruction` に作画依頼文を入れる。外側の Markdown やチャット冒頭文が無くても、何を描くか・コマ割りをどう扱うか・キャラクター外見をどう継承するかが読める状態を正とする。
 - 画像生成モデルが文字描画を苦手とする場合に備え、テキスト要素は `extract_text_elements()` で別処理できる形にする。
 - `negative_tags` はキャラクター側とページ側の両方に持たせ、最終レンダリング時に結合する。
-- **コマ単位 txt2img**（`forge_novel_manga_batch.py`・`--source step1-panels`）では、
+- **コマ単位 txt2img**（`image_provider_novel_manga_batch.py`・`--source step1-panels`）では、
   各コマのネガを **`--negative-prompt` + `technical.negative_tags` + `panels[].negative_tags`** として合成し、
   **`panels[].omit_negative_tags`** に書いた断片（例: `split screen`）を共通ネガから除いてからコマ別ネガを足す。
   スキーマは `tools/manga_prompt_ir/schemas/manga_page.py` の `Panel.negative_tags` / `Panel.omit_negative_tags`。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
-- 背景を先に起こす場合は `background_concepts[]` を使う。背景概念は Grok / OpenAI のような自然文・構造理解が強い provider へ渡し、人物を主役にしない空間設計として生成する。
+- 背景を先に起こす場合は `background_concepts[]` を使う。背景概念は本番コマではなく背景資料であり、Grok / OpenAI のような自然文・構造理解が強い provider へ渡し、人物を主役にしない空間設計として生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。
-- **`composition` / `camera` / `lighting` とコマの状況語（タグ行）**: Step1 の機械連結タグ（`forge_novel_manga_batch`・`novel_prompt_ir_export_md`）では **`framing_en` / `focus_en` / `perspective_en` / `layout_en`**、**`camera` の `*_en`**、**`lighting` の `*_en`**、**`pose_action_en` / `expression_en`** を優先する。旧キー（`focus` 等）は **CJK を含まないときだけ**タグに載せる（`medium shot` のような英語のみは従来 YAML でも可）。**`panels[].mood_atmosphere_en`** があればタグに使い、無い場合は `mood_atmosphere` のうち CJK を含まない要素のみ。実装の中心は **`tools/manga_prompt_ir/scene_prompt.py`**。
+- **`composition` / `camera` / `lighting` とコマの状況語（タグ行）**: Step1 の機械連結タグ（`image_provider_novel_manga_batch`・`novel_prompt_ir_export_md`）では **`framing_en` / `focus_en` / `perspective_en` / `layout_en`**、**`camera` の `*_en`**、**`lighting` の `*_en`**、**`pose_action_en` / `expression_en`** を優先する。旧キー（`focus` 等）は **CJK を含まないときだけ**タグに載せる（`medium shot` のような英語のみは従来 YAML でも可）。**`panels[].mood_atmosphere_en`** があればタグに使い、無い場合は `mood_atmosphere` のうち CJK を含まない要素のみ。実装の中心は **`tools/manga_prompt_ir/scene_prompt.py`**。
 
 ### キャラクターIR・外見初版を新規に起こすとき（`world_wear.md`）
 
@@ -96,7 +96,7 @@ targets: ["*"]
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。
 
 - **Pydantic 上の型**: `variant_id` は **任意の文字列**。`_how_to/tag.md` で推奨される **`NN_short_slug`（2桁ゼロ埋め＋アンダースコア＋意味のあるslug）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
-- **命名規約の正本（人間向け）**: バリアントの並べ方・`variant_id` の付け方の詳細は **`_how_to/tag.md` の「バリアント番号（管理用・最小）」** を正とする。差分レビューや `tools/forge_novel_tag_batch.py` の `--variant-id` で特定バリアントだけ生成するときに、`01_normal` のように番号と並びを揃えておくと運用しやすい。
+- **命名規約の正本（人間向け）**: バリアントの並べ方・`variant_id` の付け方の詳細は **`_how_to/tag.md` の「バリアント番号（管理用・最小）」** を正とする。差分レビューや `tools/image_provider_novel_tag_batch.py` の `--variant-id` で特定バリアントだけ生成するときに、`01_normal` のように番号と並びを揃えておくと運用しやすい。
 - **互換 Markdown の `## 1.` など**: `tools/novel_prompt_ir_export_md.py` は、`prompt_variants` の **配列の並び順**に従い、状況ブロック見出しを `## 1.` `## 2.` … と付ける。**見出しの連番は `variant_id` の先頭数字から自動算出されない**（先頭要素が必ず `## 1.` に対応する）。
 - **検証ツール**: `tools/novel_prompt_ir_validate.py` は、漫画ページなどとの **参照整合**（存在しない `variant_id` を指していないか等）は確認するが、**`NN_short_slug` 形式かどうかは検証しない**。
 
@@ -138,9 +138,9 @@ targets: ["*"]
 
 次のバッチはいずれも、キャラ YAML の **固定合成**（上記 `fixed_prompt_tags()` 経路）に依存する。
 
-- **`tools/forge_novel_tag_batch.py`**: 各 `prompt_variants` のプロンプト組み立てで、平服等を `costume.outfit_tags` に置くと **全バリアントに衣装が残留**しうる。
+- **`tools/image_provider_novel_tag_batch.py`**: 各 `prompt_variants` のプロンプト組み立てで、平服等を `costume.outfit_tags` に置くと **全バリアントに衣装が残留**しうる。
 - **`tools/novel_prompt_ir_export_md.py`**: `tag/<romaji>.md` の互換出力は YAML IR を正とする。IR を直したら **再エクスポート**して Markdown を更新する。**漫画**の `manga/manga_XX.md` を出すときは下記「互換 Markdown エクスポートの既定」とおり **`--novelai-pipe-tags` を付ける**。
-- **`tools/novel_prompt_ir_embed_snapshots.py`** → **`tools/forge_novel_manga_batch.py`**: ページ YAML の `character_snapshots` はキャラ IR から埋め込まれる。**`outfit_tags` の誤りは漫画コマ生成にも波及**する。IR 修正後は対象作品で `embed_snapshots` を再実行し、必要なら漫画ページ YAML をコミットし直す。
+- **`tools/novel_prompt_ir_embed_snapshots.py`** → **`tools/image_provider_novel_manga_batch.py`**: ページ YAML の `character_snapshots` はキャラ IR から埋め込まれる。**`outfit_tags` の誤りは漫画コマ生成にも波及**する。IR 修正後は対象作品で `embed_snapshots` を再実行し、必要なら漫画ページ YAML をコミットし直す。
 
 **改稿チェックリスト（最短）**
 
@@ -154,30 +154,31 @@ targets: ["*"]
 
 `tools/novel_prompt_ir_export_md.py` で **`manga/manga_XX.md`**（各 `## Page N` 内の **`### Step1`** の **`- **tag**：`** 行を含む）を出力するときは、**エージェント・手動とも次を既定とする**。
 
-- **`--novelai-pipe-tags` を必ず付ける**  
-  Step1 の各コマ `tag` 行が **`ベース側 | キャラ側`**（NovelAI の `|` 分割）になり、`tools/forge_novel_manga_batch.py` の **`provider=novelai`・YAML・`--source step1-panels`** が組み立てるプロンプト形状と整合する。  
+- **`--novelai-pipe-tags` を必ず付ける**
+  Step1 の各コマ `tag` 行が **`ベース側 | キャラ側`**（NovelAI の `|` 分割）になり、`tools/image_provider_novel_manga_batch.py` の **`provider=novelai`・YAML・`--source step1-panels`** が組み立てるプロンプト形状と整合する。
   **付けないと** Step1 が **カンマ区切りの1本**だけになり、互換 `manga_XX.md` とバッチ実装の前提がずれる。
 - **例外（付けない）**: キャラクター互換だけを **`tag/<character_id>.md`** に出す実行（`--manga-page` なし）では、Step1 の `tag` 行が無いため **`--novelai-pipe-tags` は不要**。
 - **Step2 との関係**: Step2 ブロックは `panel_step2_description` 系で別組み立てのため **`--novelai-pipe-tags` の有無で Step2 本文は変わらない**。それでも **漫画ファイルを一括エクスポートするコマンドでは付けておく**と、同じ `manga_XX.md` 生成手順が一本化される。
 
-詳細はスキル **`forge-txt2img`**（NovelAI の `|` 区切り）も参照。
+詳細はスキル **`image-provider（旧 forge-txt2img）`**（NovelAI の `|` 区切り）も参照。
 
 ## 移行ルール
 
 既存の Markdown 資産は、すぐに破棄しない。互換 Markdown は、人間の手作業・差分確認・既存バッチ向けの**可読な副本**として継続する。
 
-- `tag/<romaji>.md` は `character.yaml` へ写経・正規化し、`Danbooru Tags` 行を **`tools/forge_novel_tag_batch.py` 向けにエクスポート**する先として残す（人間が読み・直す作業面でも重要）。
-- `manga/manga_XX.md` はページ YAML へ写経・正規化し、Step1 / Step2 を **`tools/forge_novel_manga_batch.py` 向けにエクスポート**する先として残す（ページ単位の推敲・共有にも使う）。
+- `tag/<romaji>.md` は `character.yaml` へ写経・正規化し、`Danbooru Tags` 行を **`tools/image_provider_novel_tag_batch.py` 向けにエクスポート**する先として残す（人間が読み・直す作業面でも重要）。
+- `manga/manga_XX.md` はページ YAML へ写経・正規化し、Step1 / Step2 を **`tools/image_provider_novel_manga_batch.py` 向けにエクスポート**する先として残す（ページ単位の推敲・共有にも使う）。
+- 既存作品にある `manga/manga_*.md` は、削除・退避を既定にしない。YAML が正本、Markdown は同階層に置く副本・生成物として扱い、通常運用では `--input yaml` を使う。Markdown を手で直した場合は、対応する `manga/pages/*.yaml` に戻してから再エクスポートする。
 - 画像生成では **YAML を正本**とし、必要に応じて Markdown 互換ブロックを **エクスポートで生成**する。
 - 既存ツールを正式に更新するときは、`tools_temp/` で抽出・変換を試作してから `tools/` へ整理して反映する。
 
 ## 画像バッチとの連携（ファイル名と出力増殖）
 
-`tools/forge_novel_manga_batch.py`（コマ生成 `step1-panels` 等）は、各ページYAMLの保存プレフィックスに使う **ページ番号 `pNN`** を、**YAML本文ではなくファイル名**から取る（`manga/pages/manga_01_p03.yaml` → ページ 3）。実装は `yaml_page_number()` がファイル名末尾の `_p(\d+)` を読む方式。
+`tools/image_provider_novel_manga_batch.py`（コマ生成 `step1-panels` 等）は、各ページYAMLの保存プレフィックスに使う **ページ番号 `pNN`** を、**YAML本文ではなくファイル名**から取る（`manga/pages/manga_01_p03.yaml` → ページ 3）。実装は `yaml_page_number()` がファイル名末尾の `_p(\d+)` を読む方式。
 
 - **`meta.page_count`** は「このファイルが何ページ分の定義か」（多くは `1`）であり、章内連番のページ番号ではない。ページ番号の人間可視の正は **`manga_XX_pNN.yaml` の `NN`**。
 - ファイル名に `_p数字` が無い場合は列挙順のインデックスにフォールバックするため、命名ミスで **常に先頭ページ扱い** に寄ることがある。
-- `tools/forge_generate.py` は `{file_prefix}_{timestamp}_{seed}.png` 形式で保存するため、**再実行のたびにファイルが増え上書きしない**。期待枚数より多いPNGは古い試行の残骸の可能性が高い。
+- `tools/image_provider_generate.py` は `{file_prefix}_{timestamp}_{seed}.png` 形式で保存するため、**再実行のたびにファイルが増え上書きしない**。期待枚数より多いPNGは古い試行の残骸の可能性が高い。
 
 ## 必須チェック
 
@@ -191,7 +192,7 @@ targets: ["*"]
 - `render_instruction.prompt_header` / `panel_policy` / `character_policy` が入り、YAML単体で作画依頼として成立する。
 - キャラクター固定特徴が、登場するすべてのコマへ引き継がれる。
 - ページ単位で、コマ数、読み順、段・大小・視線誘導のいずれかが読める。
-- 背景概念を使う場合は、`background_concepts[].concept_id` / `description` / `prompt` があり、人物なしの背景生成として読める。
+- 背景概念を使う場合は、`background_concepts[].concept_id` / `description` / `prompt` があり、人物なしの背景資料生成として読める。複数視点を出す場合は `concept_id` に `establishing` / `wide` / `close` / `reverse` / `overhead` などの視点語を含める。
 
 ## 参考コマンド
 
@@ -229,7 +230,7 @@ python tools/novel_prompt_ir_export_md.py \
 - 保存先は **`{--output-dir}/manga/{--manga-stem}.md`**。`--output-dir` は **作品フォルダ**（例: `novels/<作品>/`）を渡す。`novels/<作品>/manga` を `--output-dir` にすると **`manga/manga/manga_XX.md`** のように一段深くなり、ルールで想定する `novels/<作品>/manga/manga_XX.md` とずれる。
 - 章の全ページを **1ファイルの副本** にまとめるときは、`--manga-page` に **`manga_01_p01.yaml` … `p06.yaml` を列挙した1回の実行**で出す。ページごとに別コマンドで上書きすると、**最後に渡したページ分だけ**になる。
 - 生成される Markdown は先頭に **IR正本パス一覧**、続けて **各 YAML 1ファイルあたり `## Page N` → `### Step1` / `### Step2`**（コマ説明・`tag` 行・和訳）。内容の正本は常に **`manga/pages/*.yaml`**。
-- **`### Step2` の各コマ行**は、レイアウトと **コマ要約**（`panels[].step2_summary` があればそちらを優先、無ければ `summary`）に加え、**`--character` で渡した** `tag/characters/*.yaml` およびページ IR の **`character_snapshots[]`**（**`appearance_summary` のみ**を【固定見た目】に使う。`costume_summary` は含めない）から **`【固定見た目】`** を自動付与する。実装は `tools/forge_novel_manga_batch.py` の `panel_step2_description` / `build_step2_panel_line`（`yaml_page_step2_text` も同じ）。
+- **`### Step2` の各コマ行**は、レイアウトと **コマ要約**（`panels[].step2_summary` があればそちらを優先、無ければ `summary`）に加え、**`--character` で渡した** `tag/characters/*.yaml` およびページ IR の **`character_snapshots[]`**（**`appearance_summary` のみ**を【固定見た目】に使う。`costume_summary` は含めない）から **`【固定見た目】`** を自動付与する。実装は `tools/image_provider_novel_manga_batch.py` の `panel_step2_description` / `build_step2_panel_line`（`yaml_page_step2_text` も同じ）。
 
 依存関係:
 
@@ -243,4 +244,4 @@ python tools/novel_prompt_ir_export_md.py \
 - `novel-tag-character-consistency`: キャラクター固定特徴の照合
 - `manga-tag-character-sync`: 漫画コマへのキャラクター特徴継承
 - `manga-tag-quality-gate`: 主語・行為・レイアウトの品質確認
-- `forge-txt2img`: 生成プロバイダへの最終受け渡し
+- `image-provider（旧 forge-txt2img）`: 生成プロバイダへの最終受け渡し

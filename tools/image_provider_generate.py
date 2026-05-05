@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-画像生成クライアント（Forge / NovelAI / Grok / OpenAI）。
+画像 provider クライアント（Forge / NovelAI / Grok / OpenAI）。
 
 - provider=forge:
   - POST /sdapi/v1/txt2img（save_images は使わず、返却 base64 を自前保存）
@@ -16,7 +16,7 @@
   - `b64_json` または URL 応答を保存
 
 設定は config/image_generation.json（既定・必須。`--config` で別パスも可）。
-仕様・運用: .rulesync/skills/forge-txt2img/SKILL.md
+仕様・運用: .rulesync/skills/forge-txt2img/SKILL.md（image-provider）
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 FORGE_MODEL_FAMILY_ENV = "MONOCRI_FORGE_MODEL_FAMILY_DEFAULT"
 
@@ -437,6 +437,17 @@ def run_probe(provider: str, provider_cfg: dict[str, Any], timeout: float) -> No
         print(f"  auth_env={provider_cfg.get('auth_env', 'OPENAI_API_KEY')}")
         return
 
+    if provider == "openrouter":
+        print(
+            "OpenRouter の画像生成は /api/v1/chat/completions を使うため、"
+            "dry-run または実際の生成で payload と応答形式を確認してください。"
+        )
+        generate_path = str(provider_cfg.get("generate_path", "/chat/completions"))
+        print(f"  configured generate_path={generate_path}")
+        print(f"  auth_env={provider_cfg.get('auth_env', 'OPENROUTER_API_KEY')}")
+        print("  models endpoint: https://openrouter.ai/api/v1/models?output_modalities=image")
+        return
+
     raise ValueError(f"未対応 provider: {provider}")
 
 
@@ -505,6 +516,8 @@ def merge_provider_defaults(
         "file_prefix": params.get("file_prefix", provider),
         "count": int(params.get("count", 1)),
     }
+    if "metadata" in params:
+        out["metadata"] = params["metadata"]
     if provider == "forge":
         if "scheduler" in params or "default_scheduler" in provider_cfg:
             sched = params.get("scheduler", provider_cfg.get("default_scheduler"))
@@ -643,6 +656,30 @@ def merge_provider_defaults(
                 out["moderation"] = str(moderation)
         return out
 
+    if provider == "openrouter":
+        model = str(params.get("model", provider_cfg["default_model"]))
+        aliases = provider_cfg.get("model_aliases")
+        if isinstance(aliases, dict) and model in aliases:
+            model = str(aliases[model])
+        out["model"] = model
+        raw_aspect_ratio = params.get(
+            "aspect_ratio_preset",
+            params.get("aspect_ratio", provider_cfg.get("default_aspect_ratio", "1:1")),
+        )
+        out["aspect_ratio"] = str(
+            resolve_named_value(
+                raw_aspect_ratio,
+                provider_cfg.get("aspect_ratio_presets"),
+            )
+        )
+        out["image_size"] = str(
+            params.get(
+                "image_size",
+                params.get("resolution", provider_cfg.get("default_image_size", "1K")),
+            )
+        )
+        return out
+
     raise ValueError(f"未対応 provider: {provider}")
 
 
@@ -777,6 +814,23 @@ def build_openai_payload(merged: dict[str, Any]) -> dict[str, Any]:
     if merged.get("moderation"):
         payload["moderation"] = merged["moderation"]
     return payload
+
+
+def build_openrouter_payload(merged: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "model": merged["model"],
+        "messages": [
+            {
+                "role": "user",
+                "content": merged["prompt"],
+            }
+        ],
+        "modalities": ["image", "text"],
+        "image_config": {
+            "aspect_ratio": merged["aspect_ratio"],
+            "image_size": merged["image_size"],
+        },
+    }
 
 
 def parse_json_response(raw: bytes) -> dict[str, Any]:
@@ -920,33 +974,40 @@ def save_grok_response(
     for idx, item in enumerate(data, start=1):
         if not isinstance(item, dict):
             raise RuntimeError("Grok 応答 data の形式が未対応です")
-        png_bytes: bytes
+        image_bytes: bytes
         source: str
         if item.get("b64_json"):
-            png_bytes = base64.b64decode(str(item["b64_json"]))
+            image_bytes = base64.b64decode(str(item["b64_json"]))
             source = "b64_json"
         elif item.get("url"):
             source = str(item["url"])
-            _, png_bytes, _ = http_get_bytes(source, timeout)
+            _, image_bytes, _ = http_get_bytes(source, timeout)
         else:
             raise RuntimeError("Grok 応答 item に b64_json/url がありません")
-        if len(png_bytes) < min_png:
-            raise RuntimeError(f"Grok の返却画像が異常に小さい ({len(png_bytes)} bytes)")
+        if len(image_bytes) < min_png:
+            raise RuntimeError(f"Grok の返却画像が異常に小さい ({len(image_bytes)} bytes)")
         stem = f"{merged['file_prefix']}_{ts}_{idx:02d}"
-        png_path = out_dir / f"{stem}.png"
+        mime_type = str(item.get("mime_type") or "").lower()
+        if "jpeg" in mime_type or "jpg" in mime_type or image_bytes.startswith(b"\xff\xd8\xff"):
+            suffix = ".jpg"
+        elif "webp" in mime_type or image_bytes.startswith(b"RIFF") and image_bytes[8:12] == b"WEBP":
+            suffix = ".webp"
+        else:
+            suffix = ".png"
+        image_path = out_dir / f"{stem}{suffix}"
         meta_path = out_dir / f"{stem}.json"
-        png_path.write_bytes(png_bytes)
+        image_path.write_bytes(image_bytes)
         meta = {
             "provider": "grok",
             "grok_payload_request": payload,
-            "saved_png": str(png_path),
+            "saved_image": str(image_path),
             "param_merged": {k: v for k, v in merged.items() if k != "prompt"},
             "prompt": merged["prompt"],
             "response_item": item,
             "image_source": source,
         }
         write_json(meta_path, meta)
-        saved.append({"png": str(png_path), "json": str(meta_path), "index": idx})
+        saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
     return saved
 
 
@@ -1001,6 +1062,95 @@ def save_openai_response(
     return saved
 
 
+def decode_openrouter_image_url(raw_url: str, timeout: float) -> tuple[bytes, str, str]:
+    if raw_url.startswith("data:"):
+        header, sep, data = raw_url.partition(",")
+        if not sep or ";base64" not in header:
+            raise RuntimeError("OpenRouter image_url が base64 data URL ではありません")
+        mime = header[5:].split(";", 1)[0] or "image/png"
+        suffix = ".jpg" if mime in {"image/jpeg", "image/jpg"} else ".webp" if mime == "image/webp" else ".png"
+        return base64.b64decode(data), "data_url", suffix
+    _, image_bytes, headers = http_get_bytes(raw_url, timeout)
+    ctype = headers.get("Content-Type", "")
+    suffix = ".jpg" if "jpeg" in ctype or "jpg" in ctype else ".webp" if "webp" in ctype else ".png"
+    return image_bytes, raw_url, suffix
+
+
+def diagnose_openrouter_auth_error(token: str, base_url: str, timeout: float) -> str:
+    """Return a short hint when a key works for management APIs but not inference."""
+    try:
+        _, raw, _ = http_get_bytes(
+            f"{base_url}/keys",
+            min(timeout, 30),
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except Exception:
+        return ""
+    try:
+        data = parse_json_response(raw)
+    except Exception:
+        data = {}
+    if isinstance(data, dict) and "data" in data:
+        return (
+            "\nOpenRouter 診断: このキーは /api/v1/keys には通るため、"
+            "Management API Key の可能性があります。Management key は "
+            "chat/completions には使えません。OpenRouter の通常の API Key を"
+            "発行して OPENROUTER_API_KEY に設定してください。"
+        )
+    return ""
+
+
+def save_openrouter_response(
+    *,
+    resp: dict[str, Any],
+    merged: dict[str, Any],
+    payload: dict[str, Any],
+    provider_cfg: dict[str, Any],
+    out_dir: Path,
+    timeout: float,
+) -> list[dict[str, Any]]:
+    choices = resp.get("choices") or []
+    if not choices:
+        raise RuntimeError("OpenRouter 応答から choices を取得できませんでした")
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    if not isinstance(message, dict):
+        raise RuntimeError("OpenRouter 応答 choices[0].message の形式が未対応です")
+    images = message.get("images") or []
+    if not images:
+        raise RuntimeError("OpenRouter 応答 message.images が空です。model の output_modalities と modalities を確認してください")
+
+    min_png = int(provider_cfg.get("min_png_bytes", 512))
+    saved: list[dict[str, Any]] = []
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    for idx, item in enumerate(images, start=1):
+        if not isinstance(item, dict):
+            raise RuntimeError("OpenRouter 応答 images の形式が未対応です")
+        image_url = item.get("image_url") or {}
+        raw_url = image_url.get("url") if isinstance(image_url, dict) else None
+        if not raw_url:
+            raise RuntimeError("OpenRouter 応答 image_url.url がありません")
+        image_bytes, source, suffix = decode_openrouter_image_url(str(raw_url), timeout)
+        if len(image_bytes) < min_png:
+            raise RuntimeError(f"OpenRouter の返却画像が異常に小さい ({len(image_bytes)} bytes)")
+        stem = f"{merged['file_prefix']}_{ts}_{idx:02d}"
+        image_path = out_dir / f"{stem}{suffix}"
+        meta_path = out_dir / f"{stem}.json"
+        image_path.write_bytes(image_bytes)
+        meta = {
+            "provider": "openrouter",
+            "openrouter_payload_request": payload,
+            "saved_image": str(image_path),
+            "param_merged": {k: v for k, v in merged.items() if k != "prompt"},
+            "prompt": merged["prompt"],
+            "response_message_content": message.get("content"),
+            "response_image": item,
+            "image_source": source,
+        }
+        write_json(meta_path, meta)
+        saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
+    return saved
+
+
 def print_dry_run(provider: str, api_url: str, payload: dict[str, Any]) -> None:
     print(
         json.dumps(
@@ -1012,7 +1162,7 @@ def print_dry_run(provider: str, api_url: str, payload: dict[str, Any]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="画像生成（Forge / NovelAI / Grok / OpenAI）")
+    parser = argparse.ArgumentParser(description="画像 provider 実行（Forge / NovelAI / Grok / OpenAI）")
     parser.add_argument(
         "--config",
         type=Path,
@@ -1079,7 +1229,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             print(
-                f"  例: python tools/forge_generate.py --params {ex} --dry-run",
+                f"  例: python tools/image_provider_generate.py --params {ex} --dry-run",
                 file=sys.stderr,
             )
             return 2
@@ -1132,7 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     out_dir = ensure_output_dir(root, merged["output_dir"])
-    log_path = root / "logs" / "forge_generate.log"
+    log_path = root / "logs" / "image_provider_generate.log"
     base_seed = merged["seed"] if merged["seed"] is not None else random.randint(1, 2**31 - 1)
     saved: list[dict[str, Any]] = []
 
@@ -1318,6 +1468,48 @@ def main(argv: list[str] | None = None) -> int:
             return 4
         except Exception as e:
             append_log(log_path, f"ERROR provider=openai {e!r}")
+            print(f"リクエスト失敗: {e}", file=sys.stderr)
+            return 5
+    elif provider == "openrouter":
+        auth_env = str(provider_cfg.get("auth_env", "OPENROUTER_API_KEY"))
+        token = resolve_env_value(auth_env, dotenv_map)
+        if not token and not args.dry_run:
+            print(
+                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
+                file=sys.stderr,
+            )
+            return 2
+        base_url = str(provider_cfg.get("base_url", "https://openrouter.ai/api/v1")).rstrip("/")
+        generate_path = str(provider_cfg.get("generate_path", "/chat/completions"))
+        api_url = f"{base_url}{generate_path}"
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        payload = build_openrouter_payload(merged)
+        if args.dry_run:
+            print_dry_run(provider, api_url, payload)
+            return 0
+        try:
+            _, raw, _ = http_post_json(api_url, payload, timeout, headers=headers)
+            resp = parse_json_response(raw)
+            saved.extend(
+                save_openrouter_response(
+                    resp=resp,
+                    merged=merged,
+                    payload=payload,
+                    provider_cfg=provider_cfg,
+                    out_dir=out_dir,
+                    timeout=timeout,
+                )
+            )
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            msg = f"HTTP {e.code}: {body[:2000]}"
+            if e.code == 401 and token:
+                msg += diagnose_openrouter_auth_error(token, base_url, timeout)
+            append_log(log_path, f"FAIL provider=openrouter {msg}")
+            print(msg, file=sys.stderr)
+            return 4
+        except Exception as e:
+            append_log(log_path, f"ERROR provider=openrouter {e!r}")
             print(f"リクエスト失敗: {e}", file=sys.stderr)
             return 5
     else:

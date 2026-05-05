@@ -40,7 +40,7 @@ targets: ["*"]
 
 - **同一応答（同一ターン）内**で、可能なら **退避・`_novel_text/` への書き込み・`Read`／`novel_char_count.py`** まで進める。長くなる場合でも、**最低でも退避（バックアップファイルの作成）または正本への書き込みのいずれか一歩**をツールで実行してから区切る。
 - **応答が続く場合**、次のメッセージでは **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
-- **例外（画像生成）**: **`tools/forge_generate.py`**・**`forge_novel_tag_batch.py`**・**`forge_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。スキル **`forge-txt2img`** に従い、**計画と `--dry-run` の提示まで**で一度止め、**ユーザーの明示承認後**にのみ本番実行する（承認前に本番に入らない）。
+- **例外（画像生成）**: **`tools/image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。スキル **`image-provider（旧 forge-txt2img）`** に従い、**計画と `--dry-run` の提示まで**で一度止め、**ユーザーの明示承認後**にのみ本番実行する（承認前に本番に入らない）。
 - 旧版退避を含む清書・校正の手順はスキル **`novel-refinement-output`** に従う。
 
 ## 必須（執筆ターンごと）
@@ -61,5 +61,5 @@ targets: ["*"]
 - 執筆**前**の資料・フォルダ: スキル **`novel-project-readiness`**（`tools/novel_project_check.py`）
 - **`rewrite.md` による清書・旧版退避と正本更新**: スキル **`novel-refinement-output`**
 - 分量の公式カウント: **`novel-char-count`**（`tools/novel_char_count.py`）
-- 画像生成の計画・承認・完了検証: **`forge-txt2img`**
+- 画像生成の計画・承認・完了検証: **`image-provider（旧 forge-txt2img）`**
 - プロジェクト全体のルール: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.3.1 本文出力の確認」「2.2.1 画像生成（txt2img）の事前確認」

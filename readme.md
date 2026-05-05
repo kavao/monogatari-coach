@@ -35,7 +35,7 @@ uv run python howto_init.py
 NOVELAI_ACCESS_TOKEN=
 XAI_API_KEY=
 MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT=novelai
-MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=forge
+MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai
 MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok
 MONOCRI_FORGE_MODEL_FAMILY_DEFAULT=flux
 MONOCRI_GROK_MODEL_TIER_DEFAULT=standard
@@ -77,7 +77,7 @@ uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 Grok dry-run:
 
 ```bash
-python tools/forge_generate.py --provider grok --params tools/fixtures/grok_params.tier_test.example.json --dry-run
+python tools/image_provider_generate.py --provider grok --params tools/fixtures/grok_params.tier_test.example.json --dry-run
 ```
 
 ## ライセンス

@@ -7,7 +7,7 @@
 YAML IR（manga-prompt-ir スキル）を正本として使う。
 Markdown（tag/<romaji>.md）は参照しない。
 
-実装: 各ジョブは tools/forge_generate.py を子プロセスで呼び出す（provider は CLI / .env /
+実装: 各ジョブは tools/image_provider_generate.py を子プロセスで呼び出す（provider は CLI / .env /
 config/image_generation.json で解決）。
 
 前提:
@@ -35,7 +35,7 @@ except ImportError:
     print("error: PyYAML が必要です。pip install pyyaml", file=sys.stderr)
     sys.exit(2)
 
-PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro")
+PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 TAG_PROVIDER_ENV = "MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT"
 
@@ -325,9 +325,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    forge = root / "tools" / "forge_generate.py"
-    if not forge.is_file():
-        print(f"error: {forge} がありません", file=sys.stderr)
+    provider_cli = root / "tools" / "image_provider_generate.py"
+    if not provider_cli.is_file():
+        print(f"error: {provider_cli} がありません", file=sys.stderr)
         return 2
 
     print(f"novel : {novel}")
@@ -372,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             r = subprocess.run(
-                [sys.executable, str(forge), "--params", str(tf_path), "--json"],
+                [sys.executable, str(provider_cli), "--params", str(tf_path), "--json"],
                 cwd=str(root),
                 capture_output=True,
                 text=True,

@@ -1,0 +1,9 @@
+{
+  "provider": "openrouter",
+  "model": "gpt_image_2",
+  "prompt": "Full-color manga page background reference, clean lineart, abandoned factory interior, dramatic emergency lights, no characters",
+  "output_dir": "outputs/openrouter",
+  "file_prefix": "openrouter_gpt_image_2",
+  "aspect_ratio_preset": "manga_b5_portrait",
+  "image_size": "1K"
+}

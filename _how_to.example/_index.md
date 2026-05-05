@@ -1,7 +1,7 @@
 # - 創作技法ファイル (how_to/)
-1. novelcore.md  
+1. novelcore.md
    - 一般的な小説の文法
-3. novel_structure.md  
+3. novel_structure.md
    - 一般的な小説構造のデータベース
 4. epsode_common.md
    - 一般的な小説構造のデータベース、恋愛や親愛要素が多い
@@ -14,16 +14,16 @@
    - 人名、クリーチャー名を考えるときの参考にする
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する
 7. world_wear.md
-   - 世界の色彩や、人物デザインを考えるときの参考にする 
+   - 世界の色彩や、人物デザインを考えるときの参考にする
 8. reader.md
-   - 小説の書評・下読みを行うときに使うレビュアープロンプト  
+   - 小説の書評・下読みを行うときに使うレビュアープロンプト
    - 評価観点（キャラクター、プロットの完成度、文章力、わかりやすさ、独創性など）と、5段階評価・読後感の期待値・改善サイクルといった出力フォーマットを定義する
    - First Reader Modeの記述を参考にする。ログの出力も必ず行う。
 9. standard_reader.md
    - 一般読者の「興味」と「第一印象」を判定するためのプロンプト。ペルソナに基づき、冒頭の掴みや読み飛ばしの有無をシビアに評価する。
 10. tag.md
    - キャラクターごとの画像タグを作成する。新規運用ではスキル **manga-prompt-ir** を優先し、`tag/characters/<character_id>.yaml` を人間編集用の正本、`tag/<romaji>.md` を既存バッチ互換出力として扱う
-   - `tag/<romaji>.md` の見出し・**Danbooru Tags** 行の置き方は、Forge 一括生成（`tools/forge_novel_tag_batch.py`）と整合させるため、同ファイル内「Markdown ファイル形式（機械抽出と整合）」およびスキル **novel-tag-md-format** を参照
+   - `tag/<romaji>.md` の見出し・**Danbooru Tags** 行の置き方は、Forge 一括生成（`tools/image_provider_novel_tag_batch.py`）と整合させるため、同ファイル内「Markdown ファイル形式（機械抽出と整合）」およびスキル **novel-tag-md-format** を参照
    - 目・髪・肌・種族など**固定特徴が状況ブロック間で抜けなく一貫しているか**は、スキル **novel-tag-character-consistency**（`.rulesync/skills/novel-tag-character-consistency/SKILL.md`）で確認
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
 12．manga.md, manga_tag.md, manga_tag_step2.md

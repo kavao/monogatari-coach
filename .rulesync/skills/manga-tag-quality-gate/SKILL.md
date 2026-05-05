@@ -24,7 +24,7 @@ targets: ["*"]
 
 を最低限読める状態まで整えるための品質ゲートを定義する。
 
-`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/forge_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
+`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/image_provider_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
 
 **機械処理・検証の正本は YAML** とし、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなす。`render_instruction` には、YAMLを1ページ漫画として描くこと、コマ順・コマ割りを守ること、キャラクター固定外見を継承すること、テキスト要素の扱いを明記する。互換 Markdown（`manga_XX.md`）は、人間の読み書き・推敲・既存バッチ連携のための**副本**として並行して用いる。
 
@@ -209,4 +209,4 @@ targets: ["*"]
 
 - スキル `manga-tag-character-sync`
 - ルール `.rulesync/rules/overview.md` の Manga Tag Mode
-- 画像生成スキル `forge-txt2img`
+- 画像生成スキル `image-provider（旧 forge-txt2img）`

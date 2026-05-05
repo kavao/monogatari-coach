@@ -20,7 +20,7 @@ from manga_prompt_ir.converters.yaml_loader import load_model
 from manga_prompt_ir.schemas.character import CharacterPrompt
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 
-from forge_novel_manga_batch import filter_single_panel_tags
+from image_provider_novel_manga_batch import filter_single_panel_tags
 
 
 def test_character_yaml_validates() -> None:

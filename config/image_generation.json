@@ -205,6 +205,39 @@
       "default_output_format": "png",
       "default_response_format": null,
       "allowed_samplers": []
+    },
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "generate_path": "/chat/completions",
+      "timeout_sec": 300,
+      "max_count": 1,
+      "min_png_bytes": 512,
+      "auth_env": "OPENROUTER_API_KEY",
+      "default_model": "google/gemini-2.5-flash-image",
+      "model_aliases": {
+        "nano_banana": "google/gemini-2.5-flash-image",
+        "nano_banana_2": "google/gemini-3.1-flash-image-preview",
+        "nano_banana_pro": "google/gemini-3-pro-image-preview",
+        "gpt_image_2": "openai/gpt-5.4-image-2"
+      },
+      "default_width": 1024,
+      "default_height": 1024,
+      "default_steps": 0,
+      "default_cfg_scale": 0,
+      "default_sampler_name": "",
+      "default_aspect_ratio": "1:1",
+      "default_image_size": "1K",
+      "aspect_ratio_presets": {
+        "square": "1:1",
+        "manga_b5_portrait": "3:4",
+        "portrait": "3:4",
+        "story_vertical": "9:16",
+        "mobile_vertical": "9:19.5",
+        "landscape": "16:9",
+        "wide": "16:9",
+        "auto": "auto"
+      },
+      "allowed_samplers": []
     }
   }
 }

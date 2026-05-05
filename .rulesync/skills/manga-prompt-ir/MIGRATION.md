@@ -59,17 +59,17 @@ novels/<作品>/
 
 ## Phase 4: 既存バッチの入力拡張
 
-`tools/forge_novel_tag_batch.py` と `tools/forge_novel_manga_batch.py` に、Markdown 入力と並行して YAML 入力を追加する。
+`tools/image_provider_novel_tag_batch.py` と `tools/image_provider_novel_manga_batch.py` に、Markdown 入力と並行して YAML 入力を追加する。
 
-2026-04-29 時点で、`tools/forge_novel_manga_batch.py` は `--input yaml|markdown` を持ち、既定は `yaml` とする。YAML 入力では `--source step1-panels` / `step1-pages` / `step2-pages` を、`panels[]` と `manga.panel_layout` から直接ジョブ化する。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
+2026-04-29 時点で、`tools/image_provider_novel_manga_batch.py` は `--input yaml|markdown` を持ち、既定は `yaml` とする。YAML 入力では `--source step1-panels` / `step1-pages` / `step2-pages` を、`panels[]` と `manga.panel_layout` から直接ジョブ化する。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
 
 2026-04-29 更新: `manga/pages/*.yaml` に `render_instruction` を追加し、YAML単体で漫画1ページ分の作画依頼書として読める形へ寄せる。**機械処理の正本は YAML** とし、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を Step1 相当の原盤として扱う。互換 Markdown は可読な副本として継続してエクスポート・利用する。
 
-2026-04-29 更新: `background_concepts[]` を追加し、Grok / OpenAI へ人物なしの背景・空間設計を渡す入口を設ける。`tools/forge_novel_manga_batch.py --source background-concepts` は YAML 入力専用で、未指定時の provider は Grok とする。
+2026-04-29 更新: `background_concepts[]` を追加し、Grok / OpenAI へ人物なしの背景・空間設計を渡す入口を設ける。`tools/image_provider_novel_manga_batch.py --source background-concepts` は YAML 入力専用で、未指定時の provider は Grok とする。
 
 残タスク:
 
-- `tools/forge_novel_tag_batch.py` にも同様の YAML 直読入力を追加する。
+- `tools/image_provider_novel_tag_batch.py` にも同様の YAML 直読入力を追加する。
 - 既存作品で `manga/manga_XX.md` しか無いものは、必要に応じて `manga/pages/*.yaml` へ移行する。
 - Markdown は人間向けの可読副本・外部確認・旧運用互換のため引き続き残す。画像生成バッチの**既定入力**は YAML とする（`--input markdown` は明示時のみ）。
 

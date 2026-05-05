@@ -81,7 +81,7 @@ rg -n "eyes|hair|skin|fairy|elf" novels/<作品>/tag/*.md
 構文・抽出の最終確認は **`novel-tag-md-format`** の `--dry-run` に従う。
 
 ```bash
-python tools/forge_novel_tag_batch.py novels/<作品フォルダ> --dry-run
+python tools/image_provider_novel_tag_batch.py novels/<作品フォルダ> --dry-run
 ```
 
 ## いつ実行するか

@@ -1,24 +1,25 @@
 ---
-name: forge-txt2img
+name: image-provider
 description: >-
-  Stable Diffusion Forge / NovelAI / Grok(xAI) / OpenAI Images API の REST API へ
-  tools/forge_generate.py で txt2img。タグ生成後に画像を outputs または
-  作品フォルダへ保存する。
+  Stable Diffusion Forge / NovelAI / Grok(xAI) / OpenAI Images API / OpenRouter などの画像 provider へ
+  tools/image_provider_generate.py でプロンプトを渡し、画像を outputs または作品フォルダへ保存する。
   dry-run と計画提示の後はユーザー承認まで本番実行しない。本番後は保存先のファイル存在で完了を検証する。
 targets: ["*"]
 ---
+
+> 移行メモ: 旧スキル名 `forge-txt2img` と旧スクリプト名 `forge_*` は互換名として残す。新しい案内・運用名は **image-provider** / `image_provider_*` を使う。`provider=forge` は Forge WebUI を指す provider 名として継続する。
 
 ## 目的
 
 `_how_to/manga_tag.md` / `manga.md` で **漫画タグ**、`_how_to/tag.md` で **キャラクタータグ**を用意した**あと**、同じプロンプト思想で **Forge / NovelAI / Grok / OpenAI** で画像を生成し、リポジトリ内の決めたフォルダにストックする。
 
-v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `openai`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`**、OpenAI は **`OPENAI_API_KEY`** を使って REST API に接続する。
+v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `openai` / `openrouter`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`**、OpenAI は **`OPENAI_API_KEY`**、OpenRouter は **`OPENROUTER_API_KEY`** を使って REST API に接続する。
 
 ## プロバイダ解決の優先順位（LLM 向け確認手順）
 
-> **⚠️ LLM 必須アクション（最初に行う）**  
-> 画像生成を案内・実行する前に、必ずプロジェクトルートの **`.env` を `Read` で開き**、実際に使うプロバイダと APIキーを確認する。  
-> `config/image_generation.json` の `default_provider: "forge"` はあくまでフォールバックであり、`.env` に設定がある場合は **`.env` が優先**される。  
+> **⚠️ LLM 必須アクション（最初に行う）**
+> 画像生成を案内・実行する前に、必ずプロジェクトルートの **`.env` を `Read` で開き**、実際に使うプロバイダと APIキーを確認する。
+> `config/image_generation.json` の `default_provider: "forge"` はあくまでフォールバックであり、`.env` に設定がある場合は **`.env` が優先**される。
 > `.env` を読まずに Forge の疎通確認（`--probe`）から始めると、設定済みの NovelAI / Grok / OpenAI を見落とす原因になる。
 
 ユーザーが `--provider` を明示しない場合、バッチツールは次の順でプロバイダを決定する。
@@ -33,12 +34,12 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 | 環境変数 | 対象ツール・用途 |
 |----------|-----------------|
-| `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `forge_novel_tag_batch.py`（キャラタグ一括生成） |
-| `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-panels`（コマ生成） |
-| `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
-| `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
-| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source background-concepts`（既定 `grok_pro`） |
-| `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `forge_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
+| `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `image_provider_novel_tag_batch.py`（キャラタグ一括生成） |
+| `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-panels`（コマ生成） |
+| `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
+| `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
+| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source background-concepts`（既定 `grok_pro`） |
+| `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
 | `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `pro`）。`grok_pro` を直接使う運用では不要 |
 
@@ -55,20 +56,20 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
 
-> **⚠️ ユーザー確認（必須）**  
+> **⚠️ ユーザー確認（必須）**
 > プロバイダ・モデル・ジョブ数が確定したら、**本番実行前に必ず `--dry-run` の結果をチャットに示し、ユーザーの明示的な承認（「OK」「進めて」等）を得てから**本番（`--dry-run` なし）を実行する。承認なしの本番実行は禁止。
 
 ## 小説執筆の「実行継続」との関係（画像生成は例外）
 
 スキル **`novel-text-file-output`** の「ツール予告したら同一ターンでツール続行」は、**画像生成には適用しない**。
 
-- **`forge_generate.py`**、**`forge_novel_tag_batch.py`**、**`forge_novel_manga_batch.py`** 等では、**`--dry-run` でプロバイダ・ジョブ数・保存先を示したところで一度応答を区切り**、**ユーザーの明示承認があるまで本番（`--dry-run` なし）を実行しない**。「続けて一気に回します」などとあっても **承認前に本番に入らない**。
+- **`image_provider_generate.py`**、**`image_provider_novel_tag_batch.py`**、**`image_provider_novel_manga_batch.py`** 等では、**`--dry-run` でプロバイダ・ジョブ数・保存先を示したところで一度応答を区切り**、**ユーザーの明示承認があるまで本番（`--dry-run` なし）を実行しない**。「続けて一気に回します」などとあっても **承認前に本番に入らない**。
 
 ## 生成「完了」の定義（幻覚完了の防止）
 
 ユーザーに「画像生成が完了した」「すべて出力した」と **完了扱い**で伝えてよいのは、次を **すべて**満たすときに限る。
 
-1. **本番実行の事実**: ユーザー承認の **後** に、`--dry-run` なしのバッチまたは `forge_generate.py` の本番呼び出しを行った（ユーザーが手元で実行した場合は、その結果を検証する）。
+1. **本番実行の事実**: ユーザー承認の **後** に、`--dry-run` なしのバッチまたは `image_provider_generate.py` の本番呼び出しを行った（ユーザーが手元で実行した場合は、その結果を検証する）。
 2. **出力の事実確認**: **`--dry-run` でチャットに示した保存先**（例: `novels/<作品>/tag/<romaji>/`、`manga/_assets/<manga_XX>/`）に、期待される **画像ファイル（`.png` 等）が存在する**ことを **`Glob` / ディレクトリ一覧 / ターミナル** で確認する。ジョブ数が分かる場合は **枚数・ファイル名が計画と整合するか** を見る。バッチが **JSON メタ**を書く運用なら併せて参照してよい。
 3. **報告の順序**: 上記 2 の **後** に、保存パスと確認のしかたを一言添えて完了を伝える。
 
@@ -79,11 +80,11 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 ## 漫画生成の用語整理
 
 - **コマ生成**:
-  `manga_XX.md` の **Step1** を使い、**各コマを別画像**として出す運用。`tools/forge_novel_manga_batch.py` の **`--source step1-panels`**。
+  `manga_XX.md` の **Step1** を使い、**各コマを別画像**として出す運用。`tools/image_provider_novel_manga_batch.py` の **`--source step1-panels`**。
 - **精密ページ生成**:
-  `manga_XX.md` の **Step1 全体**を使い、**各コマの詳細指示を保持したまま 1ページ全体を1枚で出す**運用。`tools/forge_novel_manga_batch.py` の **`--source step1-pages`**。
+  `manga_XX.md` の **Step1 全体**を使い、**各コマの詳細指示を保持したまま 1ページ全体を1枚で出す**運用。`tools/image_provider_novel_manga_batch.py` の **`--source step1-pages`**。
 - **ページ生成**:
-  `manga_XX.md` の **Step2** を使い、**1ページ全体を1枚**として出す運用。`tools/forge_novel_manga_batch.py` の **`--source step2-pages`**。
+  `manga_XX.md` の **Step2** を使い、**1ページ全体を1枚**として出す運用。`tools/image_provider_novel_manga_batch.py` の **`--source step2-pages`**。
 - **既定**:
   会話で明示がない場合は **コマ生成** とみなす。
 
@@ -91,7 +92,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 本リポジトリの**既定の運用イメージ**は次のとおり。
 
-| モード | `forge_novel_manga_batch.py` | 推奨プロバイダ | `.env` デフォルト変数 |
+| モード | `image_provider_novel_manga_batch.py` | 推奨プロバイダ | `.env` デフォルト変数 |
 |--------|------------------------------|----------------|----------------------|
 | **コマ生成（Step1）** | `--source step1-panels`（既定） | **NovelAI** / **Forge** / **OpenAI** | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai` |
 | **精密ページ生成** | `--source step1-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro` |
@@ -121,8 +122,8 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 - Forge / WebUI を **`--api` 付き**で起動する（これが無いと `/sdapi/v1/txt2img` が **HTTP 404** になり、Gradio の「Running on http://127.0.0.1:7860」だけでは足りないことがある）。
   - 例: `webui-user.bat` で `set COMMANDLINE_ARGS=--api` のあと起動。
-- 疎通確認: `python tools/forge_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
-- 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/forge_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
+- 疎通確認: `python tools/image_provider_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
+- 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/image_provider_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
 - **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「画像生成（txt2img）の事前確認」）。
 
 ### Forge + Flux（ブラウザと API を揃える）
@@ -131,7 +132,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 - **リポジトリ既定の `active_model_family` は `sdxl`**（`presets.sdxl`: CFG 約 7・Euler a・1024² など）。**Flux** で回すときは **`active_model_family` を `flux`** にし、`presets.flux`（CFG 約 1・Euler・Schedule Simple・Distilled CFG など）を使う。
 - Forge は API 自体は `width` / `height` 指定だが、このリポジトリでは **`aspect_ratio_preset`** を受け付け、`providers.forge.aspect_ratio_presets` から **family ごとの寸法**へ展開する。`square`、`portrait`、`manga_b5_portrait`、`story_vertical`、`landscape`、`wide` を用意している。
 - **Flux の Checkpoint なのに SDXL 向けの CFG（例: 7）のまま** txt2img を叩くと、画が壊れる・返却 PNG が極小になることがある。逆に **SDXL で CFG 1** だけではプロンプト追従が弱くなりやすい。
-- API 拡張フィールド: **`scheduler`**（例: `Simple`）・**`distilled_cfg_scale`**（例: `3.5`）。`tools/forge_generate.py` が `image_generation.json` または params JSON から付与する。
+- API 拡張フィールド: **`scheduler`**（例: `Simple`）・**`distilled_cfg_scale`**（例: `3.5`）。`tools/image_provider_generate.py` が `image_generation.json` または params JSON から付与する。
 - 例: `tools/fixtures/forge_params.flux.example.json`
 - **VAE 未設定・誤った VAE** でも UI では見えて API でだけ失敗する、というケースは起こりうる。生成ログの `info` や Forge のコンソールも参照する。
 
@@ -141,7 +142,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 - 設定は **`config/image_generation.json`** の `providers.novelai`。既定の通信先は `https://image.novelai.net/ai/generate-image`。
 - params JSON か CLI で **`provider=novelai`** を選ぶ。
 - 画像設定（steps / guidance / sampler など）の意味は NovelAI 公式ドキュメントの Image Generation 節に揃える。REST の詳細は公開仕様が薄いため、エンドポイントや追加フィールドが変わった場合は **config 側で吸収**する前提で運用する。
-- **ベース | キャラクター（`|` 区切り）**: NovelAI のプロンプトで `|` を挟むと左をシーン・画風寄り、右をキャラ固長寄りに振りやすい。`tools/forge_generate.py` はプロンプトに `|` が含まれるとき **左側だけ**へ品質接尾辞（例: `rating:general`）を付与する。`tools/forge_novel_manga_batch.py` は **`provider=novelai` かつ YAML・`--source step1-panels`** のとき、漫画ページ IR から **`ベースタグ | キャラタグ`** を自動組み立てする（オフは `--no-novelai-pipe-character-tags`）。
+- **ベース | キャラクター（`|` 区切り）**: NovelAI のプロンプトで `|` を挟むと左をシーン・画風寄り、右をキャラ固長寄りに振りやすい。`tools/image_provider_generate.py` はプロンプトに `|` が含まれるとき **左側だけ**へ品質接尾辞（例: `rating:general`）を付与する。`tools/image_provider_novel_manga_batch.py` は **`provider=novelai` かつ YAML・`--source step1-panels`** のとき、漫画ページ IR から **`ベースタグ | キャラタグ`** を自動組み立てする（オフは `--no-novelai-pipe-character-tags`）。
 - **互換 `manga/manga_XX.md` のエクスポート**: `tools/novel_prompt_ir_export_md.py` で **`--manga-page` を付けて `manga_XX.md` を生成するときは、エージェント・手動とも既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を上記と同形式にする。**付けないと** Step1 がカンマ一列のみになり、NovelAI 運用とずれる）。キャラ互換のみ（`--manga-page` なし）では不要。Step2 ブロックの組み立てはこのフラグでは変わらないが、手順の一本化のため漫画出力では付けてよい。
 
 ## 前提（Grok / xAI）
@@ -157,7 +158,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 Grok の API は **プロンプトの上限が約 8000 UTF-8 バイト**（公式仕様は文字数ではなくバイト数）。日本語は 1 文字 3 バイトのため、YAML IR から組み立てた step1-pages プロンプト（`render_instruction` ＋ パネル詳細 ＋ キャラ固定タグ）は **4 ページ分すべてが上限を超えることが多い**。
 
-`config/image_generation.json` の **`providers.grok.max_prompt_bytes`** にバイト上限（既定 **`7800`**）を設定しておくと、`tools/forge_novel_manga_batch.py` が step1-pages ジョブ組み立て時に **自動圧縮**（`trim_prompt_to_byte_limit`）を適用する。
+`config/image_generation.json` の **`providers.grok.max_prompt_bytes`** にバイト上限（既定 **`7800`**）を設定しておくと、`tools/image_provider_novel_manga_batch.py` が step1-pages ジョブ組み立て時に **自動圧縮**（`trim_prompt_to_byte_limit`）を適用する。
 
 圧縮は次の 4 フェーズを順番に試み、上限に収まった時点で停止する：
 
@@ -178,7 +179,7 @@ python -c "import json; d=json.load(open('config/image_generation.json')); print
 **圧縮結果の確認**（dry-run で実際のプロンプトバイト数を見る）:
 
 ```bash
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター \
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
   --manga-stem manga_01 --source step1-pages --provider grok --dry-run
 ```
 
@@ -191,6 +192,14 @@ python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテス
 - params JSON か CLI で **`provider=openai`** を選ぶ。
 - 既定モデルは `config` の `providers.openai.default_model` で管理する。`gpt-image-2` のような次世代名を直接固定せず、`openai` provider の `model` を config で差し替える。
 - YAMLをそのまま読ませる漫画ページ生成や、背景概念のような構造化プロンプトに向く。タグ列だけに強く寄せたい場合は NovelAI / Forge を優先する。
+
+## 前提（OpenRouter）
+
+- `.env` に **`OPENROUTER_API_KEY`** を記入する。
+- 設定は **`config/image_generation.json`** の `providers.openrouter`。既定の通信先は `https://openrouter.ai/api/v1/chat/completions`。
+- params JSON か CLI で **`provider=openrouter`** を選ぶ。
+- OpenRouter の画像生成は `modalities: ["image", "text"]` と `image_config` を使う。画像は `choices[].message.images[].image_url.url` に base64 data URL として返る。
+- 画像モデルは OpenRouter Models API の `output_modalities=image` で確認する。2026-05-06 時点では `nano_banana` → `google/gemini-2.5-flash-image`、`nano_banana_2` → `google/gemini-3.1-flash-image-preview`、`gpt_image_2` → `openai/gpt-5.4-image-2` を alias 登録している。Grok Imagine 相当は一覧で未確認。
 
 ## Codex / ChatGPT 内蔵画像生成の保管
 
@@ -214,7 +223,7 @@ python tools/codex_builtin_image_archive.py \
   --note "Codex内蔵画像生成で試作した漫画コマ"
 ```
 
-この運用は、`tools/forge_generate.py provider=openai` とは別物として扱う。`provider=openai` は OpenAI API 直叩き、内蔵 `image_gen` は ChatGPT/Codex 会話上の生成機能である。
+この運用は、`tools/image_provider_generate.py provider=openai` とは別物として扱う。`provider=openai` は OpenAI API 直叩き、内蔵 `image_gen` は ChatGPT/Codex 会話上の生成機能である。
 
 ## 保存先の約束（推奨）
 
@@ -242,7 +251,7 @@ python tools/codex_builtin_image_archive.py \
 
 Forge は **`save_images: false` / `send_images: true`**、NovelAI は zip または JSON 応答を Python 側で保存する。保存名:
 
-`{output_dir}/{file_prefix}_{timestamp}_{seed}.png`  
+`{output_dir}/{file_prefix}_{timestamp}_{seed}.png`
 同名に生成メタ（リクエスト内容・`info` があれば）を **`.json`** で保存。
 
 ## 実行例
@@ -250,11 +259,11 @@ Forge は **`save_images: false` / `send_images: true`**、NovelAI は zip ま�
 **ドライラン**（HTTP しない）:
 
 ```bash
-python tools/forge_generate.py --params tools/fixtures/forge_params.example.json --dry-run
+python tools/image_provider_generate.py --params tools/fixtures/forge_params.example.json --dry-run
 ```
 
 ```bash
-python tools/forge_generate.py --provider forge --json << EOF
+python tools/image_provider_generate.py --provider forge --json << EOF
 {
   "provider": "forge",
   "prompt": "manga page, monochrome, speed lines",
@@ -266,29 +275,29 @@ EOF
 ```
 
 ```bash
-python tools/forge_generate.py --params tools/fixtures/novelai_params.example.json --dry-run
+python tools/image_provider_generate.py --params tools/fixtures/novelai_params.example.json --dry-run
 ```
 
 ```bash
-python tools/forge_generate.py --params tools/fixtures/grok_params.example.json --dry-run
+python tools/image_provider_generate.py --params tools/fixtures/grok_params.example.json --dry-run
 ```
 
 **本番**（Forge 起動済み・保存先あり）:
 
 ```bash
-python tools/forge_generate.py --params tools/fixtures/forge_params.example.json --json
+python tools/image_provider_generate.py --params tools/fixtures/forge_params.example.json --json
 ```
 
 ```bash
-python tools/forge_generate.py --provider novelai --params tools/fixtures/novelai_params.example.json --json
+python tools/image_provider_generate.py --provider novelai --params tools/fixtures/novelai_params.example.json --json
 ```
 
 ```bash
-python tools/forge_generate.py --provider grok --params tools/fixtures/grok_params.example.json --json
+python tools/image_provider_generate.py --provider grok --params tools/fixtures/grok_params.example.json --json
 ```
 
 ```bash
-python tools/forge_generate.py --provider grok --json << EOF
+python tools/image_provider_generate.py --provider grok --json << EOF
 {
   "provider": "grok",
   "prompt": "manga page, black and white, dynamic action",
@@ -305,12 +314,12 @@ EOF
 **標準入力**（パラメータ JSON）:
 
 ```bash
-type params.json | python tools/forge_generate.py --json
+type params.json | python tools/image_provider_generate.py --json
 ```
 
 ## キャラタグ正本（YAML IR）の書式（ブレ防止）
 
-一括生成 **`tools/forge_novel_tag_batch.py`** は、`tag/characters/*.yaml`（YAML IR）を直接読む。`tag/<romaji>.md` は参照しない。
+一括生成 **`tools/image_provider_novel_tag_batch.py`** は、`tag/characters/*.yaml`（YAML IR）を直接読む。`tag/<romaji>.md` は参照しない。
 
 - **正本**: `tag/characters/<character_id>.yaml`（スキル **`manga-prompt-ir`** の `schemas/character.py` / `examples/character.yaml`）
 - **固定タグ**: `character_tags`・`costume.outfit_tags`・`manga_rules.consistency_tags`・`appearance.species_features`・`appearance.distinctive_features` を結合
@@ -325,22 +334,22 @@ type params.json | python tools/forge_generate.py --json
 3. `params.json` を1枚ごと、または `count` で連続生成。
 4. 生成結果の PNG を、該当 `manga_XX.md` または `tag/*.md` の節に**ファイル名で参照**するメモを追記すると追跡しやすい。
 
-**一括（`tag/characters/*.yaml` の `prompt_variants` → 各 `tag/<char_id>/` へ1枚ずつ）** は `tools/forge_novel_tag_batch.py` を使う（スキル **`novel-image-layout`** のフォルダ規約と整合）。
+**一括（`tag/characters/*.yaml` の `prompt_variants` → 各 `tag/<char_id>/` へ1枚ずつ）** は `tools/image_provider_novel_tag_batch.py` を使う（スキル **`novel-image-layout`** のフォルダ規約と整合）。
 
 ```bash
 # プロバイダは .env の MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT を使う（未設定なら config の default_provider）
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --dry-run
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider novelai
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --dry-run
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider novelai
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
 # キャラ・バリアントを絞る（YAML IR の character_id / variant_id を指定）
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki el --variant-id normal battle
-python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテスター --variant-id normal
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --only-char kazuki el --variant-id normal battle
+python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --variant-id normal
 ```
 
-**一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/`）** は `tools/forge_novel_manga_batch.py` を使う。
+**一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/`）** は `tools/image_provider_novel_manga_batch.py` を使う。
 
 - `--source step1-panels`（既定）: Step1 の `tag:` を**コマ単位**で抽出して生成する。
 - `--source step1-pages`: 各 Page の **Step1 全体を1ジョブ**として扱い、**各コマの詳細情報を保ったままページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**精密ページ生成向けの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
@@ -351,36 +360,36 @@ python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテス�
 - **`novel_image_layout.py scaffold --panels N` が作る `k01`〜`kNN`** は **「1ページ内のコマ用スロット」**の任意フォルダ。多ページの MD では **ページ番号 `p##` と混同しないこと**（本一括スクリプトの既定では **k## へは保存しない**）。
 
 ```bash
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --dry-run
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --dry-run
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01
 # （任意・本リポジトリでは非推奨）ページ単位サブフォルダがどうしても必要なときだけ:
-# python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01 --subdir-by-page
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step1-pages --aspect-ratio manga_b5_portrait --resolution 2k
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step2-pages --aspect-ratio manga_b5_portrait --resolution 2k
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai --no-character-anchors
+# python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01 --subdir-by-page
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step1-pages --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step2-pages --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai --no-character-anchors
 ```
 
 ## エラー時
 
-- `logs/forge_generate.log` に要約を追記。
+- `logs/image_provider_generate.log` に要約を追記。
 - **HTTP 404**（`{"detail":"Not Found"}`）→ **REST API 未登録**。`--api` 付きで Forge を再起動し、`--probe` で `/sdapi/v1/samplers` が 200 になるか確認。
-- **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/forge_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
-- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → `nai-diffusion-4*` 系は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/forge_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
-- **Grok が HTTP 400（プロンプト上限超過）** → xAI API はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。`config/image_generation.json` の `providers.grok.max_prompt_bytes`（既定 `7800`）が設定されていれば `tools/forge_novel_manga_batch.py` が自動圧縮する。設定が **未設定**の場合は `7800` を追加してから再実行する（詳細は「Grok プロンプト上限と自動圧縮」節）。
+- **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/image_provider_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
+- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → `nai-diffusion-4*` 系は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
+- **Grok が HTTP 400（プロンプト上限超過）** → xAI API はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。`config/image_generation.json` の `providers.grok.max_prompt_bytes`（既定 `7800`）が設定されていれば `tools/image_provider_novel_manga_batch.py` が自動圧縮する。設定が **未設定**の場合は `7800` を追加してから再実行する（詳細は「Grok プロンプト上限と自動圧縮」節）。
 - **Grok の URL 応答が期限切れ** → xAI docs でも生成 URL は一時的。`response_format: "b64_json"` を優先し、即保存する。
 - HTTP その他 4xx/5xx → レスポンス先頭を stderr に表示。
 - **返却 PNG が異常に小さい**（既定 512 バイト未満）→ **exit 8**。Forge は `image_generation.json` の Flux 向け数値・VAE・モデルを UI と揃えて再試行。NovelAI は prompt / sampler / model の組み合わせを見直す。
 
 ## 関連パス
 
-- スクリプト: `tools/forge_generate.py`
-- タグ一括: `tools/forge_novel_tag_batch.py`（`tag/characters/*.yaml` の `prompt_variants` を YAML 直読みして連続 txt2img）
-- 漫画一括: `tools/forge_novel_manga_batch.py`（`manga/manga_*.md` の step1 内 `tag:` ブロックをコマ順に txt2img）
+- スクリプト: `tools/image_provider_generate.py`
+- タグ一括: `tools/image_provider_novel_tag_batch.py`（`tag/characters/*.yaml` の `prompt_variants` を YAML 直読みして連続 txt2img）
+- 漫画一括: `tools/image_provider_novel_manga_batch.py`（`manga/manga_*.md` の step1 内 `tag:` ブロックをコマ順に txt2img）
 - 設定: `config/image_generation.json`, `.env`
 - 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/grok_params.example.json`
 - タグルール: `_how_to/tag.md`, `_how_to/manga_tag.md`, `_how_to/manga.md`

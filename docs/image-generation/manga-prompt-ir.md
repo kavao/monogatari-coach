@@ -19,6 +19,8 @@
 
 **Manga Tag Mode**: 初手は **YAML IR 作成** → `novel_prompt_ir_validate.py` → 必要なら `novel_prompt_ir_export_md.py`。`manga_XX.md` を直接新規作成して正本にしない。
 
+既存作品にある `manga/manga_*.md` は削除や退避を前提にせず、**YAML から再生成できる人間向け副本**として同じ場所に保管します。通常運用・検証・画像生成は `manga/pages/*.yaml` を正本にし、Markdown を手で直した場合はその変更を YAML へ戻してから再エクスポートします。差分確認や外部連携で Markdown が必要なときだけ使い、判断に迷う古い Markdown は `_legacy/` へ移すより、まず対応する YAML の有無を確認します。
+
 ---
 
 ## 本文 → YAML → 画像 までのフロー
@@ -28,9 +30,10 @@
   ↓ 読み込み・コマ化
 [manga/pages/manga_XX_pYY.yaml]  ← 正本（ここを編集する）
   ↓ python tools/novel_prompt_ir_validate.py（型・参照・品質）
-  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-panels（コマ生成）
-  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-pages（精密ページ生成）
-  └─ tools/forge_novel_manga_batch.py --input yaml --source step2-pages（ページ生成）
+  ├─ tools/image_provider_novel_manga_batch.py --input yaml --source step1-panels（コマ生成）
+  ├─ tools/image_provider_novel_manga_batch.py --input yaml --source step1-pages（精密ページ生成）
+  ├─ tools/image_provider_novel_manga_batch.py --input yaml --source step2-pages（ページ生成）
+  └─ tools/image_provider_novel_manga_batch.py --input yaml --source background-concepts（背景資料）
 
 必要な場合だけ:
   ↓ tools/novel_prompt_ir_embed_snapshots.py（スナップショット埋め込み）
@@ -41,11 +44,11 @@
 - 本番前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を推奨。
 - 通常は `--input yaml` が既定。旧 Markdown 互換だけ `--input markdown`。
 - 修正は **常に YAML 側**。`manga_XX.md` が要るときだけ再エクスポート。
-- **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `forge_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。
+- **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `image_provider_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。
 
 ### 互換 Markdown を出すとき（`novel_prompt_ir_export_md.py`）
 
-**`--manga-page` を渡す実行では、手順を一本化するため `--novelai-pipe-tags` を付ける**と、Step1 の各コマ `tag` 行が NovelAI 向け **`ベース | キャラ`** 形式になり、`forge_novel_manga_batch`（step1-panels 等）と形が揃います。付けないと Step1 がカンマ一列になりやすい。
+**`--manga-page` を渡す実行では、手順を一本化するため `--novelai-pipe-tags` を付ける**と、Step1 の各コマ `tag` 行が NovelAI 向け **`ベース | キャラ`** 形式になり、`image_provider_novel_manga_batch`（step1-panels 等）と形が揃います。付けないと Step1 がカンマ一列になりやすい。
 
 ---
 
@@ -66,7 +69,7 @@ python tools/novel_prompt_ir_export_md.py \
   --output-dir novels/NNN_作品名 --manga-stem manga_01 --novelai-pipe-tags
 ```
 
-画像生成バッチの具体例・`--dry-run`・provider は [index.md よく使うコマンド](index.md#よく使うコマンド) と [forge-txt2img スキル](../../.rulesync/skills/forge-txt2img/SKILL.md) を参照。
+画像生成バッチの具体例・`--dry-run`・provider は [index.md よく使うコマンド](index.md#よく使うコマンド) と [`image-provider`（旧 `forge-txt2img`）スキル](../../.rulesync/skills/forge-txt2img/SKILL.md) を参照。
 
 ---
 
@@ -175,7 +178,7 @@ character_snapshots: []
 
 ## コマ生成（`step1-panels`）のネガティブプロンプト合成順
 
-`--input yaml` かつ **`--source step1-panels`** のとき、各コマの `negative_prompt` は `forge_novel_manga_batch.py` 内で次の順に合成されます。
+`--input yaml` かつ **`--source step1-panels`** のとき、各コマの `negative_prompt` は `image_provider_novel_manga_batch.py` 内で次の順に合成されます。
 
 1. CLI の `--negative-prompt`（未指定時はツール既定）
 2. `technical.negative_tags`

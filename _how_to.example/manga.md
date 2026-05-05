@@ -17,9 +17,9 @@
 新規の漫画ページ・漫画コマは、まず **`manga-prompt-ir`** の `MangaPagePrompt` 構造へ落とす。
 
 - 人間編集用の正本: `novels/<作品>/manga/pages/manga_XX_pYY.yaml`
-- 画像生成バッチ入力: `tools/forge_novel_manga_batch.py --input yaml`（既定。`manga/pages/*.yaml` を必須入力として読む）
+- 画像生成バッチ入力: `tools/image_provider_novel_manga_batch.py --input yaml`（既定。`manga/pages/*.yaml` を必須入力として読む）
 - 人間向けの副本・既存Markdown互換: `novels/<作品>/manga/manga_XX.md`
-- `manga_XX.md` は YAML からエクスポートする**可読形**（手作業での Step1/Step2 推敲・外部確認・`forge_novel_manga_batch --input markdown` 等）として扱う
+- `manga_XX.md` は YAML からエクスポートする**可読形**（手作業での Step1/Step2 推敲・外部確認・`image_provider_novel_manga_batch --input markdown` 等）として扱う
 - 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
 
 **Manga Tag Mode の初手は YAML IR 作成です。**
@@ -36,13 +36,13 @@ YAML IR では、少なくとも次を分離して持つ。
 
 ### `manga.genre_tags` / `manga.visual_tags`（Step1 の `tag` 行に直結する）
 
-`tools/novel_prompt_ir_export_md.py` の `panel_tags()` は、互換 `manga/manga_XX.md` の **各コマ `### Step1` の `tag` 行**に、コマ用のスタイル断片のあと **`manga.genre_tags` と `manga.visual_tags` をそのまま連結**する。`tools/forge_novel_manga_batch.py`（YAML 入力）のタグ合成も同様にページの `manga` 節を読む。
+`tools/novel_prompt_ir_export_md.py` の `panel_tags()` は、互換 `manga/manga_XX.md` の **各コマ `### Step1` の `tag` 行**に、コマ用のスタイル断片のあと **`manga.genre_tags` と `manga.visual_tags` をそのまま連結**する。`tools/image_provider_novel_manga_batch.py`（YAML 入力）のタグ合成も同様にページの `manga` 節を読む。
 
 - **原則（フルカラー運用）**: **`monochrome` と `screentone` を `genre_tags` および `visual_tags` に入れない。** 雛形 `tools/manga_prompt_ir/examples/manga_page.yaml` など**古い例**に従うと、白黒・トーン紙風のトークンが混ざり、**互換 Markdown の「カラー」表記や、カラー指向モデル（NovelAI 等）の意図と矛盾**しやすい。
 - **例外**: 作品またはページを**意図的にモノクロ漫画・スクリーントーン仕上げ**にするときだけ、`monochrome` / `screentone` を置く。その場合は **`color_palette.mode`**（または `render_instruction` 等）と説明文をモノクロ前提で揃える。
 - **カラーで画風を足すなら**（例）: `full_color`・`anime_coloring`・`cel_shading`・`clean_lineart` など、プロバイダと合わせた語を **`visual_tags`** や **`panels[].prompt_tags`** に載せる。
 
-**`scene` の英語フィールド（タグ行・txt2img）**  
+**`scene` の英語フィールド（タグ行・txt2img）**
 `location_en` は**必須（非空）**。`time_of_day` / `weather` / `background_notes` を書いたら、対応する `time_of_day_en` / `weather_en` / `background_notes_en` も**必須**（`tools/manga_prompt_ir/schemas/manga_page.py` の `Scene` で検証）。`tools/manga_prompt_ir/scene_prompt.py` は **`*_en` のみ**参照し、日本語の `location` 等にはフォールバックしません。欠けは LLM 側で英語行を補ってから保存する。
 
 `Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
@@ -51,7 +51,7 @@ YAML IR では、少なくとも次を分離して持つ。
 
 ### POV・部分アップと `subjects[]`（タグ注入の主役を誰に合わせるか）
 
-`forge_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
+`image_provider_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
 
 - **原則**: フレームで**面積・意味の中心になっている身体**の持ち主を、`subjects[]` の**先頭に近いほど主**として書く。複数人物がいるときは「誰の体型・肌・衣装タグが結果を決めるか」がその人物側になるように並べる。
 - **一人称・POV**（`prompt_tags` に `pov`・`first_person_view`・`male perspective` 等がある、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。
@@ -70,7 +70,7 @@ YAML IR では、少なくとも次を分離して持つ。
 
 ### 手元・手と手など「キャラID注入を載せない」コマ
 
-**可能。** `forge_novel_manga_batch.py` のタグ組み立て（`yaml_panel_tags`）では、**`subjects[].character_id` が無い**とき **`tag/characters/<id>.yaml` 由来の固長タグ列は付かない**（`subject_snapshot` もヒットしない）。代わりに `subject_tag_line_token()` が **`tag_token` → `description_en` → `description`** の順で短いトークンを1つ足す（実装は `tools/manga_prompt_ir/scene_prompt.py`）。**手と手をつなぐ接写だけ**にしたいときは次のとおり。
+**可能。** `image_provider_novel_manga_batch.py` のタグ組み立て（`yaml_panel_tags`）では、**`subjects[].character_id` が無い**とき **`tag/characters/<id>.yaml` 由来の固長タグ列は付かない**（`subject_snapshot` もヒットしない）。代わりに `subject_tag_line_token()` が **`tag_token` → `description_en` → `description`** の順で短いトークンを1つ足す（実装は `tools/manga_prompt_ir/scene_prompt.py`）。**手と手をつなぐ接写だけ**にしたいときは次のとおり。
 
 - **`character_id` を付けない** `subjects` を、写る手の数だけ並べる（例: 2エントリ）。英語の見え方は **`tag_token`** または **`description_en`** にまとめる（例: `slender female hand`, `larger male hand`, `interlocked fingers`, `holding hands`）。日本語の `description` は編集用メモとして残してよい。
 - **`prompt_tags`** に画角・肌の質感・握り方などを足す。**キャラYAMLが載らないぶん、肌の明暗・手の大きさ差などは英語で明示**する。
@@ -104,7 +104,7 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 
 ### バリアントとタグ注入の優先（曖昧にしないための正本）
 
-**小説→ページYAML起こしの手順の説明は本ファイル（`manga.md`）を正とする。** 次の表は、**実装** `tools/forge_novel_manga_batch.py`（`subject_snapshot` / `selected_subject_variant_id` / `character_ir_tags`）と揃えたものである。`manga_tag.md` は**シーン用の英語タグ例・語彙**の参照であり、ここに無い「variant の機械的な優先」は定義しない。
+**小説→ページYAML起こしの手順の説明は本ファイル（`manga.md`）を正とする。** 次の表は、**実装** `tools/image_provider_novel_manga_batch.py`（`subject_snapshot` / `selected_subject_variant_id` / `character_ir_tags`）と揃えたものである。`manga_tag.md` は**シーン用の英語タグ例・語彙**の参照であり、ここに無い「variant の機械的な優先」は定義しない。
 
 | 優先度 | 何が起きるか |
 |--------|----------------|

@@ -56,11 +56,11 @@ nanobanana, GptImage1のようなツールでもそのまま使えることを�
 
 **step1 での書き方（どちらか必ず）**
 
-1. **ページ配置の1行サマリ**を `### Step1` 直後（コマ列の前）に書く。均等な縦並びだけでもよい。  
-   - 例: `ページレイアウト（読み順・上→下）: コマ①〜④を縦に四分割、横幅ほぼ均等。`  
+1. **ページ配置の1行サマリ**を `### Step1` 直後（コマ列の前）に書く。均等な縦並びだけでもよい。
+   - 例: `ページレイアウト（読み順・上→下）: コマ①〜④を縦に四分割、横幅ほぼ均等。`
    - 例: `ページレイアウト: 上段=コマ1（やや大）｜中段=コマ2・コマ3の横並び｜下段=コマ4（大ゴマ）。`
-2. または、**各 `コマN:` の説明文の先頭**に、段・大致を短く付ける。  
-   - 例: `コマ2: 【中段・左】 medium shot。〜`  
+2. または、**各 `コマN:` の説明文の先頭**に、段・大致を短く付ける。
+   - 例: `コマ2: 【中段・左】 medium shot。〜`
    - 例: `コマ4: 【最下段・横幅いっぱい】 感情のクライマックス。〜`
 
 コマ単体画像だけを出す予定でも、**1 または 2 を入れておく**と、あとから精密ページ生成やページ化したときにブレにくい。
@@ -84,17 +84,17 @@ nanobanana, GptImage1のようなツールでもそのまま使えることを�
 
 コマ1: 【上段・横幅広め】見開き大ゴマ気味、零が剣を構えて敵の群れを睨む、背景に炎、迫力重視
 セリフ：「来い…全部まとめて斬ってやる」
-tag:  
+tag:
 dynamic wide angle manga panel, shonen jump style, dramatic low angle shot, black-haired scarred swordsman Rei gripping sword tightly, sharp intense eyes glaring forward, surrounded by shadowy enemy horde, blazing fire background, intense atmosphere, action manga, detailed lineart, speed lines, high contrast, epic battle opening scene
 
 コマ2: 【中段・左】 ルナが後ろで魔法陣を展開、青い光エフェクト
 セリフ：「零！援護するよ！」
-tag:  
+tag:
 shonen manga style, beautiful blonde magical girl Luna standing behind, casting large glowing blue magic circle, intricate rune patterns, cyan light particles and sparkles, determined expression, wind blowing hair, support magic scene, dramatic backlighting, detailed magical effects, anime screentone
 
 コマ3: 【中段・右】 零が敵の先頭へ踏み込み、斜めに斬りかかる瞬間
 セリフ：なし
-tag:  
+tag:
 fast-paced action manga panel, Rei performing powerful diagonal sword slash, forward stepping motion, impact frame, dynamic speed lines, black hair flowing, enemies directly ahead, dramatic shading, kinetic energy, battle tension
 
 コマ4: 【下段・左】 斬撃の着弾で爆炎と瓦礫が広がる
@@ -108,7 +108,7 @@ tag:
 enemy horde blown away manga panel, enemies screaming in pain, distorted faces, bodies thrown backward by explosion, smoke and sparks, dramatic high contrast shading, chaotic battle aftermath, action manga intensity
 
 コマ6: 【下段・やや大ゴマ】 零が血まみれで立っている、ルナが駆け寄る、決めポーズ
-tag:  
+tag:
 final victory pose manga panel, shonen jump climax scene, bloodied black-haired swordsman Rei standing tall breathing heavily, sword planted in ground, sharp eyes looking forward, wounds and torn clothes, blonde magical girl Luna running towards him worriedly, reaching out, dramatic back view of enemies defeated in background, dust and smoke, powerful atmosphere, detailed shading, heroic moment, intense emotion
 
 ```
@@ -131,11 +131,11 @@ nanobanana, GptImage1のようなツールで、コマ割りと抽象度をの�
 
 **（機械との関係）** **IR の `step2_summary` / `summary` や互換 Markdown** は、上記 **`manga_tag_step2.md`** の作法に従って書く。`novel_prompt_ir_validate.py` は **言い換え内容を自動では検証・適用しない**（[`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md) の置き換え表と同様、**手で IR に反映するまで完了とみなさない**）。
 
-**（表の機械置換）** [`manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md) の「言い換えの目安」表と同内容の置換は、ルール YAML を **`forge_novel_manga_batch.py`**（`--source step2-pages`）または **`novel_prompt_ir_export_md.py`** 実行時に、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成直前の Step2 本文**へ適用できる（**`--no-step2-paraphrase`** でオフ。IR ファイルは変わらない）。**既定は `apply_mode: whole_text`**（`avoid` に部分一致したら**そのコマの Step2 本文全体**を `use` に差し替え）。従来の文中だけの部分置換はルール YAML に **`apply_mode: substring`**。探索順は **`MONOCRI_STEP2_PARAPHRASE_RULES`** → **`_how_to/step2_paraphrase_rules.yaml`** → **`tools/manga_prompt_ir/data/step2_paraphrase_rules.yaml`**。
+**（表の機械置換）** [`manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md) の「言い換えの目安」表と同内容の置換は、ルール YAML を **`image_provider_novel_manga_batch.py`**（`--source step2-pages`）または **`novel_prompt_ir_export_md.py`** 実行時に、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成直前の Step2 本文**へ適用できる（**`--no-step2-paraphrase`** でオフ。IR ファイルは変わらない）。**既定は `apply_mode: whole_text`**（`avoid` に部分一致したら**そのコマの Step2 本文全体**を `use` に差し替え）。従来の文中だけの部分置換はルール YAML に **`apply_mode: substring`**。探索順は **`MONOCRI_STEP2_PARAPHRASE_RULES`** → **`_how_to/step2_paraphrase_rules.yaml`** → **`tools/manga_prompt_ir/data/step2_paraphrase_rules.yaml`**。
 
 **互換 Markdown の Step2（自動エクスポート）** は `tools/novel_prompt_ir_export_md.py` が、各ページ YAML の `manga.panel_layout`・`meta.reading_order`・各 `panels[].composition.layout`・**コマ要約**から機械的に組み立てます（ページ生成バッチの `yaml_page_step2_text` も同じ情報源です）。**コマ要約は `panels[].step2_summary` が非空ならそちらを優先**し、無い場合のみ `panels[].summary` を使います（Step1 は引き続き `summary` が見出し本文）。見出しは各 `## Page N` の直下に付く `### Step2` です。
 
-加えて、**登場人物の固定見た目**は次の**複合**で付与されます（`tools/forge_novel_manga_batch.build_step2_panel_line`）。手で `summary` に髪色を毎回書かなくても、正本の YAML に沿って追従します。
+加えて、**登場人物の固定見た目**は次の**複合**で付与されます（`tools/image_provider_novel_manga_batch.build_step2_panel_line`）。手で `summary` に髪色を毎回書かなくても、正本の YAML に沿って追従します。
 
 1. **ページの `character_snapshots[]`** に `appearance_summary` がある場合 → その **自然文**を最優先（`名前: appearance_summary`）。**`costume_summary` は Step2 の【固定見た目】には含めない**（衣装・状況の長文が付きやすいため。IR 正本としては引き続き保持してよい）。
 2. 上記がなく **`fixed_tags` / `variant_tags` がある場合** → 英語タグ列を短く連結（長い場合は先頭16個まで）。
