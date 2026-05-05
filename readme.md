@@ -7,6 +7,8 @@ Monogatari Coach は、小説執筆の企画、設計、執筆、推敲、評価
 - [Docs Index](docs/index.md)
 - [Getting Started](docs/getting-started/index.md)
 - [Image Generation](docs/image-generation/index.md)
+- [Manga prompt IR（YAML・検証・バッチ）](docs/image-generation/manga-prompt-ir.md)
+- [Manga tag generation（互換 Step1/Step2・テンプレ）](docs/image-generation/manga-tag-generation.md)
 - [Workflow](docs/workflow/index.md)
 - [指示出しベースのワークフロー（コピペ用）](docs/workflow/instruction-driven.md)
 - [Project Structure](docs/project-structure/index.md)

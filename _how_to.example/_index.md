@@ -26,8 +26,11 @@
    - `tag/<romaji>.md` の見出し・**Danbooru Tags** 行の置き方は、Forge 一括生成（`tools/forge_novel_tag_batch.py`）と整合させるため、同ファイル内「Markdown ファイル形式（機械抽出と整合）」およびスキル **novel-tag-md-format** を参照
    - 目・髪・肌・種族など**固定特徴が状況ブロック間で抜けなく一貫しているか**は、スキル **novel-tag-character-consistency**（`.rulesync/skills/novel-tag-character-consistency/SKILL.md`）で確認
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
-12．manga.md,manga_tag.md
-   - マンガのコマ割りを行う時に用います。新規運用ではスキル **manga-prompt-ir** を優先し、`manga/pages/manga_XX_pYY.yaml` を正本、`manga/manga_XX.md` を既存バッチ互換出力として扱う
+12．manga.md, manga_tag.md, manga_tag_step2.md
+   - **manga.md**: 本文から漫画ページIRを起こす手順・YAML構造・**バリアントとタグ注入の優先**（実装と同一の表）・検証の参照先。コマ割りの設計の中心。
+   - **manga_tag.md**: コマ・シーン向けの**英語タグ例・語彙**（体勢等）。IRの正本や variant の機械仕様の説明は manga.md に譲る。**Step1／`prompt_tags` 中心**。
+   - **manga_tag_step2.md**: **Step2（ページ生成・抽象レイアウト・`step2_summary`）** を編集するときに必ず参照する短いチェックリストと役割分担。雛形は `_how_to.example/manga_tag_step2.md`。
+   - 新規運用ではスキル **manga-prompt-ir** を優先し、`manga/pages/manga_XX_pYY.yaml` を正本、`manga/manga_XX.md` を既存バッチ互換出力として扱う
    - 中間データは作り直し可能だが、日本語の意味、人物関係、セリフ帰属、コマの段・大小・読み順は失わない
 13. meta.md
    - 小説のメタ情報を管理する。外部投稿用（キャッチコピー、紹介文、タグ）と内部管理用（執筆ステータス、AIへの引き継ぎ指示、伏線管理）の両方を扱う。

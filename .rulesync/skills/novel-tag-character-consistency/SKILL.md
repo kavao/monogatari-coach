@@ -18,12 +18,15 @@ targets: ["*"]
 |------|------|
 | `novels/<作品>/character.md` | 外見・ボディー・小物の**確定記述**。ここに無い特徴をタグだけで増やさない（要追加なら先に character を更新）。 |
 | `manga-prompt-ir` の `character.yaml` | YAML/JSON 化後のキャラクター定義正本。`character_id`・固定タグ・禁止変更項目を保持する。 |
+| `_how_to/world_wear.md` | **新規**に外見・服のトーンや舞台の配色感を決めるときの参考（雛形は `_how_to.example/world_wear.md`）。**必須手順の詳細はスキル manga-prompt-ir の節「キャラクターIR・外見初版を新規に起こすとき（world_wear.md）」**に従う。既存タグの照合だけのときは任意。 |
 | `_how_to/tag.md` | 「通常時で書いたタグのうち**顔に付ける飾りや、種族に属するもの**は、**他の状況にも引き継いで**ください。」に従う。 |
 | スキル **`novel-tag-md-format`** | `**Danbooru Tags:**` 行の置き方・一括抽出との整合。 |
 
 ## 手順（推奨）
 
 ### 1. 固定特徴リストの作成（キャラごと）
+
+**キャラのタグ正本を新規に起こす直前**（`character.md` の外見初稿・`tag/characters/*.yaml` の初版）は、スキル **`manga-prompt-ir`** の節 **「キャラクターIR・外見初版を新規に起こすとき（world_wear.md）」** に従い、**`_how_to/world_wear.md`** を参照して舞台トーン・配色・服の系統の目安を取り込んでから、以下のリストを作る（既存IRの照合・軽微修正のみのときは省略可）。
 
 `character.md` と、存在する場合は `character.yaml` 相当の構造化定義を読み、**タグに必ず残したい固定項目**を箇条書きにする（例）。
 
@@ -92,3 +95,4 @@ python tools/forge_novel_tag_batch.py novels/<作品フォルダ> --dry-run
 - **Markdown 構造・Danbooru 行**: スキル **`novel-tag-md-format`**
 - **画像フォルダ**: スキル **`novel-image-layout`**
 - **技法ルール**: **`_how_to/tag.md`**
+- **キャラ初版・`world_wear` 参照の必須範囲**: スキル **`manga-prompt-ir`**（「キャラクターIR・外見初版を新規に起こすとき」）

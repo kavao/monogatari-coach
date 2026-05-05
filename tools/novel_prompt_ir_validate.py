@@ -63,6 +63,14 @@ def has_text(value: str | None) -> bool:
     return bool(value and value.strip())
 
 
+def effective_step2_summary_text(panel) -> str:
+    """Step2 互換行に載る要約。`step2_summary` があれば優先、なければ `summary`。"""
+    s2 = getattr(panel, "step2_summary", None)
+    if s2 is not None and str(s2).strip():
+        return str(s2).strip()
+    return str(panel.summary or "").strip()
+
+
 def is_human_subject(subject) -> bool:
     subject_type = str(getattr(subject, "type", "human") or "human").lower()
     return subject_type in {"human", "person", "character"}
@@ -116,15 +124,20 @@ def quality_warnings_for_page(path: Path, page, character_variants: dict[str, se
     snapshot_ids = {snapshot.character_id for snapshot in page.character_snapshots}
     for panel in page.panels:
         prefix = f"{label}: panel {panel.panel_id}"
-        if panel.summary.strip() in ABSTRACT_ONLY_SUMMARIES:
-            warnings.append(f"{prefix}: summary が抽象語のみです: {panel.summary!r}")
-        if any(word in panel.summary for word in PARTIAL_CUT_WORDS):
+        step2_text = effective_step2_summary_text(panel)
+        if step2_text in ABSTRACT_ONLY_SUMMARIES:
+            warnings.append(
+                f"{prefix}: Step2 用要約（step2_summary 優先、なければ summary）が抽象語のみです: {step2_text!r}"
+            )
+        if any(word in step2_text for word in PARTIAL_CUT_WORDS):
             has_owner = any(
                 has_text(subject.character_id) or any(name in subject.description for name in ("の", "が", "を"))
                 for subject in panel.subjects
             )
             if not has_owner:
-                warnings.append(f"{prefix}: 部分アップらしいsummaryですが、所有者や意味づけが弱い可能性があります")
+                warnings.append(
+                    f"{prefix}: 部分アップらしい Step2 用要約ですが、所有者や意味づけが弱い可能性があります"
+                )
 
         if not panel.subjects:
             warnings.append(f"{prefix}: subjects[] が空です")
@@ -154,11 +167,17 @@ def quality_warnings_for_page(path: Path, page, character_variants: dict[str, se
             has_text(value)
             for value in [
                 comp.layout,
+                comp.layout_en,
                 comp.framing,
+                comp.framing_en,
                 comp.focus,
+                comp.focus_en,
                 comp.perspective,
+                comp.perspective_en,
                 camera.angle,
+                camera.angle_en,
                 camera.shot_size,
+                camera.shot_size_en,
             ]
         )
         if not has_composition:

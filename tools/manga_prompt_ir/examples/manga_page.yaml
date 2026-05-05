@@ -1,0 +1,166 @@
+schema_version: "1.0"
+meta:
+  intent: manga_page
+  reading_order: right_to_left
+  aspect_ratio: "2:3"
+  page_count: 1
+render_instruction:
+  task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
+  prompt_header: 以下のYAMLは漫画1ページ分の作画指示です。panelsを読み順に従って配置し、manga.panel_layoutに沿って1ページの漫画として描いてください。
+  panel_policy: panels[]の順番とpanel_idを守り、各コマのsummary、subjects、composition、camera、prompt_tagsを統合して作画する。
+  character_policy: character_snapshotsまたはcharacter_idに紐づく固定外見・服装・禁止事項を、該当人物が出るすべてのコマへ反映する。
+  text_policy: text.dialogue、monologue、narration、sfxは吹き出し・独白・ナレーション・効果音として扱い、日本語文字が崩れる場合は文字要素を別処理できる余白を残す。
+  output_policy: 1枚の完成漫画ページとして出力する。コマ境界、読み順、ページ内の大小関係を明確にする。
+  notes:
+    - prompt_tagsは各コマの作画タグとして扱う。
+    - technical.negative_tagsは避けるべき要素として扱う。
+manga:
+  genre_tags:
+    - manga
+    - monochrome
+  visual_tags:
+    - clean_lineart
+    - screentone
+    - dramatic_paneling
+  line_art: crisp ink line
+  screentone: soft gray screentone
+  panel_layout: 日本の漫画のコマ割り、上段1コマ・中段2コマ・下段1コマ
+  text_policy: Japanese text must be legible; text can be rendered separately if needed
+scene:
+  location: 深夜の自室
+  location_en: small lived-in bedroom at night, study desk, quiet apartment
+  time_of_day: midnight
+  time_of_day_en: midnight
+  weather: quiet indoor scene
+  weather_en: quiet indoor, no open windows
+  era: modern fantasy
+  background_notes: 机の上にスマホと古いノートがある
+  background_notes_en: smartphone and old notebook on desk, clutter, lived-in
+character_ids:
+  - kazuki
+background_concepts:
+  - concept_id: midnight_room
+    title: 深夜の自室背景
+    description: 生活感のある狭い部屋。机上のスマホだけが光り、日常へ異物が入り込む前触れを出す。
+    prompt: Japanese manga background concept art, small lived-in apartment room at midnight, desk, smartphone screen glow, quiet unease, clean commercial manga style, no characters
+    negative_tags:
+      - people
+      - character close-up
+    provider_hint: grok
+    usage: 第1ページの自室背景やページ生成前の背景検討に使う。
+panels:
+  - panel_id: 1
+    summary: 上段の導入コマ。和紀が深夜の自室でスマホの通知に気づく。
+    scene:
+      location: 深夜の自室
+      location_en: same bedroom at night, desk, phone screen as only light source
+      time_of_day: midnight
+      time_of_day_en: midnight
+      background_notes: 机上のスマホだけが明るい
+      background_notes_en: only smartphone on desk is lit, cool screen glow on face and hands
+    subjects:
+      - character_id: kazuki
+        description: 机に向かう和紀
+        pose_action: スマホの通知へ手を伸ばす
+        position: midground
+        expression: 眠気と警戒が混じった表情
+    composition:
+      framing: medium shot
+      layout: 上段いっぱいの横長コマ
+      focus: 光るスマホ画面
+      perspective: やや俯瞰
+    camera:
+      angle: high angle
+      shot_size: medium shot
+    lighting:
+      quality: dark room lit by phone screen
+      mood_effect: 不穏な入口
+    text:
+      narration:
+        - その通知は、眠りかけた夜を静かに裂いた。
+      sfx:
+        - content: ピコン
+          placement: スマホの近く
+          style: 小さく硬い電子音
+          meaning: 通知音
+    mood_atmosphere:
+      - quiet tension
+      - mysterious
+    prompt_tags:
+      - phone_screen_light
+      - quiet_tension
+    translation: 和紀が深夜の自室でスマホ通知に気づく導入コマ。
+  - panel_id: 2
+    summary: 中段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。
+    subjects:
+      - description: 和紀のスマホ画面
+        type: object
+        pose_action: DivineQA β の文字を表示している
+        position: foreground
+    composition:
+      framing: close-up
+      layout: 中段右の小コマ
+      focus: DivineQA β の通知
+    text:
+      monologue:
+        - こんなアプリ、入れた覚えはない。
+    mood_atmosphere:
+      - unease
+  - panel_id: 3
+    summary: 中段左コマ。和紀がスマホを持ち上げ、画面の光で目元が照らされる。
+    subjects:
+      - character_id: kazuki
+        description: スマホを持つ和紀
+        pose_action: 画面を凝視する
+        position: foreground
+        expression: 眉を寄せて疑っている
+    composition:
+      framing: bust up
+      layout: 中段左の小コマ
+      focus: 和紀の目元
+    text:
+      dialogue:
+        - speaker: 和紀
+          content: ……誰が送ってきた？
+          bubble_type: small speech bubble
+          placement: 顔の左側
+    mood_atmosphere:
+      - suspicion
+  - panel_id: 4
+    summary: 下段の大ゴマ。画面の光が部屋全体に広がり、日常が異物に侵食される。
+    subjects:
+      - character_id: kazuki
+        description: 光に包まれ始める和紀
+        pose_action: 椅子から立ち上がりかける
+        position: midground
+        expression: 驚き
+    composition:
+      framing: wide shot
+      layout: 下段いっぱいの大ゴマ
+      focus: スマホから伸びる光と和紀の影
+      perspective: low angle
+    lighting:
+      direction: from phone screen
+      quality: sharp supernatural light
+      mood_effect: 現実が割れる予感
+    text:
+      sfx:
+        - content: ザッ
+          placement: 画面の発光部分
+          style: ノイズ混じり
+          meaning: 異常な起動音
+    mood_atmosphere:
+      - supernatural intrusion
+      - cliffhanger
+color_palette:
+  mode: monochrome
+  colors:
+    - black
+    - white
+    - gray
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags:
+    - bad anatomy
+    - unreadable text

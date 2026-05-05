@@ -5,16 +5,21 @@
 画像生成プロバイダへ連続実行する。
 
 保存先: manga/_assets/<manga_stem>/ （既定・file_prefix は <stem>_p<page>_k<koma>）。
-  --subdir-by-page 指定時は manga/_assets/<manga_stem>/p<page>/ に保存（8ページなどをフォルダ分割）。
+  --subdir-by-page 指定時は manga/_assets/<manga_stem>/p<page>/ に保存（任意。本リポジトリの推奨運用は章単位の直下のみ）。
   novel_image_layout の k01.. は「1ページ内のコマ用スロット」用の任意フォルダで、本スクリプト既定では未使用。
 前提: config/image_generation.json・各 provider の準備完了（tools/forge_generate.py と同じ）
 
 `tag/*.md` からのキャラ固定特徴の自動注入は、**`--no-character-anchors`** で無効化できる（NovelAI 等でポリシー拒否が出るとき、step1 の `tag:` だけを送りたいとき）。
+
+YAML 入力・**step1-panels**（コマ単位）時は、各コマの `negative_prompt` を
+`--negative-prompt` + `technical.negative_tags` + `panels[].negative_tags` から合成し、
+`panels[].omit_negative_tags` に列挙した断片を合成前の集合から除去する（split screen の出し分け等）。
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 import subprocess
@@ -25,6 +30,32 @@ from typing import Iterable
 
 import yaml
 
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+
+
+def _safe_print_stdout(text: str) -> None:
+    """Windows cp932 等で forge の stdout に含まれる文字が print できず落ちるのを防ぐ。"""
+    if not text:
+        return
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(text.encode(enc, errors="backslashreplace").decode(enc))
+from manga_prompt_ir.scene_prompt import (
+    camera_tag_tokens,
+    composition_layout_tag_token,
+    composition_tag_tokens,
+    lighting_tag_tokens,
+    panel_mood_atmosphere_tag_tokens,
+    scene_prompt_background_notes,
+    scene_prompt_location_time_weather,
+    subject_situational_tag_tokens,
+    subject_tag_line_token,
+)
+
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 INPUT_CHOICES = ("yaml", "markdown")
@@ -32,6 +63,21 @@ MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP1_PAGES_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT"
 MANGA_STEP2_PROVIDER_ENV = "MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT"
 MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
+# 漫画バッチのみ。CLI --aspect-ratio 未指定かつ provider=grok_pro のとき、
+# config の default_aspect_ratio（多くは 1:1）の代わりに使う。
+MANGA_GROK_PRO_DEFAULT_ASPECT_ENV = "MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO"
+
+
+def manga_grok_pro_effective_aspect_ratio(
+    cli_aspect: str | None, provider: str
+) -> str | None:
+    """CLI が優先。未指定かつ grok_pro のときだけ環境変数を参照。"""
+    if cli_aspect is not None:
+        return cli_aspect
+    if provider != "grok_pro":
+        return None
+    raw = (os.environ.get(MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) or "").strip()
+    return raw or None
 
 
 def repo_root() -> Path:
@@ -98,6 +144,79 @@ def normalize_tag(value) -> str:
 
 def join_tags(values: list) -> str:
     return ", ".join(unique([normalize_tag(value) for value in values if value]))
+
+
+def join_novelai_pipe_tag_line(base: list[str], character_segments: list[list[str]]) -> str:
+    """NovelAI 向け ``ベース | キャラA | キャラB | …`` の1行に連結する。"""
+    parts: list[str] = []
+    b = join_tags(base)
+    if b:
+        parts.append(b)
+    for seg in character_segments:
+        s = join_tags(seg)
+        if s:
+            parts.append(s)
+    return " | ".join(parts)
+
+
+def split_comma_phrases(value) -> list[str]:
+    """カンマ区切りの1本の文字列を、空でない断片のリストにする（ネガ・ポジ両方で再利用）。"""
+    if value is None:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    return [part.strip() for part in text.split(",") if part.strip()]
+
+
+def merge_panel_negative_prompt(
+    cli_default: str,
+    technical_tags: list,
+    panel_extra: list,
+    omit_tags: list,
+) -> str:
+    """
+    コマ単位生成向け: CLI の negative_prompt + technical.negative_tags に対し、
+    omit_negative_tags で断片を除去し、最後に panels[].negative_tags を追加（順序保持・重複除去）。
+    omit は normalize_tag 済みキーまたは原文の lower で一致した断片を落とす。
+    """
+    parts: list[str] = []
+    parts.extend(split_comma_phrases(cli_default))
+    parts.extend(str(x).strip() for x in as_list(technical_tags) if x)
+    omit_keys = set()
+    for o in as_list(omit_tags):
+        if not o:
+            continue
+        s = str(o).strip()
+        if not s:
+            continue
+        omit_keys.add(normalize_tag(s))
+        omit_keys.add(s.lower())
+    filtered: list[str] = []
+    for p in parts:
+        if normalize_tag(p) in omit_keys or p.strip().lower() in omit_keys:
+            continue
+        filtered.append(p)
+    filtered.extend(str(x).strip() for x in as_list(panel_extra) if x)
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in filtered:
+        key = normalize_tag(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p.strip())
+    return ", ".join(out)
+
+
+def comma_split_tags(value) -> list[str]:
+    """Comma-separated prompt fragments (e.g. scene.background_notes) → tag tokens."""
+    if value is None:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    return [part.strip() for part in text.split(",") if part.strip()]
 
 
 def load_dotenv(path: Path) -> dict[str, str]:
@@ -398,6 +517,125 @@ def snapshot_tags(snapshot: dict) -> list[str]:
     return unique(tags)
 
 
+def character_visual_summary_for_step2(character: dict, variant_id: str | None = None) -> str:
+    """Step2 向け: tag/characters の appearance / costume から短い日本語の固定見た目列を組む。"""
+    _ = variant_id  # 将来: バリアント別の差分を足す余地
+    app = character.get("appearance") or {}
+    cos = character.get("costume") or {}
+    name = str(character.get("name") or character.get("character_id") or "?")
+    segments: list[str] = []
+    if app.get("hair_color"):
+        segments.append(f"髪色 {app['hair_color']}")
+    if app.get("hair_style"):
+        segments.append(f"髪型 {app['hair_style']}")
+    if app.get("eye_color"):
+        segments.append(f"目色 {app['eye_color']}")
+    if app.get("skin_tone"):
+        segments.append(f"肌 {app['skin_tone']}")
+    species = [str(x) for x in as_list(app.get("species_features")) if x]
+    if species:
+        segments.append("種族特徴 " + "・".join(species))
+    acc = [str(x) for x in as_list(cos.get("accessories")) if x]
+    if acc:
+        segments.append("固定小物 " + "・".join(acc))
+    dist = [str(x) for x in as_list(app.get("distinctive_features")) if x][:3]
+    for d in dist:
+        segments.append(str(d))
+    if segments:
+        return f"{name}・" + "、".join(segments)
+    ct = [str(x) for x in as_list(character.get("character_tags")) if x][:8]
+    if ct:
+        return f"{name}・" + "、".join(ct)
+    return name
+
+
+def subject_step2_character_clause(
+    page: dict,
+    subject: dict,
+    characters: dict[str, dict],
+) -> str:
+    """1 subject 分の Step2 固定見た目節（空なら空文字）。"""
+    cid = subject.get("character_id")
+    if not cid:
+        return ""
+    cid = str(cid)
+    snapshot = subject_snapshot(page, subject)
+    variant_id = selected_subject_variant_id(subject)
+    if snapshot:
+        label = str(snapshot.get("name") or snapshot.get("name_en") or cid)
+        # Step2 の固定見た目は外見の要約のみ（costume_summary は衣装・状況説明が長くなりがちなため含めない）
+        if snapshot.get("appearance_summary"):
+            return f"{label}: " + str(snapshot["appearance_summary"]).strip()
+        tags = snapshot_tags(snapshot)
+        if tags:
+            return f"{label}: " + "、".join(tags[:16])
+    if cid in characters:
+        char = characters[cid]
+        return character_visual_summary_for_step2(char, variant_id)
+    return ""
+
+
+def step2_character_anchor_segments(
+    page: dict,
+    panel: dict,
+    characters: dict[str, dict],
+) -> list[str]:
+    """同一コマ内の登場キャラごとの固定見た目（character_id 単位で重複除去）。"""
+    seen: set[str] = set()
+    out: list[str] = []
+    for subject in as_list(panel.get("subjects")):
+        if not isinstance(subject, dict):
+            continue
+        cid = subject.get("character_id")
+        if not cid:
+            continue
+        cid = str(cid)
+        if cid in seen:
+            continue
+        seen.add(cid)
+        clause = subject_step2_character_clause(page, subject, characters)
+        if clause:
+            out.append(clause)
+    return out
+
+
+def panel_step2_description(panel: dict, *, apply_paraphrase: bool | None = None) -> str:
+    """Step2 行の本文。`step2_summary` が非空ならそれを使い、無ければ `summary`。
+
+    apply_paraphrase が True のとき、または None かつ環境変数 MONOCRI_STEP2_PARAPHRASE が真のとき、
+    manga_prompt_ir.step2_paraphrase のルールで部分置換する。
+    """
+    from manga_prompt_ir.step2_paraphrase import apply_step2_paraphrase, effective_paraphrase
+
+    raw = panel.get("step2_summary")
+    if raw is not None and str(raw).strip():
+        body = str(raw).strip()
+    else:
+        body = str(panel.get("summary") or "").strip()
+    if effective_paraphrase(apply_paraphrase):
+        body = apply_step2_paraphrase(body)
+    return body
+
+
+def build_step2_panel_line(
+    page: dict,
+    panel: dict,
+    characters: dict[str, dict],
+    *,
+    apply_paraphrase: bool | None = None,
+) -> str:
+    """互換 Markdown Step2 の1コマ行（layout・summary の後に固定見た目を任意で付与）。"""
+    comp = panel.get("composition") or {}
+    pid = panel.get("panel_id", "?")
+    layout = comp.get("layout") or ""
+    body = panel_step2_description(panel, apply_paraphrase=apply_paraphrase)
+    base = f"- コマ{pid}: {layout}。{body}"
+    anchors = step2_character_anchor_segments(page, panel, characters)
+    if not anchors:
+        return base
+    return f"{base} 【固定見た目】{' ｜ '.join(anchors)}"
+
+
 SINGLE_PANEL_BLOCKLIST_EXACT = {
     "color manga page",
     "japanese manga panel layout",
@@ -480,25 +718,16 @@ def yaml_panel_tags(
     tags.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
     tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
     tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
+    # English / Danbooru-style scene line (IR: background_notes_en only; no JP fallback) — NovelAI/CLIP
+    tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
+    tags.extend(str(v) for v in as_list(manga.get("background_tags")))
     tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    tags.extend(
-        str(v)
-        for v in [
-            scene.get("location"),
-            scene.get("time_of_day"),
-            scene.get("weather"),
-            composition.get("framing"),
-            composition.get("focus"),
-            composition.get("perspective"),
-            camera.get("angle"),
-            camera.get("shot_size"),
-            lighting.get("quality"),
-            lighting.get("mood_effect"),
-        ]
-        if v
-    )
-    if not single_panel and composition.get("layout"):
-        tags.append(str(composition.get("layout")))
+    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
+    tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+    tags.extend(composition_tag_tokens(composition))
+    tags.extend(camera_tag_tokens(camera))
+    tags.extend(lighting_tag_tokens(lighting))
+    tags.extend(composition_layout_tag_token(composition, single_panel=single_panel))
     for subject in as_list(panel.get("subjects")):
         if not isinstance(subject, dict):
             continue
@@ -512,17 +741,77 @@ def yaml_panel_tags(
             tags.append(str(character.get("name_en") or cid))
             tags.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
         else:
-            tags.append(str(subject.get("description") or subject.get("type") or "subject"))
-        tags.extend(
-            str(v)
-            for v in [subject.get("pose_action"), subject.get("expression"), subject.get("position")]
-            if v
-        )
-    tags.extend(str(v) for v in as_list(panel.get("mood_atmosphere")))
+            tags.append(subject_tag_line_token(subject))
+        tags.extend(subject_situational_tag_tokens(subject))
+    tags.extend(panel_mood_atmosphere_tag_tokens(panel))
     tags = unique(tags)
     if single_panel:
         tags = filter_single_panel_tags(tags)
     return tags
+
+
+def yaml_panel_tags_novelai_split(
+    page: dict,
+    panel: dict,
+    characters: dict[str, dict],
+    *,
+    single_panel: bool = False,
+) -> tuple[list[str], list[list[str]]]:
+    """
+    NovelAI の「ベース | キャラA | キャラB | …」入力向けにタグを分割する。
+
+    - base: 画風・舞台・構図・panels[].prompt_tags・雰囲気等の状況タグ、
+      および character_id / snapshot を持たない subject の短いトークン
+    - character_segments: character_snapshots または tag/characters を参照する
+      subjects 要素ごとに 1 セグメント（name_en + 固定・バリアント + その行の pose 等）
+    """
+    manga = page.get("manga") or {}
+    scene = panel.get("scene") or page.get("scene") or {}
+    composition = panel.get("composition") or {}
+    camera = panel.get("camera") or {}
+    lighting = panel.get("lighting") or {}
+    base: list[str] = []
+    character_segments: list[list[str]] = []
+    base.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
+    base.extend(str(v) for v in as_list(manga.get("genre_tags")))
+    base.extend(str(v) for v in as_list(manga.get("visual_tags")))
+    base.extend(comma_split_tags(scene_prompt_background_notes(scene)))
+    base.extend(str(v) for v in as_list(manga.get("background_tags")))
+    base.extend(str(v) for v in as_list(panel.get("prompt_tags")))
+    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
+    base.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+    base.extend(composition_tag_tokens(composition))
+    base.extend(camera_tag_tokens(camera))
+    base.extend(lighting_tag_tokens(lighting))
+    base.extend(composition_layout_tag_token(composition, single_panel=single_panel))
+    for subject in as_list(panel.get("subjects")):
+        if not isinstance(subject, dict):
+            continue
+        cid = subject.get("character_id")
+        snapshot = subject_snapshot(page, subject)
+        situational = subject_situational_tag_tokens(subject)
+        seg: list[str] = []
+        if snapshot:
+            seg.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
+            seg.extend(snapshot_tags(snapshot))
+        elif cid and cid in characters:
+            character = characters[cid]
+            seg.append(str(character.get("name_en") or cid))
+            seg.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
+        else:
+            base.append(subject_tag_line_token(subject))
+        if seg:
+            seg.extend(situational)
+            character_segments.append(seg)
+        else:
+            base.extend(situational)
+    base.extend(panel_mood_atmosphere_tag_tokens(panel))
+    base = unique(base)
+    character_segments = [unique(seg) for seg in character_segments]
+    if single_panel:
+        base = filter_single_panel_tags(base)
+        character_segments = [filter_single_panel_tags(seg) for seg in character_segments]
+    return base, character_segments
 
 
 def yaml_text_lines(panel: dict) -> list[str]:
@@ -638,6 +927,7 @@ def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: i
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     scene = page.get("scene") or {}
+    loc_s, tod_s, _wx_s = scene_prompt_location_time_weather(scene)
     panels = as_list(page.get("panels"))
     reading_order = meta.get("reading_order", "right_to_left")
     panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
@@ -647,7 +937,7 @@ def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: i
         instruction_block,
         f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
         f"ページ構成: {panel_layout}",
-        f"共通舞台: {scene.get('location', '')} / {scene.get('time_of_day', '')} / {scene.get('background_notes', '')}",
+        f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
     ]
     lines = [line for line in lines if line]
@@ -675,7 +965,13 @@ def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: i
     return "\n".join(lines).strip()
 
 
-def yaml_page_step2_text(page: dict, page_number: int) -> str:
+def yaml_page_step2_text(
+    page: dict,
+    page_number: int,
+    characters: dict[str, dict],
+    *,
+    apply_paraphrase: bool | None = None,
+) -> str:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     panels = as_list(page.get("panels"))
@@ -687,15 +983,15 @@ def yaml_page_step2_text(page: dict, page_number: int) -> str:
     ]
     for panel in panels:
         if isinstance(panel, dict):
-            comp = panel.get("composition") or {}
             lines.append(
-                f"- コマ{panel.get('panel_id', '?')}: {comp.get('layout', '')}。{panel.get('summary', '')}"
+                build_step2_panel_line(page, panel, characters, apply_paraphrase=apply_paraphrase)
             )
     return "\n".join(lines).strip()
 
 
 def yaml_background_concept_jobs(page: dict, stem: str, page_num: int) -> list[dict[str, str]]:
     scene = page.get("scene") or {}
+    loc_bg, tod_bg, _wx_bg = scene_prompt_location_time_weather(scene)
     technical = page.get("technical") or {}
     page_negative = join_tags(as_list(technical.get("negative_tags")))
     jobs: list[dict[str, str]] = []
@@ -715,7 +1011,7 @@ def yaml_background_concept_jobs(page: dict, stem: str, page_num: int) -> list[d
             for line in [
                 "背景コンセプト生成。人物を主役にせず、漫画ページで使う背景・空間設計として描く。",
                 f"Page {page_num} / {title}",
-                f"共通舞台: {scene.get('location', '')} / {scene.get('time_of_day', '')} / {scene.get('background_notes', '')}",
+                f"共通舞台: {loc_bg} / {tod_bg} / {scene_prompt_background_notes(scene)}",
                 f"説明: {description}" if description else "",
                 f"背景プロンプト: {prompt}",
                 f"用途: {concept.get('usage', '')}" if concept.get("usage") else "",
@@ -1185,6 +1481,10 @@ def iter_yaml_manga_jobs(
     source: str,
     provider: str,
     style_helper: str | None,
+    *,
+    cli_negative_prompt: str,
+    use_novelai_pipe_split: bool = False,
+    step2_paraphrase: bool | None = None,
 ) -> list[dict[str, str]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
@@ -1230,7 +1530,9 @@ def iter_yaml_manga_jobs(
                 job["output_dir"] = (base / job.pop("output_subdir", "backgrounds")).as_posix()
                 all_jobs.append(job)
         elif source == "step2-pages":
-            body = yaml_page_step2_text(page, page_num)
+            body = yaml_page_step2_text(
+                page, page_num, characters, apply_paraphrase=step2_paraphrase
+            )
             helper = resolve_page_style_helper(provider, "step2-pages", style_helper)
             anchor_block = yaml_character_anchor_block(page, characters)
             instruction_block = yaml_render_instruction_block(page)
@@ -1277,10 +1579,25 @@ def iter_yaml_manga_jobs(
                 }
             )
         else:
+            technical = page.get("technical") or {}
+            tech_neg = as_list(technical.get("negative_tags"))
             for panel_index, panel in enumerate(panels, start=1):
-                tags = join_tags(yaml_panel_tags(page, panel, characters, single_panel=True))
+                if use_novelai_pipe_split:
+                    btags, char_segs = yaml_panel_tags_novelai_split(
+                        page, panel, characters, single_panel=True
+                    )
+                    tags = join_novelai_pipe_tag_line(btags, char_segs)
+                else:
+                    tags = join_tags(
+                        yaml_panel_tags(page, panel, characters, single_panel=True)
+                    )
                 if not tags:
                     continue
+                panel_neg = as_list(panel.get("negative_tags"))
+                panel_omit = as_list(panel.get("omit_negative_tags"))
+                merged_neg = merge_panel_negative_prompt(
+                    cli_negative_prompt, tech_neg, panel_neg, panel_omit
+                )
                 all_jobs.append(
                     {
                         "stem": stem,
@@ -1288,6 +1605,7 @@ def iter_yaml_manga_jobs(
                         "koma": str(panel_index),
                         "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
                         "prompt": STYLE_PREFIX + tags,
+                        "negative_prompt": merged_neg,
                         "output_dir": base.as_posix(),
                     }
                 )
@@ -1302,10 +1620,22 @@ def iter_jobs_by_input(
     style_helper: str | None,
     input_kind: str,
     *,
+    cli_negative_prompt: str,
     no_character_anchors: bool = False,
+    use_novelai_pipe_split: bool = False,
+    step2_paraphrase: bool | None = None,
 ) -> tuple[str, list[dict[str, str]]]:
     if input_kind == "yaml":
-        return "yaml", iter_yaml_manga_jobs(novel_dir, only_stem, source, provider, style_helper)
+        return "yaml", iter_yaml_manga_jobs(
+            novel_dir,
+            only_stem,
+            source,
+            provider,
+            style_helper,
+            cli_negative_prompt=cli_negative_prompt,
+            use_novelai_pipe_split=use_novelai_pipe_split,
+            step2_paraphrase=step2_paraphrase,
+        )
     if input_kind == "markdown":
         if source == "background-concepts":
             raise ValueError("background-concepts は YAML 入力専用です")
@@ -1379,7 +1709,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--aspect-ratio",
         default=None,
-        help="Forge/Grok 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）",
+        help=(
+            "Forge/Grok 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）。"
+            f" 未指定かつ provider=grok_pro のときは環境変数 {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV} で上書き可能"
+        ),
     )
     p.add_argument(
         "--resolution",
@@ -1400,6 +1733,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--no-novelai-pipe-character-tags",
+        action="store_true",
+        help=(
+            "provider=novelai かつ YAML・source=step1-panels のとき、"
+            "「ベース | キャラ」形式にせず従来どおり1本のタグ列にする"
+        ),
+    )
+    p.add_argument(
         "--style-helper",
         default=None,
         help=(
@@ -1411,6 +1752,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-page", type=int, default=None, help="処理する Page 番号の上限（含む）")
     p.add_argument("--min-koma", type=int, default=None, help="処理するコマ番号の下限（含む）。ページ生成ジョブは koma=0")
     p.add_argument("--max-koma", type=int, default=None, help="処理するコマ番号の上限（含む）。ページ生成ジョブは koma=0")
+    p.add_argument(
+        "--step2-paraphrase",
+        action="store_true",
+        help=(
+            "source=step2-pages かつ YAML 入力時、Step2 要約へ manga_tag_step2 と同期した置換ルールを適用。"
+            " 環境変数 MONOCRI_STEP2_PARAPHRASE=1 でも有効"
+        ),
+    )
+    p.add_argument(
+        "--no-step2-paraphrase",
+        action="store_true",
+        help="Step2 自動置換を無効にする（環境変数より優先）",
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -1426,6 +1780,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
+    use_novelai_pipe = (
+        provider == "novelai"
+        and args.input == "yaml"
+        and args.source == "step1-panels"
+        and not args.no_novelai_pipe_character_tags
+    )
+    from manga_prompt_ir.step2_paraphrase import (
+        effective_paraphrase,
+        resolve_step2_paraphrase_flag,
+    )
+
+    step2_px = resolve_step2_paraphrase_flag(
+        bool(args.step2_paraphrase),
+        bool(args.no_step2_paraphrase),
+    )
     try:
         input_used, jobs = iter_jobs_by_input(
             novel,
@@ -1434,7 +1803,10 @@ def main(argv: list[str] | None = None) -> int:
             provider,
             args.style_helper,
             args.input,
+            cli_negative_prompt=args.negative_prompt,
             no_character_anchors=args.no_character_anchors,
+            use_novelai_pipe_split=use_novelai_pipe,
+            step2_paraphrase=step2_px,
         )
     except (FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -1461,6 +1833,8 @@ def main(argv: list[str] | None = None) -> int:
         print("error: 指定範囲に該当するジョブが0件です", file=sys.stderr)
         return 2
 
+    aspect_effective = manga_grok_pro_effective_aspect_ratio(args.aspect_ratio, provider)
+
     forge = root / "tools" / "forge_generate.py"
     if not forge.is_file():
         print(f"error: {forge} がありません", file=sys.stderr)
@@ -1469,7 +1843,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"novel: {novel}")
     print(f"input: {input_used}")
     print(f"provider: {provider}")
+    if aspect_effective is not None:
+        if args.aspect_ratio is not None:
+            print(f"aspect_ratio: {aspect_effective} (--aspect-ratio)")
+        else:
+            print(
+                f"aspect_ratio: {aspect_effective} "
+                f"(env {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV})"
+            )
     print(f"jobs: {len(jobs)}")
+    if args.source == "step2-pages" and input_used == "yaml":
+        print(f"step2_paraphrase (effective): {effective_paraphrase(step2_px)}")
 
     for job in jobs:
         out_dir = Path(job["output_dir"])
@@ -1480,19 +1864,23 @@ def main(argv: list[str] | None = None) -> int:
         payload = {
             "provider": provider,
             "prompt": job["prompt"],
-            "negative_prompt": args.negative_prompt,
+            "negative_prompt": job.get("negative_prompt", args.negative_prompt),
             "output_dir": out_dir_posix,
             "file_prefix": job["prefix"],
             "count": 1,
             "seed": None,
         }
-        if args.aspect_ratio is not None:
-            payload["aspect_ratio_preset"] = args.aspect_ratio
+        if aspect_effective is not None:
+            payload["aspect_ratio_preset"] = aspect_effective
         if args.resolution is not None:
             payload["resolution"] = args.resolution
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {out_dir_posix}")
             print(f"    prompt[:100]: {payload['prompt'][:100]}...")
+            neg_show = payload["negative_prompt"]
+            if len(neg_show) > 160:
+                neg_show = neg_show[:160] + "..."
+            print(f"    negative: {neg_show}")
             continue
 
         out = out_dir
@@ -1507,30 +1895,48 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(payload, tf, ensure_ascii=False, indent=2)
             tf_path = Path(tf.name)
 
-        try:
-            r = subprocess.run(
-                [
-                    sys.executable,
-                    str(forge),
-                    "--params",
-                    str(tf_path),
-                    "--json",
-                ],
-                cwd=str(root),
-                capture_output=True,
-                text=True,
-            )
-        finally:
-            tf_path.unlink(missing_ok=True)
+        import time
+        r = None
+        for retry_i in range(10):
+            try:
+                r = subprocess.run(
+                    [
+                        sys.executable,
+                        str(forge),
+                        "--params",
+                        str(tf_path),
+                        "--json",
+                    ],
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                if r.returncode == 4: # Concurrent generation is locked
+                    wait_sec = 20 if retry_i >= 5 else 10
+                    print(f"info: {job['prefix']} (retry {retry_i+1}/10) - HTTP 429 Concurrent generation is locked. Waiting {wait_sec}s...", file=sys.stderr)
+                    time.sleep(wait_sec)
+                    continue
+                break
+            except Exception as e:
+                print(f"warning: subprocess error: {e}", file=sys.stderr)
+                break
 
-        if r.returncode != 0:
-            print(r.stderr or r.stdout, file=sys.stderr)
-            print(
-                f"error: forge が失敗しました ({job['prefix']}) code={r.returncode}",
-                file=sys.stderr,
-            )
-            return r.returncode or 1
-        print(r.stdout.strip())
+        tf_path.unlink(missing_ok=True)
+
+        if r is None or r.returncode != 0:
+            if r is not None:
+                print(r.stderr or r.stdout, file=sys.stderr)
+                print(
+                    f"error: forge が失敗しました ({job['prefix']}) code={r.returncode}",
+                    file=sys.stderr,
+                )
+                return r.returncode or 1
+            else:
+                print(f"error: forge の実行に失敗しました ({job['prefix']})", file=sys.stderr)
+                return 1
+        _safe_print_stdout(r.stdout.strip())
 
     return 0
 

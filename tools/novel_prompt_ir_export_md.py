@@ -6,11 +6,34 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+from forge_novel_manga_batch import (
+    build_step2_panel_line,
+    comma_split_tags,
+    filter_single_panel_tags,
+    join_novelai_pipe_tag_line,
+    join_tags as forge_join_tags,
+    yaml_panel_tags_novelai_split,
+)
+from manga_prompt_ir.scene_prompt import (
+    camera_tag_tokens,
+    composition_layout_tag_token,
+    composition_tag_tokens,
+    lighting_tag_tokens,
+    panel_mood_atmosphere_tag_tokens,
+    scene_prompt_background_notes,
+    scene_prompt_location_time_weather,
+    subject_situational_tag_tokens,
+    subject_tag_line_token,
+)
 
 STYLE_TAGS = ["best_quality", "very_aesthetic", "ultra-detailed", "manga"]
 
@@ -223,6 +246,7 @@ def subject_text(subject: dict[str, Any], characters: dict[str, dict[str, Any]])
 
 
 def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str, dict[str, Any]]) -> list[str]:
+    """互換 Markdown の Step1 タグ行用。forge_novel_manga_batch.yaml_panel_tags(..., single_panel=True) と整合させる。"""
     manga = page.get("manga") or {}
     scene = panel.get("scene") or page.get("scene") or {}
     composition = panel.get("composition") or {}
@@ -232,24 +256,16 @@ def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str
     tags.extend(STYLE_TAGS)
     tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
     tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
+    tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
+    tags.extend(str(v) for v in as_list(manga.get("background_tags")))
     tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    tags.extend(
-        str(v)
-        for v in [
-            scene.get("location"),
-            scene.get("time_of_day"),
-            scene.get("weather"),
-            composition.get("framing"),
-            composition.get("layout"),
-            composition.get("focus"),
-            composition.get("perspective"),
-            camera.get("angle"),
-            camera.get("shot_size"),
-            lighting.get("quality"),
-            lighting.get("mood_effect"),
-        ]
-        if v
-    )
+    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
+    tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+    tags.extend(composition_tag_tokens(composition))
+    tags.extend(camera_tag_tokens(camera))
+    tags.extend(lighting_tag_tokens(lighting))
+    # composition.layout は single_panel 時はコマ割りメモ向けのためタグ列から除外
+    tags.extend(composition_layout_tag_token(composition, single_panel=True))
     for subject in as_list(panel.get("subjects")):
         if not isinstance(subject, dict):
             continue
@@ -262,10 +278,24 @@ def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str
             tags.append(str(characters[cid].get("name_en") or cid))
             tags.extend(character_tags(characters[cid], selected_subject_variant_id(subject)))
         else:
-            tags.append(str(subject.get("description") or subject.get("type") or "subject"))
-        tags.extend(str(v) for v in [subject.get("pose_action"), subject.get("expression"), subject.get("position")] if v)
-    tags.extend(str(v) for v in as_list(panel.get("mood_atmosphere")))
-    return unique(tags)
+            tags.append(subject_tag_line_token(subject))
+        tags.extend(subject_situational_tag_tokens(subject))
+    tags.extend(panel_mood_atmosphere_tag_tokens(panel))
+    return filter_single_panel_tags(unique(tags))
+
+
+def panel_tag_line_for_export(
+    page: dict[str, Any],
+    panel: dict[str, Any],
+    characters: dict[str, dict[str, Any]],
+    *,
+    novelai_pipe_tags: bool,
+) -> str:
+    """Step1 のタグ1行。novelai_pipe_tags 時は forge と同じ base | キャラごとのセグメント分割。"""
+    if novelai_pipe_tags:
+        btags, char_segs = yaml_panel_tags_novelai_split(page, panel, characters, single_panel=True)
+        return join_novelai_pipe_tag_line(btags, char_segs)
+    return join_tags(panel_tags(page, panel, characters))
 
 
 def render_text_block(panel: dict[str, Any]) -> list[str]:
@@ -290,10 +320,13 @@ def render_manga_page_section(
     characters: dict[str, dict[str, Any]],
     *,
     page_number: int,
+    novelai_pipe_tags: bool = False,
+    apply_paraphrase: bool | None = None,
 ) -> str:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     scene = page.get("scene") or {}
+    loc_s, tod_s, _wx_s = scene_prompt_location_time_weather(scene)
     panels = as_list(page.get("panels"))
     reading_order = meta.get("reading_order", "right_to_left")
     panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
@@ -303,7 +336,7 @@ def render_manga_page_section(
         "### Step1",
         f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
         f"ページ構成: {panel_layout}",
-        f"共通舞台: {scene.get('location', '')} / {scene.get('time_of_day', '')} / {scene.get('background_notes', '')}",
+        f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
     ]
     for panel in panels:
@@ -320,16 +353,17 @@ def render_manga_page_section(
                 f"- 構図: {comp.get('layout', '')} / {comp.get('framing', '')} / {comp.get('focus', '')} / {camera.get('angle', '')}",
                 *render_text_block(panel),
                 "- **tag**：",
-                f"`{join_tags(panel_tags(page, panel, characters))}`",
+                f"`{panel_tag_line_for_export(page, panel, characters, novelai_pipe_tags=novelai_pipe_tags)}`",
                 f"（日本語訳：{panel.get('translation') or panel.get('summary', '')}）",
                 "",
             ]
         )
-    lines.extend(["### Step2", f"1ページ{len(panels)}コマ。{panel_layout}。読み順は {reading_order}。"])
+    lines.extend(["### Step2", f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ。{panel_layout}。numbered panels、読み順は {reading_order}。"])
     for panel in panels:
         if isinstance(panel, dict):
-            comp = panel.get("composition") or {}
-            lines.append(f"- コマ{panel.get('panel_id', '?')}: {comp.get('layout', '')}。{panel.get('summary', '')}")
+            lines.append(
+                build_step2_panel_line(page, panel, characters, apply_paraphrase=apply_paraphrase)
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -338,6 +372,8 @@ def render_manga_md(
     characters: dict[str, dict[str, Any]],
     *,
     title: str,
+    novelai_pipe_tags: bool = False,
+    apply_paraphrase: bool | None = None,
 ) -> str:
     lines = [f"# {title}", ""]
     ir_paths = [path for path, _page in pages if path is not None]
@@ -354,7 +390,15 @@ def render_manga_md(
             lines.append(f"- `{path.as_posix()}`")
         lines.append("")
     for index, (_path, page) in enumerate(pages, start=1):
-        lines.append(render_manga_page_section(page, characters, page_number=index).rstrip())
+        lines.append(
+            render_manga_page_section(
+                page,
+                characters,
+                page_number=index,
+                novelai_pipe_tags=novelai_pipe_tags,
+                apply_paraphrase=apply_paraphrase,
+            ).rstrip()
+        )
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -380,6 +424,27 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="--character は漫画タグ参照にだけ使い、tag/<character_id>.md を出力しない",
     )
+    parser.add_argument(
+        "--novelai-pipe-tags",
+        action="store_true",
+        help=(
+            "Step1 の tag 行を NovelAI 向け「ベース | キャラクター」形式で出力する"
+            "（forge_novel_manga_batch の YAML step1-panels・novelai と同じ分割）"
+        ),
+    )
+    parser.add_argument(
+        "--step2-paraphrase",
+        action="store_true",
+        help=(
+            "Step2 行へ manga_tag_step2 と同期した置換ルールを適用。"
+            " 環境変数 MONOCRI_STEP2_PARAPHRASE=1 でも有効"
+        ),
+    )
+    parser.add_argument(
+        "--no-step2-paraphrase",
+        action="store_true",
+        help="Step2 自動置換を無効にする（環境変数より優先）",
+    )
     args = parser.parse_args(argv)
 
     characters: dict[str, dict[str, Any]] = {}
@@ -394,6 +459,12 @@ def main(argv: list[str] | None = None) -> int:
             write_or_print(None, render_character_md(character))
 
     if args.manga_page:
+        from manga_prompt_ir.step2_paraphrase import resolve_step2_paraphrase_flag
+
+        step2_px = resolve_step2_paraphrase_flag(
+            bool(args.step2_paraphrase),
+            bool(args.no_step2_paraphrase),
+        )
         pages: list[tuple[Path | None, dict[str, Any]]] = []
         for manga_page_path in args.manga_page:
             page = load_data(manga_page_path)
@@ -401,7 +472,16 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"invalid manga page IR: {manga_page_path}")
             pages.append((manga_page_path, page))
         out_path = args.output_dir / "manga" / f"{args.manga_stem}.md" if args.output_dir else None
-        write_or_print(out_path, render_manga_md(pages, characters, title=args.title))
+        write_or_print(
+            out_path,
+            render_manga_md(
+                pages,
+                characters,
+                title=args.title,
+                novelai_pipe_tags=args.novelai_pipe_tags,
+                apply_paraphrase=step2_px,
+            ),
+        )
     elif not characters:
         parser.error("--character or --manga-page is required")
     return 0

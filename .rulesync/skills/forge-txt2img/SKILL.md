@@ -38,6 +38,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `forge_novel_manga_batch.py --source background-concepts`（既定 `grok_pro`） |
+| `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `forge_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
 | `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `pro`）。`grok_pro` を直接使う運用では不要 |
 
@@ -140,6 +141,8 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 - 設定は **`config/image_generation.json`** の `providers.novelai`。既定の通信先は `https://image.novelai.net/ai/generate-image`。
 - params JSON か CLI で **`provider=novelai`** を選ぶ。
 - 画像設定（steps / guidance / sampler など）の意味は NovelAI 公式ドキュメントの Image Generation 節に揃える。REST の詳細は公開仕様が薄いため、エンドポイントや追加フィールドが変わった場合は **config 側で吸収**する前提で運用する。
+- **ベース | キャラクター（`|` 区切り）**: NovelAI のプロンプトで `|` を挟むと左をシーン・画風寄り、右をキャラ固長寄りに振りやすい。`tools/forge_generate.py` はプロンプトに `|` が含まれるとき **左側だけ**へ品質接尾辞（例: `rating:general`）を付与する。`tools/forge_novel_manga_batch.py` は **`provider=novelai` かつ YAML・`--source step1-panels`** のとき、漫画ページ IR から **`ベースタグ | キャラタグ`** を自動組み立てする（オフは `--no-novelai-pipe-character-tags`）。
+- **互換 `manga/manga_XX.md` のエクスポート**: `tools/novel_prompt_ir_export_md.py` で **`--manga-page` を付けて `manga_XX.md` を生成するときは、エージェント・手動とも既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を上記と同形式にする。**付けないと** Step1 がカンマ一列のみになり、NovelAI 運用とずれる）。キャラ互換のみ（`--manga-page` なし）では不要。Step2 ブロックの組み立てはこのフラグでは変わらないが、手順の一本化のため漫画出力では付けてよい。
 
 ## 前提（Grok / xAI）
 
@@ -343,8 +346,8 @@ python tools/forge_novel_tag_batch.py novels/051_神のダンジョンβテス�
 - `--source step1-pages`: 各 Page の **Step1 全体を1ジョブ**として扱い、**各コマの詳細情報を保ったままページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**精密ページ生成向けの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 - `--source step2-pages`: 各 Page の **Step2 全体を1ジョブ**として扱い、**ページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**商業カラーマンガ寄りの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 
-- **既定の保存先**は `manga/_assets/<manga_XX>/` **直下**（`file_prefix` に `manga_01_p02_k03` のように **ページ番号・コマ番号**が入り、overview の例どおり **同一フォルダで区別**する）。
-- **ページごとにフォルダ分け**したいときは **`--subdir-by-page`**（例: `.../manga_01/p01/`, `p02/`, …）。
+- **既定の保存先**は `manga/_assets/<manga_XX>/` **直下**。分類は**章（`manga_XX`）まで**で十分とし、`file_prefix` に `manga_01_p02_k03` のように **ページ番号・コマ番号**を含めて同一フォルダ内で区別する。
+- **`--subdir-by-page`**（`.../manga_01/p01/`, `p02/` …）は **任意**。本リポジトリでは**推奨運用・ルールに含めない**（手順でページ単位フォルダ分けを既定にしない）。特別な理由があるときだけ使う。
 - **`novel_image_layout.py scaffold --panels N` が作る `k01`〜`kNN`** は **「1ページ内のコマ用スロット」**の任意フォルダ。多ページの MD では **ページ番号 `p##` と混同しないこと**（本一括スクリプトの既定では **k## へは保存しない**）。
 
 ```bash
@@ -352,7 +355,8 @@ python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテス
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider forge --aspect-ratio manga_b5_portrait
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01
-python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01 --subdir-by-page
+# （任意・本リポジトリでは非推奨）ページ単位サブフォルダがどうしても必要なときだけ:
+# python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --manga-stem manga_01 --subdir-by-page
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok
 python tools/forge_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k

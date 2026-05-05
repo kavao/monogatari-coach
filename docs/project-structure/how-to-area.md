@@ -12,8 +12,9 @@
 |-----------|------|
 | `novelcore.md` | 小説の文法・構成の一般原則 |
 | `novel_structure.md` | 物語構造のパターン集 |
-| `manga.md` | 漫画のコマ割り・演出の作法 |
-| `manga_tag.md` | 漫画タグ生成のルール・形式 |
+| `manga.md` | 漫画のコマ割り・演出の作法（ツールの検証・バッチ・export のコマンド詳細は [`docs/image-generation/manga-prompt-ir.md`](../image-generation/manga-prompt-ir.md)、互換 Step 長文テンプレは [`manga-tag-generation.md`](../image-generation/manga-tag-generation.md)） |
+| `manga_tag.md` | 漫画タグ生成のルール・形式（英語タグ語彙・置き換え。Step1／`prompt_tags` 中心） |
+| `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |
 | `tag.md` | キャラクタータグ生成のルール |
 | `rewrite.md` | 文章校正・清書の作法 |
 | `reader.md` | 下読み・書評の評価観点 |

@@ -1,3 +1,17 @@
+## このファイルの役割（仕分け）
+
+**創作技法の正本**として、ページ YAML をどう設計するか（誰が・どこで・POV・variant・タグ注入の優先）を扱います。
+
+| どこに何を置くか | 内容 |
+|------------------|------|
+| ルート [`readme.md`](../../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
+| [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) | **ツール・パイプライン**に加え、**ページ YAML の型・旧差分表・最小例**（互換 Step1 の元データの説明。アンカー [`#yaml-minimal-step1`](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)）。 |
+| [`docs/image-generation/manga-tag-generation.md`](../docs/image-generation/manga-tag-generation.md) | **漫画タグ生成用**：互換 Step1/Step2 の長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。 |
+| [`manga_tag.md`](manga_tag.md)（本フォルダ） | **英語タグの語彙・置換・追加ルール**（Step1／`prompt_tags` 中心）。 |
+| [`manga_tag_step2.md`](manga_tag_step2.md)（本フォルダ） | **Step2**（`step2_summary`・ページ生成・抽象レイアウト）の**言い換え表・チェックリスト**。※過去に **`manga.md` にあったのではなく** `docs` 側にあった Step2 作法をここへ集約した。 |
+
+---
+
 ## 構造化IR優先（manga-prompt-ir）
 
 新規の漫画ページ・漫画コマは、まず **`manga-prompt-ir`** の `MangaPagePrompt` 構造へ落とす。
@@ -17,12 +31,68 @@ YAML IR では、少なくとも次を分離して持つ。
 - `manga`: 画風、ページレイアウト、文字描画方針
 - `scene`: 場所、時間、背景
 - `character_ids`: 登場人物の `character_id`
-- `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`
-- `technical.negative_tags`: ページ側の negative tags
+- `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`（任意で `negative_tags` / `omit_negative_tags`。**コマ単位ネガ**の書き方は `manga_tag.md` の「コマ別ネガ」）
+- `technical.negative_tags`: ページ共通のネガ断片（**コマ生成** `--source step1-panels` では、各コマの合成 `negative_prompt` に含める）
+
+### `manga.genre_tags` / `manga.visual_tags`（Step1 の `tag` 行に直結する）
+
+`tools/novel_prompt_ir_export_md.py` の `panel_tags()` は、互換 `manga/manga_XX.md` の **各コマ `### Step1` の `tag` 行**に、コマ用のスタイル断片のあと **`manga.genre_tags` と `manga.visual_tags` をそのまま連結**する。`tools/forge_novel_manga_batch.py`（YAML 入力）のタグ合成も同様にページの `manga` 節を読む。
+
+- **原則（フルカラー運用）**: **`monochrome` と `screentone` を `genre_tags` および `visual_tags` に入れない。** 雛形 `tools/manga_prompt_ir/examples/manga_page.yaml` など**古い例**に従うと、白黒・トーン紙風のトークンが混ざり、**互換 Markdown の「カラー」表記や、カラー指向モデル（NovelAI 等）の意図と矛盾**しやすい。
+- **例外**: 作品またはページを**意図的にモノクロ漫画・スクリーントーン仕上げ**にするときだけ、`monochrome` / `screentone` を置く。その場合は **`color_palette.mode`**（または `render_instruction` 等）と説明文をモノクロ前提で揃える。
+- **カラーで画風を足すなら**（例）: `full_color`・`anime_coloring`・`cel_shading`・`clean_lineart` など、プロバイダと合わせた語を **`visual_tags`** や **`panels[].prompt_tags`** に載せる。
+
+**`scene` の英語フィールド（タグ行・txt2img）**  
+`location_en` は**必須（非空）**。`time_of_day` / `weather` / `background_notes` を書いたら、対応する `time_of_day_en` / `weather_en` / `background_notes_en` も**必須**（`tools/manga_prompt_ir/schemas/manga_page.py` の `Scene` で検証）。`tools/manga_prompt_ir/scene_prompt.py` は **`*_en` のみ**参照し、日本語の `location` 等にはフォールバックしません。欠けは LLM 側で英語行を補ってから保存する。
 
 `Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
 
 キャラクターの服装・状態差分は、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかで明示する。値は `tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。指定がある場合、画像生成バッチは基本衣装ではなく該当バリアントの `danbooru_tags` を優先して注入する。
+
+### POV・部分アップと `subjects[]`（タグ注入の主役を誰に合わせるか）
+
+`forge_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
+
+- **原則**: フレームで**面積・意味の中心になっている身体**の持ち主を、`subjects[]` の**先頭に近いほど主**として書く。複数人物がいるときは「誰の体型・肌・衣装タグが結果を決めるか」がその人物側になるように並べる。
+- **一人称・POV**（`prompt_tags` に `pov`・`first_person_view`・`male perspective` 等がある、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。
+- **よくある誤り**: 行為の主体だけを `character_id` にし、**画面上は相手の裸体・腰などが主**なのに視点人物だけを載せる——注入タグが視点人物側に寄り、**見えている身体とずれる**。その場合は**見えている側を主 subject** にする。
+- **話者と画の主役**: モノローグの話者が視点人物でも、画が相手の部位中心なら **`text` は話者、`subjects` の先頭は相手**と分けて書くと混線しない。
+
+### クローズアップ・接写と `prompt_tags`（見えている部分の特徴を書く）
+
+全身が画面に入らないコマでは、**「どの人物か」だけを英語タグで粗く示すのではなく、フレームに入っている部位・肌・形状・状態**を `prompt_tags` に厚く載せる運用を推奨する。
+
+- **`subjects[]`**: 引き続き**誰の身体か**（タグ注入の帰属）を示す。腰だけ・手元だけでも、`character_id` と `description` で「誰の・画面に映っている範囲はどこまでか」を明記する。
+- **`prompt_tags`**: **画に実際に写っている見え方**を優先する。部位・画角・質感の例: `slim waist` `midriff` `thighs` `trembling hands` `extreme close-up` `face focus` `parted lips` `sweat` `flushed` など。**フレーム外の要素**（全身コーデ・画面に入っていない髪型の明示など）は無理に足さず、全身向けの人物ラベルだけで埋めない。キャラの固定特徴の注入は **`subjects` とキャラ YAML／スナップショット**が担うので、`prompt_tags` は**そのコマで絵を決める局所的な記述**に寄せる。
+- **`summary` / `description`（日本語）**: 「誰の・どの部位が・どんな状態で」写っているかを部位レベルで書き、`prompt_tags` の英語と矛盾させない。
+
+語彙の引き出しは `_how_to/manga_tag.md` の部位・体勢の例と併用する。
+
+### 手元・手と手など「キャラID注入を載せない」コマ
+
+**可能。** `forge_novel_manga_batch.py` のタグ組み立て（`yaml_panel_tags`）では、**`subjects[].character_id` が無い**とき **`tag/characters/<id>.yaml` 由来の固長タグ列は付かない**（`subject_snapshot` もヒットしない）。代わりに `subject_tag_line_token()` が **`tag_token` → `description_en` → `description`** の順で短いトークンを1つ足す（実装は `tools/manga_prompt_ir/scene_prompt.py`）。**手と手をつなぐ接写だけ**にしたいときは次のとおり。
+
+- **`character_id` を付けない** `subjects` を、写る手の数だけ並べる（例: 2エントリ）。英語の見え方は **`tag_token`** または **`description_en`** にまとめる（例: `slender female hand`, `larger male hand`, `interlocked fingers`, `holding hands`）。日本語の `description` は編集用メモとして残してよい。
+- **`prompt_tags`** に画角・肌の質感・握り方などを足す。**キャラYAMLが載らないぶん、肌の明暗・手の大きさ差などは英語で明示**する。
+- **検証**: 既定の `type: human` のまま `character_id` 無しだと `novel_prompt_ir_validate.py` が「人物subjectに character_id がありません」と**警告**する。部位・手だけのブロックとして書くなら **`type` を `hands` / `detail` / `object` 等**（`human` `person` `character` 以外）にすると、当該警告を避けられる。
+- **ページの `character_ids`**: そのページの別コマで同じ二人を `character_id` 付きで使っていれば宣言との整合は取れる。手だけのコマだけでは二人が未宣言に見える場合は**警告が出る**ので、`--strict-quality` 運用では当該ページの構成を確認する。
+- **トレードオフ**: 注入を外すと**髪・目・肌の自動一貫性は効かない**。必要な差は `tag_token` / `prompt_tags` で足す。
+
+例（概念スケッチ）:
+
+```yaml
+# subjects のみ抜粋。character_id なし。
+- description: 左側から差し出される細い手（編集メモ）
+  description_en: slender hand, fair skin, reaching from left
+  type: hands
+  pose_action: fingers loosely curled
+- description: 右側から包み込む大きめの手（編集メモ）
+  description_en: larger hand, interlocked fingers, holding hands
+  type: hands
+  pose_action: gentle grip
+```
+
+品質の見方は `.rulesync/skills/manga-tag-quality-gate`（誰が写っているか・セリフ帰属）。POV では「視線の先の人物が `subjects` とタグで説明されているか」を確認する。
 
 ページYAMLを単体で読める原盤にするため、`character_snapshots` にそのページで使う登場人物の外見・衣装・バリアントタグを埋め込む。作成・更新は次で行う。
 
@@ -32,290 +102,36 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 
 生成バッチは `character_snapshots` があればこれを最優先し、無い場合だけ `tag/characters/*.yaml` を参照する。
 
-## YAML IR の最小構造例
+### バリアントとタグ注入の優先（曖昧にしないための正本）
 
-以下は `manga/pages/manga_01_p01.yaml` の最小構造例です。詳細な定義は `manga-prompt-ir` スキルの `schemas/manga_page.py` と `examples/manga_page.yaml` を参照してください。
+**小説→ページYAML起こしの手順の説明は本ファイル（`manga.md`）を正とする。** 次の表は、**実装** `tools/forge_novel_manga_batch.py`（`subject_snapshot` / `selected_subject_variant_id` / `character_ir_tags`）と揃えたものである。`manga_tag.md` は**シーン用の英語タグ例・語彙**の参照であり、ここに無い「variant の機械的な優先」は定義しない。
 
-```yaml
-manga_id: "manga_01"
-page_number: 1
-meta:
-  purpose: "コマ生成（step1-panels）"
-  read_order: "右から左"
-manga:
-  style: "カラー漫画、少年ジャンプ風"
-  panel_layout: "上段=コマ1（ワイド）｜中段=コマ2・3横並び｜下段=コマ4（大ゴマ）"
-scene:
-  location: "廃工場の内部"
-  time: "夜、非常灯のみ"
-  background_tags: "abandoned factory interior, emergency lighting, dark atmosphere"
-character_ids:
-  - "rei"
-  - "luna"
-panels:
-  - panel_number: 1
-    summary: "零が敵の群れを睨む。上段・横幅ほぼ全体の大ゴマ"
-    subjects:
-      - character_id: "rei"
-        variant_id: "battle"
-        action: "剣を構えて敵の群れを正面から睨む"
-        expression: "鋭い目つき、傷だらけ"
-    composition:
-      layout: "上段・横幅全体"
-      camera: "ローアングル"
-      shot_type: "wide"
-    text:
-      dialogue:
-        - speaker: "rei"
-          line: "来い……全部まとめて斬ってやる"
-    prompt_tags: "dynamic wide angle manga panel, shonen jump style, dramatic low angle shot, black-haired scarred swordsman Rei gripping sword tightly, sharp intense eyes glaring forward, blazing fire background"
-technical:
-  negative_tags: "low quality, blurry, deformed"
-```
+| 優先度 | 何が起きるか |
+|--------|----------------|
+| 1. `character_snapshots` | ページにスナップショットがあり、`subjects` の variant に対応するエントリがあれば **その `fixed_tags` + `variant_tags` を最優先**（コマに寄らずページ単位の埋め込み） |
+| 2. キャラ YAML の `prompt_variants` | スナップショットが無い／当たらないとき、各 `subjects[]` について次の**3キーは先に書かれた方が採用**（実装と同一）: **`prompt_variant_id` → `costume_variant` → `variant_id`**。値は `tag/characters/<id>.yaml` の `prompt_variants[].variant_id` と**文字列一致**で探す。 |
+| 3. ベース衣装・固定特徴 | variant が空、または ID が YAML に存在しないとき **`costume.outfit_tags` / `manga_rules.consistency_tags` 等**へフォールバック（**意図と違う絵になりうる**）。`novel_prompt_ir_validate.py` が警告しうる。 |
 
-## YAML → 画像生成のフロー
+- **検証の正本**: `python tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality` 推奨）。スキーマ違反は exit 1、品質は警告（`--strict-quality` で失敗扱い）。
+- **英語タグの引き出し**（行動 等）: `_how_to/manga_tag.md` を参照。合格条件の定義ではない。
 
-```
-[本文 _novel_text/novel_textXX.md]
-  ↓ 読み込み・コマ化
-[manga/pages/manga_XX_pYY.yaml]  ← 正本（ここを編集する）
-  ↓ tools/novel_prompt_ir_validate.py（型・参照・意味品質の不足検出）
-  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-panels（コマ生成）
-  ├─ tools/forge_novel_manga_batch.py --input yaml --source step1-pages（精密ページ生成）
-  └─ tools/forge_novel_manga_batch.py --input yaml --source step2-pages（ページ生成）
+### variant はコマ単位ではなくタイムラインで決める
 
-必要な場合だけ:
-  ↓ tools/novel_prompt_ir_export_md.py（互換出力）
-[manga/manga_XX.md]  ← Markdown互換出力（直接編集しない）
-```
+小説本文からページYAMLへ落とすとき、`variant_id`（および `prompt_variant_id` / `costume_variant`）は **その場その場のコマだけを見て付け替えない**。まず `_novel_text` の **時系列と場の連続性** を踏まえ、**どの区間で衣装・身体的状態が同じか／どの節目で変わるか** を決める。
 
-**修正は必ず YAML IR 側へ入れる。Markdown互換が必要なときだけ再エクスポートして `manga_XX.md` を更新する。`manga_XX.md` を直接書き換えて正本扱いにしない。**
+- **連続した同一場面**（同じ時間帯・同じ空間で、着替えやフェーズ移行がまだ起きていない）では、登場キャラの variant は **原則として一定**とする。コマが進んで調整するのはポーズ・アングル・接写・セリフなど **コマ固有の記述**であり、**variant をコマごとに気まぐれに変えない**（連続コマで、理由なく服装や肌の見え方だけが切り替わるのを防ぐ）。
+- variant を変えてよいのは、**本文上はっきり境目があるとき**に限る（移動、時間経過、着脱・治療段階の推移など）。迷ったら「直前のページ／コマと **まだ同じ状況か**」を問い、同じなら **同じ variant を維持**する。
+- **ページをまたいでも**、ひと続きの場面なら variant は **引き継ぐ**。場当たり的な付け替えは、絵の一貫性だけでなく、後からの **validate や `character_snapshots`** とも齟齬を生みやすい。
 
-画像生成の通常運用では `--input yaml` を省略しても YAML 入力になる。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
-本番生成前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を通し、主語・行為・セリフ話者・構図・ページレイアウトの不足警告を失敗扱いにする。
+## ページ YAML の型・Step1 互換の元データ（ドキュメントへ移設）
 
-## 互換出力: step1
-以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。新規の漫画タグ作成では、先に `manga/pages/manga_XX_pYY.yaml` を作成・検証してからこの形へエクスポートしてください。
-
-stable diffusion,novelaiで漫画1ページを描画してもらうような、タグを作成してください、カラーのページにしたいです。
-nanobanana, GptImage1のようなツールでもそのまま使えることを考えています。
-タグ生成の際にはmanga_tag.mdも確認し参考にしてください
-タグを付けるとき、誰が、どのような体勢で、誰に、背景はこう、のようなことを各コマで明確にしてください。
-メッセージは日本語で応対してください
-あと、内容については、3-7コマで、済むような形で。使った場所を教えてください
-英語のタグに日本語の翻訳を後に追加してください。喋るコマの場合は吹き出しだけ日本語を入れるようにしてください。
-各コマのタグを個別に出すようにして､最後にそれを束ねて全ページを一気に出す形にしてください。
-1コマコマごとに場所 (Location),人の状態 (Characters' States),行っているアクション (Actions)などを明確にしてください。
-誰の何にどうしたといったことは、文章で表記してください。
-**step1 は「各コマを個別画像として確実に生成できる」ことを最優先**にしてください。**1つのコマにつき1つの tag を必ず対応**させ、**複数コマを1つの tag にまとめない**でください。
-各コマには、**そのコマだけを見ても意味が通る最低情報**として、できるだけ次を入れてください。
-- 誰が写っているか
-- 誰に向けた行為か
-- どこで起きているか
-- 何をしている瞬間か
-- どのセリフが誰のものか
-- そのコマで見せたい情報や感情
-- 直接的描写
-- 人物の服装
-- 必要な小道具や画面内情報（スマホ、剣、扉、アプリ画面、魔法陣など）
-手元、足元、口元、目元、スマホ画面などの**部分アップ**は、**誰の部位か**、**何を伝えるためのコマか**まで文章で補ってください。
-会話のあるコマでは、**話者**と、必要なら**聞き手**も分かるようにしてください。モノローグか発話かも曖昧にしないでください。
-登場人物がいる場合は、**character.md と tag/<romaji>.md の固定特徴に矛盾しないこと**を前提にしてください。髪色・目・服装・体格・固定小物は勝手に変えないでください。
-前後のコマとのつながりが重要な場合は、視線方向、立ち位置、持ち物の左右、負傷箇所などの**連続性**が崩れないようにしてください。
-`誰か`, `人物`, `何かを見る`, `意味深な表情` のような曖昧語だけで止めないでください。
-
-構図の工夫、アオリとフカン、アップとヒキなども適切にコマのメリハリを付けるのに入れてください。
-ここではimagineで決して画像を生成しないでください。
-日本の漫画のコマ割りについては必ず指定してください
-縦長・横長・右中・左上のような**コマの向きや配置の固定指定は、必要な場合だけ入れてください**。不要なら入れないでください。
-特に画像生成用の英語タグでは、**コマの向き（vertical, horizontal, landscape など）を機械的に毎回入れない**でください。
-
-### コマのページ内位置（レイアウト）を明記する
-
-**目的**: 「どのコマがページのどこに載るか」が無いと、ページ丸ごと生成や step2 を入力したときに**ただのカット列**になりやすい。スキル **`manga-tag-quality-gate`**（§10 コマ割り・ページレイアウト）とも整合させる。
-
-**step1 での書き方（どちらか必ず）**
-
-1. **ページ配置の1行サマリ**を `### Step1` 直後（コマ列の前）に書く。均等な縦並びだけでもよい。  
-   - 例: `ページレイアウト（読み順・上→下）: コマ①〜④を縦に四分割、横幅ほぼ均等。`  
-   - 例: `ページレイアウト: 上段=コマ1（やや大）｜中段=コマ2・コマ3の横並び｜下段=コマ4（大ゴマ）。`
-2. または、**各 `コマN:` の説明文の先頭**に、段・大致を短く付ける。  
-   - 例: `コマ2: 【中段・左】 medium shot。〜`  
-   - 例: `コマ4: 【最下段・横幅いっぱい】 感情のクライマックス。〜`
-
-コマ単体画像だけを出す予定でも、**1 または 2 を入れておく**と、あとから精密ページ生成やページ化したときにブレにくい。
-
-**step2 での書き方**
-
-- **ページ生成（1ページ1枚）を使う場合は、各コマに「段・左右・大小」が読めるようにする**（事実上必須）。均等な縦Nコマだけなら、`均等Nコマ・上から①→②→…と読む` の**一行**でよい。
-- 下記「step2 での出力例」のように、**上段／中段／下段**・**最下段・大コマ**などを**コマ番号ごと**に必ず紐づける。
-
-**英語の `tag:` 行**: コマ位置は**日本語のコマ説明**で担う。タグに `vertical panel` 等を毎コマ足す必要はない（上記「機械的に毎回入れない」に同じ）。
-
-「自然言語で状況説明＋箇条書きでコマを並べる」スタイル
-## 互換出力: step1 での出力例
-```
-## step1
-カラー漫画、1ページ6〜8コマ、少年ジャンプ風の迫力あるバトルシーン、日本の漫画のコマ割り
-登場人物：黒髪の剣士「零」（傷だらけ、目が鋭い）、金髪の魔法使い少女「ルナ」
-ページレイアウト（目安）: 上段=コマ1（ワイド）｜中段=コマ2・3の横並び｜下段=コマ4・5・6を横三連（コマ6をやや大きめ）
-
-コマ1: 【上段・横幅広め】見開き大ゴマ気味、零が剣を構えて敵の群れを睨む、背景に炎、迫力重視
-セリフ：「来い…全部まとめて斬ってやる」
-tag:  
-dynamic wide angle manga panel, shonen jump style, dramatic low angle shot, black-haired scarred swordsman Rei gripping sword tightly, sharp intense eyes glaring forward, surrounded by shadowy enemy horde, blazing fire background, intense atmosphere, action manga, detailed lineart, speed lines, high contrast, epic battle opening scene
-
-コマ2: 【中段・左】 ルナが後ろで魔法陣を展開、青い光エフェクト
-セリフ：「零！援護するよ！」
-tag:  
-shonen manga style, beautiful blonde magical girl Luna standing behind, casting large glowing blue magic circle, intricate rune patterns, cyan light particles and sparkles, determined expression, wind blowing hair, support magic scene, dramatic backlighting, detailed magical effects, anime screentone
-
-コマ3: 【中段・右】 零が敵の先頭へ踏み込み、斜めに斬りかかる瞬間
-セリフ：なし
-tag:  
-fast-paced action manga panel, Rei performing powerful diagonal sword slash, forward stepping motion, impact frame, dynamic speed lines, black hair flowing, enemies directly ahead, dramatic shading, kinetic energy, battle tension
-
-コマ4: 【下段・左】 斬撃の着弾で爆炎と瓦礫が広がる
-セリフ：なし
-tag:
-explosive impact manga panel, violent burst of fire and smoke, debris flying outward, aftermath of sword slash, bright orange flames, shockwave emphasis, dynamic composition, dramatic destruction, intense battle atmosphere
-
-コマ5: 【下段・中央】 爆発に巻き込まれた敵たちが悲鳴を上げて吹き飛ぶ
-セリフ：「うわああっ」
-tag:
-enemy horde blown away manga panel, enemies screaming in pain, distorted faces, bodies thrown backward by explosion, smoke and sparks, dramatic high contrast shading, chaotic battle aftermath, action manga intensity
-
-コマ6: 【下段・やや大ゴマ】 零が血まみれで立っている、ルナが駆け寄る、決めポーズ
-tag:  
-final victory pose manga panel, shonen jump climax scene, bloodied black-haired swordsman Rei standing tall breathing heavily, sword planted in ground, sharp eyes looking forward, wounds and torn clothes, blonde magical girl Luna running towards him worriedly, reaching out, dramatic back view of enemies defeated in background, dust and smoke, powerful atmosphere, detailed shading, heroic moment, intense emotion
-
-```
-
-## 互換出力: step2
-以下は `manga/manga_XX.md` へ出力する互換 Markdown の形式です。ページ生成向けの抽象レイアウトも、正本は YAML IR の `manga.panel_layout` / `panels[].composition` に保持します。
-
-nanobanana, GptImage1のようなツールで、コマ割りと抽象度をのみ出す形
-抽象度を上げる、「何をしている」という具体的な行動や接触描写を排除し、純粋に構図・位置関係・アングル・表情の配置だけに絞る
-日本の漫画のコマ割りについては必ず指定してください
-
-**各コマのページ内位置**（上段／中段／下段、左・右、大ゴマ／小コマ、横並びで何コマ分か）は、**ページ生成やレイアウト再現に使うため**に書く。均等な縦並びだけなら `均等Nコマ・上から読む` の一行でよい。step1 の「コマのページ内位置」節と同じ基準でよい。
-
-コマの向きや画角ラベル（vertical 等）の固定は、**そのページで本当に必要な場合だけ**英語タグ側に足す。テンプレートとして毎回は入れない。ただし**段・左右・大小**の日本語による位置指定は、ページ生成では省略しにくい。
-ただし、**抽象度を上げても意味は落とさない**でください。`step2` でも最低限、**誰が主役のコマか**、**誰と誰の関係を見るコマか**、**何を伝える役割のコマか**、**セリフがあるなら誰の発話か**は読めるようにしてください。
-`step2` はレイアウト用ですが、人物の帰属が消えるほど抽象化しないでください。部分アップのコマでは、何の部位を、何の意味で置くのかを短く添えてください。
-**`接触` `忍耐` `対峙` `緊張` のような抽象名詞だけでコマ説明を終えない**でください。**外から見て分かる構図情報**として、誰がどこにいて、どちらを向き、どの距離感で、どの表情で配置されるかに言い換えてください。
-`step2` は**行為を消す**のではなく、**行為を構図に言い換える**イメージです。たとえば `接触` ではなく `右手を差し出す人物と、それを正面から見る相手の bust shot`、`忍耐` ではなく `うつむき気味で口を結び、肩に力が入った人物の close up` のように書いてください。
-**悪い例**: `接触`, `忍耐`, `信頼の揺らぎ`, `不穏`
-**良い例**: `机越しに向かい合う二人。左の人物が身を乗り出し、右の人物は椅子に浅く座って視線を受け止める`, `俯いた人物の目元と強く結ばれた口元の close up。背景を抜いて感情の硬さを見せる`
-**step2 の目的のひとつは、生成AI側のモデレーションに触れやすい強い接触・暴力・生々しい身体描写を直接書かずに、人物の構図とページ設計を安全に伝えること**です。そのため、刺激の強い行為名を前面に出すのではなく、**人物の配置、視線、距離感、画面内の主従、表情、手元や立ち位置**として言い換えてください。
-ただし、安全寄りにぼかすことと、何が見えるかを曖昧にすることは別です。**「誰がどこに立ち、誰を見ているか」まで見える説明**は残してください。
-言い換えの目安:
-- `抱きつく` → `距離が近い二人。片方が相手の胸元へ寄り、もう片方がそれを見下ろす構図`
-- `殴りかかる` → `大きく振りかぶった腕と、それを正面から受ける相手の緊張した構図`
-- `押し倒す` → `上下の位置差が強い二人の配置。上側の人物が画面手前を占め、下側の人物が見上げる`
-- `流血した負傷` → `乱れた衣服、苦痛の表情、体勢の崩れでダメージを示す`
-
-以下のような出力でお願いします
-
-## 互換出力: step2 での出力例
-```
-## step2
-カラーマンガ、1ページ5コマ、日本の漫画のコマ割り
-各コマに識別しやすい番号を振ってください。**各コマについて、ページ内の段（上／中／下）と大小・役割**を本文に含めてください（均等縦並びならその旨を一行で）。
-
----
-### ■ 各コマの役割＋配置意図
-
-#### ■コマ1
-
-* フカン long shot
-* 「状況説明（誰がどこにいるか）」
-* 視線のスタート地点
-  上段で最も“情報量が多い導入”
+**Monogatari Coach（`_how_to`）では参照されない**、ページ IR の形と旧フォーマット差分・最小 YAML 例は、操作マニュアル **[`docs/image-generation/manga-prompt-ir.md` の「ページ YAML の最小構造と Step1 互換出力の元」](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)** に置いてあります（互換 `manga_XX.md` の Step1 は、この YAML をエクスポートした結果です）。
 
 ---
 
-#### ■コマ2
+## ツール・タグ出力ドキュメントへのリンク
 
-* アオリ close up（A）
-* 主役が相手へ身を乗り出し、距離が縮まったことが見て取れる構図
-* 読者の視線を「人物中心」に寄せる
+- **検証・バッチ・ネガ合成・novelai-pipe-tags**: [docs/image-generation/manga-prompt-ir.md](../docs/image-generation/manga-prompt-ir.md)
+- **互換 Step1/Step2 の全文テンプレ・実例・レイアウト・運用メモ**: [docs/image-generation/manga-tag-generation.md](../docs/image-generation/manga-tag-generation.md)
 
- 初動の圧力を見せる役割
-
----
-
-#### ■コマ3
-
-* medium shot（B）
-* 中心人物の背後に別人物が入り、包囲が始まったと読める配置
-* コマ2からの流れを受けて視線を折り返す
-
- 視線を折り返すポイント
-
----
-
-#### ■コマ4
-
-* eye level dynamic（C）
-* 右側からさらに別人物が画面へ入り、囲まれた状態が完成する見え方
-* 必要なら横方向の広がりを使って「動き」を出す
-
- 中段で最も“動き”を強調
-
----
-
-#### ■コマ5（最下段・大コマ）
-
-* Dutch angle bust up
-* ABCに囲まれる＋中心人物の笑顔
-* クライマックス
-
- ページの“重心”
- 読後の印象を決定づける
-```
-
----
-
-### ■プロっぽく見せるための調整ポイントの例
-
-#### ① コマサイズの強弱
-
-* コマ1：やや大
-* コマ2：小
-* コマ3：小
-* コマ4：中
-* コマ5：最大
-
-👉 「情報 → 接近 → 包囲 → 感情爆発」の流れ
-
----
-
-#### ② 視線誘導
-
-* 1 → 2 → 3 → 4 → 5 のZ型
-* キャラの視線・動きも同じ方向にする
-  👉 読みやすさが段違いに上がる
-
----
-
-#### ③ 演出のコツ
-
-* コマ2〜4は“間を詰める”（コマ間狭める）
-* コマ5前だけ余白を広く
-👉 クライマックスが映える
-
----
-
-## 運用メモ（生成先の切り分け）
-
-- **step1 は「コマ生成」用**です。各コマを個別画像として出す前提で、**Forge / NovelAI / Grok** の入力元に使います。
-- **step1 は「精密ページ生成」用**にも使えます。各コマの詳細指示を保ったまま **1ページ全体を1枚にまとめたい場合**は、**Grok** の入力元として使います。
-- **step2 は「ページ生成」用**です。1ページ全体を1枚の漫画画像として出す前提で、**Grok** の入力元に使います。
-- **step1 / step2 は生成入力用の互換出力**です。Manga Tag Mode では、まず YAML IR を作り、検証後に必要な形式へ出力します。
-- **step1 / step2 からページ生成するとき**は、作品の **`tag/*.md`** にある通常時 Danbooru Tags を固定特徴アンカーとして参照できるよう、**本文中にキャラ名を明記**してください。
-- **Nanobanana は導入予定のページ生成系**として想定します。導入後は step2 の入力先に加えます。
-- **Nanobanana 導入後は step1 / step2 のページ生成系入力先に加える想定**です。
-- **Forge / NovelAI は既定運用ではページ生成の正式対応先に含めません**。これらは step1 のコマ生成向けとして扱います。
-- 会話で指定するときは、**「コマ生成」「各コマを出力」「step1から生成」**、**「精密ページ生成」「step1をそのままページ化」**、**「ページ生成」「1ページ丸ごと」「step2から生成」** のように明示してください。
-
+ネガの語彙・運用例は引き続き manga_tag.md の「コマ別ネガ」を参照してください。

@@ -153,7 +153,23 @@ def _novelai_combine_uc(model_id: str, uc_preset: int, user_negative: str) -> st
 
 
 def _novelai_augment_prompt(model_id: str, prompt: str) -> str:
-    """novelai_api HighLevel.generate_image に合わせた品質接尾辞。"""
+    """novelai_api HighLevel.generate_image に合わせた品質接尾辞。
+
+    プロンプトに区切り記号 ``|`` が含まれる場合は NovelAI の
+    「ベース | キャラ …」構造として**最初の ``|`` の左**（ベース）のみへ追接尾する。
+    （``ベース | キャラA | キャラB`` のような複数区切りでも同様）
+    """
+    pipe_split = "|" in prompt
+    if pipe_split:
+        left, sep, right = prompt.partition("|")
+        left_augmented = _novelai_augment_prompt_segment(model_id, left.strip())
+        return f"{left_augmented}{sep}{right}" if sep else left_augmented
+    return _novelai_augment_prompt_segment(model_id, prompt)
+
+
+def _novelai_augment_prompt_segment(model_id: str, segment: str) -> str:
+    """単一セグメントへ品質接尾辞を付与（pipe 分割後の左または全体）。"""
+    prompt = segment
     if "nai-diffusion-4-5-curated" in model_id:
         return (
             f"{prompt}, very aesthetic, location, masterpiece, no text, "

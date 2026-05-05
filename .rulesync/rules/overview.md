@@ -85,8 +85,8 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
        - 一般読者の「興味」と「第一印象」を判定するためのプロンプト。ペルソナに基づき、冒頭の掴みや読み飛ばしの有無をシビアに評価する。
     9. tag.md
        - キャラクターごとにルールを用いて画像タグを作成する
-    10．manga.md,manga_tag.md
-       - マンガのコマ割りを行う時に用います
+    10．manga.md, manga_tag.md, manga_tag_step2.md
+       - マンガのコマ割り・タグ。`manga_tag.md` は英語タグ語彙（Step1 中心）。**Step2（ページ生成・`step2_summary`）** 改稿時は `manga_tag_step2.md`（雛形: `_how_to.example/manga_tag_step2.md`）を併読。
     11. manga-prompt-ir
        - キャラクタータグ・漫画ページタグを YAML/JSON/Pydantic の中間表現として扱うための正本スキル。新規の構造化タグ生成では `.rulesync/skills/manga-prompt-ir/` を優先し、既存 Markdown は互換出力として扱う。
 12. meta.md
@@ -323,8 +323,8 @@ _how_to/tag.md のルールに従い、各人物について
 - 新規・刷新後の運用では、ページ・コマ・人物・テキスト要素を YAML/JSON/Pydantic の構造化定義（スキル `manga-prompt-ir`）へ落とし、必要に応じて既存 `manga_XX.md` の Step1 / Step2 へ互換出力する。
 
 #### 参照ルール（必須）
-- `_how_to/manga_tag.md` および `_how_to/manga.md` を必ず参照し、同ファイルのルール・出力形式に従う。
-- 構造化漫画タグを作る場合は、スキル **`manga-prompt-ir`** の `schemas/manga_page.py` と `examples/manga_page.yaml` を正本にする。
+- `_how_to/manga_tag.md` および `_how_to/manga.md` を必ず参照し、同ファイルのルール・出力形式に従う。特に **`panels[].prompt_tags` の英語トークン・置き換え表・NSFW 表記**は `manga_tag.md` へ合わせ、手順の詳細はスキル **`manga-prompt-ir`** の節「`_how_to/manga_tag.md` との役割分担」に従う（`novel_prompt_ir_validate.py` は置き換え表の一致までは検証しない）。**`panels[].step2_summary` や互換 `### Step2` を整える**ときは **`_how_to/manga_tag_step2.md`**（雛形 `_how_to.example/manga_tag_step2.md`）を併読する。
+- 構造化漫画タグを作る場合、**型の正本**はスキル **`manga-prompt-ir`** の `tools/manga_prompt_ir/schemas/manga_page.py`（Pydantic）。**実データの正本**は `novels/<作品>/manga/pages/manga_XX_pYY.yaml`。検証は **`tools/novel_prompt_ir_validate.py`**（本番前は `--strict-quality` を推奨）。
 - **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従う。刷新後の優先順位は、`tag/characters/<character_id>.yaml` → `character.md` → `tag/<romaji>.md` とし、互換 Markdown は最終的な画像生成バッチ向けの参照先として扱う。
 - **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、まず YAML IR の品質を点検する。`step1` / `step2` は互換出力後の確認対象とする。
 
@@ -351,14 +351,15 @@ _how_to/tag.md のルールに従い、各人物について
    - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造、主語・行為・構図・セリフ話者・ページレイアウトの不足警告を確認する。本番生成前は **`--strict-quality`** を付け、品質警告も失敗扱いにする。
    - 主語・関係・セリフ帰属・部分アップの意味付け・コマ割りは、スキル **`manga-tag-quality-gate`** の観点で点検する。
 4. **Markdown へのエクスポート**
-   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。
+   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。**`--manga-page` で漫画ファイルを出すときは、既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け **`ベース | キャラ`** 形式にし、`forge_novel_manga_batch`・NovelAI・step1-panels と形状を揃える。省略すると Step1 がカンマ一列のみになる）。Step2 ブロックはこのフラグでは変わらないが、手順統一のため同じコマンドで付けてよい。
    - Markdown 出力後に改めて手作業で Step2 を作り直すのではなく、YAML IR 側を修正して再エクスポートする。
 
 #### 画像ストック（漫画・コマ単位・推奨）
 - 各 `manga_XX.md` に対応する専用フォルダを `manga/_assets/` 配下に置き、そのファイルに含まれる生成画像を保存する。
   - 例: `manga/manga_01.md` の画像 → `manga/_assets/manga_01/`
   - コマ生成では `file_prefix` に `manga_01_p02_k03` のようにファイル名・ページ番号・コマ番号を含める。
-- 既定運用では `manga/_assets/<manga_XX>/` 直下を使う。ページごとに分けたい場合は `tools/forge_novel_manga_batch.py --subdir-by-page` を使い、`p01`, `p02` などに分ける。
+- 既定・推奨運用は **`manga/_assets/<manga_XX>/` 直下のみ**とする。画像の分類は**章（`manga_XX`＝`manga/manga_XX` 系列）まで**で足り、**ページ単位のサブフォルダ（`p01/`, `p02/` 等）を作ることをルール化・手順の既定にしない**。
+- `tools/forge_novel_manga_batch.py` の **`--subdir-by-page`** は、**例外的に**同一直下にファイルが多すぎるなどの理由で分けたい場合だけ使う**任意オプション**（LLM やドキュメントで「ページごとにフォルダ分けする」と**推奨扱いにしない**）。通常は `file_prefix`（例: `manga_01_p02_k03`）でページ・コマを区別する。
 - `novel_image_layout.py scaffold --panels N` が作る `k01` などは、1ページ内のコマ用スロットとして手動整理したい場合だけ使う任意フォルダであり、通常運用では不要。
 - フォルダの一括作成・推奨パスはスキル **`novel-image-layout`**（`tools/novel_image_layout.py`）に従う。
 

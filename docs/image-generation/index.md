@@ -10,6 +10,9 @@ Forge / NovelAI / Grok / OpenAI の画像生成運用をまとめたページで
 - 設定: [`/config/image_generation.json`](../../config/image_generation.json)
 - 環境変数テンプレート: [`/.env.example`](../../.env.example)
 - 詳細スキル: [`/.rulesync/skills/forge-txt2img/SKILL.md`](../../.rulesync/skills/forge-txt2img/SKILL.md)
+- 漫画ページ IR・検証・パイプライン: [manga-prompt-ir.md](manga-prompt-ir.md)
+- 互換 Step1/Step2・タグ生成テンプレ: [manga-tag-generation.md](manga-tag-generation.md)
+- Step2 編集時の必読チェック（創作技法・`_how_to`）: [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)
 
 ---
 
@@ -51,9 +54,16 @@ MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok
 
 # Forge のモデル族 (sdxl / flux)
 MONOCRI_FORGE_MODEL_FAMILY_DEFAULT=
+
+# 漫画バッチ (forge_novel_manga_batch.py) のみ。provider=grok_pro かつ
+# コマンドに --aspect-ratio を付けないとき、Grok の既定（多くは config の 1:1）の代わりに使う。
+# 例: manga_b5_portrait（3:4） / story_vertical（9:16） / 3:4 など
+MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO=
 ```
 
 優先順位: CLI `--provider` > `.env` 用途別変数 > `config/image_generation.json` の `default_provider`
+
+**漫画バッチの縦横比**: CLI `--aspect-ratio` が **最優先**。未指定かつ実際のプロバイダが `grok_pro` のときだけ `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` が `aspect_ratio_preset` に効く（それ以外のプロバイダでは無視）。
 
 ---
 
@@ -177,8 +187,10 @@ python tools/forge_generate.py --probe --provider forge
 
 | 種別 | 保存先 |
 |------|--------|
-| 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/` |
+| 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/`（**章 `manga_XX` 直下が標準。ページ別サブフォルダは推奨しない**） |
 | キャラクター立ち絵 | `novels/<作品>/tag/<romaji>/` |
+
+コマ画像は同一フォルダ内で `file_prefix`（例: `manga_01_p02_k03`）により区別する。`forge_novel_manga_batch --subdir-by-page` は例外的な用途のみ。
 
 フォルダ一括作成は `python tools/novel_image_layout.py scaffold <作品> --panels N`。
 
