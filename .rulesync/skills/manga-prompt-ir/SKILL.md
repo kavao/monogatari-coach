@@ -10,7 +10,7 @@ targets: ["*"]
 
 ## 目的
 
-キャラクタータグと漫画タグの正本を、従来の Markdown 抽出だけに依存せず、**Pydantic モデルを正**、**YAML を人間編集用**、**JSON を内部処理・機械連携用**として扱う。
+キャラクタータグと漫画タグの構造正本を、**単なる Markdown 抽出だけに依存せず**、**Pydantic モデルを型の正**、**YAML をページ・キャラ定義の編集正本**、**JSON を内部処理・機械連携用**として扱う。互換 `tag/<romaji>.md` / `manga/manga_XX.md` は **YAML からエクスポートする人間向けの可読副本**（バッチ互換・手作業）として併用する。
 
 このスキルは、次の3つを分離して管理する。
 
@@ -24,7 +24,7 @@ targets: ["*"]
 1. `tools/manga_prompt_ir/schemas/*.py`: Pydantic v2 モデル。構造・必須項目・型の正本。
 2. `tools/manga_prompt_ir/examples/*.yaml`: 人間が編集する入力例。作品ごとの YAML はこの形に寄せる。
 3. `tools/manga_prompt_ir/converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
-4. 従来の `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換の出力・移行元として扱う。
+4. `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換・**人間向けの可読副本**・旧資産からの移行元として扱う。
 
 ## ユーザー向けマニュアル（ツール・パイプライン）
 
@@ -164,11 +164,11 @@ targets: ["*"]
 
 ## 移行ルール
 
-既存の Markdown 資産は、すぐに破棄しない。
+既存の Markdown 資産は、すぐに破棄しない。互換 Markdown は、人間の手作業・差分確認・既存バッチ向けの**可読な副本**として継続する。
 
-- `tag/<romaji>.md` は `character.yaml` へ写経・正規化し、当面は `Danbooru Tags` の互換出力先として残す。
-- `manga/manga_XX.md` は `manga_page.yaml` へ写経・正規化し、当面は Step1 / Step2 の互換出力先として残す。
-- 画像生成バッチが Markdown しか読めない間は、YAML を正として Markdown 互換ブロックを生成する。
+- `tag/<romaji>.md` は `character.yaml` へ写経・正規化し、`Danbooru Tags` 行を **`tools/forge_novel_tag_batch.py` 向けにエクスポート**する先として残す（人間が読み・直す作業面でも重要）。
+- `manga/manga_XX.md` はページ YAML へ写経・正規化し、Step1 / Step2 を **`tools/forge_novel_manga_batch.py` 向けにエクスポート**する先として残す（ページ単位の推敲・共有にも使う）。
+- 画像生成では **YAML を正本**とし、必要に応じて Markdown 互換ブロックを **エクスポートで生成**する。
 - 既存ツールを正式に更新するときは、`tools_temp/` で抽出・変換を試作してから `tools/` へ整理して反映する。
 
 ## 画像バッチとの連携（ファイル名と出力増殖）

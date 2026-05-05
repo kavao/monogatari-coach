@@ -88,7 +88,7 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
     10．manga.md, manga_tag.md, manga_tag_step2.md
        - マンガのコマ割り・タグ。`manga_tag.md` は英語タグ語彙（Step1 中心）。**Step2（ページ生成・`step2_summary`）** 改稿時は `manga_tag_step2.md`（雛形: `_how_to.example/manga_tag_step2.md`）を併読。
     11. manga-prompt-ir
-       - キャラクタータグ・漫画ページタグを YAML/JSON/Pydantic の中間表現として扱うための正本スキル。新規の構造化タグ生成では `.rulesync/skills/manga-prompt-ir/` を優先し、既存 Markdown は互換出力として扱う。
+       - キャラクタータグ・漫画ページタグを YAML/JSON/Pydantic の中間表現として扱うための正本スキル。新規の構造化タグ生成では `.rulesync/skills/manga-prompt-ir/` を優先する。`tag/<romaji>.md` や `manga/manga_XX.md` は **YAML IR からのエクスポートによる人間向けの副本**（可読・手作業・既存バッチ連携）として扱う。
 12. meta.md
        - 外部投稿用メタ（カクヨム等）と内部管理用メタ（執筆ステータス、AI引き継ぎ指示）を管理します。執筆の節目で必ず更新・参照します。
   - **編集時の原則**:
@@ -150,13 +150,13 @@ c. プロフィールについても深く掘り下げてください。
 8. tag/characters/<character_id>.yaml（キャラクタータグ正本・YAML IR）
    - キャラクターごとの外見・衣装・固定タグ・禁止変更項目を YAML IR として管理する（スキル **manga-prompt-ir**）
    - `_how_to/tag.md` のルールに従い、通常時・状況別バリアントを定義する
-   - **互換出力**: `tag/<romaji>.md`（`tools/forge_novel_tag_batch.py` 向け Danbooru Tags 行）
+   - **互換出力（人間向けの副本・バッチ互換）**: `tag/<romaji>.md`（`tools/forge_novel_tag_batch.py` 向け Danbooru Tags 行。手作業での確認・差分レビューにも用いる）
    - 生成画像は **`tag/<romaji>/`** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
 9. manga/pages/manga_XX_pYY.yaml（漫画タグ正本・YAML IR）
    - 小説本文と対応する章・項ごとに、1ページ分の定義を YAML IR として管理する（スキル **manga-prompt-ir**）
    - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
-   - **互換出力**: `manga/manga_XX.md`（`tools/forge_novel_manga_batch.py` 向け Step1 / Step2）
+   - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/forge_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
    - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
 10. _meta.md
    - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
@@ -261,8 +261,8 @@ flowchart TD
 
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/tag/characters/<character_id>.yaml` に作成する。
-- **互換出力（Markdown）**: `novels/[novel_code]_[novel_title]/tag/<romaji>.md` に作成する。
-  - 既存の `tools/forge_novel_tag_batch.py` 等のバッチツールはこの Markdown を参照する。
+- **互換出力（Markdown・人間向けの副本）**: `novels/[novel_code]_[novel_title]/tag/<romaji>.md` に作成する。
+  - 既存の `tools/forge_novel_tag_batch.py` 等のバッチツールはこの Markdown を参照する。手作業でのタグ確認・差分レビュー・外部ツール連携のための可読形として継続利用する。
 
 #### 画像ストック（キャラクター別・推奨）
 - タグ Markdown（`tag/<romaji>.md`）と同名の英字サブフォルダを `tag/` 配下に用意し、そのキャラクター由来の生成画像をすべてそこに集約する。
@@ -316,7 +316,7 @@ _how_to/tag.md のルールに従い、各人物について
 小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、漫画ページ用の YAML IR を作成する。既存バッチを使う場合は、YAML IR から `manga_XX.md` の Step1 / Step2 互換形式へ出力する。
 原則として、**本文または構成案が確定した後（Writing/Mangaの一部）**、画像一括生成の前に必ず行う。
 
-**禁止**: Manga Tag Mode の初手として `manga/manga_XX.md` を直接新規作成しない。`manga/manga_XX.md` は検証済み YAML IR からの互換出力、または旧運用からの移行元としてだけ扱う。
+**禁止**: Manga Tag Mode の初手として `manga/manga_XX.md` を直接新規作成して正本にしないこと。`manga/manga_XX.md` は、検証済み YAML IR からエクスポートした**人間向けの副本**（Step1 / Step2 の可読形）および **`tools/forge_novel_manga_batch.py` 連携用**であり、あわせて旧来の Markdown から IR へ移行するときの参照元として扱う。
 
 #### 目的
 - 各コマの状況、人物、アクションを正確に言語化し、AI画像生成（NovelAI/Stable Diffusion等）で一貫性のある漫画を生成可能にする。
@@ -325,14 +325,14 @@ _how_to/tag.md のルールに従い、各人物について
 #### 参照ルール（必須）
 - `_how_to/manga_tag.md` および `_how_to/manga.md` を必ず参照し、同ファイルのルール・出力形式に従う。特に **`panels[].prompt_tags` の英語トークン・置き換え表・NSFW 表記**は `manga_tag.md` へ合わせ、手順の詳細はスキル **`manga-prompt-ir`** の節「`_how_to/manga_tag.md` との役割分担」に従う（`novel_prompt_ir_validate.py` は置き換え表の一致までは検証しない）。**`panels[].step2_summary` や互換 `### Step2` を整える**ときは **`_how_to/manga_tag_step2.md`**（雛形 `_how_to.example/manga_tag_step2.md`）を併読する。
 - 構造化漫画タグを作る場合、**型の正本**はスキル **`manga-prompt-ir`** の `tools/manga_prompt_ir/schemas/manga_page.py`（Pydantic）。**実データの正本**は `novels/<作品>/manga/pages/manga_XX_pYY.yaml`。検証は **`tools/novel_prompt_ir_validate.py`**（本番前は `--strict-quality` を推奨）。
-- **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従う。刷新後の優先順位は、`tag/characters/<character_id>.yaml` → `character.md` → `tag/<romaji>.md` とし、互換 Markdown は最終的な画像生成バッチ向けの参照先として扱う。
+- **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従う。刷新後の優先順位は、`tag/characters/<character_id>.yaml` → `character.md` → `tag/<romaji>.md` とし、互換 Markdown は画像生成バッチ向けの参照先に加え、**手作業での外見タグ確認用の可読副本**として扱う。
 - **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、まず YAML IR の品質を点検する。`step1` / `step2` は互換出力後の確認対象とする。
 
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/manga/pages/manga_XX_pYY.yaml` に作成する。
-- **互換出力（Markdown）**: `novels/[novel_code]_[novel_title]/manga/manga_XX.md` に出力、または追記する。
-  - 既存の `tools/forge_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。
-  - Markdown を手作業で正本化しない。修正は YAML IR 側へ入れ、再エクスポートする。
+- **互換出力（Markdown・人間向けの副本）**: `novels/[novel_code]_[novel_title]/manga/manga_XX.md` に出力、または追記する。
+  - 既存の `tools/forge_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。ページ単位の可読参照・手作業での Step1/Step2 推敲・外部連携に引き続き用いる。
+  - データの正本は YAML IR とし、Markdown を**唯一の正本として**手作業で増殖させない。修正は YAML IR 側へ入れ、再エクスポートする。
 
 #### 手動手順（明確化）
 1. **前提チェック**
@@ -346,7 +346,7 @@ _how_to/tag.md のルールに従い、各人物について
    - 登場キャラについては `character.md` と `tag/characters/<character_id>.yaml` を読み、**髪・目・肌・種族・体格・固定小物などの固定特徴を各コマへ継承**する（スキル **`manga-tag-character-sync`**）。
    - 服装・状態差分が必要なコマでは、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかを明示し、`tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と対応させる。
    - ページYAML単体で内容が分かるよう、`tools/novel_prompt_ir_embed_snapshots.py novels/<作品フォルダ>` で `character_snapshots` を埋め込み、そのページで使う外見・衣装・バリアントタグを固定する。
-   - `render_instruction`、`panels[].subjects[]`、`text.dialogue[]`、`composition`、`camera`、`prompt_tags` などに分解し、YAML 内で Step1 / Step2 相当の情報が再構成できる状態にする。Markdown廃止後は、この YAML 全体を Step1 相当の作画依頼として扱う。
+   - `render_instruction`、`panels[].subjects[]`、`text.dialogue[]`、`composition`、`camera`、`prompt_tags` などに分解し、YAML 内で Step1 / Step2 相当の情報が再構成できる状態にする。**機械処理・検証の正本は YAML** とし、`render_instruction` を含む YAML 全体を Step1 相当の作画依頼として扱う。**互換 Markdown は**可読な**副本**として並行してエクスポートし、手作業やバッチ連携に利用する。
 3. **検証**
    - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造、主語・行為・構図・セリフ話者・ページレイアウトの不足警告を確認する。本番生成前は **`--strict-quality`** を付け、品質警告も失敗扱いにする。
    - 主語・関係・セリフ帰属・部分アップの意味付け・コマ割りは、スキル **`manga-tag-quality-gate`** の観点で点検する。

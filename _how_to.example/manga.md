@@ -18,8 +18,8 @@
 
 - 人間編集用の正本: `novels/<作品>/manga/pages/manga_XX_pYY.yaml`
 - 画像生成バッチ入力: `tools/forge_novel_manga_batch.py --input yaml`（既定。`manga/pages/*.yaml` を必須入力として読む）
-- 既存Markdown互換: `novels/<作品>/manga/manga_XX.md`
-- `manga_XX.md` は古い運用・外部確認・Markdown互換が必要な場合の出力層として扱う
+- 人間向けの副本・既存Markdown互換: `novels/<作品>/manga/manga_XX.md`
+- `manga_XX.md` は YAML からエクスポートする**可読形**（手作業での Step1/Step2 推敲・外部確認・`forge_novel_manga_batch --input markdown` 等）として扱う
 - 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
 
 **Manga Tag Mode の初手は YAML IR 作成です。**

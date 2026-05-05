@@ -603,7 +603,7 @@ def panel_step2_description(panel: dict, *, apply_paraphrase: bool | None = None
     """Step2 行の本文。`step2_summary` が非空ならそれを使い、無ければ `summary`。
 
     apply_paraphrase が True のとき、または None かつ環境変数 MONOCRI_STEP2_PARAPHRASE が真のとき、
-    manga_prompt_ir.step2_paraphrase のルールで部分置換する。
+    manga_prompt_ir.step2_paraphrase のルールを適用する（既定は avoid に部分一致したら本文全体を use に差し替える ``whole_text``。YAML の ``apply_mode: substring`` で従来の部分置換）。
     """
     from manga_prompt_ir.step2_paraphrase import apply_step2_paraphrase, effective_paraphrase
 

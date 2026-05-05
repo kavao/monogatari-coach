@@ -2,7 +2,7 @@
 
 ## 方針
 
-いきなり既存 Markdown 運用を捨てず、**構造化 IR を正本に昇格し、Markdown は互換出力として残す**。
+いきなり既存 Markdown 運用を捨てず、**構造化 IR を機械処理の正本に昇格し、Markdown は YAML からエクスポートする人間向けの副本（可読・手作業・既存バッチ互換）として残す**。
 
 ただし、IRそのものは執筆・変換途中で壊れたら作り直せる中間データとして扱う。守るべき中核は、YAMLの形そのものではなく、**日本語で入っている意味、人物の固定特徴、誰が誰に何をしているか、セリフや効果音の帰属**である。
 
@@ -63,7 +63,7 @@ novels/<作品>/
 
 2026-04-29 時点で、`tools/forge_novel_manga_batch.py` は `--input yaml|markdown` を持ち、既定は `yaml` とする。YAML 入力では `--source step1-panels` / `step1-pages` / `step2-pages` を、`panels[]` と `manga.panel_layout` から直接ジョブ化する。旧Markdown互換を使う場合だけ `--input markdown` を明示する。
 
-2026-04-29 更新: `manga/pages/*.yaml` に `render_instruction` を追加し、YAML単体で漫画1ページ分の作画依頼書として読める形へ寄せる。Markdown廃止後は、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を Step1 相当の原盤として扱う。
+2026-04-29 更新: `manga/pages/*.yaml` に `render_instruction` を追加し、YAML単体で漫画1ページ分の作画依頼書として読める形へ寄せる。**機械処理の正本は YAML** とし、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を Step1 相当の原盤として扱う。互換 Markdown は可読な副本として継続してエクスポート・利用する。
 
 2026-04-29 更新: `background_concepts[]` を追加し、Grok / OpenAI へ人物なしの背景・空間設計を渡す入口を設ける。`tools/forge_novel_manga_batch.py --source background-concepts` は YAML 入力専用で、未指定時の provider は Grok とする。
 
@@ -71,7 +71,7 @@ novels/<作品>/
 
 - `tools/forge_novel_tag_batch.py` にも同様の YAML 直読入力を追加する。
 - 既存作品で `manga/manga_XX.md` しか無いものは、必要に応じて `manga/pages/*.yaml` へ移行する。
-- Markdown は外部確認・旧運用互換のため残すが、画像生成の既定入力は YAML とする。
+- Markdown は人間向けの可読副本・外部確認・旧運用互換のため引き続き残す。画像生成バッチの**既定入力**は YAML とする（`--input markdown` は明示時のみ）。
 
 ## Phase 5: 品質ゲートの自動化
 

@@ -14,7 +14,7 @@
 |------|------|
 | ページ定義の正本 | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
 | スキーマ（Pydantic） | `tools/manga_prompt_ir/schemas/manga_page.py` |
-| 互換 Markdown（再生成・バッチ用） | `novels/<作品>/manga/manga_XX.md`（**手で正本化しない**） |
+| 互換 Markdown（人間向けの副本・再生成・バッチ用） | `novels/<作品>/manga/manga_XX.md`（**ページ定義の唯一の正本にしない**。推敲・可読参照に用いる） |
 | キャラ外見の正本 | `tag/characters/<character_id>.yaml` |
 
 **Manga Tag Mode**: 初手は **YAML IR 作成** → `novel_prompt_ir_validate.py` → 必要なら `novel_prompt_ir_export_md.py`。`manga_XX.md` を直接新規作成して正本にしない。
@@ -35,7 +35,7 @@
 必要な場合だけ:
   ↓ tools/novel_prompt_ir_embed_snapshots.py（スナップショット埋め込み）
   ↓ tools/novel_prompt_ir_export_md.py（互換 Markdown）
-[manga/manga_XX.md]  ← 互換出力（直接編集しない）
+[manga/manga_XX.md]  ← 互換出力・人間向けの副本（正本は YAML。変更は YAML→再エクスポート）
 ```
 
 - 本番前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を推奨。

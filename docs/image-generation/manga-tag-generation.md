@@ -1,6 +1,6 @@
 # 漫画タグ生成（互換 Markdown・Step1 / Step2）
 
-**読者**: Manga Tag Mode で **LLM や人間が参照する**、互換 `manga_XX.md` の書式・長い作業指示・出力例・レイアウト指針です。
+**読者**: Manga Tag Mode で **LLM や人間が参照する**、互換 `manga_XX.md` の書式・長い作業指示・出力例・レイアウト指針です。互換 Markdown は、YAML IR からエクスポートする**人間向けの可読副本**として、手作業・推敲・既存バッチ連携に引き続き使います。
 
 **正本の編集**: 運用上は **`novels/<作品>/manga/pages/*.yaml`**。本文書は「Markdown に出力されるときの形」と「タグ作業の叱り方」の参照です。**ツール・コマンド・検証**は [manga-prompt-ir.md](manga-prompt-ir.md) を参照してください。
 
@@ -131,7 +131,7 @@ nanobanana, GptImage1のようなツールで、コマ割りと抽象度をの�
 
 **（機械との関係）** **IR の `step2_summary` / `summary` や互換 Markdown** は、上記 **`manga_tag_step2.md`** の作法に従って書く。`novel_prompt_ir_validate.py` は **言い換え内容を自動では検証・適用しない**（[`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md) の置き換え表と同様、**手で IR に反映するまで完了とみなさない**）。
 
-**（表の機械置換）** [`manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md) の「言い換えの目安」表と同内容の置換は、ルール YAML を **`forge_novel_manga_batch.py`**（`--source step2-pages`）または **`novel_prompt_ir_export_md.py`** 実行時に、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成直前の Step2 本文**へ適用できる（**`--no-step2-paraphrase`** でオフ。IR ファイルは変わらない）。ルールファイルの探索順は、環境変数 **`MONOCRI_STEP2_PARAPHRASE_RULES`**（任意・パス指定）→ リポジトリ直下 **`_how_to/step2_paraphrase_rules.yaml`** → 同梱の **`tools/manga_prompt_ir/data/step2_paraphrase_rules.yaml`**。
+**（表の機械置換）** [`manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md) の「言い換えの目安」表と同内容の置換は、ルール YAML を **`forge_novel_manga_batch.py`**（`--source step2-pages`）または **`novel_prompt_ir_export_md.py`** 実行時に、環境変数 **`MONOCRI_STEP2_PARAPHRASE=1`** または **`--step2-paraphrase`** で**生成直前の Step2 本文**へ適用できる（**`--no-step2-paraphrase`** でオフ。IR ファイルは変わらない）。**既定は `apply_mode: whole_text`**（`avoid` に部分一致したら**そのコマの Step2 本文全体**を `use` に差し替え）。従来の文中だけの部分置換はルール YAML に **`apply_mode: substring`**。探索順は **`MONOCRI_STEP2_PARAPHRASE_RULES`** → **`_how_to/step2_paraphrase_rules.yaml`** → **`tools/manga_prompt_ir/data/step2_paraphrase_rules.yaml`**。
 
 **互換 Markdown の Step2（自動エクスポート）** は `tools/novel_prompt_ir_export_md.py` が、各ページ YAML の `manga.panel_layout`・`meta.reading_order`・各 `panels[].composition.layout`・**コマ要約**から機械的に組み立てます（ページ生成バッチの `yaml_page_step2_text` も同じ情報源です）。**コマ要約は `panels[].step2_summary` が非空ならそちらを優先**し、無い場合のみ `panels[].summary` を使います（Step1 は引き続き `summary` が見出し本文）。見出しは各 `## Page N` の直下に付く `### Step2` です。
 

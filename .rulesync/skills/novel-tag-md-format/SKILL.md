@@ -4,8 +4,8 @@ description: >-
   tag/characters/<character_id>.yaml（YAML IR）からエクスポートされた
   novels/<作品>/tag/<romaji>.md の見出し・Danbooru Tags 行・インデントを
   tools/forge_novel_tag_batch.py と整合させる互換Markdown層維持スキル。
-  キャラクタータグの正本は manga-prompt-ir の YAML IR であり、このスキルは
-  既存バッチ向けの互換フォーマットを保つために使う。
+  キャラクタータグの構造正本は manga-prompt-ir の YAML IR であり、このスキルは
+  人間向けの可読副本かつ既存バッチ向けの Markdown フォーマットを保つために使う。
 targets: ["*"]
 ---
 
@@ -14,7 +14,7 @@ targets: ["*"]
 `_how_to/tag.md` の内容（プロンプト・タグの作り方）に加え、**ファイルの Markdown 構造を一定に保ち**、次を曖昧にしない。
 
 新規設計では、キャラクタータグの構造正本はスキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` に寄せる。  
-このスキルは、既存の `tools/forge_novel_tag_batch.py` と `tag/<romaji>.md` を使うための **Markdown 互換層**として残す。
+このスキルは、既存の `tools/forge_novel_tag_batch.py` と `tag/<romaji>.md` を使うための **Markdown 互換層**（**人間向けの可読副本**を含む）として継続する。
 
 - **`tools/forge_novel_tag_batch.py`** が `tag/*.md` から **Danbooru 行を抜き漏れなく抽出**できること。
 - 人間の編集・差分でも **セクション境界がブレない**こと。
@@ -47,7 +47,7 @@ targets: ["*"]
 
 ## 検証
 
-Markdown 互換フォーマットの構文確認（旧ツール向け）:
+Markdown 互換フォーマットの構文確認（バッチ・手作業の整合用）:
 
 ```bash
 python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/characters/<id>.yaml --output-dir tools_temp/ir_export_sample

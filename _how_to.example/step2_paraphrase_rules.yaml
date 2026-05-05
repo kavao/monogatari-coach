@@ -1,6 +1,7 @@
 # Step2 自動言い換えルール（manga_tag_step2.md の「言い換えの目安」表と同期すること）
-# avoid に一致する部分を use に置換（長い avoid を先に適用）
-schema_version: "1.0"
+# apply_mode: whole_text（既定） / substring（文中の部分のみ置換）
+schema_version: "1.1"
+apply_mode: whole_text
 replacements:
   - avoid: 胸が腹部に押し当てられて
     use: 胸が当てられて

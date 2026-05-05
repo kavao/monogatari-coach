@@ -4,7 +4,7 @@ description: >-
   Manga Tag Mode で manga/pages/*.yaml の漫画ページIRを作成・改稿するときに、
   character.md と tag/characters/*.yaml を正として固定外見・服装・小物・種族特徴を継承し、
   コマごとの subjects / prompt_tags へ矛盾なく反映する。
-  manga/manga_XX.md は必要時のみ生成する互換出力として扱う。
+  manga/manga_XX.md は必要時に YAML からエクスポートする人間向けの副本（バッチ互換）として扱う。
 targets: ["*"]
 ---
 
@@ -14,7 +14,7 @@ targets: ["*"]
 
 本スキルは、`manga/pages/*.yaml` の漫画ページIRを作るときに、**`character.md` と `tag/characters/*.yaml` を先に読み、固定特徴を毎コマへ反映する手順**を固定する。
 
-`manga/manga_XX.md` は `tools/forge_novel_manga_batch.py` 向けの互換出力であり、Manga Tag Mode の初手で直接新規作成する正本ではない。既存 Markdown は移行・比較・生成直前の互換確認にだけ使う。
+`manga/manga_XX.md` は `tools/forge_novel_manga_batch.py` 向けの**互換出力（人間向けの可読副本）**であり、Manga Tag Mode の初手で直接新規作成して**唯一の正本**にしない。既存 Markdown は移行・比較・推敲・生成直前の確認に使う。
 
 ## 正本・参照
 
@@ -24,8 +24,8 @@ targets: ["*"]
 | `novels/<作品>/character.md` | 外見・体格・服装・種族・持ち物のプロフィール正本。ここに無い特徴を漫画タグだけで増やさない。 |
 | `novels/<作品>/_novel_text/novel_textXX*.md` | そのページの場面・人物・会話・小道具の本文根拠。漫画ページIR作成時に参照する。 |
 | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` | 漫画ページ定義正本。コマ・人物・セリフ・効果音・タグを分離する。 |
-| `novels/<作品>/tag/<romaji>.md` | Danbooru Tags の互換運用形。英語タグへの落とし方の参考として使う。 |
-| `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
+| `novels/<作品>/tag/<romaji>.md` | Danbooru Tags の互換運用形（人間向けの可読副本）。英語タグへの落とし方の参考・手作業確認に使う。 |
+| `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換・可読副本。移行元・推敲・生成直前の確認先。ページ定義の正本は `manga/pages/*.yaml`。 |
 | `_how_to/manga.md` | コマ構成・出力形式・抽象度の基準。 |
 | `_how_to/manga_tag.md` | 漫画向けタグ表現の参考。 |
 
@@ -45,7 +45,7 @@ targets: ["*"]
 - 対象本文（`_novel_text/novel_textXX*.md`）と `manga/pages/*.yaml` から、ページに出る人物を洗い出す。
 - YAML 化済みの場合は、`character_ids` と `panels[].subjects[].character_id` を先に確認する。
 - 各人物について、対応する `tag/characters/<character_id>.yaml` と、必要に応じて `tag/<romaji>.md` があるか確認する。
-- 既存 `manga/manga_XX.md` は、旧運用から移行するときだけ人物確認の補助として読む。
+- 既存 `manga/manga_XX.md` は、旧来の Markdown 資産から IR へ移行するときや、人物・タグの人間向け確認の補助として読む。
 
 ### 2. 固定特徴を抜き出す
 
@@ -94,7 +94,7 @@ targets: ["*"]
 ```text
 _novel_text と tag/characters/*.yaml / character.md を正として固定特徴を継承し、
 manga/pages/*.yaml の subjects / prompt_tags へ矛盾なく反映する。
-manga/manga_XX.md は必要時のみ互換出力する。
+manga/manga_XX.md は必要時に YAML からエクスポートする（人間向けの副本・バッチ互換）。
 ```
 
 ## 関連

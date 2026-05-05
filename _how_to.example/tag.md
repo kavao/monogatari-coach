@@ -4,8 +4,8 @@
 新規のキャラクター画像タグは、まず **`manga-prompt-ir`** の `CharacterPrompt` 構造へ落とす。
 
 - 人間編集用の正本: `novels/<作品>/tag/characters/<character_id>.yaml`
-- 既存バッチ互換: `novels/<作品>/tag/<romaji>.md`
-- 互換 Markdown は `tools/forge_novel_tag_batch.py` のための出力層として扱う
+- 人間向けの副本・既存バッチ互換: `novels/<作品>/tag/<romaji>.md`
+- 互換 Markdown は `tools/forge_novel_tag_batch.py` 向けの抽出形式に加え、**手作業でのタグ確認・差分レビュー・可読参照**に用いる
 - 中間データは作り直し可能だが、**日本語の意味・固定特徴・変更禁止・状況別タグ**は失わない
 
 ---

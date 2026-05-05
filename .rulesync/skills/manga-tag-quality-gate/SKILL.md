@@ -26,7 +26,7 @@ targets: ["*"]
 
 `manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/forge_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
 
-Markdown廃止後は、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなす。`render_instruction` には、YAMLを1ページ漫画として描くこと、コマ順・コマ割りを守ること、キャラクター固定外見を継承すること、テキスト要素の扱いを明記する。
+**機械処理・検証の正本は YAML** とし、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなす。`render_instruction` には、YAMLを1ページ漫画として描くこと、コマ順・コマ割りを守ること、キャラクター固定外見を継承すること、テキスト要素の扱いを明記する。互換 Markdown（`manga_XX.md`）は、人間の読み書き・推敲・既存バッチ連携のための**副本**として並行して用いる。
 
 ただし **コマ生成（`step1-panels`）** は、各コマを1枚の単独画像として出す運用であり、ページ全体のコマ割りタグをそのまま入れない。`japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`1ページ4コマ`、`上段` / `中段` / `下段` / `大コマ` などはページ生成用の情報であり、コマ単体生成では内部フィルタで落とす。構図として残すのは `close-up`、`medium shot`、`long shot`、被写体、場所、行為、表情、照明などに寄せる。
 
