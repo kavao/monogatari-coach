@@ -90,23 +90,23 @@ def character_tags(character: dict[str, Any], variant_id: str | None = None) -> 
     variant = find_character_variant(character, variant_id)
     if variant:
         appearance = character.get("appearance") or {}
-        tags: list[str] = []
-        tags.extend(str(v) for v in as_list(character.get("character_tags")))
-        tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-        tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-        tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
-        return unique(tags)
+        variant_tags: list[str] = []
+        variant_tags.extend(str(v) for v in as_list(character.get("character_tags")))
+        variant_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+        variant_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+        variant_tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
+        return unique(variant_tags)
 
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
     rules = character.get("manga_rules") or {}
-    tags: list[str] = []
-    tags.extend(str(v) for v in as_list(character.get("character_tags")))
-    tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
-    tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
-    tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-    tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-    return unique(tags)
+    default_tags: list[str] = []
+    default_tags.extend(str(v) for v in as_list(character.get("character_tags")))
+    default_tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
+    default_tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
+    default_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
+    default_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+    return unique(default_tags)
 
 
 def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
