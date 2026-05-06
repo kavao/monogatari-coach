@@ -8,7 +8,7 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/overview.md`（プロジェクト・インテリジェンス／査証ログ）に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
+`.rulesync/rules/concepts.md` の **「プロジェクト・インテリジェンス」** に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
 
 - **追記型のみ**: 新規エントリは **`tools/workspace_audit_log.py append`** で追加する。スクリプトは **`open(..., "a")` 以外でログ本文を書かない**（新規月ファイルのヘッダ初回だけ同じ追記処理内で行う）。
 - **ファイル命名**: 西暦4桁＋月2桁、`202604.md` のように **ゼロ埋め2桁の月**。
@@ -19,6 +19,18 @@ targets: ["*"]
 ## いつ追記するか
 
 - **会話（セッション）ごと**に、更新したファイル・実施したモード・次に望ましいことを1エントリにまとめる（既存の査証ログの書き方例に準拠）。
+
+## 何を記録するか
+
+査証ログは、後から作業事実を確認できるようにするための履歴である。必要に応じて次を1エントリにまとめる。
+
+- 重要な実装パス
+- ユーザーの好みとワークフロー
+- プロジェクト特有のパターン
+- 既知の課題
+- プロジェクト決定の変化
+- ツールの使用パターン
+- 次に望ましい作業
 
 ## 文字数を併記するとき
 
@@ -89,5 +101,6 @@ python tools/workspace_audit_log.py append --dry-run "本文"
 
 - スクリプト: `tools/workspace_audit_log.py`（`append` / `path` / `verify` は査証ログ用）
 - 保存先: `_workingspace/log/YYYYMM.md`
-- ルール記述: `.rulesync/rules/overview.md`（査証ログ）
+- 概念正本: `.rulesync/rules/concepts.md`（プロジェクト・インテリジェンス）
+- 入口ルール: `.rulesync/rules/overview.md`（プロジェクト・インテリジェンス）
 - **横断ナレッジ日記**（別スキル）: `workspace-diary` — `workspace_audit_log.py diary append` などで `_workingspace/diary/YYYYMM.md` へ追記

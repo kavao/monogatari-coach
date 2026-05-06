@@ -88,6 +88,8 @@ source_material の資料を元に作品を展開してください。
 python tools/novel_code_allocate.py novels/
 ```
 
+詳しい保存先と原資料の保全ルールは [Source Material Intake](source-material-intake.md) を参照してください。
+
 ---
 
 ### 4. 執筆を再開する（セッション再開）
@@ -129,6 +131,8 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 # 漫画フォルダまで揃えたい場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 ```
+
+企画・設計フェーズの詳しい確認観点は [Planning](planning.md) を参照してください。
 
 ---
 
@@ -198,6 +202,8 @@ python tools/novel_char_count.py novels/NNN_作品名
 3. 結果を `novels/<作品>/_reader/YYYYMMDD_HHMM.md` に保存する
 4. チャットには判定（合格／不合格・5段階評価）と改善ポイントの要約だけを返す
 
+保存先と完了条件の正本は `.rulesync/skills/novel-reader-output/SKILL.md` です。
+
 *（このモードは LLM が直接処理するため、CLI ツールは使いません）*
 
 ---
@@ -213,6 +219,8 @@ python tools/novel_char_count.py novels/NNN_作品名
 2. タイトル・冒頭3行・最初の1ページで「読み続けるか・離脱するか」を判定する
 3. 結果を `novels/<作品>/_reader/interest_YYYYMMDD.md` に保存する
 4. チャットには「継続 / 離脱」の判定と決め手を1〜3行で返す
+
+保存先と完了条件の正本は `.rulesync/skills/novel-reader-output/SKILL.md` です。
 
 *（このモードは LLM が直接処理するため、CLI ツールは使いません）*
 

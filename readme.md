@@ -45,6 +45,10 @@ MONOCRI_GROK_MODEL_TIER_DEFAULT=standard
 
 - ルールの正本:
   [`.rulesync/rules/overview.md`](.rulesync/rules/overview.md)
+- 横断概念の正本:
+  [`.rulesync/rules/concepts.md`](.rulesync/rules/concepts.md)
+- ルール作成規約:
+  [`.rulesync/rules/rule-authoring.md`](.rulesync/rules/rule-authoring.md)
 - スキルの正本:
   [`.rulesync/skills/`](.rulesync/skills/)
 - 人物命名の入口:
@@ -67,6 +71,8 @@ uv run python howto_init.py
 ```bash
 rulesync generate
 ```
+
+`.rulesync/` 側の正本を更新したあとに実行します。実行後は `AGENTS.md` / `CLAUDE.md` の差分が、LLM 別入口として意図どおりか確認します。
 
 文字数確認:
 

@@ -8,9 +8,11 @@ targets: ["*"]
 
 # Manga Prompt IR
 
+> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、Manga Prompt IR を実際に編集・検証・エクスポートするときの作業手順を扱う。
+
 ## 目的
 
-キャラクタータグと漫画タグの構造正本を、**単なる Markdown 抽出だけに依存せず**、**Pydantic モデルを型の正**、**YAML をページ・キャラ定義の編集正本**、**JSON を内部処理・機械連携用**として扱う。互換 `tag/<romaji>.md` / `manga/manga_XX.md` は **YAML からエクスポートする人間向けの可読副本**（バッチ互換・手作業）として併用する。
+キャラクタータグと漫画タグを、**単なる Markdown 抽出だけに依存せず**、Pydantic モデル・YAML・JSON・互換 Markdown の役割を分けて管理する。正本と副本の横断定義は `concepts.md` に置き、本スキルではその IR をどう作り、検証し、画像生成向けへ変換するかを定める。
 
 このスキルは、次の3つを分離して管理する。
 
@@ -25,6 +27,8 @@ targets: ["*"]
 2. `tools/manga_prompt_ir/examples/*.yaml`: 人間が編集する入力例。作品ごとの YAML はこの形に寄せる。
 3. `tools/manga_prompt_ir/converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
 4. `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換・**人間向けの可読副本**・旧資産からの移行元として扱う。
+
+正本・副本関係の詳細は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を参照する。
 
 ## ユーザー向けマニュアル（ツール・パイプライン）
 
@@ -72,7 +76,7 @@ targets: ["*"]
 
 ## `_how_to/manga_tag.md` との役割分担（漫画タグ・語彙・置き換え）
 
-**創作技法としてのコマ割り・ページ設計・IR の組み立て**は **`_how_to/manga.md`**（雛形は `_how_to.example/manga.md`）。**スキーマ・本スキル・`novel_prompt_ir_validate.py`** が構造と品質の正本。**ツール連携の手順の詳細**は **`docs/image-generation/manga-prompt-ir.md`**、**互換 Markdown の Step1/Step2 長文テンプレ・実例**は **`docs/image-generation/manga-tag-generation.md`**。一方、**コマ単位の英語タグ語彙・置き換え・NSFW 表記の慣例**は **`_how_to/manga_tag.md`**（雛形は `_how_to.example/manga_tag.md`）を正とする。**Step2 要約・抽象ページ指示**は **`_how_to/manga_tag_step2.md`**（雛形 **`_how_to.example/manga_tag_step2.md`**）を正とする。
+**創作技法としてのコマ割り・ページ設計・IR の組み立て**は **`_how_to/manga.md`**（雛形は `_how_to.example/manga.md`）。構造・型・正本/副本の横断定義は **`.rulesync/rules/concepts.md`** と本スキル、検証の実装は `novel_prompt_ir_validate.py` が担う。**ツール連携の手順の詳細**は **`docs/image-generation/manga-prompt-ir.md`**、**互換 Markdown の Step1/Step2 長文テンプレ・実例**は **`docs/image-generation/manga-tag-generation.md`**。一方、**コマ単位の英語タグ語彙・置き換え・NSFW 表記の慣例**は **`_how_to/manga_tag.md`**（雛形は `_how_to.example/manga_tag.md`）を正とする。**Step2 要約・抽象ページ指示**は **`_how_to/manga_tag_step2.md`**（雛形 **`_how_to.example/manga_tag_step2.md`**）を正とする。
 
 ### エージェント／人間の必須動作（ページ YAML を新規・改稿するとき）
 

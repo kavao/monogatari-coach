@@ -18,6 +18,12 @@
   タグ作業用テンプレ・実例・生成モード別の運用メモ
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
+- [Source Material Intake](workflow/source-material-intake.md)
+  既存資料を作品フォルダへ展開するときの手順と保存先
+- [Planning](workflow/planning.md)
+  企画書・設計書・人物・世界観を揃えて執筆前確認へ進む流れ
+- [Reader Output](workflow/reader-output.md)
+  下読み・書評・興味判定の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
   リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)

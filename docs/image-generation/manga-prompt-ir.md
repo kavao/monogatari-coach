@@ -54,6 +54,8 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 
 ## 正本と入出力
 
+正本・副本の横断定義は [概念正本](../../.rulesync/rules/concepts.md) の「漫画IRと互換Markdown」にあります。このページでは、人間が実際に確認するファイルとコマンドの流れだけを説明します。
+
 | 役割 | パス |
 |------|------|
 | ページ定義の正本 | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |

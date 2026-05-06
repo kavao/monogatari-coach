@@ -9,6 +9,8 @@ targets: ["*"]
 
 > 移行メモ: 旧スキル名 `forge-txt2img` と旧スクリプト名 `forge_*` は互換名として残す。新しい案内・運用名は **image-provider** / `image_provider_*` を使う。`provider=forge` は Forge WebUI を指す provider 名として継続する。
 
+> 横断正本: 画像生成の承認・失敗時の provider 切替禁止・生成完了条件・生成モード用語は **`.rulesync/rules/concepts.md`** を正とする。このスキルは image-provider 作業での適用手順と provider 別の確認事項を扱う。
+
 ## 目的
 
 `_how_to/manga_tag.md` / `manga.md` で **漫画タグ**、`_how_to/tag.md` で **キャラクタータグ**を用意した**あと**、同じプロンプト思想で **Forge / NovelAI / Grok / OpenAI** で画像を生成し、リポジトリ内の決めたフォルダにストックする。
@@ -38,7 +40,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-panels`（コマ生成） |
 | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
-| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source background-concepts`（既定 `grok_pro`） |
+| `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source background-concepts`（既定 `grok`） |
 | `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
 | `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `pro`）。`grok_pro` を直接使う運用では不要 |
@@ -57,55 +59,25 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
 
 > **⚠️ ユーザー確認（必須）**
-> プロバイダ・モデル・ジョブ数が確定したら、**本番実行前に必ず `--dry-run` の結果をチャットに示し、ユーザーの明示的な承認（「OK」「進めて」等）を得てから**本番（`--dry-run` なし）を実行する。承認なしの本番実行は禁止。
+> プロバイダ・モデル・ジョブ数が確定したら、**`.rulesync/rules/concepts.md` の「画像生成: dry-run から本番まで」**に従い、`--dry-run` の結果提示とユーザー承認を挟んでから本番実行する。
 
 ## 小説執筆の「実行継続」との関係（画像生成は例外）
 
-スキル **`novel-text-file-output`** の「ツール予告したら同一ターンでツール続行」は、**画像生成には適用しない**。
-
-- **`image_provider_generate.py`**、**`image_provider_novel_tag_batch.py`**、**`image_provider_novel_manga_batch.py`** 等では、**`--dry-run` でプロバイダ・ジョブ数・保存先を示したところで一度応答を区切り**、**ユーザーの明示承認があるまで本番（`--dry-run` なし）を実行しない**。「続けて一気に回します」などとあっても **承認前に本番に入らない**。
+スキル **`novel-text-file-output`** の「ツール予告したら同一ターンでツール続行」は、**画像生成には適用しない**。`image_provider_generate.py`、`image_provider_novel_tag_batch.py`、`image_provider_novel_manga_batch.py` 等では、`--dry-run` の提示までで一度止め、ユーザーの明示承認後に本番実行する。
 
 ## エラー時の扱い（自動プロバイダ切り替え禁止）
 
-画像生成の本番実行中に、HTTP 429 / 403 / 5xx などでジョブが失敗することがある。
-このとき Monogatari Coach は **別のプロバイダへ自動切り替えして再実行しない**。
-
-### ルール（必須）
-
-1. **失敗を検知したら即停止**する（同じターンで別 provider を試さない）。
-2. チャットに **失敗した provider 名・代表エラー（例: HTTP 429）・影響範囲（jobs数や対象ページ）** を短く提示する。
-3. 次の選択肢を提示し、**ユーザーの明示的な指示**を待つ。
-   - その provider の回復を待って再試行する
-   - provider を変更して再実行する（例: `--provider openai`）
-   - 範囲を絞って試す（例: `--min-page/--max-page/--min-koma/--max-koma`）
-
-### 理由
-
-- provider 切り替えは **画風・品質・料金・検閲/拒否**が変わるため、意図せず成果物が揺れる。
-- dry-run 承認は「その provider で実行する」承認であり、**別 provider への自動切り替え承認ではない**。
+HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concepts.md` の「画像生成失敗時の provider 切替」**に従う。失敗した provider 名、代表エラー、影響範囲を報告し、別 provider への自動切替は行わない。
 
 ## 生成「完了」の定義（幻覚完了の防止）
 
-ユーザーに「画像生成が完了した」「すべて出力した」と **完了扱い**で伝えてよいのは、次を **すべて**満たすときに限る。
-
-1. **本番実行の事実**: ユーザー承認の **後** に、`--dry-run` なしのバッチまたは `image_provider_generate.py` の本番呼び出しを行った（ユーザーが手元で実行した場合は、その結果を検証する）。
-2. **出力の事実確認**: **`--dry-run` でチャットに示した保存先**（例: `novels/<作品>/tag/<romaji>/`、`manga/_assets/<manga_XX>/`）に、期待される **画像ファイル（`.png` 等）が存在する**ことを **`Glob` / ディレクトリ一覧 / ターミナル** で確認する。ジョブ数が分かる場合は **枚数・ファイル名が計画と整合するか** を見る。バッチが **JSON メタ**を書く運用なら併せて参照してよい。
-3. **報告の順序**: 上記 2 の **後** に、保存パスと確認のしかたを一言添えて完了を伝える。
-
-**禁止**: API の HTTP 成功やコマンドの exit code **だけ**で「全部生成済み」と断定しない（一部ジョブ失敗・保存パス誤り・0バイトファイルがありうる）。
+ユーザーに「画像生成が完了した」「すべて出力した」と **完了扱い**で伝えてよい条件は、**`.rulesync/rules/concepts.md` の「完了扱い条件」**を正とする。要点は、ユーザー承認後の本番実行と、`--dry-run` で示した保存先での画像ファイル確認である。API 成功や exit code だけで完了扱いしない。
 
 ---
 
 ## 漫画生成の用語整理
 
-- **コマ生成**:
-  `manga_XX.md` の **Step1** を使い、**各コマを別画像**として出す運用。`tools/image_provider_novel_manga_batch.py` の **`--source step1-panels`**。
-- **精密ページ生成**:
-  `manga_XX.md` の **Step1 全体**を使い、**各コマの詳細指示を保持したまま 1ページ全体を1枚で出す**運用。`tools/image_provider_novel_manga_batch.py` の **`--source step1-pages`**。
-- **ページ生成**:
-  `manga_XX.md` の **Step2** を使い、**1ページ全体を1枚**として出す運用。`tools/image_provider_novel_manga_batch.py` の **`--source step2-pages`**。
-- **既定**:
-  会話で明示がない場合は **コマ生成** とみなす。
+生成モード用語の横断定義は **`.rulesync/rules/concepts.md` の「生成モード用語」**を正とする。このスキルでは、各モードで推奨する provider と実行コマンドを扱う。会話で明示がない場合は **コマ生成** とみなす。
 
 ## 推奨プロバイダ分担（Step1 コマ／ページ系）
 
@@ -116,9 +88,9 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | **コマ生成（Step1）** | `--source step1-panels`（既定） | **NovelAI** / **Forge** / **OpenAI** | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai` |
 | **精密ページ生成** | `--source step1-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro` |
 | **ページ生成** | `--source step2-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro` |
-| **背景概念生成** | `--source background-concepts` | **grok_pro**（既定）または **OpenAI** | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok_pro` |
+| **背景概念生成** | `--source background-concepts` | **grok**（既定）または **OpenAI** | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok` |
 
-**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** で足りる。1ページを1枚にまとめる **step1-pages / step2-pages / background-concepts** は **`grok_pro`（proモデル）を既定**とする。`grok`（standard）はキャラタグ一括など単体画像向けに保持する。
+**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** を基本とする。1ページを1枚にまとめる **step1-pages / step2-pages** は **`grok_pro`（proモデル）を既定**とする。**background-concepts** は本番コマではなく背景資料生成として扱い、既定は `.env` と docs に合わせて **`grok`** とする。
 
 ## 漫画生成の API 対応範囲（2026-04-12 時点）
 

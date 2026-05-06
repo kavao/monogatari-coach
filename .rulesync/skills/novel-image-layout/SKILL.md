@@ -9,7 +9,7 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/overview.md` の **Tag Mode / Manga Tag Mode** にある「画像ストック（推奨）」を、**フォルダだけ先に機械的に用意**する。
+`.rulesync/rules/concepts.md` の **「画像保存先」** と `overview.md` の Tag Mode / Manga Tag Mode 入口に合わせ、**フォルダだけ先に機械的に用意**する。
 
 - **タグ**: `tag/kazuki.md` と同名の **`tag/kazuki/`** に、そのキャラの生成画像をすべて保存する。
 - **漫画**: `manga/manga_01.md` に対応する **`manga/_assets/manga_01/`** に、そのページのコマ画像を保存する。**既定運用ではこの直下を使う。** ストックの分類は**章（`manga_XX`）まで**で足りる。
@@ -52,7 +52,8 @@ python tools/novel_image_layout.py paths novels/051_神のダンジョンβテ�
 
 ## 関連パス
 
-- 規約: `.rulesync/rules/overview.md`（§2.2.1 Tag Mode / §2.2.2 Manga Tag Mode の「画像ストック」）
+- 規約: `.rulesync/rules/concepts.md`（画像保存先）
+- 入口索引: `.rulesync/rules/overview.md`（Tag Mode / Manga Tag Mode）
 - スクリプト: `tools/novel_image_layout.py`
 - 画像生成: `tools/image_provider_generate.py`、スキル `.rulesync/skills/forge-txt2img/SKILL.md`（`image-provider`）
 - 漫画コマ一括: `tools/image_provider_novel_manga_batch.py`

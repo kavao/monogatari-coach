@@ -105,6 +105,8 @@ uv run python howto_init.py
 rulesync generate
 ```
 
+`.rulesync/` のルール・スキルを更新したあとに実行します。生成後は `AGENTS.md` / `CLAUDE.md` の差分を確認し、入口ファイルに意図しない肥大化や欠落がないか見ます。
+
 文字数確認:
 
 ```bash

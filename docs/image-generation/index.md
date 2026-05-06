@@ -26,8 +26,8 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 |----------|--------|---------|
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
 | `novelai` | `nai-diffusion-4-5-full` など | コマ生成（クラウド） |
-| `grok` | `grok-imagine-image`（standard） | キャラタグ一括・単体画像 |
-| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages / background-concepts） |
+| `grok` | `grok-imagine-image`（standard） | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
+| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages） |
 | `openai` | `gpt-image-1.5` など | ページ生成の代替 |
 | `openrouter` | `google/gemini-2.5-flash-image` など | OpenRouter 経由の画像生成 |
 

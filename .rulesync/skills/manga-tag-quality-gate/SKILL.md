@@ -9,6 +9,8 @@ description: >-
 targets: ["*"]
 ---
 
+> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、その正本である `manga/pages/*.yaml` の品質点検に集中する。
+
 ## 目的
 
 漫画タグは、絵として雰囲気が出ていても、**主語・相手・行為・セリフの帰属**が抜けると生成結果が破綻しやすい。
@@ -24,16 +26,16 @@ targets: ["*"]
 
 を最低限読める状態まで整えるための品質ゲートを定義する。
 
-`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/image_provider_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。
+`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/image_provider_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。詳細は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を参照する。
 
-**機械処理・検証の正本は YAML** とし、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなす。`render_instruction` には、YAMLを1ページ漫画として描くこと、コマ順・コマ割りを守ること、キャラクター固定外見を継承すること、テキスト要素の扱いを明記する。互換 Markdown（`manga_XX.md`）は、人間の読み書き・推敲・既存バッチ連携のための**副本**として並行して用いる。
+本スキルでは、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなし、主語・関係・行為・セリフ・レイアウトが読めるかを点検する。
 
 ただし **コマ生成（`step1-panels`）** は、各コマを1枚の単独画像として出す運用であり、ページ全体のコマ割りタグをそのまま入れない。`japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`1ページ4コマ`、`上段` / `中段` / `下段` / `大コマ` などはページ生成用の情報であり、コマ単体生成では内部フィルタで落とす。構図として残すのは `close-up`、`medium shot`、`long shot`、被写体、場所、行為、表情、照明などに寄せる。
 
 ## 正本・参照
 
-| 正本 | 用途 |
-|------|------|
+| 参照先 | 用途 |
+|--------|------|
 | `novels/<作品>/_novel_text/novel_textXX*.md` | 場面・人物・会話・小道具・順序の本文根拠 |
 | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` | 点検対象のページ定義正本。`panels[]`・`subjects[]`・`text`・`composition` を検証する。 |
 | `novels/<作品>/character.md` | 登場人物の正式名称・関係性・固定設定 |
@@ -42,6 +44,7 @@ targets: ["*"]
 | `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
 | `_how_to/manga.md` | Step1 / Step2 の出力基準 |
 | `_how_to/manga_tag.md` | コマの英語タグ・置き換え・NSFW 慣例。`prompt_tags` を埋める前に必ず開く。詳細はスキル **`manga-prompt-ir`** の「`_how_to/manga_tag.md` との役割分担」 |
+| `.rulesync/rules/concepts.md` | YAML IR と互換 Markdown の正本・副本関係 |
 
 ## `manga.md` を核にした Step1 / Step2（機能の芯と YAML 写像）
 
@@ -187,6 +190,7 @@ targets: ["*"]
 7. §9 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
 8. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
 9. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
+10. 互換 Markdown の直接修正で終えず、YAML 正本へ戻したかを確認する（詳細は `concepts.md`）。
 
 ## 禁止事項
 

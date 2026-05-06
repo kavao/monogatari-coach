@@ -4,6 +4,9 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 まずは **指示文（コピペ）**で進められるページを起点にしてください。
 
 - **最重要**: [指示出しベースのワークフロー](instruction-driven.md)
+- **資料取り込み**: [Source Material Intake](source-material-intake.md)
+- **企画・設計**: [Planning](planning.md)
+- **評価結果の保存**: [Reader Output](reader-output.md)
 
 運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
 
@@ -39,3 +42,9 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
   [`/.rulesync/skills/novel-image-layout/SKILL.md`](../../.rulesync/skills/novel-image-layout/SKILL.md)
 - 執筆前確認:
   [`/.rulesync/skills/novel-project-readiness/SKILL.md`](../../.rulesync/skills/novel-project-readiness/SKILL.md)
+- 資料取り込み:
+  [`/.rulesync/skills/source-material-intake/SKILL.md`](../../.rulesync/skills/source-material-intake/SKILL.md)
+- 企画・設計:
+  [`/.rulesync/skills/novel-planning/SKILL.md`](../../.rulesync/skills/novel-planning/SKILL.md)
+- 下読み・興味判定の保存:
+  [`/.rulesync/skills/novel-reader-output/SKILL.md`](../../.rulesync/skills/novel-reader-output/SKILL.md)

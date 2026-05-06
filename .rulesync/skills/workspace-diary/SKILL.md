@@ -8,7 +8,7 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/overview.md`（プロジェクト・インテリジェンス／日記）に従い、**作品を横断する**好み・パターン・方針・学びを **`_workingspace/diary/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
+`.rulesync/rules/concepts.md` の **「プロジェクト・インテリジェンス」** に従い、**作品を横断する**好み・パターン・方針・学びを **`_workingspace/diary/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
 
 - **査証ログとの差**: **査証ログ**はセッションごとの作業の事実記録。**日記**は「なぜそうしたか」「このリポジトリではこう決めた」など、**再利用したいナレッジ**向け（重複しうるが、意図が違う）。
 - **追記型のみ**: 新規エントリは **`tools/workspace_audit_log.py diary append`** で追加する。スクリプトは **`open(..., "a")` 以外で日記本文を書かない**（新規月ファイルのヘッダ初回だけ同じ追記処理内で行う）。
@@ -84,5 +84,6 @@ python tools/workspace_audit_log.py diary append --dry-run "本文"
 
 - スクリプト: `tools/workspace_audit_log.py`（サブコマンド `diary append` / `diary path` / `diary verify`）
 - 保存先: `_workingspace/diary/YYYYMM.md`
-- ルール記述: `.rulesync/rules/overview.md`（日記・査証ログ）
+- 概念正本: `.rulesync/rules/concepts.md`（プロジェクト・インテリジェンス）
+- 入口ルール: `.rulesync/rules/overview.md`（日記・査証ログ）
 - 姉妹スキル: **`workspace-audit-log`**（`_workingspace/log/`）

@@ -21,20 +21,17 @@ globs: ["**/*"]
 - **創作技法ファイルの雛形・基準の正本は `_how_to.example/` 配下**にある。
 - **`_how_to/` 配下は、その場での改修・調整を行うためのユーザー領域**として扱う。
 - `_how_to/` を参照して執筆や評価を進めてよいが、**恒久的なルール化・テンプレート更新を行うときは `_how_to.example/` を先に直す**。
+- 正本と副本の横断定義は **`.rulesync/rules/concepts.md`** の「正本と副本」を参照する。
+- ルールを追加・更新するときの作法は **`.rulesync/rules/rule-authoring.md`** を正とする。
 
 ### `_how_to/` と `docs/` の役割の違い（重要）
 
-この2つは**まったく異なる性質**を持ち、混同しない。
+この2つは**まったく異なる性質**を持ち、混同しない。横断定義は **`.rulesync/rules/concepts.md`** の「`_how_to/` と `docs/`」を正とする。
 
-| 領域 | 性質 | 内容 | 更新者 |
-|------|------|------|--------|
-| `_how_to/` | **準ルール・創作技法領域** | 小説文法、漫画の作法、タグ生成規則、書評観点など「どう書くか・どう評価するか」のクラフト知識 | **ユーザーが直接編集**する前提。LLMは参照するが、ユーザーの指示なく書き換えない |
-| `docs/` | **ユーザー向けマニュアル** | ツール操作手順、コマンド例、プロバイダ設定など「システムをどう使うか」の運用情報 | LLMが更新・整備する。ユーザーも参照する |
-| `.rulesync/` | **ルール・スキルの正本** | LLMの行動規範、モード定義、スキル仕様 | ルール変更時はここを主編集先とする |
-
-- **`_how_to/` は「創作者の手帳」**に相当する。文法・作法・評価軸など、作品を書くための技法知識を入れる領域であり、LLMがツール説明を追記する場所ではない。
-- **`docs/` は「操作マニュアル」**に相当する。ツールのコマンド、設定値、フローをユーザーに伝える領域であり、創作技法を入れる場所ではない。
-- LLMが `_how_to/` を更新するのは、ユーザーから「このルールを `_how_to/` に書いて」と明示的に依頼された場合のみ。それ以外の技法・作法への提案はチャットで行い、ユーザー自身が判断して記入する。
+- `_how_to/`: 創作技法・作法・評価軸を扱う準ルール領域。ユーザーが直接編集する前提。
+- `docs/`: ツール操作、コマンド、設定、フローを説明する人間向けマニュアル。
+- `.rulesync/`: LLM の行動規範、モード定義、スキル仕様の正本。
+- LLM が `_how_to/` を更新するのは、ユーザーから明示依頼がある場合に限る。
 
 ### ローカル試行用（`tools_temp/`）
 - LLM や手元での**試行錯誤用の一時領域**は、リポジトリ直下の **`tools_temp/`** を使う。**フォルダ内のファイルは原則 Git 管理外**（`tools_temp/README.md` のみ追跡。`.gitignore` で `tools_temp/*` を無視し README を例外指定）。案内文はルート `readme.md` の「ローカル試行用」節および **`tools_temp/README.md`** にある。
@@ -143,10 +140,10 @@ c. プロフィールについても深く掘り下げてください。
    - 小説本文は章ごとに別ファイルにしてください。小説の執筆は必ずファイルに出力してください。
      第1章は novel_text01.md、第2章は novel_text02.md、第3章は novel_text03.md のように番号を増やしていってください。
      もし章の下に項があった場合は第1章1項は novel_text01_1.md、第1章2項は novel_text01_2.mdのように"_"を追加して番号を増やしてください。前半､後半に分けるといった場合でも_1,_2のようにファイル名を分けて、3回に分ける場合は_1,_2,_3のようにファイル名を分けるようにしてください
-   - **`_how_to/rewrite.md` による清書（文章校正）の成果物**は、初稿と混線しないよう **`_novel_text_re_/novel_textXX.md`** に、**上記と同一のファイル名**で出力する（§2.5・スキル **`novel-refinement-output`**）。
+   - **`_how_to/rewrite.md` による清書（文章校正）の成果物**は、旧版を `_novel_text_backup/` に退避したうえで、**`_novel_text/novel_textXX.md` を同一ファイル名で更新**する（§2.5・スキル **`novel-refinement-output`**）。
 7. _reader/
    - 小説ごとの詳細な書評ファイルを格納するフォルダ
-   - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`reader/YYYYMMDD_HHMM.md`）で保存する
+   - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`_reader/YYYYMMDD_HHMM.md`）で保存する
 8. tag/characters/<character_id>.yaml（キャラクタータグ正本・YAML IR）
    - キャラクターごとの外見・衣装・固定タグ・禁止変更項目を YAML IR として管理する（スキル **manga-prompt-ir**）
    - `_how_to/tag.md` のルールに従い、通常時・状況別バリアントを定義する
@@ -180,27 +177,10 @@ c. プロフィールについても深く掘り下げてください。
 3. `novels/_import/` 配下にインポート対象（フォルダ／資料群）が置かれている（他ツール出力・過去原稿の取り込み口として扱う）
 
 #### 最優先の判断（重要）
-- 既存の `novels/` に「同一作品のフォルダ」が存在する場合: **上書き前に必ずバックアップを作成**し、更新対象を明示してから差分更新する（例：`_novel_text_backup/` への退避）。
-- 既存の `novels/` に該当作品が無い場合: **新規作品として展開**する（新規 `novel_code` を採番）。
-- 判断が割れる場合（資料に作品名が複数、対象が不明、別作品混在など）: **先に資料の“作品分割案”を作り、最小限の質問（1〜3個）だけ行う**。
+詳細な判断と展開手順はスキル **`source-material-intake`** を正とする。入口ルールとしては、同一作品の有無、新規か更新か、複数作品の分割、質問の要否を最初に判断する。
 
 #### 取り込み手順（やること）
-1. **資料の全量把握**
-   - `source_material/` または `novels/_import/` 配下のファイル・フォルダを読み、何が「確定情報」で何が「候補／メモ」かを区別する。
-   - 複数作品が入っている場合は、原則として **サブフォルダ単位＝1作品** とみなす（例：`source_material/014_聖痕の絆と冒険の空/`）。
-2. **資料→Monogatari Coachの対応表を作る（内部判断の軸）**
-   - 作品名／ログライン／あらすじ → `proposal.md`
-   - テーマ／コンセプト／章構成／相関図 → `design_specification.md`
-   - 世界設定／用語／地理／歴史 → `world.md`
-   - 登場人物表／口調／背景／課題 → `character.md`
-   - 本文・下書き・シーン案 → `_novel_text/novel_textXX.md`（章単位へ分割・整形）
-3. **novels配下へ展開（生成・更新）**
-   - `novels/[novel_code]_[novel_title]/` を作成（または更新）し、必要ファイルを揃える。
-   - `config.md` には `novel_ID` と `writer_code` を必ず入れる（writer指定が無ければ `writers/000_default`）。
-4. **原資料の保全（混線防止）**
-   - 原資料は改変せず、必要に応じて作品フォルダ内に **参照用の退避先** を作る（例：`novels/.../_source_material/`）
-   - 以後は「原資料」ではなく「展開済みファイル」を正とし、改稿・執筆を進める。
-   - `novels/_import/` を受け口として使う場合も同様に、取り込み後は `novels/.../_source_material/` へ参照用に退避し、`novels/_import/` は「入力置き場」として残す（または整理・アーカイブ）ことで混線を防ぐ。
+資料の全量把握、Monogatari Coach 形式への対応付け、作品フォルダへの展開、原資料の保全はスキル **`source-material-intake`** と `docs/workflow/source-material-intake.md` を参照する。原資料は改変せず、必要に応じて `novels/<作品>/_source_material/` に参照用として退避する。
 
 #### 命名・採番ルール（原則）
 - `novel_code` は `novels/` 内で振られているの最大番号+1を基本とする。
@@ -210,32 +190,15 @@ c. プロフィールについても深く掘り下げてください。
 #### このモードの目的
 資料の熱（原作者の勢い）を失わず、情報の所在を一本化して「迷わず書ける状態」にする。
 
-### 2.1 Reqruit Mode
-新たな小説執筆・編集・評価・鑑賞が始まる前に、作家のメンバーを追加します。
-- チェックポイント
-  1. 既存メンバーの分野や個性を確認
-  2. 多様性やバランスを考慮し、新たに募集するメンバーを選定
-  3. 必要に応じてファイルを作成 (`writer_prompt.md` など)
+### 2.1 Recruit Mode（廃止・再設計待ち）
+旧 `Reqruit Mode` は古い運用のため、現行ワークフローからは廃止する。新たな作家・編集者・読者ロールを追加する仕組みが必要になった場合は、`Recruit Mode` として目的、対象ファイル、作成条件、既存 `writers/` との関係を再設計してから復活させる。
 
-#### フローチャート
-
-```mermaid
-flowchart TD
-    Start[Reqruit Start] --> CheckTeam[Check Existing Team]
-    CheckTeam --> ReqruitDecision{Needs New Members?}
-    ReqruitDecision -->|Yes| AddNewMember[Add Writer/Editor/Judge/Reader]
-    AddNewMember --> UpdateFiles[Create/Update Prompts]
-    ReqruitDecision -->|No| SkipReqruit[Proceed Without New Members]
-    UpdateFiles --> ReqruitDone[Reqruit Complete]
-    SkipReqruit --> ReqruitDone
-```
+現時点では、作家プロフィールを扱う必要がある場合は既存の `writers/<writer_code>_<writer_name>/writer_profile.md` を参照し、恒久的なロール追加ルールはここへ継ぎ足さない。
 
 ### 2.2 Plan Mode
-1. 必要なMonogatari Coachファイルの確認
-2. 不足ドキュメントの作成
-   - 企画書（proposal.md）、設計書（design_specification.md）など
-3. Feedback
-   - すでにある小説作品の`judge_result.md`や`impression.md`を、該当する作家の`writer_profile.md`（文体・作風の記述）に反映
+企画・設計・人物・世界観・メタ情報を整え、本文執筆に入れる状態へ進める。詳細な作成順と確認観点はスキル **`novel-planning`**、執筆前の機械確認はスキル **`novel-project-readiness`** を参照する。
+
+Feedback として、既存作品の `judge_result.md` や `impression.md` から再利用できる文体・作風の学びがあれば、該当する作家の `writer_profile.md` へ反映する。
 
 ```mermaid
 flowchart TD
@@ -298,28 +261,14 @@ _how_to/tag.md のルールに従い、各人物について
 ```
 
 #### 画像生成（txt2img）の事前確認
-- **`tools/image_provider_generate.py`** および **`tools/image_provider_novel_tag_batch.py`** / **`tools/image_provider_novel_manga_batch.py`** で画像生成を依頼する**前**に、エージェントは**必ず次の順で**確認する。
-  1. **プロジェクトルートの `.env` を `Read` で開き、実際に使うプロバイダと APIキーを確認する**。`MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT`（コマ生成）や `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT`（精密ページ生成。既定 `grok_pro`）などが設定されていれば、それが `config/image_generation.json` の `default_provider` より優先される。**この手順を省略して Forge の疎通確認から始めると、設定済みの NovelAI / grok_pro を見落とす。**
-  2. リポジトリ直下に **`config/image_generation.json` が存在すること**を確認する（画像生成系スクリプトの**設定正本**）。
-  3. **プロバイダが Forge の場合のみ**、以下を追加確認する。
-     - UI で読み込んでいる Checkpoint が FLUX 系か SDXL 系かを確認し、**`providers.forge.active_model_family`** と一致させる。**標準（既定）は SDXL**（`"sdxl"`）。FLUX で生成するときは **`"flux"`** に切り替える。
-     - **CFG Scale の目安**: FLUX 系は約 1、SDXL 系は約 7。モデルとプリセットが食い違うとプロンプト追従や画質が悪化しやすい。
-     - **疎通確認**: `python tools/image_provider_generate.py --probe --provider forge`。
-  4. **`--dry-run` を実行してユーザーに確認を取る（必須）**。本番実行の直前に、対象バッチスクリプトへ `--dry-run` を付けて実行し、出力された **プロバイダ名・モデル・ジョブ数・保存先** をチャットに示す。ユーザーが「OK」「進めて」などの明示的な承認を返してから本番（`--dry-run` なし）を実行する。承認なしに本番実行を開始しない。
-     - 例（漫画ページ）: `python tools/image_provider_novel_manga_batch.py novels/<作品> --manga-stem manga_01 --source step1-pages --dry-run`
-     - 例（キャラタグ）: `python tools/image_provider_novel_tag_batch.py novels/<作品> --dry-run`
-  5. **計画提示で一度停止（実行継続ルールの例外）**: スキル **`novel-text-file-output`** の「ツール予告したら同一ターンで進める」は **画像生成には適用しない**。`--dry-run` の結果をチャットに示した **この時点では本番を実行しない**。ユーザー承認があるまで待つ。
-  6. **本番後の完了確認**: 承認後に本番を実行したら、**`--dry-run` で示した保存先**に期待どおり **画像ファイルが出力されている**ことを **`Glob` / ディレクトリ確認** 等で検証してから「生成完了」と述べる。詳細はスキル **`image-provider（旧 forge-txt2img）`** の「生成『完了』の定義」。
-- 運用の詳細・Flux 特有のパラメータはスキル **`image-provider`（旧 `forge-txt2img`）**（`.rulesync/skills/forge-txt2img/SKILL.md`）を参照する。
+- 横断正本は **`.rulesync/rules/concepts.md`** の「画像生成: dry-run から本番まで」と「完了扱い条件」。
+- 画像生成は必ず **`.env` / `config/image_generation.json` 確認 → `--dry-run` → ユーザー承認 → 本番 → 保存先のファイル確認** の順に進める。
+- `--dry-run` の結果を提示した時点では本番を実行しない。承認なしに `--dry-run` なしのコマンドへ進まない。
+- 運用の詳細・Flux 特有のパラメータ・例コマンドはスキル **`image-provider`（旧 `forge-txt2img`）**（`.rulesync/skills/forge-txt2img/SKILL.md`）および `docs/image-generation/` を参照する。
 
 #### 画像生成の失敗時（自動で別プロバイダに切り替えない）
 
-画像生成の本番実行中にエラー（例: HTTP 429 / 403 / 5xx）が発生した場合、エージェントは **別のプロバイダへ自動切り替えして再実行しない**。
-
-- まず **失敗内容**（provider名・エラー・対象ジョブ/範囲）を短く報告する
-- 次の方針（待つ／provider変更／範囲を絞る）を提示し、**ユーザーの明示指示**を待つ
-
-理由: provider切り替えは画風・品質・料金・拒否挙動が変わり、`--dry-run` 承認は「その provider で実行する」承認であって、自動切り替えまで含まないため。
+横断正本は **`.rulesync/rules/concepts.md`** の「画像生成失敗時の provider 切替」。HTTP 429 / 403 / 5xx などで失敗した場合、別 provider へ自動切替して再実行しない。失敗内容を報告し、待つ／provider 変更／範囲縮小などの方針についてユーザーの明示指示を待つ。
 
 ### 2.2.2 Manga Tag Mode（漫画タグ出力：本文参照後／一括生成前）
 小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、漫画ページ用の YAML IR を作成する。既存バッチを使う場合は、YAML IR から `manga_XX.md` の Step1 / Step2 互換形式へ出力する。
@@ -345,28 +294,11 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### ページ別の指示メモ（ユーザ指示の正本）
 
-漫画ページの品質修正で「何を直すか」がブレるときは、ページ YAML に **ページ別の指示メモ**（ユーザ指示の正本）を残す。
-ここでいう「ページ別の指示メモ」とは、**そのページの全コマに必ず効かせるタグ**や、**混入させたくないタグ**をページ単位で固定し、あとから見返しても迷子にならないようにする仕組み。
-
-- **ページ単位（正本）**: `render_instruction.user_directives`
-  - `page_notes[]`: チャットで受けた「直したいポイント」を短い箇条書きで記録する
-  - `defaults.required_prompt_tags[]`: 全コマに **強制追加**
-  - `defaults.omit_prompt_tags[]`: 全コマから **強制削除**
-- **コマ単位（例外の上書き）**: `panels[].required_prompt_tags[]` / `panels[].omit_prompt_tags[]`
-
-この指示は、画像生成バッチ（Step1）と互換 Markdown の Step1 出力に反映され、検証でも矛盾を警告できる。
-用例は操作マニュアルの [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) を参照する。
+漫画ページの品質修正で「何を直すか」がブレるときは、ページ YAML の `render_instruction.user_directives` にページ別の指示メモを残す。用例とフィールド詳細は **`.rulesync/skills/manga-prompt-ir/SKILL.md`** と `docs/image-generation/manga-prompt-ir.md` を参照する。
 
 #### チャット→修正→検証→再生成（ぶれない流れ）
 
-ユーザーがチャットで「ページ別の指示メモ」を依頼したら、Monogatari Coach は次の順で動く。
-
-1. 対象ページ（例: `manga/pages/manga_02_p10.yaml`）を読み、現状の `prompt_tags` と問題点を把握する
-2. `render_instruction.user_directives.page_notes` に「直したいポイント」を追記する
-3. 全コマに効かせるなら `defaults`、特定コマだけなら `panels[]` の `required/omit` へ反映する
-4. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で警告が無いことを確認する
-5. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown を更新する
-6. 画像生成は必ず `--dry-run` で件数・保存先を確認してから本番実行する
+横断正本は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode の最小ワークフロー」。作業は **YAML IR 更新 → 検証 → 必要なら互換 Markdown 再エクスポート → 画像生成 dry-run** の順に進める。
 
 チャットの最小トリガー例（話し言葉・1行）:
 
@@ -375,119 +307,31 @@ _how_to/tag.md のルールに従い、各人物について
 ```
 
 #### 手動手順（明確化）
-1. **前提チェック**
-   - 元となる本文正本 `novels/[...]/_novel_text/novel_textXX.md`（項付きなら対応する `novel_textXX_YY.md`）を確認する。
-   - `character.md`、`tag/characters/*.yaml`、必要に応じて既存 `tag/<romaji>.md` を読み、登場人物の固定特徴と状況別バリアントを把握する。
-   - 既存の `manga/manga_XX.md` がある場合は移行元・補助資料として参照してよいが、本文と矛盾する場合は本文とキャラクター正本を優先する。
-2. **本文から YAML IR を作成**
-   - スキル **`manga-prompt-ir`** に従い、`manga/pages/` 配下に各ページの YAML ファイルを作成する。
-   - 小説本文から、ページ化する出来事、セリフ、感情の変化、伏線、小道具、場面転換を抽出し、各コマの場所、人物、状態、アクション、セリフ、レイアウト（段・大小）として定義する。
-   - `render_instruction` に「このYAMLを漫画1ページ分の作画依頼書として扱う」こと、`panels[]` の読み順、`manga.panel_layout` の反映、`character_snapshots` の外見継承、`text` の吹き出し・効果音扱いを明記する。
-   - 登場キャラについては `character.md` と `tag/characters/<character_id>.yaml` を読み、**髪・目・肌・種族・体格・固定小物などの固定特徴を各コマへ継承**する（スキル **`manga-tag-character-sync`**）。
-   - 服装・状態差分が必要なコマでは、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかを明示し、`tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と対応させる。
-   - ページYAML単体で内容が分かるよう、`tools/novel_prompt_ir_embed_snapshots.py novels/<作品フォルダ>` で `character_snapshots` を埋め込み、そのページで使う外見・衣装・バリアントタグを固定する。
-   - `render_instruction`、`panels[].subjects[]`、`text.dialogue[]`、`composition`、`camera`、`prompt_tags` などに分解し、YAML 内で Step1 / Step2 相当の情報が再構成できる状態にする。**機械処理・検証の正本は YAML** とし、`render_instruction` を含む YAML 全体を Step1 相当の作画依頼として扱う。**互換 Markdown は**可読な**副本**として並行してエクスポートし、手作業やバッチ連携に利用する。
-3. **検証**
-   - **`python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`** を実行し、YAML の型、`character_id` 参照、最低限の構造、主語・行為・構図・セリフ話者・ページレイアウトの不足警告を確認する。本番生成前は **`--strict-quality`** を付け、品質警告も失敗扱いにする。
-   - 主語・関係・セリフ帰属・部分アップの意味付け・コマ割りは、スキル **`manga-tag-quality-gate`** の観点で点検する。
-4. **Markdown へのエクスポート**
-   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。**`--manga-page` で漫画ファイルを出すときは、既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け **`ベース | キャラ`** 形式にし、`image_provider_novel_manga_batch`・NovelAI・step1-panels と形状を揃える。省略すると Step1 がカンマ一列のみになる）。Step2 ブロックはこのフラグでは変わらないが、手順統一のため同じコマンドで付けてよい。
-   - Markdown 出力後に改めて手作業で Step2 を作り直すのではなく、YAML IR 側を修正して再エクスポートする。
-   - **色モードの上書き**：ユーザーがそのセッションで「今回はカラー」「このバッチはモノクロ」と指定した場合は、`--color-mode monochrome`／`full_color`／`limited_color` を export と batch の両コマンドに付ける。YAML 本体は自動変更しない（詳細は `docs/image-generation/index.md` の「漫画ページの色モード」節）。
+詳細な手順は **`.rulesync/skills/manga-prompt-ir/SKILL.md`**、品質点検は **`.rulesync/skills/manga-tag-quality-gate/SKILL.md`**、操作コマンドは `docs/image-generation/manga-prompt-ir.md` を参照する。入口ルールとしては、本文正本とキャラクター正本を確認し、`manga/pages/*.yaml` を更新し、検証してから互換 Markdown や画像生成へ進むことだけを固定する。
 
 #### 画像ストック（漫画・コマ単位・推奨）
-- 各 `manga_XX.md` に対応する専用フォルダを `manga/_assets/` 配下に置き、そのファイルに含まれる生成画像を保存する。
-  - 例: `manga/manga_01.md` の画像 → `manga/_assets/manga_01/`
-  - コマ生成では `file_prefix` に `manga_01_p02_k03` のようにファイル名・ページ番号・コマ番号を含める。
-- 既定・推奨運用は **`manga/_assets/<manga_XX>/` 直下のみ**とする。画像の分類は**章（`manga_XX`＝`manga/manga_XX` 系列）まで**で足り、**ページ単位のサブフォルダ（`p01/`, `p02/` 等）を作ることをルール化・手順の既定にしない**。
-- `tools/image_provider_novel_manga_batch.py` の **`--subdir-by-page`** は、**例外的に**同一直下にファイルが多すぎるなどの理由で分けたい場合だけ使う**任意オプション**（LLM やドキュメントで「ページごとにフォルダ分けする」と**推奨扱いにしない**）。通常は `file_prefix`（例: `manga_01_p02_k03`）でページ・コマを区別する。
-- `novel_image_layout.py scaffold --panels N` が作る `k01` などは、1ページ内のコマ用スロットとして手動整理したい場合だけ使う任意フォルダであり、通常運用では不要。
-- フォルダの一括作成・推奨パスはスキル **`novel-image-layout`**（`tools/novel_image_layout.py`）に従う。
+横断正本は **`.rulesync/rules/concepts.md`** の「画像保存先」。漫画画像は `novels/<作品>/manga/_assets/<manga_XX>/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
 
 #### 生成モードの用語統一（必須）
-- **コマ生成**:
- `manga/pages/*.yaml` の `panels[]` を使い、**各コマを別画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step1-panels`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。コマ単体生成では `japanese manga panel layout`、`horizontal top panel`、`large bottom panel`、`clear panel borders`、`上段` / `中段` / `下段` / `大コマ` などのページ・コマ割りタグは内部で除外し、1枚絵のコマとして描かせる。
-- **精密ページ生成**:
- `manga/pages/*.yaml` の詳細情報から Step1 相当のページ指示を組み立て、**各コマの詳細指示を保持したまま 1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step1-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
-- **ページ生成**:
- `manga/pages/*.yaml` の `manga.panel_layout` と各コマ要約から Step2 相当のページ指示を組み立て、**1ページ全体を1枚の漫画画像**として出力する運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source step2-pages`** に対応し、既定入力は YAML。既存Markdown互換を使う場合だけ `--input markdown` を明示する。
-- **背景概念生成**:
- `manga/pages/*.yaml` の `background_concepts[]` を使い、**人物なしの背景・空間設計**を先に出す運用を指す。`tools/image_provider_novel_manga_batch.py` では **`--source background-concepts`** に対応し、未指定時の推奨 provider は **Grok**。必要に応じて `--provider openai` も選べる。
-- **Codex / ChatGPT 内蔵画像生成**:
- 会話上の内蔵 `image_gen` ツールで1枚ずつ試作する運用を指す。OpenAI API を直接叩く `provider=openai` とは別物であり、`OPENAI_API_KEY` は不要。生成画像は `C:\Users\Owner\.codex\generated_images\...` に保存されるため、作品で使う場合は `tools/codex_builtin_image_archive.py` で `novels/<作品>/manga/_assets/<manga_XX>/` へコピーし、JSONメタを残す。
-- **既定動作**:
- ユーザーの依頼が曖昧で、ページ全体かコマ単位かが読み取れない場合は、**まずコマ生成を既定**とする。
-- **ページ生成を優先する語**:
- 「ページ全体」「1ページ丸ごと」「ページ単位」「step2」「ページ生成」「ページ丸ごとを出力」。
- また、**「ページ」が成果物の単位として明示されている場合**もページ生成を優先する。具体的には「ページの作成」「ページを作る」「ページを出力」「漫画のページ」のように **「ページ」が動詞の目的語や成果物として使われている**表現を含む。「コマ」や「パネル」への言及がなく「ページ」だけが出力単位として挙げられていれば、ページ生成を優先してよい。
-- **精密ページ生成を優先する語**:
- 「step1をそのままページ化」「step1からページ生成」「精密ページ生成」「詳細コマ指示でページ生成」「各コマ情報を保ったまま1ページ化」。
-- **コマ生成を優先する語**:
- 「各コマ」「コマごと」「パネル単位」「step1」「コマ生成」「コマを個別に出力」。
-- **曖昧さが残る場合**:
- 「漫画を生成して」「漫画画像を出して」のように「ページ」も「コマ」も出てこない場合のみ、**コマ生成が既定**であることを踏まえて処理する。ただし同一依頼内に **Step2 / ページ全体 / ページ生成優先語** が見える場合は **ページ生成を優先**する。
- なお、「ページ」が出力単位として使われているにもかかわらず step1-pages（精密）か step2-pages（要約）かが不明なときは、一言確認してからどちらで生成するかを決める。
+横断正本は **`.rulesync/rules/concepts.md`** の「生成モード用語」。操作説明と provider 対応は **`docs/image-generation/index.md`** の「生成モードとプロバイダの対応」を参照する。
 
-#### Grok provider の使い分け（grok / grok_pro）
+既定の判断だけここに残す。
 
-`config/image_generation.json` では Grok を 2 エントリに分ける。
-
-| provider | モデル | 主な用途 |
-|----------|--------|---------|
-| `grok` | `grok-imagine-image`（standard） | キャラタグ一括など単体画像 |
-| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages / background-concepts）|
-
-ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として同一 API エンドポイントを共有する。`.env` では `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro`、`MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro`、`MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok_pro` を設定することで、漫画ページ系は自動的に pro モデルへルーティングされる。
-
-#### API対応の整理（2026-04-29 時点）
-- **コマ生成（Step1 / step1-panels）**:
- **Forge / NovelAI / Grok / OpenAI** で運用可能。各コマを独立画像として保存する。
-- **精密ページ生成（Step1 / step1-pages）**:
- **grok_pro / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
-- **ページ生成（Step2 / step2-pages）**:
- **grok_pro / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**として扱う。
-- **背景概念生成（background-concepts）**:
- **grok_pro** を既定とし、必要に応じて **OpenAI** を選べる。背景・空間設計を先に作り、ページ生成やコマ生成の参照に使う。
-- **内蔵画像生成（Codex / ChatGPT）**:
- API provider ではなく、会話の `image_gen` を使った単発試作として扱う。保存時は `tools/codex_builtin_image_archive.py` で作品フォルダへコピーする。
-- **固定特徴・状況タグの注入**:
- `tools/image_provider_novel_manga_batch.py` は、YAML入力では作品フォルダの **`tag/characters/*.yaml`** を参照し、登場人物の固定特徴を `panels[].subjects[].character_id` から prompt に反映する。Markdown入力では従来どおり **`tag/*.md`** を参照し、本文に登場が見えるキャラクターについて状況に最も近い Danbooru Tags ブロックを自動選択して prompt に注入する。
-- **推奨分担（Step1 コマ／ページ系）**:
- **コマ生成（step1-panels）** は **Forge または NovelAI** を基本にし、必要に応じて **OpenAI** も選ぶ。**1ページ1枚の精密ページ生成（step1-pages）・ページ生成（step2-pages）では grok_pro / OpenAI** を使う流れを基本にする。**背景概念生成（background-concepts）** は **grok_pro** を既定とし、YAML/自然文の構成理解を使って背景・空間設計を先に起こす。拒否時のみ `--no-character-anchors` や文言調整を検討する（詳細はスキル **`image-provider（旧 forge-txt2img）`**）。
-- **ページ生成の非対応範囲**:
- **Forge / NovelAI** は、このリポジトリの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。これらは **コマ生成向け provider** として扱う。
+- 「各コマ」「コマごと」「パネル単位」「step1」は **コマ生成** を優先する。
+- 「ページ全体」「1ページ丸ごと」「ページ単位」「step2」「ページ生成」は **ページ生成** を優先する。
+- 「step1をそのままページ化」「精密ページ生成」「詳細コマ指示でページ生成」は **精密ページ生成** を優先する。
+- 「ページ」が出力単位として明示され、step1-pages（精密）か step2-pages（要約）か不明なときは、一言確認する。
+- 「漫画を生成して」のように出力単位が曖昧な場合は、**コマ生成を既定**とする。
+- Grok / grok_pro、OpenAI、Forge、NovelAI の対応範囲・既定 provider・`.env` 変数は `docs/image-generation/index.md` とスキル **`image-provider`** を正とする。
 
 #### “コマンド（指示文）”テンプレ（チャットで使う）
-以下のように指示されたら Manga Tag Mode を実行する：
+以下のように指示されたら Manga Tag Mode を実行する。詳細な指示例は `docs/workflow/instruction-driven.md` と `docs/image-generation/manga-prompt-ir.md` を参照する。
 ```
 本文から漫画タグを作成してください。
-漫画タグモードでお願いします。
-Manga Tag Modeでお願いします。
-novels/XXX_タイトル/_novel_text/novel_textXX.md を参照し、
-character.md と tag/characters/*.yaml の固定特徴も反映して、
-manga/pages/manga_XX_pYY.yaml を作成してください。
-必要に応じて manga/manga_XX.md へ互換出力してください。
 ```
 
 #### 画像生成の指示文テンプレ（チャットで使う）
-以下のような語を含むときは、**コマ生成 / ページ生成** を次のように判断する：
-```
-コマ生成でお願いします。
-step1から各コマを個別に出力してください。
-パネル単位で生成してください。
-```
-
-```
-精密ページ生成でお願いします。
-step1をそのまま使って1ページ化してください。
-各コマの詳細を保ったままページ全体を出力してください。
-```
-
-```
-ページ生成でお願いします。
-step2から1ページ丸ごと出力してください。
-漫画ページ全体を1枚で生成してください。
-```
+生成モードの判定語は上記「生成モードの用語統一」を正とする。実行コマンド例は `docs/image-generation/index.md` の「よく使うコマンド」を参照する。
 
 ### 2.3 Writing Mode
 1. **執筆前チェック（推奨・新規作品では必須に近い）**
@@ -499,10 +343,9 @@ step2から1ページ丸ごと出力してください。
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
-6. 原稿のドキュメントはバックアップを取って( `_novel_text_backup/` 以下、`<元ファイル名>_vNNN.md` 形式で版番号を付与)から、
-7. reader.mdを使って各文章の清書を行う｡同じファイル名のの内容を置き換えていく
-8. 文章校正の時には、`rewrite.md` を使う。**先に `_novel_text_backup/` に旧版を退避し、その後 `_novel_text/` 内の元ファイルと同じ名前で上書きする**（詳細はスキル **`novel-refinement-output`**）。まずは作業計画を立ててから、校正稿をファイルへ出力する。
-   - 校正前後の分量比較が必要なときも、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
+6. 清書・文章校正では、**先に `_novel_text_backup/` へ旧版退避し、その後 `_novel_text/` 内の同一ファイル名を更新**する（詳細はスキル **`novel-refinement-output`**）。
+   - 執筆・清書・追記の完了扱いは **`.rulesync/rules/concepts.md`** の「完了扱い条件」とスキル **`novel-text-file-output`** を正とする。
+   - 分量比較が必要なときは、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
 
 ```mermaid
 flowchart TD
@@ -514,15 +357,12 @@ flowchart TD
 
 ### 2.3.1 本文出力の確認（会話だけにしない）
 
-- **問題**: モデルや UI の組み合わせによっては、小説本文を **会話欄にだけ** 出力し、**`_novel_text/*.md` を更新しない**ことがある（**Auto 以外・別 LLM 選択時**で起きやすい）。
-- **必須**: 執筆のたびに **`novels/<作品>/_novel_text/novel_text*.md`** へ **ファイル書き込み**（新規・追記・置換）する。本文の正本は **常にリポジトリ上のファイル**とする。
-- **完了の定義（ルール要約）**: ユーザーに執筆・保存の **完了**を伝えるのは、上記書き込みと、その直後の **`Read` または `novel_char_count.py` による確認** の **両方が済んだ後** に限る。順序は **書き込み → 確認 → 完了報告**。詳細・ツールなし環境の扱いはスキル **`novel-text-file-output`** の「執筆『完了』の定義」。
-- **追記・シーン追加**: 新規執筆と同じ完了条件。項・パートが複数ファイルに分かれる場合は **ファイル単位**で書き込みと確認を行う。途中挿入では **末尾だけでなく挿入箇所付近を `Read`** して検証する。詳細はスキル **`novel-text-file-output`** の「追記・挿入・シーン追加」。
-- **確認**（執筆ターンの末尾で実施）:
-  1. 更新した **ファイルパス**をチャットに明記する。
-  2. **`Read` で当該ファイルを読み返す**（末尾でよい）、または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、**保存内容と分量が意図どおりか**を確認する。
-  3. **`_workingspace/log/`** や **`_meta.md`** に進捗・文字数を書く場合は、**ファイルに存在する事実**に基づく（会話の記憶のみに頼らない）。
-- **詳細**: スキル **`novel-text-file-output`**（`.rulesync/skills/novel-text-file-output/SKILL.md`。特に **「執筆『完了』の定義」**・**「追記・挿入・シーン追加」**）。
+横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。本文の正本は常に **`novels/<作品>/_novel_text/novel_text*.md`** であり、チャット欄への貼り付けだけでは完了ではない。
+
+- 執筆・追記・途中挿入では、対象ファイルへ書き込み、その直後に `Read` または `tools/novel_char_count.py` で確認する。
+- ユーザーへの完了報告は、**書き込み → 確認 → 更新ファイルパス明示** の後に限る。
+- `_workingspace/log/` や `_meta.md` に文字数を書く場合も、ファイルに存在する事実と `novel_char_count.py` の値を根拠にする。
+- 詳細な例外・追記手順はスキル **`novel-text-file-output`** を参照する。
 
 ### 2.4 Meta Management Mode（メタ情報管理）
 執筆の「継続性」を担保し、外部投稿に向けた準備を行います。管理ファイルは各作品フォルダ直下の `_meta.md` です。
@@ -548,10 +388,7 @@ flowchart TD
 初稿の文章を磨き上げ、文学的価値と没入感を高めるフェーズです。**手順・入出力の固定ルールはスキル `novel-refinement-output` を正とする。**
 
 #### 応答の継続（宣言のみで終えない）
-- 「旧版を退避してから加筆します」「ツールで退避→加筆→確認を行います」などと述べた場合、**前置きだけで応答を終えず**、同一ターンで可能な限りツール実行（退避・`_novel_text/` 更新・確認）まで進める。
-- 応答が続く場合は **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
-- **例外（画像生成）**: **`image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は **上記の「続行」とは逆に**、§2.2.1「画像生成（txt2img）の事前確認」およびスキル **`image-provider（旧 forge-txt2img）`** に従い、**計画と `--dry-run` で一度止め**、ユーザー承認後にのみ本番実行する。
-- 詳細はスキル **`novel-refinement-output`**（「計画表明だけで終わらない」）・**`novel-text-file-output`**（「ツール予告と応答の継続」）。
+旧版退避・加筆・確認などを行うと述べた場合は、宣言だけで終えず同一ターンで可能な限りツール実行まで進める。詳細はスキル **`novel-refinement-output`**（「計画表明だけで終わらない」）・**`novel-text-file-output`**（「ツール予告と応答の継続」）を参照する。画像生成だけは例外で、スキル **`image-provider`** に従い `--dry-run` とユーザー承認で一度止める。
 
 #### 目的
 - `_how_to/rewrite.md` のルールに基づき、文章をより自然で豊かに再構成する。
@@ -566,48 +403,17 @@ flowchart TD
 - **更新前の旧版退避**: **先に** `_novel_text_backup/` へ当該 `novel_textXX.md` を **`<元ファイル名>_vNNN.md`** の形式で退避してから行う（スキル **`novel-refinement-output`** の「反映」節）。
 
 #### 手動手順（明確化）
-1. **作業計画の立案**:
-   - 校正対象のファイルを確認し、どのような修正（分量の増加、特定の描写の強化など）を行うか計画を立て、ユーザーに提示する。
-2. **校正の実行**:
-   - `rewrite.md` のルールを適用し、1.5倍程度の分量を目約にリライトを行う。
-   - 三点リーダー（……）や句点のルール（「」内は句点なし）を厳守する。
-   - 成果物は **`_novel_text/`** を直接更新する形で保存する（会話だけに書かない）。
-   - 分量の達成度は `tools/novel_char_count.py` で更新後の **`_novel_text/`** を数え、コードポイント基準で確認する（スキル `novel-char-count` 参照）。
-3. **初稿の正本を更新する場合**:
-   - `_novel_text_backup/` に元ファイルを **`<元ファイル名>_vNNN.md`** の形式で退避してから `_novel_text/` を更新する（詳細は **`novel-refinement-output`**）。
+詳細な実行手順はスキル **`novel-refinement-output`** を正とする。入口ルールとしては、対象ファイルと修正方針を確認し、`_how_to/rewrite.md` を適用し、旧版退避後に `_novel_text/` を同一ファイル名で更新し、`tools/novel_char_count.py` または再読込で確認することだけを固定する。
 
 ### 2.6 First Reader Mode（下読み・足きり判定）
-- 書評は、原則として **コメント（チャット本文）ではなく、`reader/YYYYMMDD_HHMM.md` の書評ファイルに出力**すること。
-- 下読みにおける「足きり（一次選考落ち）」を防止する観点で、商業的な最低基準をクリアしているかを厳格に判定する。
-- 書評を行うときは、まず `_how_to/reader.md` を参照し、以下の情報を **書評ファイルに追記**する。
+横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。書評本文はチャットではなく **`novels/<作品>/_reader/YYYYMMDD_HHMM.md`** に保存し、チャットには判定と要約だけを返す。評価観点は `_how_to/reader.md`、保存手順はスキル **`novel-reader-output`** を参照する。
 
-  - 日付・時刻
-  - 対象作品ID／作品名／章（例：`novels/001_... 第1章`）
-  - 判定（合格：読むべき／不合格：読まなくていい、5段階評価）
-  - 各観点ごとの評価（キャラクター／プロット／文章力／わかりやすさ／独創性）
-  - 改善ポイント（「足きり」を回避し、一次選考を突破するために必要な修正案）
+下読みにおける「足きり（一次選考落ち）」を防止する観点で、商業的な最低基準をクリアしているかを厳格に判定する。
 
 ### 2.7 Interest Check Mode（一般読者・興味判定）
-- 一般的な読者が、作品の冒頭やタイトル、概要を見て「興味を持つか」「読み飛ばすか」を判定する。
-- ペルソナを設定し、最初の3行、最初の1ページでの「離脱率」を予測する。
-- 書評を行うときは、`_how_to/standard_reader.md` を参照し、結果を `reader/interest_YYYYMMDD.md` に簡潔に記録する。
+横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。一般読者が、作品の冒頭やタイトル、概要を見て「興味を持つか」「読み飛ばすか」を判定する。評価観点は `_how_to/standard_reader.md`、保存先は **`novels/<作品>/_reader/interest_YYYYMMDD.md`**、保存手順はスキル **`novel-reader-output`** を参照する。
 
-  - ペルソナ設定（年齢層、好み、普段読んでいる作品）
-  - 第一印象（キャッチコピー、タイトル、冒頭3行での興味）
-  - 判定（継続読了 / 読み飛ばし / ブラウザバック）
-  - 興味のフックとなった要素、または離脱の決定打となった要素
-
-- ログへの追記フォーマット（目安）:
-
-  - `- YYYY-MM-DD HH:MM  novels/XXX_タイトル 第Y章 (First Reader / Interest Check)`
-  - その下にインデント付きで判定結果を記述する。
-
-- チャット側には、**要約だけを簡潔に返す**こと。
-  - 判定（合格・不合格 / 興味あり・なし）
-  - 一言コメント（1〜3行）
-  - 「詳細な判定結果は `reader/` に記録済み」であることの通知。
-
-- (YYYYMMDD) は現在の年月に合わせたファイル（例：2025年11月23日なら `20251123.md`）を自動選択し、存在しなければ新規作成して用いる。
+チャット側には、判定・一言コメント・保存先ファイルパスだけを簡潔に返す。
 
 ```mermaid
 flowchart TD
@@ -629,9 +435,9 @@ Monogatari Coachの更新は、以下の場合に発生する：
 4. 文脈を明確にする必要がある場合
 
 **更新時の正本**:
-- ルール・スキル本文の更新は **`.rulesync/` を正本**として行う。
-- **`.codex/` 側などに同名ファイルがあっても、先に `.rulesync/` を直す。**
-- 差分反映が必要な場合のみ、`.rulesync/` の更新後に `.codex/` や他の参照先を確認する。
+- ルール・スキル本文の更新は **`.rulesync/` を正本**として行う。詳細は **`.rulesync/rules/rule-authoring.md`** と **`.rulesync/rules/docs-writing.md`** を参照する。
+- `.rulesync/` 更新後、必要に応じて `rulesync generate` を実行し、入口ファイルの差分を確認する。
+- 更新事実は査証ログへ追記し、次回以降も使う判断理由は日記へ残す。
 
 ```mermaid
 flowchart TD
@@ -649,48 +455,21 @@ flowchart TD
     Start --> Process
 ```
 
-注：Monogatari Coachの更新がトリガーになった場合、更新が必要ないものも含めて、すべてのメモリバンクのファイルをレビューしなければならない。特にactiveContext.mdとprogress.mdは現在の状態を追跡するので、重点的にチェックすること。
+注：Monogatari Coach の更新がトリガーになった場合は、必要な文脈ファイルを確認し、更新対象・派生先・次の作業を明確にする。
 
 ## プロジェクト・インテリジェンス (_workingspace)
-覚えておくこと：会話のたびに、私は完全に新しく開始します。Monogatari Coachは、過去の仕事をディレクトリ上に管理します。Monogatari Coachは正確かつ明瞭に維持されなければなりません。
+横断正本は **`.rulesync/rules/concepts.md`** の「プロジェクト・インテリジェンス」。`_workingspace/` は、計画・作業事実・横断ナレッジを分けて管理する領域である。
 
 ### 作業計画
-**これから行う作業予定・作業計画・中長期の着手順**は、プロジェクト直下の **`_workingspace/plans/`** に記録する。ここは未来の予定を置く領域であり、過去に実施済みの事実を保証する査証ログとは分けて扱う。
-
-- 月次・週次・セッション単位などの横断的な作業計画は `_workingspace/plans/` に置く。
-- 作品ごとの進捗、伏線、次回タスク、外部投稿用情報は従来どおり `novels/<作品>/_meta.md` に記録する。
-- 実施済みの作業事実は `_workingspace/log/(YYYYMM).md` に追記する。
-- 作品を横断して次回以降も参照したい判断理由・運用知見は `_workingspace/diary/(YYYYMM).md` に追記する。
-- `_workingspace/plans/` の計画は必要に応じて更新してよいが、実施済みになった内容は査証ログへも必ず残す。
-- プロジェクト構築・資料展開・新規作品作成など、複数段階の作業が発生する場合は、残作業を `_workingspace/plans/` にチェックリストとしてリストアップし、セッション終了時や区切りごとに「次に何をするべきか」をユーザーへ促す。
-- 作業計画では、タスクの流れが追えるよう **チェックリストを履歴として残す**。タスクが完了したら、該当行を `- [x]` に変更し、必要に応じて完了日・関連ファイル・査証ログ記録済みであることを短く添える。
-- 完了したタスクは原則として即削除しない。長くなりすぎた場合のみ、チェック済みの行を同じファイル内の「完了」欄や月次アーカイブへ移してよいが、作業の流れが失われないようにする。
-- 完了事実は `_workingspace/plans/` のチェックだけで済ませず、必ず `_workingspace/log/(YYYYMM).md` に査証ログとして追記する。長期的に参照したい判断理由がある場合は日記へも残す。
-- `_workingspace/plans/` は現在・未来の作業と、完了までの流れを見通すための整理棚として扱う。過去の厳密な保証は査証ログに担わせる。
+これから行う作業予定・中長期の改修順は **`_workingspace/plans/`** に記録する。ここは未来・進行中の計画を置く領域であり、過去に実施済みの事実を保証する査証ログとは分けて扱う。完了した作業は、計画側のチェックだけで済ませず査証ログにも残す。
 
 ### 査証ログ
-形式は自由です。あなたやプロジェクトとより効果的に仕事をするための貴重な洞察を得ることに集中すること。査証ログは過去行った作業を保証するための厳密な履歴だと考えてください。
-
-_workingspace/log/(YYYYMM).mdファイルは、作業ログである。西暦4桁、月2桁の形式のファイル名で、**必ず最後尾へ追記**します。**既存行の削除・上書き・並べ替えは行わない**（訂正が必要なときは、理由とともに**新しいエントリを追記**する）。
-
-**厳密な追記**はリポジトリ同梱の **`tools/workspace_audit_log.py`** を用いる（定義・禁止事項・CLI はスキル **`workspace-audit-log`**（`.rulesync/skills/workspace-audit-log/SKILL.md`）に従う）。本ツールは追記モードのみでログ本文を書き、新規月ファイルの先頭に「# 査証ログ YYYY年M月」を一度だけ付与する。
+作業事実は **`_workingspace/log/YYYYMM.md`** に追記する。既存行の削除・上書き・並べ替えは行わない。厳密な追記方法、ファイル形式、CLI はスキル **`workspace-audit-log`** を正とする。
 
 ### 日記（横断ナレッジ）
-**作品を横断する**方針・好み・ツール運用の決め事・繰り返し効く学びを、**月次ファイル** `_workingspace/diary/(YYYYMM).md` に記録する。単一の `diary.md` に全文を集約せず、**査証ログと同じ月次シャーディング**で、誤った全文上書き時の被害を月単位に限定する。
-
-**厳密な追記**は同一スクリプトの **`tools/workspace_audit_log.py diary append`**（および `diary path` / `diary verify`）を用いる（定義・査証ログとの使い分け・禁止事項はスキル **`workspace-diary`**（`.rulesync/skills/workspace-diary/SKILL.md`）に従う）。新規月ファイルの先頭には「# 日記（横断ナレッジ） YYYY年M月」を一度だけ付与する。エントリ1行形式は査証ログと同じ **`- YYYY-MM-DD HH:MM: 本文`** とする。
-
-**査証ログとの違い（目安）**: 査証ログ＝そのセッションで**何をしたか**の事実。日記＝**なぜそうするか・このリポジトリでは何を正とするか**など、次回以降も参照したいナレッジ。
-
-会話を行う度に、何のファイルを更新したのかについて記録を追記していきます。年月が変わったとき次のファイルに移ります。
-書き方の例：2025-12-04 10:00: 関連ファイル（design_specification.md, character.md, pinkdark.md, novelcore.md）を読み込み。ユーザークエリに基づき、冒険小説のあらすじを3つ計画。次に、これをdesign_specification.mdに反映し、ストーリーを拡張予定。
+次回以降も効く判断理由・好み・ツール運用の知見は **`_workingspace/diary/YYYYMM.md`** に追記する。査証ログは「何をしたか」、日記は「なぜそうするか・このリポジトリでは何を正とするか」を残す。厳密な追記方法、ファイル形式、CLI はスキル **`workspace-diary`** を正とする。
 
 執筆・推敲の記録に**文字数**を書く場合は、`tools/novel_char_count.py` を実行した**集計値**（章別・合計など）を根拠として併記する（定義はスキル `novel-char-count` に従う）。
 
-#### 査証ログで何をcaptureすべきか
-- 重要な実装パス
-- ユーザーの好みとワークフロー
-- プロジェクト特有のパターン
-- 既知の課題
-- プロジェクト決定の進化
-- ツールの使用パターン
+#### 査証ログで何を記録するべきか
+詳細はスキル **`workspace-audit-log`** の「何を記録するか」を参照する。

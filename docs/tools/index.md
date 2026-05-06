@@ -193,7 +193,7 @@ python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 
 ### `workspace_audit_log.py` — 査証ログ・日記の追記
 
-`_workingspace/log/(YYYYMM).md` にセッションの作業記録を追記します。既存行の上書き・削除は行いません。
+`_workingspace/log/(YYYYMM).md` にセッションの作業記録を、`_workingspace/diary/(YYYYMM).md` に横断ナレッジを追記します。既存行の上書き・削除は行いません。
 
 ```bash
 # 査証ログに追記
@@ -204,10 +204,14 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 
 # 当月ファイルのパスを確認
 python tools/workspace_audit_log.py path
+python tools/workspace_audit_log.py diary path
 
 # 整合性の検証
 python tools/workspace_audit_log.py verify
+python tools/workspace_audit_log.py diary verify
 ```
+
+査証ログは「何をしたか」の事実、日記は「なぜそうするか・次回以降も使う判断理由」を残す場所です。
 
 ---
 
