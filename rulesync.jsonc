@@ -8,14 +8,11 @@
   ],
   "features": [
     "rules",
-    "ignore",
     "mcp",
-    "commands",
     "subagents",
-    "skills",
-    "hooks"
+    "skills"
   ],
-  "baseDirs": [
+  "outputRoots": [
     "."
   ],
   "delete": true,

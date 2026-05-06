@@ -151,6 +151,12 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 本番直前の `--strict-quality` ランで失敗扱いにすれば、矛盾を残したまま
 画像生成へ進むことを防げる。
 
+### ドキュメント側の用例
+
+`docs/` には **強制追加／強制削除のコピペ用例**を置く。スキル（本ファイル）は運用方針と正本の所在を定め、具体例は操作マニュアルへ寄せて更新する。
+
+- 用例: [`docs/image-generation/manga-prompt-ir.md`](../../docs/image-generation/manga-prompt-ir.md) の「ユーザ指示の正本（強制追加・強制削除）」
+
 ## prompt_variants の `variant_id` と見出し番号（ツールの実際の動き）
 
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。

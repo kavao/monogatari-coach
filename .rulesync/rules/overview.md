@@ -334,6 +334,37 @@ _how_to/tag.md のルールに従い、各人物について
   - 既存の `tools/image_provider_novel_manga_batch.py` 等のバッチツールはこの Markdown を参照する。ページ単位の可読参照・手作業での Step1/Step2 推敲・外部連携に引き続き用いる。
   - データの正本は YAML IR とし、Markdown を**唯一の正本として**手作業で増殖させない。修正は YAML IR 側へ入れ、再エクスポートする。
 
+#### ページ別の指示メモ（ユーザ指示の正本）
+
+漫画ページの品質修正で「何を直すか」がブレるときは、ページ YAML に **ページ別の指示メモ**（ユーザ指示の正本）を残す。
+ここでいう「ページ別の指示メモ」とは、**そのページの全コマに必ず効かせるタグ**や、**混入させたくないタグ**をページ単位で固定し、あとから見返しても迷子にならないようにする仕組み。
+
+- **ページ単位（正本）**: `render_instruction.user_directives`
+  - `page_notes[]`: チャットで受けた「直したいポイント」を短い箇条書きで記録する
+  - `defaults.required_prompt_tags[]`: 全コマに **強制追加**
+  - `defaults.omit_prompt_tags[]`: 全コマから **強制削除**
+- **コマ単位（例外の上書き）**: `panels[].required_prompt_tags[]` / `panels[].omit_prompt_tags[]`
+
+この指示は、画像生成バッチ（Step1）と互換 Markdown の Step1 出力に反映され、検証でも矛盾を警告できる。
+用例は操作マニュアルの [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) を参照する。
+
+#### チャット→修正→検証→再生成（ぶれない流れ）
+
+ユーザーがチャットで「ページ別の指示メモ」を依頼したら、Monogatari Coach は次の順で動く。
+
+1. 対象ページ（例: `manga/pages/manga_02_p10.yaml`）を読み、現状の `prompt_tags` と問題点を把握する
+2. `render_instruction.user_directives.page_notes` に「直したいポイント」を追記する
+3. 全コマに効かせるなら `defaults`、特定コマだけなら `panels[]` の `required/omit` へ反映する
+4. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で警告が無いことを確認する
+5. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown を更新する
+6. 画像生成は必ず `--dry-run` で件数・保存先を確認してから本番実行する
+
+チャットの最小トリガー例（話し言葉・1行）:
+
+```
+このページのページ別の指示メモを直して。プール感を強めて、屋外っぽいタグは外して。
+```
+
 #### 手動手順（明確化）
 1. **前提チェック**
    - 元となる本文正本 `novels/[...]/_novel_text/novel_textXX.md`（項付きなら対応する `novel_textXX_YY.md`）を確認する。

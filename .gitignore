@@ -31,6 +31,9 @@ progress.md
 .codex/*
 .github/*
 .kilocode/*
+.kilo/
+.kiloignore
+kilo.jsonc
 .cursorignore
 .mcp.json
 .env

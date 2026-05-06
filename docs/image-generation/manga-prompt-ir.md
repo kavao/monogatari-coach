@@ -128,6 +128,88 @@ python tools/novel_prompt_ir_export_md.py \
 - **スキル総説**: [manga-prompt-ir/SKILL.md](../../.rulesync/skills/manga-prompt-ir/SKILL.md)
 - **画風トークン（`manga.genre_tags` / `visual_tags`）**: フルカラー生成を前提にするなら、**原則 `monochrome`・`screentone` を入れない**（`novel_prompt_ir_export_md.py` が各コマの互換 Step1 `tag` 行に連結するため）。例外・語彙の目安は創作技法 [`_how_to/manga.md`](../../_how_to/manga.md)（雛形 [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）の「`manga.genre_tags` / `manga.visual_tags`」節。
 
+---
+
+## ページ別の指示メモ（強制追加・強制削除）
+
+実行自体は問題なく動いているのに、生成結果の品質修正で「何を直すべきか」がブレる場合は、ページ YAML に **ページ別の指示メモ**（ユーザ指示の正本）を置きます。
+
+### どこに書くか
+
+- ページ単位（正本）: `render_instruction.user_directives`
+  - `page_notes[]`: 自然文の指示（品質修正の軸）
+  - `defaults.required_prompt_tags[]`: 全コマへ必ず追加する `prompt_tags`
+  - `defaults.omit_prompt_tags[]`: 全コマから必ず除外する `prompt_tags`
+- コマ単位（上書き）: `panels[].required_prompt_tags[]` / `panels[].omit_prompt_tags[]`
+
+### どう効くか（適用順）
+
+1. 既存の Step1 タグ列（`prompt_tags` など）を組み立てる
+2. `defaults.required_prompt_tags` → `panels[].required_prompt_tags` の順で **必ず追加**
+3. `defaults.omit_prompt_tags` ∪ `panels[].omit_prompt_tags` を **必ず除外**
+
+これらは次に反映されます。
+
+- `tools/image_provider_novel_manga_batch.py`（YAML入力の Step1: `step1-panels` 等）
+- `tools/novel_prompt_ir_export_md.py`（互換 Markdown の Step1 `tag` 行）
+- `tools/novel_prompt_ir_validate.py`（矛盾・二重記載の警告）
+
+### 用例（強制追加）
+
+```yaml
+render_instruction:
+  user_directives:
+    page_notes:
+      - このページは「プールの描写（空気感・水面・反射）」を深めたい
+    defaults:
+      required_prompt_tags:
+        - swimming_pool
+        - rippling_water
+        - reflections
+      omit_prompt_tags: []
+```
+
+### 用例（強制削除）
+
+屋外の背景タグが混入しがちなページで、屋内を徹底したい場合の例です。
+
+```yaml
+render_instruction:
+  user_directives:
+    page_notes:
+      - 屋内シーンなので屋外タグの混入を禁止する
+    defaults:
+      required_prompt_tags: []
+      omit_prompt_tags:
+        - outdoors
+        - sky
+```
+
+### 用例（コマ単位の上書き）
+
+ページ全体はそのままに、特定のコマだけ「必ず入れる／外す」を上書きしたい場合の例です。
+
+```yaml
+panels:
+  - panel_id: 3
+    summary: 接写のコマ
+    prompt_tags: ["close-up", "water_droplets"]
+    required_prompt_tags: ["rippling_water"]
+    omit_prompt_tags: []
+```
+
+### 用例（このページからこのページへ：強制追加・強制削除）
+
+「このページ（の途中）から次のページ（の冒頭）まで」という範囲指定は、**ページ単位の defaults** と **コマ単位の上書き**を組み合わせて表現します。
+
+- **強制追加（ポジ例）**: `manga_02_p08.yaml panel_id=3` から `manga_02_p12.yaml panel_id=1` まで、プールの空気感タグを必ず入れる
+  - `manga_02_p09.yaml`〜`manga_02_p11.yaml` は `render_instruction.user_directives.defaults.required_prompt_tags` に書く
+  - 範囲の端点（`p08:3` / `p12:1`）だけ `panels[].required_prompt_tags` で上書きする
+
+- **強制削除（ネガ例）**: 同じ範囲で、屋外っぽいタグが混ざるのを防ぐ
+  - 中央ページ（`p09`〜`p11`）は `defaults.omit_prompt_tags` に書く
+  - 端点（`p08:3` / `p12:1`）だけ `panels[].omit_prompt_tags` を使う
+
 以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
 
 ### スキーマ主要フィールドの説明
