@@ -37,6 +37,9 @@ from manga_prompt_ir.color_mode import (
     VALID_COLOR_MODES,
     page_color_mode_label,
 )
+from manga_prompt_ir.user_directives import (
+    apply_to_tags as apply_user_directives_to_tags,
+)
 
 STYLE_TAGS = ["best_quality", "very_aesthetic", "ultra-detailed", "manga"]
 
@@ -284,7 +287,8 @@ def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str
             tags.append(subject_tag_line_token(subject))
         tags.extend(subject_situational_tag_tokens(subject))
     tags.extend(panel_mood_atmosphere_tag_tokens(panel))
-    return filter_single_panel_tags(unique(tags))
+    tags = apply_user_directives_to_tags(unique(tags), page, panel)
+    return filter_single_panel_tags(tags)
 
 
 def panel_tag_line_for_export(

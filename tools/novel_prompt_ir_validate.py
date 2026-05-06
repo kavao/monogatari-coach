@@ -100,6 +100,65 @@ def page_snapshot_keys(page) -> set[tuple[str, str]]:
     return keys
 
 
+def _user_directive_warnings_for_page(label: str, page) -> list[str]:
+    """`render_instruction.user_directives` と panel 上書きの整合性を点検する。"""
+    warnings: list[str] = []
+    directives = page.render_instruction.user_directives
+    defaults = directives.defaults
+    page_required = [str(t) for t in defaults.required_prompt_tags if t]
+    page_omit = [str(t) for t in defaults.omit_prompt_tags if t]
+    page_required_set = set(page_required)
+    page_omit_set = set(page_omit)
+
+    overlap = sorted(page_required_set & page_omit_set)
+    if overlap:
+        warnings.append(
+            f"{label}: render_instruction.user_directives.defaults で "
+            f"required_prompt_tags と omit_prompt_tags の両方に同じタグがあります: "
+            f"{', '.join(overlap)}"
+        )
+
+    for panel in page.panels:
+        prefix = f"{label}: panel {panel.panel_id}"
+        panel_required = [str(t) for t in panel.required_prompt_tags if t]
+        panel_omit = [str(t) for t in panel.omit_prompt_tags if t]
+        panel_required_set = set(panel_required)
+        panel_omit_set = set(panel_omit)
+
+        panel_overlap = sorted(panel_required_set & panel_omit_set)
+        if panel_overlap:
+            warnings.append(
+                f"{prefix}: required_prompt_tags と omit_prompt_tags の両方に同じタグがあります: "
+                f"{', '.join(panel_overlap)}"
+            )
+
+        cross_overlap = sorted(panel_required_set & page_omit_set)
+        if cross_overlap:
+            warnings.append(
+                f"{prefix}: required_prompt_tags にページ既定の omit_prompt_tags と衝突するタグがあります: "
+                f"{', '.join(cross_overlap)}"
+            )
+
+        cross_omit = sorted(panel_omit_set & page_required_set)
+        if cross_omit:
+            warnings.append(
+                f"{prefix}: omit_prompt_tags にページ既定の required_prompt_tags と衝突するタグがあります: "
+                f"{', '.join(cross_omit)}"
+            )
+
+        prompt_tags = [str(t) for t in panel.prompt_tags if t]
+        merged_omit = panel_omit_set | page_omit_set
+        in_prompt = sorted({t for t in prompt_tags if t in merged_omit})
+        if in_prompt:
+            warnings.append(
+                f"{prefix}: prompt_tags に omit_prompt_tags のタグが含まれています "
+                f"（生成時に自動除去されますが、指示の二重記載です）: "
+                f"{', '.join(in_prompt)}"
+            )
+
+    return warnings
+
+
 def quality_warnings_for_page(
     path: Path,
     page,
@@ -110,6 +169,7 @@ def quality_warnings_for_page(
 ) -> list[str]:
     warnings: list[str] = []
     label = path.as_posix()
+    warnings.extend(_user_directive_warnings_for_page(label, page))
     render_instruction = page.render_instruction
     has_render_instruction = any(
         has_text(value)

@@ -37,6 +37,36 @@ class MangaStyle(BaseModel):
     text_policy: str = "Japanese text must be legible"
 
 
+class TagPolicy(BaseModel):
+    """`prompt_tags` への必須追加・除外の指示。
+
+    ページ全体の既定値（`UserDirectives.defaults`）と、コマごとの上書き
+    （`Panel.required_prompt_tags` / `Panel.omit_prompt_tags`）の両方で同じ
+    意味を持たせるため、ここでは「ポジ側 prompt_tags のみ」を扱う。
+    negative 側はコマ単位の `Panel.negative_tags` / `omit_negative_tags` を
+    既存どおり用い、ここでは触らない。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    required_prompt_tags: list[str] = Field(default_factory=list)
+    omit_prompt_tags: list[str] = Field(default_factory=list)
+
+
+class UserDirectives(BaseModel):
+    """ページ単位のユーザ指示の正本。
+
+    品質修正・再生成のときに「指示の軸」がぶれないよう、ページごとの
+    自由記述（`page_notes`）と、全コマへ波及させるタグ既定（`defaults`）を
+    まとめてここで保持する。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    page_notes: list[str] = Field(default_factory=list)
+    defaults: TagPolicy = Field(default_factory=TagPolicy)
+
+
 class RenderInstruction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -47,6 +77,7 @@ class RenderInstruction(BaseModel):
     text_policy: str | None = None
     output_policy: str | None = None
     notes: list[str] = Field(default_factory=list)
+    user_directives: UserDirectives = Field(default_factory=UserDirectives)
 
 
 class Scene(BaseModel):
@@ -213,6 +244,10 @@ class Panel(BaseModel):
     mood_atmosphere: list[str] = Field(default_factory=list)
     mood_atmosphere_en: list[str] = Field(default_factory=list)
     prompt_tags: list[str] = Field(default_factory=list)
+    # ページ単位の `render_instruction.user_directives.defaults` と合算され、
+    # 最終タグ列で「必ず含める」「必ず除外する」を強制適用するためのコマ別上書き。
+    required_prompt_tags: list[str] = Field(default_factory=list)
+    omit_prompt_tags: list[str] = Field(default_factory=list)
     # step1-panels（コマ単位 txt2img）向け。technical.negative_tags と CLI の共通ネガに加え、コマ別で増減する。
     negative_tags: list[str] = Field(default_factory=list)
     omit_negative_tags: list[str] = Field(default_factory=list)

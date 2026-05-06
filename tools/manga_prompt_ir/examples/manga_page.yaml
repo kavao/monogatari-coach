@@ -14,6 +14,21 @@ render_instruction:
   notes:
     - prompt_tagsは各コマの作画タグとして扱う。
     - technical.negative_tagsは避けるべき要素として扱う。
+  # ユーザ指示の正本（ページ単位）。品質修正のとき、この場所だけ見れば
+  # 「いま全コマに必ず効かせている指示」が分かる。
+  # - page_notes: 自然文の指示。何を直したいか・どこを譲らないかを残す。
+  # - defaults.required_prompt_tags: 全コマへ必ず追加する prompt_tags
+  # - defaults.omit_prompt_tags: 全コマから必ず除外する prompt_tags
+  # コマ単位の上書きは panels[].required_prompt_tags / omit_prompt_tags へ書く。
+  user_directives:
+    page_notes:
+      - スマホ画面の発光を毎コマ意識する
+      - 屋外背景タグが混入しがちなので除外を明示
+    defaults:
+      required_prompt_tags:
+        - phone_screen_light
+      omit_prompt_tags:
+        - outdoors
 manga:
   genre_tags:
     - manga
@@ -89,6 +104,12 @@ panels:
     prompt_tags:
       - phone_screen_light
       - quiet_tension
+    # ページ既定に加えて、このコマだけで強制したい追加・除外を書く。
+    # ページ既定と矛盾する書き方（同じタグを required と omit に同時記載 等）は
+    # `novel_prompt_ir_validate.py` が警告で検出する。
+    required_prompt_tags:
+      - desk_view
+    omit_prompt_tags: []
     translation: 和紀が深夜の自室でスマホ通知に気づく導入コマ。
   - panel_id: 2
     summary: 中段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。

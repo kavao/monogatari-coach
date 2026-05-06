@@ -43,6 +43,36 @@ uv run python howto_init.py
 - `_how_to.example/` から `_how_to/` を未作成時にコピー
 - `.env.example` から `.env` を未作成時にコピー
 
+## 3.1 clone → uv sync → reload（エディタの警告を減らす）
+
+Monogatari Coach は Python ツール群で `pydantic` などを使います。実行は問題なく動いていても、エディタ（Cursor/VSCode）の静的解析が **別の Python を参照している**と、次のような警告が表示されることがあります。
+
+- `インポート "pydantic" を解決できませんでした`
+
+これは「壊れている」ではなく、**エディタが参照する Python 環境が未確定**なだけです。以下の手順で `.venv` を作り、エディタ側の解析を落ち着かせます。
+
+### 手順
+
+1) リポジトリを clone します。
+
+2) プロジェクトルートで `uv sync` を実行します（依存関係と `.venv` を整えます）。
+
+```bash
+uv sync
+```
+
+3) エディタを再読み込みします（静的解析の参照先を更新します）。
+
+- コマンドパレットで `Developer: Reload Window` を実行します
+
+### 検証（任意）
+
+`.venv` が使えているかだけ確認したい場合は、次を実行します。
+
+```powershell
+.\.venv\Scripts\python.exe -c "import pydantic; print(pydantic.__version__)"
+```
+
 ## 4. `.env` を埋める
 
 最低限、使う画像プロバイダに応じてトークンを設定します。

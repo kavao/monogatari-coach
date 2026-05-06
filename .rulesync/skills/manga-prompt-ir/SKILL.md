@@ -92,6 +92,65 @@ targets: ["*"]
 - `novel_prompt_ir_validate.py` は **Pydantic 型・参照・品質ゲート**を検証するが、**`manga_tag.md` の置き換え表どおりかまでは検証しない**。
 - 置き換えの自動適用をコードに足す場合は **`tools/`** に実装し、本スキルからパスを参照する（スキルディレクトリに Python を置かない）。
 
+## ユーザ指示の正本（`render_instruction.user_directives`）と prompt_tags の強制適用
+
+漫画ページIRに対するユーザ指示（品質修正の軸・必ず効かせたいタグ運用）を、
+**ページ単位で構造化された正本**として保持する。狙いは、生成→評価→修正の
+ループで指示がぶれないようにし、**Markdown 互換出力（Step1）と画像生成バッチ
+（NovelAI 分割含む）に同じ強制を効かせる**こと。
+
+### 置き場と意味
+
+- ページ単位（**正本**）: `render_instruction.user_directives`
+  - `page_notes: list[str]`: 自然文のユーザ指示。何を直したいか・譲らない方針を残す。
+  - `defaults`:
+    - `required_prompt_tags: list[str]`: そのページの全コマに**必ず追加**する `prompt_tags`。
+    - `omit_prompt_tags: list[str]`: そのページの全コマから**必ず除外**する `prompt_tags`。
+- コマ単位（**上書き**）: `panels[]`
+  - `required_prompt_tags: list[str]`: そのコマに必ず追加する `prompt_tags`。
+  - `omit_prompt_tags: list[str]`: そのコマから必ず除外する `prompt_tags`。
+
+対象は **ポジ側 `prompt_tags` のみ**。negative 側は既存の
+`Panel.negative_tags` / `Panel.omit_negative_tags` と CLI 共通ネガで扱う。
+
+### 適用順（ツール実装と一致）
+
+1. 既存の `panels[].prompt_tags`（および scene/composition 等から組み立てた状況タグ）を収集。
+2. `defaults.required_prompt_tags` → `panels[].required_prompt_tags` の順で**末尾に加算**。
+3. `defaults.omit_prompt_tags` ∪ `panels[].omit_prompt_tags` を**最後に除外**。
+4. 重複除去のうえタグ列を確定。
+
+実装は `tools/manga_prompt_ir/user_directives.py` に共通化されており、
+`tools/image_provider_novel_manga_batch.py`（YAML入力の Step1 系）と
+`tools/novel_prompt_ir_export_md.py`（Step1 互換タグ行）が同じ関数で適用する。
+NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ加算**し、
+**`omit` は base / キャラセグメントの両方から除外**する。
+
+### 運用（ぶれないための手順）
+
+- ユーザ指示は**まず `render_instruction.user_directives.page_notes` に残す**。
+  チャットの文章だけで指示を保持しない（次のセッションで失われる）。
+- 全コマへ波及させたい「必ず追加／必ず除外」は `defaults` に書く。
+  例外コマだけ `panels[].required_prompt_tags` / `omit_prompt_tags` で上書きする。
+- `panels[].prompt_tags` に書くのは「そのコマ固有の演出タグ」。
+  全コマへ効かせたい指示を毎コマの `prompt_tags` に二重記載しない。
+- 修正のループに入る前に
+  `python tools/novel_prompt_ir_validate.py novels/<作品>` を回し、
+  下記の警告が出ていないかを必ず確認する。本番生成前は `--strict-quality`。
+
+### `novel_prompt_ir_validate.py` の検出（警告）
+
+- `defaults` の `required_prompt_tags` と `omit_prompt_tags` に同じタグがある。
+- `panels[].required_prompt_tags` と `panels[].omit_prompt_tags` に同じタグがある。
+- `panels[].required_prompt_tags` がページ既定の `omit_prompt_tags` と衝突する。
+- `panels[].omit_prompt_tags` がページ既定の `required_prompt_tags` と衝突する。
+- `panels[].prompt_tags` に `omit_prompt_tags` 対象タグが残っている（生成時に
+  自動除去されるが、指示の二重記載を示すサイン）。
+
+これらは矛盾そのものをエラーにせず、**改稿の指針**として警告で出す。
+本番直前の `--strict-quality` ランで失敗扱いにすれば、矛盾を残したまま
+画像生成へ進むことを防げる。
+
 ## prompt_variants の `variant_id` と見出し番号（ツールの実際の動き）
 
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。

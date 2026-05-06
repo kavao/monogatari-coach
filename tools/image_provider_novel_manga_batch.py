@@ -59,6 +59,10 @@ from manga_prompt_ir.color_mode import (
     VALID_COLOR_MODES,
     page_color_mode_label,
 )
+from manga_prompt_ir.user_directives import (
+    apply_to_tags as apply_user_directives_to_tags,
+    omit_tags_for_panel as user_directives_omit_tags,
+)
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -751,6 +755,7 @@ def yaml_panel_tags(
         tags.extend(subject_situational_tag_tokens(subject))
     tags.extend(panel_mood_atmosphere_tag_tokens(panel))
     tags = unique(tags)
+    tags = apply_user_directives_to_tags(tags, page, panel)
     if single_panel:
         tags = filter_single_panel_tags(tags)
     return tags
@@ -814,6 +819,14 @@ def yaml_panel_tags_novelai_split(
     base.extend(panel_mood_atmosphere_tag_tokens(panel))
     base = unique(base)
     character_segments = [unique(seg) for seg in character_segments]
+    # base 側に required を加算し、omit は base / character_segments の両側へ反映する。
+    # required はキャラ別セグメントへ重ねて入れない（重複・取り違えを避ける）。
+    base = apply_user_directives_to_tags(base, page, panel)
+    omit = user_directives_omit_tags(page, panel)
+    if omit:
+        character_segments = [
+            [tag for tag in seg if tag not in omit] for seg in character_segments
+        ]
     if single_panel:
         base = filter_single_panel_tags(base)
         character_segments = [filter_single_panel_tags(seg) for seg in character_segments]
