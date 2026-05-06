@@ -353,6 +353,7 @@ _how_to/tag.md のルールに従い、各人物について
 4. **Markdown へのエクスポート**
    - **`python tools/novel_prompt_ir_export_md.py`** を使用し、検証済み YAML IR から互換 Markdown（`manga/manga_XX.md`）を出力する。**`--manga-page` で漫画ファイルを出すときは、既定で `--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け **`ベース | キャラ`** 形式にし、`image_provider_novel_manga_batch`・NovelAI・step1-panels と形状を揃える。省略すると Step1 がカンマ一列のみになる）。Step2 ブロックはこのフラグでは変わらないが、手順統一のため同じコマンドで付けてよい。
    - Markdown 出力後に改めて手作業で Step2 を作り直すのではなく、YAML IR 側を修正して再エクスポートする。
+   - **色モードの上書き**：ユーザーがそのセッションで「今回はカラー」「このバッチはモノクロ」と指定した場合は、`--color-mode monochrome`／`full_color`／`limited_color` を export と batch の両コマンドに付ける。YAML 本体は自動変更しない（詳細は `docs/image-generation/index.md` の「漫画ページの色モード」節）。
 
 #### 画像ストック（漫画・コマ単位・推奨）
 - 各 `manga_XX.md` に対応する専用フォルダを `manga/_assets/` 配下に置き、そのファイルに含まれる生成画像を保存する。
@@ -491,6 +492,7 @@ flowchart TD
   - 現在の進捗、未回収の伏線、次回のタスクを明文化します。
 - **執筆開始時（再開）**:
   - 作品フォルダ内の `_meta.md` を読み込み、前回のコンテキストを完全に復旧させてから作業に入ります。
+  - **画像・漫画生成設定**が `_meta.md` の「画像・漫画生成設定」節に記録されている場合は、その `作品基準色モード` を `--color-mode` の既定として扱います（YAML に明示済みのページは YAML を優先）。
 - **完結・投稿時**:
   - `_meta.md` の「外部メタ情報」を作成・更新し、プラットフォーム投稿用のキャッチコピーや紹介文を生成します。
 
