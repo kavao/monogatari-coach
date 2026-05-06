@@ -55,6 +55,10 @@ from manga_prompt_ir.scene_prompt import (
     subject_situational_tag_tokens,
     subject_tag_line_token,
 )
+from manga_prompt_ir.color_mode import (
+    VALID_COLOR_MODES,
+    page_color_mode_label,
+)
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -95,7 +99,7 @@ DEFAULT_NEGATIVE = (
 
 STEP2_GROK_STYLE_HELPER = """\
 画風補助:
-- 日本の商業カラーマンガ風
+- 日本の商業漫画風
 - 読みやすいコマ割りと明快な視線誘導
 - キャラクターの顔は安定して描写
 - 背景は情報量を保ちつつ主役を邪魔しない
@@ -106,7 +110,7 @@ STEP2_GROK_STYLE_HELPER = """\
 
 STEP1_PAGE_GROK_STYLE_HELPER = """\
 画風補助:
-- 日本の商業カラーマンガ風
+- 日本の商業漫画風
 - 各コマ情報をなるべく落とさず精密に反映
 - 各コマの人物、表情、構図、背景、距離感の差を明確に描き分ける
 - コマごとの役割差が伝わるように密度と抜きを作る
@@ -925,7 +929,13 @@ def trim_prompt_to_byte_limit(prompt: str, max_bytes: int) -> str:
     return truncated[:last_nl] + "\n[...省略]" if last_nl > 0 else truncated
 
 
-def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: int) -> str:
+def yaml_page_step1_text(
+    page: dict,
+    characters: dict[str, dict],
+    page_number: int,
+    *,
+    color_mode_override: str | None = None,
+) -> str:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     scene = page.get("scene") or {}
@@ -934,10 +944,11 @@ def yaml_page_step1_text(page: dict, characters: dict[str, dict], page_number: i
     reading_order = meta.get("reading_order", "right_to_left")
     panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
     instruction_block = yaml_render_instruction_block(page)
+    color_label = page_color_mode_label(page, override=color_mode_override)
     lines = [
         f"Page {page_number}",
         instruction_block,
-        f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
+        f"{color_label}、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
         f"ページ構成: {panel_layout}",
         f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
@@ -1509,6 +1520,7 @@ def iter_yaml_manga_jobs(
     cli_negative_prompt: str,
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
+    color_mode_override: str | None = None,
 ) -> list[dict[str, str]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
@@ -1549,6 +1561,7 @@ def iter_yaml_manga_jobs(
         stem = yaml_page_stem(path, page)
         page_num = yaml_page_number(path, index)
         base = (manga_dir / "_assets" / stem).resolve()
+        color_label = page_color_mode_label(page, override=color_mode_override)
         if source == "background-concepts":
             for job in yaml_background_concept_jobs(page, stem, page_num, path):
                 job["output_dir"] = (base / job.pop("output_subdir", "backgrounds")).as_posix()
@@ -1562,10 +1575,10 @@ def iter_yaml_manga_jobs(
             instruction_block = yaml_render_instruction_block(page)
             extra_text = "\n\n".join(blk for blk in (instruction_block, helper, anchor_block) if blk)
             prompt = (
-                f"以下は漫画1ページ分の構成指示です。"
+                f"以下は{color_label}1ページ分の構成指示です。"
                 f"日本の漫画のコマ割りとして、ページ全体を1枚で生成してください。\n\n"
                 f"{extra_text}\n\n{body}" if extra_text else
-                f"以下は漫画1ページ分の構成指示です。"
+                f"以下は{color_label}1ページ分の構成指示です。"
                 f"日本の漫画のコマ割りとして、ページ全体を1枚で生成してください。\n\n"
                 f"{body}"
             )
@@ -1580,12 +1593,17 @@ def iter_yaml_manga_jobs(
                 }
             )
         elif source == "step1-pages":
-            body = yaml_page_step1_text(page, characters, page_num)
+            body = yaml_page_step1_text(
+                page,
+                characters,
+                page_num,
+                color_mode_override=color_mode_override,
+            )
             helper = resolve_page_style_helper(provider, "step1-pages", style_helper)
             anchor_block = yaml_character_anchor_block(page, characters)
             extra_text = "\n\n".join(blk for blk in (helper, anchor_block) if blk)
             intro = (
-                f"以下は漫画1ページ分の詳細指示です。"
+                f"以下は{color_label}1ページ分の詳細指示です。"
                 f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
                 f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。"
             )
@@ -1648,6 +1666,7 @@ def iter_jobs_by_input(
     no_character_anchors: bool = False,
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
+    color_mode_override: str | None = None,
 ) -> tuple[str, list[dict[str, str]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -1659,6 +1678,7 @@ def iter_jobs_by_input(
             cli_negative_prompt=cli_negative_prompt,
             use_novelai_pipe_split=use_novelai_pipe_split,
             step2_paraphrase=step2_paraphrase,
+            color_mode_override=color_mode_override,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -1789,6 +1809,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Step2 自動置換を無効にする（環境変数より優先）",
     )
+    p.add_argument(
+        "--color-mode",
+        choices=VALID_COLOR_MODES,
+        default=None,
+        help=(
+            "このバッチ実行だけの色モード上書き。YAML は書き換えず、"
+            "YAML由来のページ指示文にだけ反映する"
+        ),
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -1831,6 +1860,7 @@ def main(argv: list[str] | None = None) -> int:
             no_character_anchors=args.no_character_anchors,
             use_novelai_pipe_split=use_novelai_pipe,
             step2_paraphrase=step2_px,
+            color_mode_override=args.color_mode,
         )
     except (FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)

@@ -40,6 +40,14 @@ def load_models():
     return CharacterPrompt, MangaPagePrompt
 
 
+def load_color_validator():
+    tools_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(tools_dir))
+    from manga_prompt_ir.color_mode import validate_color_consistency
+
+    return validate_color_consistency
+
+
 def load_yaml(path: Path) -> dict:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -92,7 +100,14 @@ def page_snapshot_keys(page) -> set[tuple[str, str]]:
     return keys
 
 
-def quality_warnings_for_page(path: Path, page, character_variants: dict[str, set[str]]) -> list[str]:
+def quality_warnings_for_page(
+    path: Path,
+    page,
+    character_variants: dict[str, set[str]],
+    *,
+    validate_color_consistency,
+    color_page_data: dict | None = None,
+) -> list[str]:
     warnings: list[str] = []
     label = path.as_posix()
     render_instruction = page.render_instruction
@@ -117,6 +132,8 @@ def quality_warnings_for_page(path: Path, page, character_variants: dict[str, se
         warnings.append(f"{label}: render_instruction.character_policy が空です（キャラクター外見継承が弱くなります）")
     if not has_text(page.manga.panel_layout):
         warnings.append(f"{label}: manga.panel_layout が空です（ページ内の段・大小・読み順が弱くなります）")
+    for color_warning in validate_color_consistency(color_page_data or page, root=repo_root()):
+        warnings.append(f"{label}: {color_warning}")
 
     declared_ids = set(page.character_ids)
     used_ids: set[str] = set()
@@ -223,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     CharacterPrompt, MangaPagePrompt = load_models()
+    validate_color_consistency = load_color_validator()
     character_files, manga_page_files = collect_files(args)
     if not character_files and not manga_page_files:
         parser.error("provide novel_dir, --character, or --manga-page")
@@ -245,7 +263,8 @@ def main(argv: list[str] | None = None) -> int:
 
     for path in manga_page_files:
         try:
-            page = MangaPagePrompt.model_validate(load_yaml(path))
+            page_data = load_yaml(path)
+            page = MangaPagePrompt.model_validate(page_data)
             missing = [cid for cid in page.character_ids if cid not in character_ids]
             subject_missing = [
                 subject.character_id
@@ -256,7 +275,15 @@ def main(argv: list[str] | None = None) -> int:
             if missing or subject_missing:
                 unknown = sorted(set(missing + subject_missing))
                 raise ValueError(f"unknown character_id reference: {', '.join(unknown)}")
-            warnings.extend(quality_warnings_for_page(path, page, character_variants))
+            warnings.extend(
+                quality_warnings_for_page(
+                    path,
+                    page,
+                    character_variants,
+                    validate_color_consistency=validate_color_consistency,
+                    color_page_data=page_data,
+                )
+            )
             print(f"OK manga_page: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")

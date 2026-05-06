@@ -83,6 +83,7 @@ targets: ["*"]
    - **追加ルール**: 該当コマでは `manga_tag.md` の追加ルールに従う。
    - **視点**: `male perspective`, `pov` など、ファイルで推奨されている表記に寄せる。
    - **カラー指向時・ページの `manga` 節**: **原則 `monochrome` と `screentone` を `manga.genre_tags` / `manga.visual_tags` に入れない**（`novel_prompt_ir_export_md.py` が各コマの互換 Step1 `tag` 行へ連結する）。コマの `prompt_tags` だけでなく YAML の **`manga`** を **`_how_to/manga.md`**（雛形 `_how_to.example/manga.md`）の「`manga.genre_tags` / `manga.visual_tags`」節に合わせる。**意図的にモノクロ作品にする場合のみ**例外。コマ単位では従来どおり **`manga_tag.md`** の `screentone` 除外など運用上の禁止・除外も参照。
+   - **色モード正本**: ページYAMLの **`color_palette.mode`** をページ単位の色モード正本とする。値は `monochrome` / `limited_color` / `full_color`。`manga.visual_tags` は補助タグとして併用するが、`mode=monochrome` に `full_color` 系タグ、`mode=full_color` に `monochrome` / `screentone` 系タグがある場合は `novel_prompt_ir_validate.py` が **WARNING** を出す。センターカラー・巻頭カラー・扉絵だけカラー・一部限定色などの意図的例外を想定し、通常運用では自動修正・通常エラー化しない。
    - **背景のみ**: `nohuman` 等、ファイルで定義されているルール。
 3. **`manga.md` / `manga_tag.md` / `manga_tag_step2.md` / `docs/` を混同しない**: `manga.md` は創作技法としての組み立て；**コマ英語タグの語彙は `manga_tag.md`（Step1 中心）**；**Step2 要約・抽象ページ指示は `manga_tag_step2.md`**；**バッチ・export のコマンド体系は `docs/image-generation/manga-prompt-ir.md`**。`prompt_tags` なら **`manga_tag.md`、Step2 文面なら `manga_tag_step2.md` を開いたか**を確認する。
 

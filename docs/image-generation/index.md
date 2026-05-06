@@ -62,11 +62,17 @@ MONOCRI_FORGE_MODEL_FAMILY_DEFAULT=
 # コマンドに --aspect-ratio を付けないとき、Grok の既定（多くは config の 1:1）の代わりに使う。
 # 例: manga_b5_portrait（3:4） / story_vertical（9:16） / 3:4 など
 MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO=
+
+# 漫画ページの色モード既定（monochrome / limited_color / full_color）
+# ページYAMLの color_palette.mode が無いときのフォールバック。
+MONOCRI_MANGA_COLOR_MODE_DEFAULT=monochrome
 ```
 
 優先順位: CLI `--provider` > `.env` 用途別変数 > `config/image_generation.json` の `default_provider`
 
 **漫画バッチの縦横比**: CLI `--aspect-ratio` が **最優先**。未指定かつ実際のプロバイダが `grok_pro` のときだけ `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` が `aspect_ratio_preset` に効く（それ以外のプロバイダでは無視）。
+
+**漫画ページの色モード**: 優先順位は CLI `--color-mode` > ページYAMLの `color_palette.mode` > `.env` の `MONOCRI_MANGA_COLOR_MODE_DEFAULT` > スキーマ既定 `monochrome`。`--color-mode` はその実行だけの上書きで、YAML を自動変更しません。`novel_prompt_ir_validate.py` は `color_palette.mode` と `manga.visual_tags` / `render_instruction` の矛盾を WARNING として出しますが、センターカラーや扉絵だけカラーなどの例外を想定し、通常運用では自動修正・通常エラー化しません。
 
 ---
 

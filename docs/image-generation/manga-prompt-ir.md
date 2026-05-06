@@ -106,6 +106,18 @@ python tools/novel_prompt_ir_export_md.py \
 | （無記載） | **`character_snapshots[]`**（本番では embed または手書きで埋め、バッチと整合） |
 | （無記載） | **`panels[].negative_tags`** / **`panels[].omit_negative_tags`**（任意・**コマ単位 txt2img** 向け。語彙は [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)「コマ別ネガ」） |
 
+### 色モードと `manga.visual_tags`
+
+ページ単位の色モード正本は `color_palette.mode` です。`manga.visual_tags` は生成タグとして効く補助情報なので、原則として次のように揃えます。
+
+| `color_palette.mode` | `manga.visual_tags` の目安 |
+|----------------------|-----------------------------|
+| `monochrome` | `monochrome`, `screentone`, `black and white` など |
+| `limited_color` | `limited_color`, `accent_color`, `spot_color` など。必要ならモノクロ系タグと併用可 |
+| `full_color` | `full_color`, `colorful`, `anime coloring` など。原則 `monochrome` / `screentone` は入れない |
+
+優先順位は、CLI `--color-mode`（その実行だけ） > YAML の `color_palette.mode` > `.env` の `MONOCRI_MANGA_COLOR_MODE_DEFAULT` > スキーマ既定 `monochrome`。`novel_prompt_ir_validate.py` はモードとタグ・`render_instruction` の矛盾を WARNING として出しますが、センターカラーや扉絵だけカラーなどの意図的例外を想定し、通常運用では YAML の自動修正や通常エラー化はしません。
+
 ```yaml
 schema_version: '1.0'
 meta:

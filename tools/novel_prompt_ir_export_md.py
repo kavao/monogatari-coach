@@ -33,6 +33,10 @@ from manga_prompt_ir.scene_prompt import (
     subject_situational_tag_tokens,
     subject_tag_line_token,
 )
+from manga_prompt_ir.color_mode import (
+    VALID_COLOR_MODES,
+    page_color_mode_label,
+)
 
 STYLE_TAGS = ["best_quality", "very_aesthetic", "ultra-detailed", "manga"]
 
@@ -321,6 +325,7 @@ def render_manga_page_section(
     page_number: int,
     novelai_pipe_tags: bool = False,
     apply_paraphrase: bool | None = None,
+    color_mode_override: str | None = None,
 ) -> str:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
@@ -329,11 +334,12 @@ def render_manga_page_section(
     panels = as_list(page.get("panels"))
     reading_order = meta.get("reading_order", "right_to_left")
     panel_layout = manga.get("panel_layout") or f"{len(panels)}コマ構成"
+    color_label = page_color_mode_label(page, override=color_mode_override)
     lines = [
         f"## Page {page_number}",
         "",
         "### Step1",
-        f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
+        f"{color_label}、日本の漫画のコマ割り、1ページ{len(panels)}コマ、読み順: {reading_order}",
         f"ページ構成: {panel_layout}",
         f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
@@ -357,7 +363,7 @@ def render_manga_page_section(
                 "",
             ]
         )
-    lines.extend(["### Step2", f"カラー漫画、日本の漫画のコマ割り、1ページ{len(panels)}コマ。{panel_layout}。numbered panels、読み順は {reading_order}。"])
+    lines.extend(["### Step2", f"{color_label}、日本の漫画のコマ割り、1ページ{len(panels)}コマ。{panel_layout}。numbered panels、読み順は {reading_order}。"])
     for panel in panels:
         if isinstance(panel, dict):
             lines.append(
@@ -373,6 +379,7 @@ def render_manga_md(
     title: str,
     novelai_pipe_tags: bool = False,
     apply_paraphrase: bool | None = None,
+    color_mode_override: str | None = None,
 ) -> str:
     lines = [f"# {title}", ""]
     ir_paths = [path for path, _page in pages if path is not None]
@@ -396,6 +403,7 @@ def render_manga_md(
                 page_number=index,
                 novelai_pipe_tags=novelai_pipe_tags,
                 apply_paraphrase=apply_paraphrase,
+                color_mode_override=color_mode_override,
             ).rstrip()
         )
         lines.append("")
@@ -444,6 +452,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Step2 自動置換を無効にする（環境変数より優先）",
     )
+    parser.add_argument(
+        "--color-mode",
+        choices=VALID_COLOR_MODES,
+        default=None,
+        help=(
+            "この export 実行だけの色モード上書き。YAML は書き換えず、"
+            "Step1/Step2 の冒頭文にだけ反映する"
+        ),
+    )
     args = parser.parse_args(argv)
 
     characters: dict[str, dict[str, Any]] = {}
@@ -479,6 +496,7 @@ def main(argv: list[str] | None = None) -> int:
                 title=args.title,
                 novelai_pipe_tags=args.novelai_pipe_tags,
                 apply_paraphrase=step2_px,
+                color_mode_override=args.color_mode,
             ),
         )
     elif not characters:

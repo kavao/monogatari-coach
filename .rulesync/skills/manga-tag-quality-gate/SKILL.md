@@ -165,6 +165,17 @@ targets: ["*"]
 - Step2（または `step2_summary`）に **コマ番号だけ**あり、**段・大小が一切無い**。
 - Step1 相当で **コマ数・コマ割り宣言が無く**、`panel_id` 列だけ並んでいる。
 
+### 9. 色モード（モノクロ／限定色／カラー）の確認
+
+**目的**: `color_palette.mode` と `manga.visual_tags`、`render_instruction` の方向が食い違うと、互換 Markdown やページ生成プロンプトの冒頭文だけがカラー／モノクロに寄ってしまう。ページYAMLの `color_palette.mode` を正本とし、矛盾は `novel_prompt_ir_validate.py` の **WARNING** で確認する。
+
+**YAML で追加確認**
+
+- `color_palette.mode` が `monochrome` / `limited_color` / `full_color` のどれかとして意図どおりか。
+- `manga.visual_tags` / `manga.genre_tags` / `panels[].prompt_tags` に、モードと逆向きのタグが混ざっていないか。
+- `render_instruction.prompt_header` 等に「カラー」「モノクロ」など、モードと逆向きの文言が残っていないか。
+- センターカラー、巻頭カラー、扉絵だけカラー、一部コマだけ限定色などの例外は、WARNING を確認したうえで意図的に残してよい。通常運用では自動修正・通常エラー化しない。
+
 ## 改稿手順
 
 1. **`_how_to/manga.md` の「互換出力: step1」「互換出力: step2」** を開き、上記 §6・§7 の要約と照合できる状態にする。
@@ -173,8 +184,9 @@ targets: ["*"]
 4. §6（step1 準拠）で具体度・1コマ1タグ・レイアウト入口を確認する。
 5. §7（step2 準拠）で抽象化の下限・段・大小・`step2_summary` の有無を確認する。
 6. §8 で `panel_layout` / `reading_order` / `composition.layout` を確認する。
-7. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
-8. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
+7. §9 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
+8. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
+9. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
 
 ## 禁止事項
 
