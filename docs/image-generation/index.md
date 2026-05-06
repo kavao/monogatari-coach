@@ -91,14 +91,24 @@ Forge / NovelAI はコマ生成向け。step1-pages / step2-pages の正式対�
 
 ### 背景資料生成（background-concepts）
 
-`manga/pages/*.yaml` の `background_concepts[]` は、漫画本番のコマ絵ではなく、場所・光源・画角・物品配置を固めるための背景資料です。人物を主役にせず、必要な場合もスケール参照程度に留めます。
+コマ絵・ページ絵を描く前に、場所・光源・構図・物品配置を固めるための背景資料画像を生成します。人物を主役にせず、空間設計を先に確定することで、後続のコマ生成・ページ生成の参照素材になります。
+
+チャットへの指示:
+
+```text
+漫画ページの背景資料を生成してください。
+```
+
+Monogatari Coach は `--dry-run` で内容を提示してから、承認を受けて本番実行します。
+
+**技術仕様:**
 
 - 入力: `manga/pages/*.yaml` の `background_concepts[]`
 - 出力分類: `backgrounds`
 - 保存先: `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/`
 - ファイル接頭辞: `<manga_stem>_p<page>_<concept_id>`
 - 既定 provider: `grok`（`.env` の `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` があれば優先）
-- 後続利用: 生成結果を見て、採用した場所・光・小道具・構図を YAML の `scene` / `background_concepts[]` / `render_instruction` へ戻す
+- 後続利用: 採用した場所・光・小道具・構図を YAML の `scene` / `background_concepts[]` / `render_instruction` へ書き戻す
 
 複数視点を作る場合は `concept_id` に `establishing` / `wide` / `close` / `reverse` / `overhead` などの視点語を含めると、メタ情報と画像ファイルを追跡しやすいです。
 

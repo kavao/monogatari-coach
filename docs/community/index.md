@@ -1,22 +1,26 @@
 # Community
 
-周辺情報をひとまとめにしたページです。
+Monogatari Coach のサポート情報・参加案内・参考リンクをまとめています。
 
-## サポート対象
+## サポート対象の動作環境
 
-現時点では、Cursor、Claude CLI、Codex、Kilo code を中心に確認しています。
+現時点では、以下の環境での動作を中心に確認しています。
 
-## ベータ実験
+- Claude Code CLI
+- Cursor
+- Codex
+- Kilo code
 
-Monogatari Coach の実証実験への参加案内です。
+## ベータ実験への参加
 
-- VS Code / Cursor / Antigravity / Kilo code ユーザー向け
-- 創作経験者、とくに小説執筆者を歓迎
+Monogatari Coach を実際の小説制作に使いながらフィードバックをもらう実証実験に参加できます。
 
-参加先:
+- 対象: VS Code / Cursor / Antigravity / Kilo code / Codex / Claude Code CLI ユーザー等
+- 歓迎: 創作経験者、とくに小説執筆者、漫画作者
 
-- Discord:
-  https://discord.gg/8Dtffz7X7f
+参加先（Discord）:
+
+- [discord.gg/8Dtffz7X7f](https://discord.gg/8Dtffz7X7f)
 
 ## 推奨プラグイン
 

@@ -1,6 +1,10 @@
 # Docs
 
-Monogatari Coach のドキュメント入口です。ルートの `README.md` は概要と最短導線に絞り、詳しい説明はこの `docs/` 配下へ整理しています。
+**Monogatari Coach** は、AI（Claude / Codex など）を使った小説執筆を一元管理するフレームワークです。企画・設計・執筆・清書・書評・画像生成まで、制作のすべてのフェーズをチャット上の指示だけで進められます。
+
+このドキュメントは、Monogatari Coach を使う人向けの操作マニュアルです。ルートの `README.md` は概要と最短導線に絞り、詳しい説明はこの `docs/` 配下へ整理しています。
+
+---
 
 ## 目次
 
@@ -16,8 +20,8 @@ Monogatari Coach のドキュメント入口です。ルートの `README.md` �
   Monogatari Coach の各モードと制作フロー
 - [Project Structure](project-structure/index.md)
   リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
-- [Operations](operations/index.md)
-  rulesync、査証ログ、ローカル試行、日常運用
+- [Tools（ツールリファレンス）](tools/index.md)
+  `tools/` 配下の全スクリプトと CLI 例、rulesync・howto_init・tools_temp の操作方法
 - [Community](community/index.md)
   サポート、ベータ実験、推奨プラグイン、謝辞
 
@@ -29,6 +33,9 @@ Monogatari Coach のドキュメント入口です。ルートの `README.md` �
   [`/.rulesync/skills/`](../.rulesync/skills/)
 - 創作技法テンプレートの正本:
   [`/_how_to.example/`](../_how_to.example/)
+
+- [Contributing（docs への追記・修正ガイド）](contributing.md)
+  docs/ に新しいページを追加・修正するときの記述ルール
 
 ## 読み進め方
 

@@ -26,7 +26,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import yaml
 
@@ -1471,7 +1471,7 @@ def iter_manga_jobs(
     manga_dir = novel_dir / "manga"
     if not manga_dir.is_dir():
         raise FileNotFoundError(f"manga/ がありません: {manga_dir}")
-    all_jobs: list[dict[str, str]] = []
+    all_jobs: list[dict[str, Any]] = []
     character_anchors: list[dict[str, object]] = (
         [] if no_character_anchors else load_character_anchors(novel_dir)
     )
@@ -1552,7 +1552,7 @@ def iter_yaml_manga_jobs(
                 f"manga/pages/{only_stem}_p*.yaml が見つかりません: {pages_dir}"
             )
 
-    all_jobs: list[dict[str, str]] = []
+    all_jobs: list[dict[str, Any]] = []
     for index, path in enumerate(paths, start=1):
         page = load_yaml(path)
         panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
@@ -1564,7 +1564,13 @@ def iter_yaml_manga_jobs(
         color_label = page_color_mode_label(page, override=color_mode_override)
         if source == "background-concepts":
             for job in yaml_background_concept_jobs(page, stem, page_num, path):
-                job["output_dir"] = (base / job.pop("output_subdir", "backgrounds")).as_posix()
+                output_subdir_any = job.pop("output_subdir", "backgrounds")
+                output_subdir = (
+                    output_subdir_any
+                    if isinstance(output_subdir_any, str)
+                    else str(output_subdir_any)
+                )
+                job["output_dir"] = (base / output_subdir).as_posix()
                 all_jobs.append(job)
         elif source == "step2-pages":
             body = yaml_page_step2_text(

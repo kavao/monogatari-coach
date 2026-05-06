@@ -8,6 +8,50 @@
 
 ---
 
+## このドキュメントを使う場面（人間の操作視点）
+
+### どんな場面で使うか
+
+- 小説本文（`_novel_text/`）が書けていて、それを**漫画ページとして画像化したい**とき
+- Monogatari Coach に「漫画タグを作って」と指示したあと、**何が生成されて、どこを確認すればよいか**を知りたいとき
+- 生成した YAML を検証・修正して、画像生成バッチに渡すまでの手順を確認したいとき
+
+前提条件: `character.md` と `tag/characters/*.yaml` にキャラクターの外見定義が揃っていること。
+
+### チャットへの指示文
+
+```
+本文から漫画タグを作成してください。
+```
+
+これだけで動きます。Monogatari Coach は、ルールに従って本文・キャラクター定義の参照から YAML 作成・検証・互換出力までを自動で進めます。
+
+対象の章や追加条件を指定したいときは、以下のように補足できます。
+
+```
+novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫画タグを作成してください。
+```
+
+### Monogatari Coach が行うこと
+
+1. 本文を読んでコマ・ページに分解する
+2. `novels/<作品>/manga/pages/manga_XX_pYY.yaml` を作成する（ページ定義の正本）
+3. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で型・参照・品質を検証する
+4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する
+
+### ユーザーが確認できるもの
+
+| 確認対象 | 場所 |
+|---------|------|
+| 作成された YAML（正本） | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
+| 検証結果（型・品質の警告） | コンソール出力 |
+| 互換 Markdown（可読副本） | `novels/<作品>/manga/manga_XX.md`（出力した場合のみ） |
+| 画像の保存先 | `novels/<作品>/manga/_assets/<manga_XX>/`（画像生成後） |
+
+画像生成を実行するときは [Image Generation](index.md) の手順に従い、`--dry-run` で確認してから本番実行します。
+
+---
+
 ## 正本と入出力
 
 | 役割 | パス |
@@ -86,25 +130,24 @@ python tools/novel_prompt_ir_export_md.py \
 
 以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
 
-### 旧版サンプルから主な差分（よくハマる点）
+### スキーマ主要フィールドの説明
 
-| 旧例 | 現在のスキーマ側 |
-|------|------------------|
-| `manga_id` / `page_number` | ファイル名（`manga_01_p01.yaml` 等）と YAML 内の `meta` で表現。ルートに `manga_id` は無い |
-| `meta.purpose` / `read_order` | `meta.intent: manga_page` と **`reading_order: right_to_left`**（または `left_to_right`）。ほかに `aspect_ratio`・`page_count` |
-| `manga.style`（一文） | **`manga.genre_tags[]`**・**`visual_tags[]`** と **`panel_layout`**（画風・モノクロ／カラーはここと `color_palette`） |
-| `scene.time` | **`time_of_day`**（任意）。画像用英語は **`time_of_day_en`** |
-| `scene.background_tags` | `scene` には無い（背景タグ列は `manga.background_tags[]` も可）。**`background_notes`** は編集用に日本語可。**タグ行・バッチは `background_notes_en` のみ**（日本語にはフォールバックしない。欠けると `MangaPagePrompt` 検証エラー）。または **`prompt_tags`**／**`background_concepts[]`** |
-| `panels[].panel_number` | **`panel_id`**（整数） |
-| `subjects[].action` | **`pose_action`**。**`description`** は必須文字列（キャラでも背景オブジェクトでも） |
-| `composition.camera` / `shot_type` | **`composition`** と **`camera`** は別オブジェクト。アングルは **`camera.angle`**、画角は **`camera.shot_size`** など |
-| `text.dialogue[].line` | **`content`** |
-| `prompt_tags` が1本の文字列 | **`prompt_tags: []` は文字列のリスト** |
-| （無記載） | **`render_instruction`**（task / prompt_header / panel_policy / character_policy が実質の運用で常用） |
-| （無記載） | **`scene.location_en` は必須（非空）**。`background_notes` / `time_of_day` / `weather` を書いた場合は対応する **`*_en` も必須**。背景 subject の **`description_en`** など（詳細は [manga-prompt-ir/SKILL.md](../../.rulesync/skills/manga-prompt-ir/SKILL.md)） |
-| （無記載） | **`color_palette.mode`**（`monochrome` / `limited_color` / `full_color`） |
-| （無記載） | **`character_snapshots[]`**（本番では embed または手書きで埋め、バッチと整合） |
-| （無記載） | **`panels[].negative_tags`** / **`panels[].omit_negative_tags`**（任意・**コマ単位 txt2img** 向け。語彙は [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)「コマ別ネガ」） |
+| フィールド | 説明 |
+|-----------|------|
+| ファイル名 / `meta` | ファイル名（`manga_01_p01.yaml` 等）で章・ページを表現。`meta.intent: manga_page`、`reading_order: right_to_left`（または `left_to_right`）。ほかに `aspect_ratio`・`page_count` |
+| `manga.genre_tags[]` / `manga.visual_tags[]` / `manga.panel_layout` | 画風・モノクロ／カラーはここと `color_palette` で設定 |
+| `scene.time_of_day` | 任意。画像用英語は `time_of_day_en` |
+| `scene.background_notes` / `background_notes_en` | `background_notes` は編集用に日本語可。**タグ行・バッチは `background_notes_en` のみ**（日本語にはフォールバックしない。欠けると `MangaPagePrompt` 検証エラー）。または `prompt_tags` / `background_concepts[]` |
+| `panels[].panel_id` | 整数。コマの識別子 |
+| `subjects[].pose_action` / `subjects[].description` | `description` は必須文字列（キャラでも背景オブジェクトでも） |
+| `composition` / `camera` | 別オブジェクト。アングルは `camera.angle`、画角は `camera.shot_size` など |
+| `text.dialogue[].content` | 台詞のテキスト本体 |
+| `prompt_tags: []` | 文字列のリスト（単一文字列ではなく配列） |
+| `render_instruction` | `task` / `prompt_header` / `panel_policy` / `character_policy` が実質の運用で常用 |
+| `scene.location_en`（必須・非空） | `background_notes` / `time_of_day` / `weather` を記載した場合は対応する `*_en` も必須。背景 subject の `description_en` なども同様（詳細は [manga-prompt-ir/SKILL.md](../../.rulesync/skills/manga-prompt-ir/SKILL.md)） |
+| `color_palette.mode` | `monochrome` / `limited_color` / `full_color` |
+| `character_snapshots[]` | 本番では `novel_prompt_ir_embed_snapshots.py` で埋めるか手書きで整合させる |
+| `panels[].negative_tags` / `panels[].omit_negative_tags` | 任意・コマ単位 txt2img 向け。語彙は [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)「コマ別ネガ」 |
 
 ### 色モードと `manga.visual_tags`
 

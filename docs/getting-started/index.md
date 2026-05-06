@@ -1,6 +1,8 @@
 # Getting Started
 
-Monogatari Coach をローカルで使い始めるための最短手順です。
+このガイドを読むと、Monogatari Coach をローカル環境で動かすための初期設定が完了します。所要時間は 10〜15 分が目安です。
+
+Monogatari Coach は、チャットへの指示だけで小説の企画・執筆・画像生成までを進めるフレームワークです。AI が作業を担い、ユーザーは「何を作るか」の判断に集中できます。
 
 ## 1. rulesync を入れる
 
@@ -81,9 +83,6 @@ uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 
 ## 次に読む
 
-- 画像生成設定:
-  [../image-generation/index.md](../image-generation/index.md)
-- ワークフロー全体:
-  [../workflow/index.md](../workflow/index.md)
-- 運用上の正本:
-  [../../.rulesync/rules/overview.md](../../.rulesync/rules/overview.md)
+- チャットからどう指示するか知りたい → [ワークフロー（指示テンプレ付き）](../workflow/instruction-driven.md)
+- 画像生成の設定を行いたい → [Image Generation](../image-generation/index.md)
+- リポジトリ構成を把握したい → [Project Structure](../project-structure/index.md)
