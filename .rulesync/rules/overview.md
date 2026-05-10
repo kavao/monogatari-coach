@@ -79,7 +79,8 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
     4. `rewrite.md`
        - 文章校正の時に使う
     5. `name_creature.json`
-       - 人名、クリーチャー名を考えるときの参考にする
+       - 人名・クリーチャー名の語感・材料として参照する。
+       - 候補の抽選・整理は、即席の連想だけに頼らず **character-naming**・**weighted-pick** と **`tools/json_weighted_pick.py`** を優先できる（最終採否と命名禁止は作品文脈・ユーザー指示が優先。詳細は直後の「人物命名時の原則」）。
     6. `world_wear.md`
        - 世界の色彩や、人物デザインを考えるときの参考にする
     7. `reader.md`
@@ -92,12 +93,12 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
        - マンガのコマ割り・タグ。`manga_tag.md` は英語タグ語彙（Step1 中心）。**Step2（ページ生成・`step2_summary`）** 改稿時は `manga_tag_step2.md`（雛形: `_how_to.example/manga_tag_step2.md`）を併読。
     11. manga-prompt-ir
        - キャラクタータグ・漫画ページタグを YAML/JSON/Pydantic の中間表現として扱うための正本スキル。新規の構造化タグ生成では `.rulesync/skills/manga-prompt-ir/` を優先する。`tag/<romaji>.md` や `manga/manga_XX.md` は **YAML IR からのエクスポートによる人間向けの副本**（可読・手作業・既存バッチ連携）として扱う。
-12. meta.md
+    12. meta.md
        - 外部投稿用メタ（カクヨム等）と内部管理用メタ（執筆ステータス、AI引き継ぎ指示）を管理します。執筆の節目で必ず更新・参照します。
-  - **編集時の原則**:
-    - **正本は `_how_to.example/`** にある。
-    - **`_how_to/` はユーザーがその場で改修する作業領域**であり、作品や運用に合わせたローカル調整を入れてよい。
-    - その調整を今後の基準として残したい場合は、**`_how_to.example/` に反映するかを検討してから**ルール化する。
+       - **編集時の原則**:
+         - **正本は `_how_to.example/`** にある。
+         - **`_how_to/` はユーザーがその場で改修する作業領域**であり、作品や運用に合わせたローカル調整を入れてよい。
+         - その調整を今後の基準として残したい場合は、**`_how_to.example/` に反映するかを検討してから**ルール化する。
 
 #### 人物命名時の原則
 - 人物に名前を付けるときは、原則として `.rulesync/skills/character-naming/SKILL.md` と `_how_to/name_creature.json` などの命名資料を参照する。

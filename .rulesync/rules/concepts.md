@@ -37,6 +37,22 @@ globs: ["**/*"]
 | キャラクタータグ | `novels/<作品>/tag/characters/*.yaml` | `tag/<romaji>.md` |
 | 漫画ページ | `novels/<作品>/manga/pages/*.yaml` | `manga/manga_XX.md` |
 
+## NovelAI 向けタグ分離（パイプ区切り）
+
+定義:
+NovelAI での生成において、画風・品質タグ（ベース）とキャラクター固有タグを分離し、一貫性を高めるための形式である。
+
+必須:
+
+- 互換Markdown（`tag/*.md`, `manga_XX.md`）のタグ行では、`ベースタグ | キャラクタータグ` の形式を標準とする。
+- `novel_prompt_ir_export_md.py` でエクスポートする際は、原則として `--novelai-pipe-tags` を付与する。
+- パイプ `|` の前後はカンマ区切りとし、キャラクター固有の特徴（髪、目、衣装など）を後半に配置する。
+
+参照:
+
+- Markdown 互換層: `.rulesync/skills/novel-tag-md-format/SKILL.md`
+- 漫画 IR: `.rulesync/skills/manga-prompt-ir/SKILL.md`
+
 参照:
 
 - ルール作成規約: `.rulesync/rules/rule-authoring.md`
