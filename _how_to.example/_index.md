@@ -1,4 +1,7 @@
 # - 創作技法ファイル (how_to/)
+0. **（ユーザスキル・雛形）** [`skills/_index.md`](skills/_index.md)
+   - リポジトリに同梱する**雛形**の一覧。初回はここを **`_how_to/skills/<名前>/` にコピー**してから編集する（正本と副本の扱いは **`.rulesync/rules/concepts.md`**「正本と副本」）。
+   - 既にコピー済みの**作業用**一覧は **`_how_to/skills/_index.md`** を正とする（雛形にないスキルが列挙されることもある）。
 1. novelcore.md
    - 一般的な小説の文法
 3. novel_structure.md
@@ -35,3 +38,5 @@
 13. meta.md
    - 小説のメタ情報を管理する。外部投稿用（キャッチコピー、紹介文、タグ）と内部管理用（執筆ステータス、AIへの引き継ぎ指示、伏線管理）の両方を扱う。
    - 執筆の開始時・終了時に参照・更新することで、長期的な執筆の継続性を担保する。
+14.（カクヨム向けルビ）雛形 `skills/kakuyomu-convert/`
+   - ユーザ作業用に `_how_to/skills/kakuyomu-convert/` へコピーして使う。最短手順は `USER_HINTS.md`（**コピー**／**カクヨムプラグイン**の2点）。`kakuyomu.csv.example` は同梱。実装は `_how_to/tools/kakuyomu_ruby_apply.py`

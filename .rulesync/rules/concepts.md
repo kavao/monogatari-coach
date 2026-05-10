@@ -9,6 +9,11 @@ globs: ["**/*"]
 このファイルは、複数のルール・スキル・docs にまたがる概念の短い正本を置く。
 長い例、コマンド、provider 別の詳細、トラブルシュートは `docs/` へ置く。
 
+## 自己発展型ルールガバナンス
+
+定義:
+**正本（Policy-as-Code）**を短い概念として固定し、**指示（Instruction-driven）**で運用を拡張しつつ、**機械検証**と**追記ログ**で「完了」を拘束して、再現可能に発展する運用方式。
+
 ## 正本と副本
 
 定義:
@@ -125,6 +130,23 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 - docs 記述ルール: `.rulesync/rules/docs-writing.md`
 - `_how_to/` の説明: `docs/project-structure/how-to-area.md`
+
+## 共有ツールとユーザ用 Python（`tools/` と `_how_to/tools/`）
+
+定義:
+リポジトリ直下の **`tools/`** は**共有・正規運用**の公式スクリプトの置き場である。**`_how_to/tools/`** は **`_how_to/skills/` に付随するユーザワークフロー**用の Python を置く領域であり、ユーザーが保守する。
+
+必須:
+
+- **`.rulesync/skills/<skill_name>/` には Python を置かない**（`SKILL.md`・`MIGRATION.md` など Markdown のみ）。公式スキルが Python を要するときは **`tools/`** に実装する。
+- **`_how_to/skills/<名前>/SKILL.md`** とセットで動かす**個人・試行ワークフロー固有の変換・補助スクリプト**は **`_how_to/tools/`** に置く。`SKILL.md` からは `_how_to/tools/<script>.py` を参照してよい。
+- **`_how_to/tools/` のスクリプトをリポジトリ全体の既定前提として扱わない**。CI・必須チェック・全作品共通の手順に組み込む場合は、意図を整理したうえで **`tools/`** へ昇格するか、公式スキルとして再配置する。
+- **短命の試行**は引き続き **`tools_temp/`** を使う（`_how_to/tools/` は、運用上わりと長く残すユーザスクリプト向け）。
+
+参照:
+
+- ローカル試行: ルート `readme.md` の「ローカル試行用」、`tools_temp/README.md`
+- 入口ルールの詳細: `.rulesync/rules/overview.md` の「スキルへの Python 追加ルール」「`_how_to/tools/`（ユーザ用 Python）」
 
 ## 画像生成: dry-run から本番まで
 

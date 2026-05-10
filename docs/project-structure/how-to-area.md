@@ -58,6 +58,26 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 ---
 
+## `_how_to/tools/`（ユーザ用 Python）
+
+**`_how_to/skills/`** のユーザスキルと一体で使う Python スクリプトは **`_how_to/tools/`** に置きます。リポジトリ全体の共有ツールは **`tools/`**（リポジトリ直下）です。
+
+- 正本ルール: [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「共有ツールとユーザ用 Python」
+- 入口と昇格の考え方: [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) の「`_how_to/tools/`（ユーザ用 Python）」
+- 案内: [`_how_to/tools/README.md`](../../_how_to/tools/README.md)
+
+短命の試行は **`tools_temp/`** を使います（`_how_to/tools/` は運用上そこそこ長く残すスクリプト向け）。
+
+---
+
+## `_how_to/skills/`（ユーザスキル）
+
+**公式スキル（`.rulesync/skills/`）ではない**、手書きの手順置き場です。雛形は **`_how_to.example/skills/<名前>/`**、作業用にコピー・編集する先は **`_how_to/skills/<名前>/`** です。一覧は各 `skills/_index.md` から辿れます。
+
+詳細・索引・具体例（カクヨムルビ連携など）は **[ユーザスキルと雛形の置き場](../workflow/user-skills.md)** を参照してください。
+
+---
+
 ## `_index.md` で参照するファイルを管理する
 
 `_how_to/_index.md` がこの領域の目次です。どのファイルをLLMが参照するかはこのファイルで制御できるため、**ユーザーが自由に編集・カスタムしてよい**。
@@ -69,4 +89,5 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 ## 参照先
 
 - 正本の所在ルール: [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md)（「`_how_to/` と `docs/` の役割の違い」節）
+- ユーザスキル（プラグイン相当）の全体像: [`/docs/workflow/user-skills.md`](../workflow/user-skills.md)
 - 全体のプロジェクト構成: [`/docs/project-structure/index.md`](index.md)

@@ -40,11 +40,17 @@ globs: ["**/*"]
 
 ### スキルへの Python 追加ルール（重要）
 - **`.rulesync/skills/<skill_name>/` に Python ファイルを置かない。** スキルディレクトリに置けるのは `SKILL.md`・`MIGRATION.md` などの **Markdown 文書のみ**とする。
-- スキルに Python 実装が必要な場合は、**`tools/` 配下に正式ツールとして配置する**。
+- **公式スキル**（`.rulesync/skills/`）に Python 実装が必要な場合は、**`tools/` 配下に正式ツールとして配置する**。
   - 単独スクリプト: `tools/<tool_name>.py`
   - パッケージ（複数モジュール）: `tools/<package_name>/`（`__init__.py` を置き Python パッケージとして扱う）
-- スキルの `SKILL.md` からは `tools/` のパスを参照する形で記述する（例: `tools/manga_prompt_ir/schemas/character.py`）。
+- 公式スキルの `SKILL.md` からは `tools/` のパスを参照する形で記述する（例: `tools/manga_prompt_ir/schemas/character.py`）。
 - **Git 管理外にする場合**は `.gitignore` で `tools/<package_name>/` を除外し、`git rm --cached` でインデックスからも外す。
+
+### `_how_to/tools/`（ユーザ用 Python）
+- **`_how_to/skills/<名前>/`** のユーザスキルと一体で使う **Python は `_how_to/tools/` に置いてよい**。横断正本は **`.rulesync/rules/concepts.md`** の「共有ツールとユーザ用 Python」。
+- **`_how_to/tools/`** は **ユーザー領域の保守対象**であり、共有の既定ツール（`tools/`）の代替ではない。リポジトリ全体の前提ルート・CI に組み込むときは **`tools/` へ昇格**するか公式スキル化する。
+- **短命の試行**は **`tools_temp/`** を使う（`_how_to/tools/` は運用上そこそこ長く残すスクリプト向け）。
+- 案内文は **`_how_to/tools/README.md`** を正とする。
 
 ---
 

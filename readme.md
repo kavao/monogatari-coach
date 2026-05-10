@@ -57,6 +57,10 @@ MONOCRI_GROK_MODEL_TIER_DEFAULT=standard
   [`_how_to.example/`](_how_to.example/)
 - ローカル試行:
   [`tools_temp/README.md`](tools_temp/README.md)
+- ユーザ用 Python（`_how_to/skills/` 付随）:
+  [`_how_to/tools/README.md`](_how_to/tools/README.md)
+- ユーザスキル（プラグイン相当）:
+  [docs/workflow/user-skills.md](docs/workflow/user-skills.md)
 
 ## 日常運用でよく使うコマンド
 

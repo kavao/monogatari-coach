@@ -4,9 +4,11 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 まずは **指示文（コピペ）**で進められるページを起点にしてください。
 
 - **最重要**: [指示出しベースのワークフロー](instruction-driven.md)
+- **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
 - **評価結果の保存**: [Reader Output](reader-output.md)
+- **運用の骨格**: [自己発展型ルールガバナンス](self-evolving-governance.md)
 
 運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
 
@@ -31,6 +33,10 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **執筆前にプロジェクトの不足がないか確認します。** 可能なら `tools/novel_project_check.py` で機械チェックします。
 - **文字数の根拠を統一します。** 文字数は `tools/novel_char_count.py` の結果を正として扱います。
 - **成果物の置き場所を混ぜません。** Tag / Manga / Meta は作品フォルダ内で分離して管理します。
+
+## ユーザスキル（プラグイン相当）
+
+公式の `.rulesync/skills/` とは別に、投稿変換や個人用の手順を **`_how_to/skills/<名前>/SKILL.md`** で持てます。雛形は **`_how_to.example/skills/`**、スクリプトは **`_how_to/tools/`** に置くのが既定です。概要・索引・具体例は **[ユーザスキルと雛形の置き場](user-skills.md)** を参照してください。
 
 ## 詳細参照
 

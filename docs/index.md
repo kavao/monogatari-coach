@@ -18,6 +18,8 @@
   タグ作業用テンプレ・実例・生成モード別の運用メモ
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
+- [ユーザスキル（プラグイン相当）](workflow/user-skills.md)
+  `_how_to/skills/` と `_how_to.example/skills/` の関係、ツールの置き場（例: カクヨムルビ）
 - [Source Material Intake](workflow/source-material-intake.md)
   既存資料を作品フォルダへ展開するときの手順と保存先
 - [Planning](workflow/planning.md)
