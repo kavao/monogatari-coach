@@ -173,11 +173,33 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 ---
 
+### `image_provider_novel_illustration_batch.py` — 挿絵・表紙一括生成
+
+`illustrations/pages/*.yaml` を参照して、挿絵・章扉・表紙画像を一括生成します。まず dry-run でプロンプト、provider、保存先を確認します。
+
+```bash
+# 挿絵・表紙生成（dry-run）
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 --dry-run
+
+# 対象 stem を絞る場合
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --illustration-stem illustration_01 --dry-run
+
+# prompt formatter を明示する場合
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --illustration-stem illustration_01 \
+  --prompt-formatter natural_sections --dry-run
+```
+
+生成画像の保存先: `novels/<作品>/illustrations/_assets/<illustration_XX>/`
+
+---
+
 ## レイアウト・フォルダ管理
 
 ### `novel_image_layout.py` — 画像フォルダの一括作成
 
-キャラクター画像・漫画コマ画像の保存フォルダを一括で作成します。
+キャラクター画像・漫画コマ画像・背景資料・挿絵/表紙の保存フォルダを一括で作成します。
 
 ```bash
 # 作品フォルダ内の画像フォルダを一括作成
@@ -262,6 +284,18 @@ uv run python sync_rules.py
 
 ```bash
 uv run python howto_init.py
+```
+
+既に `_how_to/` や `.env` がある場合は上書きしません。`.env.example` がない場所で実行した場合、`.env` は作れません。
+
+作業場所が正しいか確認するには、次を実行します。
+
+```powershell
+Get-Location
+Test-Path .env.example
+Test-Path .env
+Get-ChildItem -Force .env*
+git status --short
 ```
 
 ---

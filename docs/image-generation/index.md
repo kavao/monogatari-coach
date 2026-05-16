@@ -97,6 +97,59 @@ MONOCRI_MANGA_COLOR_MODE_DEFAULT=monochrome
 
 ---
 
+## API キーの取得先
+
+API キーやトークンは `.env` に保存します。公開リポジトリ、チャット、スクリーンショットに貼らないでください。
+
+### NovelAI
+
+`provider=novelai` を使う場合は、`.env` の `NOVELAI_ACCESS_TOKEN` に NovelAI の Persistent API Token を入れます。
+
+NovelAI 公式ドキュメントでは、User Settings の Account 画面にある **Get Persistent API Token** から API 用トークンを取得できます。新しいトークンを生成すると古いトークンは無効になるため、既に別ツールで使っている場合は更新漏れに注意します。
+
+- 公式: [NovelAI Account settings](https://docs.novelai.net/en/text/usersettings/account/)
+- `.env`:
+
+```dotenv
+NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
+```
+
+### xAI / Grok
+
+`provider=grok` または `provider=grok_pro` を使う場合は、`.env` の `XAI_API_KEY` に xAI Console の API キーを入れます。
+
+xAI 公式 Quickstart では、xAI アカウントを作成し、API Console の API Keys page でキーを発行して `XAI_API_KEY` として使う流れが示されています。利用にはクレジットやモデル利用条件が関係するため、料金・利用可能モデルは公式 Console と Pricing を確認してください。
+
+- 公式: [xAI Quickstart](https://docs.x.ai/developers/quickstart)
+- Console: [xAI API Console](https://console.x.ai/)
+- `.env`:
+
+```dotenv
+XAI_API_KEY=取得したAPIキー
+```
+
+### OpenRouter
+
+`provider=openrouter` を使う場合は、`.env` の `OPENROUTER_API_KEY` に OpenRouter の API キーを入れます。
+
+OpenRouter 公式ドキュメントでは、API Keys 画面でキーを作成し、直接 API を呼ぶ場合は `Authorization: Bearer <API key>` として使う流れが示されています。OpenRouter のキーには任意で credit limit を設定できます。利用するモデルごとに料金・提供元・利用可否が異なるため、実行前に OpenRouter のモデルページとクレジット状況を確認してください。
+
+- 公式: [OpenRouter Authentication](https://openrouter.ai/docs/api-reference/authentication)
+- API keys: [OpenRouter Keys](https://openrouter.ai/keys)
+- `.env`:
+
+```dotenv
+OPENROUTER_API_KEY=取得したAPIキー
+```
+
+設定後は、次で不足を確認します。
+
+```bash
+python tools/env_check.py
+```
+
+---
+
 ## provider別 prompt formatter
 
 `config/image_generation.json` の `providers.*.prompt_formatter` で、同じ YAML IR を provider ごとに違う形へ整形します。

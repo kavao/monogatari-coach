@@ -17,41 +17,58 @@ Monogatari Coach は、小説執筆の企画、設計、執筆、推敲、評価
 
 ## Quick Start
 
-1. Node.js を導入
+以降のコマンドは、clone したリポジトリのルートで実行します。
+
+1. リポジトリを取得
+
+```bash
+git clone https://github.com/kavao/monocri.git
+cd monocri
+```
+
+2. Node.js を導入
 
 Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出します。`rulesync` や `pnpm` のグローバルインストールは不要です。
 
-2. `uv` を導入して初回セットアップ
+3. `uv` を導入して初回セットアップ
 
 ```bash
+uv sync
 uv run python howto_init.py
 ```
 
-3. `.env` を整える
+4. ルールを再生成
+
+```bash
+corepack pnpm dlx rulesync generate
+
+# 後方互換ラッパーを使う場合
+uv run python sync_rules.py
+```
+
+5. `.env` を整える
+
+`howto_init.py` が `.env.example` から `.env` を未作成時にコピーします。画像生成を使う場合は、使う provider に応じて `.env` に API キーを入れます。
 
 ```dotenv
-MONOCRI_ENV_VERSION=2026-05-16
 NOVELAI_ACCESS_TOKEN=
 XAI_API_KEY=
-OPENAI_API_KEY=
-OPENROUTER_API_KEY=
-MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT=novelai
-MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai
-MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro
-MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro
-MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok
-MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT=grok_pro
-MONOCRI_ILLUSTRATION_MODEL_DEFAULT=
-MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT=book_cover
-MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
-MONOCRI_FORGE_MODEL_FAMILY_DEFAULT=flux
-MONOCRI_GROK_MODEL_TIER_DEFAULT=standard
 ```
+
+`NOVELAI_ACCESS_TOKEN` / `XAI_API_KEY` の取得方法と provider 別の設定は [Image Generation](docs/image-generation/index.md) を参照してください。
 
 不足確認:
 
 ```bash
 python tools/env_check.py
+```
+
+`.env.example` が見つからない場合は、別フォルダで実行していないか確認します。
+
+```powershell
+Get-Location
+Get-ChildItem -Force .env*
+git status --short
 ```
 
 ## 主要パス

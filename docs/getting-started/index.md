@@ -4,7 +4,18 @@
 
 Monogatari Coach は、チャットへの指示だけで小説の企画・執筆・画像生成までを進めるフレームワークです。AI が作業を担い、ユーザーは「何を作るか」の判断に集中できます。
 
-## 1. Node.js を入れる
+## 1. リポジトリを clone する
+
+Monogatari Coach のリポジトリを取得し、以降のコマンドを実行する場所へ移動します。
+
+```bash
+git clone https://github.com/kavao/monocri.git
+cd monocri
+```
+
+このガイドのコマンドは、すべて `monocri` のリポジトリルートで実行します。`.env.example`、`howto_init.py`、`tools/` が見える場所です。
+
+## 2. Node.js を入れる
 
 Node.js を導入します。Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出すため、`corepack enable`、`pnpm` のグローバルインストール、`rulesync` のグローバルインストールはいずれも不要です。
 
@@ -13,7 +24,7 @@ Node.js を導入します。Node.js 同梱の Corepack 経由で `pnpm` を都�
 - rulesync:
   https://github.com/dyoshikawa/rulesync
 
-## 2. uv を入れる
+## 3. uv を入れる
 
 Python スクリプト運用は `uv` 推奨です。
 
@@ -26,7 +37,23 @@ Windows PowerShell:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## 3. 初回セットアップ
+## 4. Python 環境を整える
+
+依存関係と `.venv` を作ります。エディタ（Cursor/VSCode）の静的解析が別の Python を見ている場合も、この手順で警告を減らせます。
+
+```bash
+uv sync
+```
+
+エディタで `インポート "pydantic" を解決できませんでした` のような警告が残る場合は、コマンドパレットで `Developer: Reload Window` を実行します。
+
+`.venv` が使えているかだけ確認したい場合は、次を実行します。
+
+```powershell
+.\.venv\Scripts\python.exe -c "import pydantic; print(pydantic.__version__)"
+```
+
+## 5. 初回セットアップ
 
 プロジェクトルートで実行します。
 
@@ -39,37 +66,34 @@ uv run python howto_init.py
 - `_how_to.example/` から `_how_to/` を未作成時にコピー
 - `.env.example` から `.env` を未作成時にコピー
 
-## 3.1 clone → uv sync → reload（エディタの警告を減らす）
+既に `_how_to/` や `.env` がある場合は上書きしません。`.env.example` がない場所で実行した場合、`.env` は作れません。
 
-Monogatari Coach は Python ツール群で `pydantic` などを使います。実行は問題なく動いていても、エディタ（Cursor/VSCode）の静的解析が **別の Python を参照している**と、次のような警告が表示されることがあります。
-
-- `インポート "pydantic" を解決できませんでした`
-
-これは「壊れている」ではなく、**エディタが参照する Python 環境が未確定**なだけです。以下の手順で `.venv` を作り、エディタ側の解析を落ち着かせます。
-
-### 手順
-
-1) リポジトリを clone します。
-
-2) プロジェクトルートで `uv sync` を実行します（依存関係と `.venv` を整えます）。
-
-```bash
-uv sync
-```
-
-3) エディタを再読み込みします（静的解析の参照先を更新します）。
-
-- コマンドパレットで `Developer: Reload Window` を実行します
-
-### 検証（任意）
-
-`.venv` が使えているかだけ確認したい場合は、次を実行します。
+`.env.example` / `.env` が見つからない場合は、まず作業場所を確認します。
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import pydantic; print(pydantic.__version__)"
+Get-Location
+Test-Path .env.example
+Test-Path .env
+Get-ChildItem -Force .env*
+git status --short
 ```
 
-## 4. `.env` を埋める
+`Test-Path .env.example` が `False` の場合は、clone したフォルダとは別の場所で実行しているか、取得した配布物に `.env.example` が含まれていない可能性があります。
+
+## 6. ルールを再生成する
+
+`.rulesync/` のルール・スキルから、AI ツールごとの入口ファイルを生成します。
+
+```bash
+corepack pnpm dlx rulesync generate
+
+# 後方互換ラッパーを使う場合
+uv run python sync_rules.py
+```
+
+`corepack enable` は不要です。Windows では Node.js のインストール先に shim を作ろうとして権限エラーになることがあるため、Corepack から直接 `pnpm` を呼び出します。代替として `npm exec --yes rulesync -- generate` も使えます。
+
+## 7. `.env` を埋める
 
 最低限、使う画像プロバイダに応じてトークンを設定します。
 
@@ -92,7 +116,7 @@ MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT=book_cover
 MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 ```
 
-`.env` の各既定値の意味は [Image Generation](../image-generation/index.md) を参照してください。
+`.env` の各既定値、`NOVELAI_ACCESS_TOKEN` / `XAI_API_KEY` の取得先、provider の使い分けは [Image Generation](../image-generation/index.md) を参照してください。
 
 テンプレート更新後の不足確認:
 
@@ -100,7 +124,20 @@ MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 python tools/env_check.py
 ```
 
-## 5. よく使うコマンド
+## 8. 最小成功チェック
+
+初回導入は、次が通ればひとまず成功です。
+
+```bash
+uv sync
+uv run python howto_init.py
+corepack pnpm dlx rulesync generate
+python tools/env_check.py
+```
+
+`env_check.py` が API キー不足を出す場合でも、まだ画像生成をしないなら設定待ちとして扱えます。使う provider が決まったら `.env` にキーを入れて再実行します。
+
+## 9. よく使うコマンド
 
 初回化:
 

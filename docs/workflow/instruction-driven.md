@@ -23,9 +23,18 @@
 2. 不足があれば「次に実行するコマンド」「`.env` に埋めるべきキー」を一覧で提示する
 3. 問題がなければそのまま制作の目的確認へ進む
 
+API キーの取得先は [Image Generation](../image-generation/index.md#api-キーの取得先) を参照してください。
+
 **使われるツール:**
 
 ```bash
+# リポジトリ取得
+git clone https://github.com/kavao/monocri.git
+cd monocri
+
+# Python 依存関係と .venv を作成
+uv sync
+
 # 初回セットアップ（_how_to/ と .env を未作成時にコピー）
 uv run python howto_init.py
 
@@ -34,6 +43,9 @@ corepack pnpm dlx rulesync generate
 
 # 後方互換ラッパーを使う場合
 uv run python sync_rules.py
+
+# .env の不足確認
+python tools/env_check.py
 ```
 
 ---
@@ -256,7 +268,7 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 
 ## 画像生成（任意）
 
-画像タグや漫画ページは、本文が進んだ段階で別モードとして動かせます。
+画像タグ、漫画ページ、挿絵・表紙は、本文が進んだ段階で別モードとして動かせます。画像生成は必ず `--dry-run` で計画を確認し、ユーザーの承認を受けてから本番実行します。
 
 ### G. キャラクター画像タグを作る（Tag Mode）
 
@@ -336,6 +348,12 @@ python tools/novel_prompt_ir_export_md.py \
   --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml \
   --output-dir novels/NNN_作品名 --manga-stem manga_01 --novelai-pipe-tags
 
+# Step2 の言い換え表を反映してエクスポートする場合
+python tools/novel_prompt_ir_export_md.py \
+  --character novels/NNN_作品名/tag/characters/chara.yaml \
+  --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml \
+  --output-dir novels/NNN_作品名 --manga-stem manga_01 --step2-paraphrase
+
 # 漫画画像フォルダを一括作成 ※ 自動呼び出し
 python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 ```
@@ -378,6 +396,11 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step2-pages \
   --aspect-ratio manga_b5_portrait --dry-run
 
+# ページ生成（dry-run / Step2 言い換え表を適用）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step2-pages \
+  --aspect-ratio manga_b5_portrait --step2-paraphrase --dry-run
+
 # ページ生成（本番）
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step2-pages \
@@ -386,7 +409,83 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 ---
 
-### K. 背景画像（背景資料）を生成する
+### K. 挿絵・表紙の IR を作る（Illustration Tag Mode）
+
+```text
+本文から挿絵タグを作成してください。
+```
+
+表紙を作りたい場合:
+
+```text
+この作品の表紙IRを作成してください。
+```
+
+**このように動きます:**
+1. `_meta.md` で挿絵密度・優先場面・表紙方針を確認する
+2. 本文と `tag/characters/*.yaml` の固定特徴を参照する
+3. `illustrations/pages/illustration_XX_pYY.yaml` に挿絵・表紙の YAML IR を作成する
+4. `meta.intent: illustration` として、漫画ではない一枚絵の作画依頼にする
+5. `tools/novel_prompt_ir_validate.py` で型・品質を検証する
+
+詳細は [挿絵 IR](../image-generation/illustration-prompt-ir.md) を参照。
+
+**使われるツール:**
+
+```bash
+# 画像保存先フォルダを一括作成 ※ 自動呼び出し
+python tools/novel_image_layout.py scaffold novels/NNN_作品名
+
+# 型・参照・品質の検証 ※ 自動呼び出し
+python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
+```
+
+---
+
+### L. 挿絵・表紙を生成する
+
+```text
+挿絵を生成してください。
+```
+
+表紙の場合:
+
+```text
+表紙を生成してください。
+```
+
+**このように動きます:**
+1. `.env` の `MONOCRI_ILLUSTRATION_*` 設定を確認する
+2. provider 別 prompt formatter でプロンプト形式を整える
+3. `--dry-run` でプロバイダ名・プロンプト・保存先をチャットに提示する
+4. ユーザーの「OK」を受けてから本番実行する（承認なしには実行しない）
+5. `novels/<作品>/illustrations/_assets/<illustration_XX>/` に画像が保存されたことを確認して報告する
+
+Grok / OpenAI / OpenRouter 系では、`negative_prompt` を API に直接渡さず `Do not include:` セクションへ統合します。比較したい場合は `--prompt-formatter` で一時上書きできます。
+
+**使われるツール:**
+
+```bash
+# 挿絵・表紙生成（dry-run）
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 --dry-run
+
+# 対象 stem を絞る場合
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --illustration-stem illustration_01 --dry-run
+
+# formatter を明示して比較する場合
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --illustration-stem illustration_01 \
+  --prompt-formatter natural_sections --dry-run
+
+# 本番実行（「OK」を確認してから）
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --illustration-stem illustration_01
+```
+
+---
+
+### M. 背景画像（背景資料）を生成する
 
 コマ絵・ページ絵を描く前に、場所・光源・構図・物品配置を固めるための背景資料画像を出します。人物を主役にせず、空間設計を先に作ることで、後続のコマ生成やページ生成の参照素材になります。
 
@@ -426,6 +525,7 @@ Monogatari Coach が内部で利用するツールのうち、ユーザーが直
 | ツール | 用途 | CLI 例 |
 |--------|------|--------|
 | `tools/workspace_audit_log.py` | 査証ログ・日記への追記 | `python tools/workspace_audit_log.py append "内容"` |
+| `tools/env_check.py` | `.env` と `.env.example` の差分・不足キー確認 | `python tools/env_check.py` |
 | `tools/novel_code_allocate.py` | 作品番号（novel_code）の採番・検証 | `python tools/novel_code_allocate.py novels/` |
 | `tools/novel_project_check.py` | 必須ファイル・ディレクトリの揃いを確認 | `python tools/novel_project_check.py novels/NNN_作品名` |
 | `tools/novel_char_count.py` | 小説本文の文字数を集計 | `python tools/novel_char_count.py novels/NNN_作品名` |
@@ -434,6 +534,7 @@ Monogatari Coach が内部で利用するツールのうち、ユーザーが直
 | `tools/novel_prompt_ir_validate.py` | YAML IR の型・参照・品質を検証 | `python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality` |
 | `tools/novel_prompt_ir_export_md.py` | YAML IR を互換 Markdown に変換 | `python tools/novel_prompt_ir_export_md.py --help` |
 | `tools/image_provider_generate.py` | 単体画像を1枚生成（バッチではなく手動試作向け） | `python tools/image_provider_generate.py --probe --provider forge` |
+| `tools/image_provider_novel_illustration_batch.py` | 挿絵・表紙を一括生成 | `python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 --dry-run` |
 | `tools/json_weighted_pick.py` | JSON リストから確率付き乱数選択（命名などで使用） | `python tools/json_weighted_pick.py _how_to/name_creature.json` |
 | `tools/codex_builtin_image_archive.py` | Codex 内蔵画像を作品フォルダへアーカイブ | `python tools/codex_builtin_image_archive.py --help` |
 
@@ -453,8 +554,10 @@ Monogatari Coach は、チャット欄への書き込みだけでは作業を完
 | キャラタグ（互換） | `novels/<作品>/tag/<romaji>.md` |
 | 漫画ページ（正本） | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
 | 漫画ページ（互換） | `novels/<作品>/manga/manga_XX.md` |
+| 挿絵・表紙（正本） | `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` |
 | 生成画像（キャラ） | `novels/<作品>/tag/<romaji>/` |
 | 生成画像（漫画） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |
 | 背景資料画像 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
+| 生成画像（挿絵・表紙） | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 
 文字数は `tools/novel_char_count.py` の集計結果を根拠にします。エディタ上の文字数や目視での推定は使いません。
