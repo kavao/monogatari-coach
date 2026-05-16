@@ -168,7 +168,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
 生成画像の保存先:
-- コマ・ページ: `novels/<作品>/manga/_assets/<manga_XX>/`
+- コマ・ページ: `novels/<作品>/manga/_assets/<manga_XX>/comic/`
 - 背景資料: `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/`
 
 ---
@@ -244,8 +244,13 @@ python tools/codex_builtin_image_archive.py --help
 `.rulesync/rules/` / `.rulesync/skills/` を編集したあと、各 AI ツールの設定フォルダ（`.codex/`、`.kilocode/` 等）へ生成物を同期します。
 
 ```bash
-rulesync generate
+corepack pnpm dlx rulesync generate
+
+# 後方互換ラッパーを使う場合
+uv run python sync_rules.py
 ```
+
+`corepack enable` は不要です。Windows では Node.js のインストール先に shim を作ろうとして権限エラーになることがあるため、Corepack から直接 `pnpm` を呼び出します。代替として `npm exec --yes rulesync -- generate` も使えます。
 
 主編集先: `.rulesync/rules/*.md` / `.rulesync/skills/*/SKILL.md` / `.rulesync/mcp.json` / `.rulesync/hooks.json`
 

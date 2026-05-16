@@ -299,6 +299,7 @@
         "step1-panels": "natural_sections",
         "step1-pages": "manga_page_instruction",
         "step2-pages": "manga_page_instruction",
+        "background-concepts": "background_brief",
         "negative_mode": "inline_do_not_include"
       }
     }

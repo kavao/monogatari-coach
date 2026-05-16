@@ -5,7 +5,7 @@ Monogatari Coach — 作品フォルダ内の「タグ用・漫画用・挿絵�
 
 .rulesync/rules/overview.md の Tag Mode / Manga Tag Mode「画像ストック」に基づく:
   - tag/<romaji>.md と同名の tag/<romaji>/ にキャラ画像を集約
-  - manga/manga_XX.md ごとに manga/_assets/manga_XX/ を用意（任意でコマ別サブフォルダ k01..）
+  - manga/manga_XX.md ごとに manga/_assets/manga_XX/comic/ と backgrounds/ を用意（任意で comic/k01..）
   - illustrations/pages/illustration_XX_pYY.yaml ごとに illustrations/_assets/illustration_XX/ を用意
 
 作成のみ（Markdown の内容や画像ファイルの移動は行わない）。
@@ -56,11 +56,14 @@ def scaffold_manga_dirs(novel: Path, panels: int | None) -> list[Path]:
     for f in sorted(manga.glob("manga_*.md")):
         stem = f.stem
         base = assets / stem
-        base.mkdir(parents=True, exist_ok=True)
-        created.append(base)
+        comic = base / "comic"
+        backgrounds = base / "backgrounds"
+        comic.mkdir(parents=True, exist_ok=True)
+        backgrounds.mkdir(parents=True, exist_ok=True)
+        created.extend([comic, backgrounds])
         if panels is not None and panels > 0:
             for i in range(1, panels + 1):
-                kdir = base / f"k{i:0{width}d}"
+                kdir = comic / f"k{i:0{width}d}"
                 kdir.mkdir(parents=True, exist_ok=True)
                 created.append(kdir)
     return created
@@ -120,15 +123,16 @@ def cmd_paths(args: argparse.Namespace) -> int:
             print((tag / f.stem).as_posix())
     manga = novel / "manga"
     if manga.is_dir():
-        print("# manga — output_dir（--panels 指定時はコマ別サブフォルダも）")
+        print("# manga — output_dir（コマ・ページは comic/、背景資料は backgrounds/）")
         width = k_width(panels) if panels else 2
         for f in sorted(manga.glob("manga_*.md")):
             stem = f.stem
             base = (manga / "_assets" / stem).as_posix()
-            print(base)
+            print(f"{base}/comic")
+            print(f"{base}/backgrounds")
             if panels is not None and panels > 0:
                 for i in range(1, panels + 1):
-                    print(f"{base}/k{i:0{width}d}")
+                    print(f"{base}/comic/k{i:0{width}d}")
     illustration_pages = illustration_page_files(novel)
     if illustration_pages:
         print("# illustrations — output_dir（挿絵・表紙）")
@@ -140,7 +144,7 @@ def cmd_paths(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="novel フォルダ内に tag/<romaji>/、manga/_assets/<manga_XX>/、illustrations/_assets/<illustration_XX>/ を作成・列挙する。"
+        description="novel フォルダ内に tag/<romaji>/、manga/_assets/<manga_XX>/{comic,backgrounds}/、illustrations/_assets/<illustration_XX>/ を作成・列挙する。"
     )
     sub = p.add_subparsers(dest="command", required=True)
 

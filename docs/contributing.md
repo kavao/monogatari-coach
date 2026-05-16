@@ -56,7 +56,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_作品名 \
 ユーザーがコマンドを実行する
   → Monogatari Coach が manga/pages/*.yaml を読み込む
   → 画像生成 API にプロンプトを送る
-  → novels/<作品>/manga/_assets/<manga_XX>/ に画像が保存される
+  → novels/<作品>/manga/_assets/<manga_XX>/comic/ に画像が保存される
 ```
 
 ### 5. 専門用語は初出時に一言説明する

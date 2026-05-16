@@ -487,6 +487,181 @@ def manga_panel_text_lines(panel: dict[str, Any]) -> list[str]:
     return lines
 
 
+def background_brief_header() -> str:
+    return (
+        "Draw a background reference image for Japanese manga production. "
+        "Do not make people or character close-ups the main subject."
+    )
+
+
+def background_environment_lines(
+    concept: dict[str, Any],
+    *,
+    page_num: int,
+    scene_location: str,
+    scene_time: str,
+    scene_background_notes: str,
+) -> list[str]:
+    title = str(concept.get("title") or concept.get("concept_id") or "")
+    description = str(concept.get("description") or "")
+    prompt = str(concept.get("prompt") or description)
+    lines: list[str] = []
+    if title:
+        lines.append(f"- Page {page_num} / {title}")
+    if scene_location or scene_time:
+        lines.append(
+            f"- Setting: {scene_location or 'unspecified'} / "
+            f"{scene_time or 'unspecified'}"
+        )
+    if scene_background_notes:
+        lines.append(f"- Shared background: {scene_background_notes}")
+    if description:
+        lines.append(f"- Scene note: {description}")
+    if prompt:
+        lines.append(f"- Visual direction: {prompt}")
+    usage = concept.get("usage")
+    if usage:
+        lines.append(f"- Intended use: {usage}")
+    return lines
+
+
+def background_camera_lines(concept: dict[str, Any]) -> list[str]:
+    concept_id = str(concept.get("concept_id") or "").lower()
+    lines: list[str] = []
+    for keyword, label in (
+        ("establishing", "establishing wide shot"),
+        ("wide", "wide environmental shot"),
+        ("close", "close background detail"),
+        ("reverse", "reverse angle"),
+        ("overhead", "overhead / top-down view"),
+    ):
+        if keyword in concept_id:
+            lines.append(f"- Shot type: {label}")
+    provider_hint = concept.get("provider_hint")
+    if provider_hint:
+        lines.append(f"- Provider note: {provider_hint}")
+    return lines
+
+
+def background_lighting_lines(page: dict[str, Any], concept: dict[str, Any]) -> list[str]:
+    scene = page.get("scene") or {}
+    lines: list[str] = []
+    for label, key in (
+        ("Lighting", "lighting_en"),
+        ("Lighting", "lighting"),
+        ("Atmosphere", "atmosphere_en"),
+        ("Atmosphere", "atmosphere"),
+    ):
+        value = scene.get(key)
+        if value:
+            lines.append(f"- {label}: {value}")
+    prompt = str(concept.get("prompt") or "")
+    lowered = prompt.lower()
+    for token, label in (
+        ("midnight", "night lighting"),
+        ("night", "night lighting"),
+        ("glow", "localized glow"),
+        ("sunlight", "daylight"),
+        ("backlight", "backlight"),
+    ):
+        if token in lowered:
+            lines.append(f"- Light cue: {label}")
+    return unique(lines)
+
+
+def background_mood_lines(concept: dict[str, Any]) -> list[str]:
+    description = str(concept.get("description") or "")
+    if not description:
+        return []
+    return [f"- Mood: {description}"]
+
+
+def background_exclude_people_lines() -> list[str]:
+    return bullet_lines(
+        [
+            "no people in foreground",
+            "no character close-up",
+            "no human figures as main subject",
+            "environment and spatial design only",
+        ]
+    )
+
+
+def background_do_not_include_lines(
+    page: dict[str, Any],
+    concept: dict[str, Any],
+    negative_prompt: str,
+) -> list[str]:
+    items: list[str] = []
+    items.extend(split_prompt_fragments(negative_prompt))
+    items.extend(str(x) for x in as_list(concept.get("negative_tags")) if x)
+    items.extend(
+        [
+            "people",
+            "character",
+            "portrait",
+            "crowd",
+        ]
+    )
+    instruction = page.get("render_instruction") or {}
+    directives = instruction.get("user_directives") or {}
+    defaults = directives.get("defaults") or {}
+    items.extend(str(x) for x in as_list(defaults.get("omit_prompt_tags")) if x)
+    return bullet_lines(unique(items), limit=24)
+
+
+def format_background_prompt(
+    page: dict[str, Any],
+    concept: dict[str, Any],
+    *,
+    page_num: int,
+    scene_location: str,
+    scene_time: str,
+    scene_background_notes: str,
+    legacy_prompt: str,
+    negative_prompt: str,
+    formatter: str,
+) -> PromptBundle:
+    if formatter not in VALID_FORMATTERS:
+        raise ValueError(f"unknown prompt formatter: {formatter}")
+    if formatter != BACKGROUND_BRIEF:
+        return PromptBundle(
+            prompt=legacy_prompt,
+            negative_prompt=negative_prompt,
+            formatter=formatter,
+            negative_mode=NATIVE_NEGATIVE,
+        )
+
+    prompt_parts: list[str] = [
+        background_brief_header(),
+        named_section(
+            "Environment",
+            background_environment_lines(
+                concept,
+                page_num=page_num,
+                scene_location=scene_location,
+                scene_time=scene_time,
+                scene_background_notes=scene_background_notes,
+            ),
+        ),
+        named_section("Camera", background_camera_lines(concept)),
+        named_section("Lighting", background_lighting_lines(page, concept)),
+        named_section("Mood", background_mood_lines(concept)),
+        named_section("Exclude people", background_exclude_people_lines()),
+        named_section(
+            "Do not include",
+            background_do_not_include_lines(page, concept, negative_prompt),
+        ),
+    ]
+    prompt = "\n\n".join(part for part in prompt_parts if part)
+    return PromptBundle(
+        prompt=prompt,
+        negative_prompt="",
+        formatter=formatter,
+        negative_mode=INLINE_DO_NOT_INCLUDE,
+    )
+
+
 def format_manga_panel_prompt(
     page: dict[str, Any],
     panel: dict[str, Any],

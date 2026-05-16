@@ -149,7 +149,8 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 必須:
 
 - キャラクター画像は `novels/<作品>/tag/<romaji>/` に保存する。
-- 漫画ページ・コマ画像は `novels/<作品>/manga/_assets/<manga_XX>/` に保存する。
+- 漫画ページ・コマ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
+- 漫画の背景資料画像は `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` に保存する。
 - 挿絵・表紙画像は `novels/<作品>/illustrations/_assets/<illustration_XX>/` に保存する。
 - コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。
 - ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。必要な場合だけ任意で使う。

@@ -161,7 +161,7 @@ c. プロフィールについても深く掘り下げてください。
    - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
    - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/image_provider_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
-   - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
+   - コマ画像は **`manga/_assets/<manga_XX>/comic/`** に展開する。背景資料は **`manga/_assets/<manga_XX>/backgrounds/`**（詳細は §2.2.2・スキル **novel-image-layout**）
 10. illustrations/pages/illustration_XX_pYY.yaml（挿絵・表紙タグ正本・YAML IR）
    - 小説本文の場面・章扉・表紙向けの一枚絵（または明示した複合レイアウト）を YAML IR で管理する（スキル **illustration-prompt-ir**）。型は漫画ページと同じ `MangaPagePrompt` で、`meta.intent: illustration` とする。
    - YAML 上の **`panels[]` は漫画のコマではなく構成セル**（構図・配置の単位）。単体挿絵はセル1件を推奨。群像・複合構図が要る作品だけセルを複数にできる（§2.2.3）。
@@ -298,6 +298,7 @@ _how_to/tag.md のルールに従い、各人物について
 - 構造化漫画タグを作る場合、**型の正本**はスキル **`manga-prompt-ir`** の `tools/manga_prompt_ir/schemas/manga_page.py`（Pydantic）。**実データの正本**は `novels/<作品>/manga/pages/manga_XX_pYY.yaml`。検証は **`tools/novel_prompt_ir_validate.py`**（本番前は `--strict-quality` を推奨）。
 - **登場キャラの固定外見・服装・小物の継承**は、スキル **`manga-tag-character-sync`** に従う。刷新後の優先順位は、`tag/characters/<character_id>.yaml` → `character.md` → `tag/<romaji>.md` とし、互換 Markdown は画像生成バッチ向けの参照先に加え、**手作業での外見タグ確認用の可読副本**として扱う。
 - **主語・関係・セリフ帰属・部分アップの意味付け、およびコマ割り・ページレイアウト（コマ数・段・大小・読み順）**は、スキル **`manga-tag-quality-gate`** に従い、まず YAML IR の品質を点検する。`step1` / `step2` は互換出力後の確認対象とする。
+- **`background_concepts[]`（背景資料）**: Manga Tag Mode では **`panels[]` だけで完了にしない**。原則 **1ページ最低1件**（シーン・場所の最初のページは establishing 系を含む）。室内・外景に加え、**UI・小道具・反復オブジェクト**（執筆画面など）も載せる。詳細はスキル **`manga-prompt-ir`** の「`background_concepts[]`（Manga Tag Mode）」と **`manga-tag-quality-gate`** §7。生成は `--source background-concepts`（`docs/image-generation/index.md`「背景資料生成」）。
 
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/manga/pages/manga_XX_pYY.yaml` に作成する。
@@ -323,7 +324,7 @@ _how_to/tag.md のルールに従い、各人物について
 詳細な手順は **`.rulesync/skills/manga-prompt-ir/SKILL.md`**、品質点検は **`.rulesync/skills/manga-tag-quality-gate/SKILL.md`**、操作コマンドは `docs/image-generation/manga-prompt-ir.md` を参照する。入口ルールとしては、本文正本とキャラクター正本を確認し、`manga/pages/*.yaml` を更新し、検証してから互換 Markdown や画像生成へ進むことだけを固定する。
 
 #### 画像ストック（漫画・コマ単位・推奨）
-横断正本は **`.rulesync/rules/concepts.md`** の「画像保存先」。漫画画像は `novels/<作品>/manga/_assets/<manga_XX>/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
+横断正本は **`.rulesync/rules/concepts.md`** の「画像保存先」。漫画のコマ・ページ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/`、背景資料は `.../backgrounds/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
 
 #### 生成モードの用語統一（必須）
 横断正本は **`.rulesync/rules/concepts.md`** の「生成モード用語」。操作説明と provider 対応は **`docs/image-generation/index.md`** の「生成モードとプロバイダの対応」を参照する。

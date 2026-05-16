@@ -56,6 +56,7 @@ globs: ["docs/**/*.md"]
 ```
 漫画コマを 1 枚ずつ生成します（step1-panels モード）。
 まず --dry-run で対象ファイルと件数を確認してから本番実行します。
+`--source` が正式名。`--mode step1-panels` は同義の別名。
 
 # 確認（dry-run）— provider・ジョブ数・保存先を表示する
 python tools/image_provider_novel_manga_batch.py novels/051_作品名 \
@@ -65,7 +66,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_作品名 \
 python tools/image_provider_novel_manga_batch.py novels/051_作品名 \
   --manga-stem manga_01 --source step1-panels
 
-実行後、novels/051_作品名/manga/_assets/manga_01/ に画像が保存されます。
+実行後、novels/051_作品名/manga/_assets/manga_01/comic/ に画像が保存されます。
 ```
 
 ---

@@ -7,11 +7,13 @@ _TOOLS_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_TOOLS_ROOT))
 
 from manga_prompt_ir.prompt_formatters import (  # noqa: E402
+    BACKGROUND_BRIEF,
     INLINE_DO_NOT_INCLUDE,
     MANGA_PAGE_INSTRUCTION,
     NATURAL_SECTIONS,
     NOVELAI_PIPE,
     TAG_CSV,
+    format_background_prompt,
     format_illustration_prompt,
     format_manga_panel_prompt,
     format_manga_page_prompt,
@@ -133,6 +135,79 @@ def test_resolve_prompt_formatter_uses_provider_config() -> None:
         },
     )
     assert formatter == NATURAL_SECTIONS
+
+
+def test_resolve_prompt_formatter_background_concepts() -> None:
+    formatter = resolve_prompt_formatter(
+        "grok",
+        "background-concepts",
+        provider_cfg={
+            "prompt_formatter": {
+                "default": "natural_sections",
+                "background-concepts": "background_brief",
+            }
+        },
+    )
+    assert formatter == BACKGROUND_BRIEF
+
+
+def _sample_background_concept() -> dict:
+    return {
+        "concept_id": "midnight_room_establishing",
+        "title": "深夜の自室・見渡し",
+        "description": "生活感のある狭い部屋。机上のスマホだけが光る。",
+        "prompt": (
+            "Japanese manga background concept art, small apartment room at midnight, "
+            "desk, smartphone glow, no characters"
+        ),
+        "negative_tags": ["people", "character close-up"],
+        "usage": "第1ページ背景の確定前資料",
+    }
+
+
+def test_background_brief_inlines_negative_and_excludes_people() -> None:
+    page = _sample_illustration_page()
+    concept = _sample_background_concept()
+    legacy = "背景コンセプト生成。人物を主役にせず…"
+    bundle = format_background_prompt(
+        page,
+        concept,
+        page_num=1,
+        scene_location="bedroom at night",
+        scene_time="midnight",
+        scene_background_notes="smartphone glow on desk",
+        legacy_prompt=legacy,
+        negative_prompt="watermark, logo",
+        formatter=BACKGROUND_BRIEF,
+    )
+    assert "Environment:" in bundle.prompt
+    assert "Exclude people:" in bundle.prompt
+    assert "Do not include:" in bundle.prompt
+    assert "- watermark" in bundle.prompt
+    assert "- people" in bundle.prompt
+    assert "establishing wide shot" in bundle.prompt
+    assert bundle.negative_prompt == ""
+    assert bundle.negative_mode == INLINE_DO_NOT_INCLUDE
+
+
+def test_background_tag_csv_preserves_legacy_prompt() -> None:
+    page = _sample_illustration_page()
+    concept = _sample_background_concept()
+    legacy = "背景コンセプト生成。Page 1 / テスト"
+    bundle = format_background_prompt(
+        page,
+        concept,
+        page_num=1,
+        scene_location="room",
+        scene_time="night",
+        scene_background_notes="desk",
+        legacy_prompt=legacy,
+        negative_prompt="watermark",
+        formatter=TAG_CSV,
+    )
+    assert bundle.prompt == legacy
+    assert bundle.negative_prompt == "watermark"
+    assert bundle.formatter == TAG_CSV
 
 
 def test_manga_page_instruction_wraps_existing_prompt_and_inlines_negative() -> None:

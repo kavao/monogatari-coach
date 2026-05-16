@@ -17,11 +17,9 @@ Monogatari Coach は、小説執筆の企画、設計、執筆、推敲、評価
 
 ## Quick Start
 
-1. `rulesync` を導入
+1. Node.js を導入
 
-```bash
-npm install -g rulesync
-```
+Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出します。`rulesync` や `pnpm` のグローバルインストールは不要です。
 
 2. `uv` を導入して初回セットアップ
 
@@ -88,7 +86,10 @@ uv run python howto_init.py
 ルール再生成:
 
 ```bash
-rulesync generate
+corepack pnpm dlx rulesync generate
+
+# 後方互換ラッパーを使う場合
+uv run python sync_rules.py
 ```
 
 `.rulesync/` 側の正本を更新したあとに実行します。実行後は `AGENTS.md` / `CLAUDE.md` の差分が、LLM 別入口として意図どおりか確認します。

@@ -119,10 +119,12 @@ MONOCRI_MANGA_COLOR_MODE_DEFAULT=monochrome
 
 | モード | オプション | 既定 provider | 説明 |
 |--------|-----------|--------------|------|
-| コマ生成 | `--source step1-panels` | `novelai` | 各コマを別画像として出力 |
-| 精密ページ生成 | `--source step1-pages` | `grok_pro` | Step1 の詳細情報を保ったまま 1 ページ 1 枚で出力 |
-| ページ生成 | `--source step2-pages` | `grok_pro` | Step2 のレイアウト要約から 1 ページ 1 枚で出力 |
-| 背景概念生成 | `--source background-concepts` | `grok` | 人物なしの背景・空間設計を先出し |
+| コマ生成 | `--source step1-panels`（`--mode` でも可） | `novelai` | 各コマを別画像として出力 |
+| 精密ページ生成 | `--source step1-pages`（`--mode` でも可） | `grok_pro` | Step1 の詳細情報を保ったまま 1 ページ 1 枚で出力 |
+| ページ生成 | `--source step2-pages`（`--mode` でも可） | `grok_pro` | Step2 のレイアウト要約から 1 ページ 1 枚で出力 |
+| 背景概念生成 | `--source background-concepts`（`--mode` でも可） | `grok` | 人物なしの背景・空間設計を先出し |
+
+`image_provider_novel_manga_batch.py` では **`--source` が正式名**です。チャットやルールでいう「生成モード」と揃えるため **`--mode` は同じ値の別名**として使えます（例: `--mode step1-panels`）。
 
 Forge / NovelAI はコマ生成向け。step1-pages / step2-pages の正式対応先は `grok_pro` / `openai`。background-concepts は本番コマではなく背景資料生成として扱い、既定 provider は `grok`。
 
@@ -152,6 +154,14 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 ### Grok のプロンプト上限と自動圧縮
 
 Grok API のプロンプト上限は **UTF-8 バイト数**で管理されています（日本語 1 文字 ≒ 3 バイト）。
+
+`image_provider_novel_manga_batch.py` で **provider=grok_pro** かつ `--aspect-ratio` 未指定のとき、縦横比は次の順で決まります。
+
+1. CLI `--aspect-ratio`
+2. `.env` の `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO`（例: `manga_b5_portrait` → API では `3:4`）
+3. 上記が無い場合のコード既定: **`manga_b5_portrait`**（`1:1` には落ちない）
+
+`--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、子プロセスへ preset が渡ります。
 
 `config/image_generation.json` の `providers.grok_pro.max_prompt_bytes`（既定 `7800`）が設定されていると、`image_provider_novel_manga_batch.py` が step1-pages のプロンプトを自動圧縮します。
 
@@ -281,7 +291,8 @@ python tools/image_provider_generate.py \
 
 | 種別 | 保存先 |
 |------|--------|
-| 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/`（**章 `manga_XX` 直下が標準。ページ別サブフォルダは推奨しない**） |
+| 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（**`comic/` 直下が標準。ページ別サブフォルダは推奨しない**） |
+| 漫画・背景資料 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 | 挿絵 / 表紙 | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 | キャラクター立ち絵 | `novels/<作品>/tag/<romaji>/` |
 

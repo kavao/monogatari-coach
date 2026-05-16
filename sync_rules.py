@@ -3,12 +3,12 @@
 
 推奨: プロジェクトルートで直接
 
-    rulesync generate
+    corepack pnpm dlx rulesync generate
 
-を実行する（引数なしで全ターゲット・全機能を再生成）。
+を実行する（pnpm / rulesync はグローバルインストール不要。引数なしで全ターゲット・全機能を再生成）。
 
 注意: `uv run python sync_rules.py` を使う場合も、シェル経由で PATH を解決するため
-npm グローバルの rulesync が通常のターミナルと同様に見えます（Windows の .cmd シムも含む）。
+Node.js 同梱の Corepack が通常のターミナルと同様に見えます（Windows の .cmd シムも含む）。
 """
 
 from __future__ import annotations
@@ -19,9 +19,9 @@ from pathlib import Path
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parent
-    # shell=True: Windows で rulesync.cmd を確実に起動し、ユーザーの PATH を引き継ぐ
+    # shell=True: Windows で corepack.cmd を確実に起動し、ユーザーの PATH を引き継ぐ
     return subprocess.run(
-        "rulesync generate -V",
+        "corepack pnpm dlx rulesync generate -V",
         cwd=repo_root,
         shell=True,
         check=False,

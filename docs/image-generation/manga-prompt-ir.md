@@ -46,7 +46,8 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 | 作成された YAML（正本） | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
 | 検証結果（型・品質の警告） | コンソール出力 |
 | 互換 Markdown（可読副本） | `novels/<作品>/manga/manga_XX.md`（出力した場合のみ） |
-| 画像の保存先 | `novels/<作品>/manga/_assets/<manga_XX>/`（画像生成後） |
+| 画像の保存先（コマ・ページ） | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（画像生成後） |
+| 背景資料 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 
 画像生成を実行するときは [Image Generation](index.md) の手順に従い、`--dry-run` で確認してから本番実行します。
 
@@ -80,6 +81,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
   ├─ tools/image_provider_novel_manga_batch.py --input yaml --source step1-pages（精密ページ生成）
   ├─ tools/image_provider_novel_manga_batch.py --input yaml --source step2-pages（ページ生成）
   └─ tools/image_provider_novel_manga_batch.py --input yaml --source background-concepts（背景資料）
+      ※ Manga Tag 作成時: 各ページ YAML に background_concepts[] を原則1件以上（詳細は .rulesync/skills/manga-prompt-ir/SKILL.md）
 
 必要な場合だけ:
   ↓ tools/novel_prompt_ir_embed_snapshots.py（スナップショット埋め込み）

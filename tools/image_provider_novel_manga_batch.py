@@ -4,8 +4,11 @@
 作品フォルダの manga/pages/*.yaml または manga/manga_*.md から、各 Page の Step1 / Step2 相当を抽出し、
 画像生成プロバイダへ連続実行する。
 
-保存先: manga/_assets/<manga_stem>/ （既定・file_prefix は <stem>_p<page>_k<koma>）。
-  --subdir-by-page 指定時は manga/_assets/<manga_stem>/p<page>/ に保存（任意。本リポジトリの推奨運用は章単位の直下のみ）。
+保存先:
+  - コマ・ページ（step1-panels / step1-pages / step2-pages）: manga/_assets/<manga_stem>/comic/
+  - 背景資料（background-concepts）: manga/_assets/<manga_stem>/backgrounds/
+  file_prefix は <stem>_p<page>_k<koma> 等。
+  --subdir-by-page 指定時は comic/p<page>/ に保存（任意。推奨運用は comic/ 直下のみ）。
   novel_image_layout の k01.. は「1ページ内のコマ用スロット」用の任意フォルダで、本スクリプト既定では未使用。
 前提: config/image_generation.json・各 provider の準備完了（tools/image_provider_generate.py と同じ）
 
@@ -67,6 +70,7 @@ from manga_prompt_ir.prompt_formatters import (
     NATIVE_NEGATIVE,
     NOVELAI_PIPE,
     TAG_CSV,
+    format_background_prompt,
     format_manga_panel_prompt,
     format_manga_page_prompt,
     provider_config_from_root,
@@ -76,6 +80,8 @@ from manga_prompt_ir.prompt_formatters import (
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 INPUT_CHOICES = ("yaml", "markdown")
+MANGA_ASSET_SUBDIR_BACKGROUND = "backgrounds"
+MANGA_ASSET_SUBDIR_COMIC = "comic"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP1_PAGES_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT"
 MANGA_STEP2_PROVIDER_ENV = "MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT"
@@ -83,22 +89,45 @@ MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
 # 漫画バッチのみ。CLI --aspect-ratio 未指定かつ provider=grok_pro のとき、
 # config の default_aspect_ratio（多くは 1:1）の代わりに使う。
 MANGA_GROK_PRO_DEFAULT_ASPECT_ENV = "MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO"
+# grok_pro で CLI・.env とも未指定のとき（config の default_aspect_ratio 1:1 回避）
+MANGA_GROK_PRO_ASPECT_FALLBACK = "manga_b5_portrait"
+
+
+def dotenv_or_env(root: Path, name: str) -> str | None:
+    value = os.environ.get(name)
+    if value and value.strip():
+        return value.strip()
+    dotenv_map = load_dotenv(root / ".env")
+    value = dotenv_map.get(name)
+    if value and value.strip():
+        return value.strip()
+    return None
 
 
 def manga_grok_pro_effective_aspect_ratio(
-    cli_aspect: str | None, provider: str
+    cli_aspect: str | None, provider: str, *, root: Path | None = None
 ) -> str | None:
-    """CLI が優先。未指定かつ grok_pro のときだけ環境変数を参照。"""
+    """CLI が優先。未指定かつ grok_pro のとき .env → 環境変数 → manga_b5_portrait。"""
     if cli_aspect is not None:
         return cli_aspect
     if provider != "grok_pro":
         return None
-    raw = (os.environ.get(MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) or "").strip()
-    return raw or None
+    raw = dotenv_or_env(root, MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) if root is not None else None
+    if not raw:
+        raw = (os.environ.get(MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) or "").strip()
+    return raw or MANGA_GROK_PRO_ASPECT_FALLBACK
 
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+
+def resolve_manga_assets_stem_dir(manga_dir: Path, stem: str) -> Path:
+    return (manga_dir / "_assets" / stem).resolve()
+
+
+def resolve_manga_comic_output_dir(manga_dir: Path, stem: str) -> Path:
+    return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_COMIC
 
 
 STYLE_PREFIX = (
@@ -1029,10 +1058,14 @@ def yaml_background_concept_jobs(
     stem: str,
     page_num: int,
     yaml_path: Path,
+    *,
+    cli_negative_prompt: str,
+    prompt_formatter: str,
 ) -> list[dict[str, object]]:
     scene = page.get("scene") or {}
     meta = page.get("meta") or {}
     loc_bg, tod_bg, _wx_bg = scene_prompt_location_time_weather(scene)
+    scene_background_notes = scene_prompt_background_notes(scene)
     technical = page.get("technical") or {}
     page_negative = join_tags(as_list(technical.get("negative_tags")))
     jobs: list[dict[str, object]] = []
@@ -1046,13 +1079,15 @@ def yaml_background_concept_jobs(
         if not prompt:
             continue
         negative = join_tags(as_list(concept.get("negative_tags")))
-        negative_line = ", ".join(v for v in [page_negative, negative] if v)
-        body = "\n".join(
+        negative_line = ", ".join(
+            v for v in [cli_negative_prompt, page_negative, negative] if v
+        )
+        legacy_body = "\n".join(
             line
             for line in [
                 "背景コンセプト生成。人物を主役にせず、漫画ページで使う背景・空間設計として描く。",
                 f"Page {page_num} / {title}",
-                f"共通舞台: {loc_bg} / {tod_bg} / {scene_prompt_background_notes(scene)}",
+                f"共通舞台: {loc_bg} / {tod_bg} / {scene_background_notes}",
                 f"説明: {description}" if description else "",
                 f"背景プロンプト: {prompt}",
                 f"用途: {concept.get('usage', '')}" if concept.get("usage") else "",
@@ -1060,14 +1095,27 @@ def yaml_background_concept_jobs(
             ]
             if line
         )
+        bundle = format_background_prompt(
+            page,
+            concept,
+            page_num=page_num,
+            scene_location=loc_bg,
+            scene_time=tod_bg,
+            scene_background_notes=scene_background_notes,
+            legacy_prompt=legacy_body,
+            negative_prompt=negative_line,
+            formatter=prompt_formatter,
+        )
         jobs.append(
             {
                 "stem": stem,
                 "page": str(page_num),
                 "koma": "0",
                 "prefix": f"{stem}_p{page_num:02d}_{concept_id}",
-                "prompt": body,
-                "negative_prompt": negative_line,
+                "prompt": bundle.prompt,
+                "negative_prompt": bundle.negative_prompt,
+                "prompt_formatter": bundle.formatter,
+                "negative_mode": bundle.negative_mode,
                 "output_subdir": "backgrounds",
                 "metadata": {
                     "kind": "background-reference",
@@ -1506,7 +1554,7 @@ def iter_manga_jobs(
             )
     for md_path in paths:
         stem = md_path.stem
-        base = (manga_dir / "_assets" / stem).resolve()
+        comic_dir = resolve_manga_comic_output_dir(manga_dir, stem)
         if source == "step2-pages":
             extracted = extract_step2_page_jobs_for_file(
                 md_path,
@@ -1527,7 +1575,7 @@ def iter_manga_jobs(
                 character_anchors=character_anchors,
             )
         for j in extracted:
-            j["output_dir"] = base.as_posix()
+            j["output_dir"] = comic_dir.as_posix()
             all_jobs.append(j)
     return all_jobs
 
@@ -1583,17 +1631,28 @@ def iter_yaml_manga_jobs(
             continue
         stem = yaml_page_stem(path, page)
         page_num = yaml_page_number(path, index)
-        base = (manga_dir / "_assets" / stem).resolve()
+        stem_assets = resolve_manga_assets_stem_dir(manga_dir, stem)
+        comic_dir = stem_assets / MANGA_ASSET_SUBDIR_COMIC
         color_label = page_color_mode_label(page, override=color_mode_override)
         if source == "background-concepts":
-            for job in yaml_background_concept_jobs(page, stem, page_num, path):
+            for job in yaml_background_concept_jobs(
+                page,
+                stem,
+                page_num,
+                path,
+                cli_negative_prompt=cli_negative_prompt,
+                prompt_formatter=prompt_formatter,
+            ):
                 output_subdir_any = job.pop("output_subdir", "backgrounds")
                 output_subdir = (
                     output_subdir_any
                     if isinstance(output_subdir_any, str)
                     else str(output_subdir_any)
                 )
-                job["output_dir"] = (base / output_subdir).as_posix()
+                job["output_dir"] = (stem_assets / output_subdir).as_posix()
+                prompt_text = str(job.get("prompt") or "")
+                if max_prompt_bytes and len(prompt_text.encode("utf-8")) > max_prompt_bytes:
+                    job["prompt"] = trim_prompt_to_byte_limit(prompt_text, max_prompt_bytes)
                 all_jobs.append(job)
         elif source == "step2-pages":
             body = yaml_page_step2_text(
@@ -1635,7 +1694,7 @@ def iter_yaml_manga_jobs(
                     "negative_prompt": bundle.negative_prompt,
                     "prompt_formatter": bundle.formatter,
                     "negative_mode": bundle.negative_mode,
-                    "output_dir": base.as_posix(),
+                    "output_dir": comic_dir.as_posix(),
                 }
             )
         elif source == "step1-pages":
@@ -1680,7 +1739,7 @@ def iter_yaml_manga_jobs(
                     "negative_prompt": bundle.negative_prompt,
                     "prompt_formatter": bundle.formatter,
                     "negative_mode": bundle.negative_mode,
-                    "output_dir": base.as_posix(),
+                    "output_dir": comic_dir.as_posix(),
                 }
             )
         else:
@@ -1721,7 +1780,7 @@ def iter_yaml_manga_jobs(
                         "negative_prompt": bundle.negative_prompt,
                         "prompt_formatter": bundle.formatter,
                         "negative_mode": bundle.negative_mode,
-                        "output_dir": base.as_posix(),
+                        "output_dir": comic_dir.as_posix(),
                     }
                 )
     return all_jobs
@@ -1800,10 +1859,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument(
         "--source",
+        "--mode",
+        dest="source",
         choices=("step1-panels", "step1-pages", "step2-pages", "background-concepts"),
         default="step1-panels",
         help=(
-            "入力元。YAML入力では step1-panels は panels[].prompt_tags 等をコマ単位で使用、"
+            "生成モード（--mode は同義の別名。ルール・チャットの「コマ生成」等と対応）。"
+            "YAML入力では step1-panels は panels[].prompt_tags 等をコマ単位で使用、"
             "step1-pages はYAMLから組み立てた詳細ページ指示を使用、"
             "step2-pages はYAMLから組み立てた抽象ページ指示を使用、"
             "background-concepts は background_concepts[] を背景案として使用。"
@@ -1841,7 +1903,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--subdir-by-page",
         action="store_true",
-        help="保存先を manga/_assets/<stem>/p01, p02, ...（Page 番号）の下に分ける",
+        help="保存先を manga/_assets/<stem>/comic/p01, p02, ...（Page 番号）の下に分ける",
     )
     p.add_argument(
         "--no-character-anchors",
@@ -1995,7 +2057,9 @@ def main(argv: list[str] | None = None) -> int:
         print("error: 指定範囲に該当するジョブが0件です", file=sys.stderr)
         return 2
 
-    aspect_effective = manga_grok_pro_effective_aspect_ratio(args.aspect_ratio, provider)
+    aspect_effective = manga_grok_pro_effective_aspect_ratio(
+        args.aspect_ratio, provider, root=root
+    )
 
     provider_cli = root / "tools" / "image_provider_generate.py"
     if not provider_cli.is_file():

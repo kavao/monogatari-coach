@@ -61,7 +61,8 @@ targets: ["*"]
   `--negative-prompt` と `technical.negative_tags` を prompt 内の **`Do not include`** へ移し、API に渡す
   `negative_prompt` は空にする。旧来形式との比較は `--prompt-formatter tag_csv` で行える。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
-- 背景を先に起こす場合は `background_concepts[]` を使う。背景概念は本番コマではなく背景資料であり、Grok / OpenAI のような自然文・構造理解が強い provider へ渡し、人物を主役にしない空間設計として生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
+- コマ・ページ画像（`step1-panels` / `step1-pages` / `step2-pages`）の保存先は `manga/_assets/<manga_XX>/comic/`。
+- 背景・空間・反復オブジェクトの参照資料は **`background_concepts[]`** に書く（詳細は下記「`background_concepts[]`（Manga Tag Mode）」）。`--source background-concepts` で人物なしの背景資料画像を生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。
 - **`composition` / `camera` / `lighting` とコマの状況語（タグ行）**: Step1 の機械連結タグ（`image_provider_novel_manga_batch`・`novel_prompt_ir_export_md`）では **`framing_en` / `focus_en` / `perspective_en` / `layout_en`**、**`camera` の `*_en`**、**`lighting` の `*_en`**、**`pose_action_en` / `expression_en`** を優先する。旧キー（`focus` 等）は **CJK を含まないときだけ**タグに載せる（`medium shot` のような英語のみは従来 YAML でも可）。**`panels[].mood_atmosphere_en`** があればタグに使い、無い場合は `mood_atmosphere` のうち CJK を含まない要素のみ。実装の中心は **`tools/manga_prompt_ir/scene_prompt.py`**。
@@ -81,6 +82,30 @@ targets: ["*"]
 - 作品設定が `world_wear` の想定と合わない場合は**当てはまる節だけ**読むか、**参照を省略**してよい（必要なら作品の **`_meta.md`** に「未参照・理由」を一言メモする運用可）。
 
 **備考**: `world_wear.md` はツールが自動では読み込まない創作技法ファイルである。本節は **Tag Mode の初回・キャラ初版づくり**に効き、既存IRの細かな差し替えだけのセッションでは負荷をかけないための区別を置いた。
+
+## `background_concepts[]`（Manga Tag Mode）
+
+**Manga Tag Mode でページ YAML を新規作成・改稿するとき**、コマの `panels[]` だけで終えず、**同じファイルに `background_concepts[]` を必ず検討して記載する**。空のまま（未記載・`[]` のみ）でタグ作成完了とみなさない。
+
+### 件数とタイミング
+
+- **原則: 1ページあたり最低1件**。複数コマ・複数視点があるページは **2件以上** もよい。
+- **シーン・場所・章の最初のページ**（舞台が変わる・読者に空間を見せる導入）では、**establishing / wide** 系の空間概念を **必ず1件以上** 入れる（`concept_id` に `establishing`・`wide` などの視点語を含めると追跡しやすい）。
+- 直前ページと **同一舞台・同一光・同一小道具配置** で差がない場合のみ、当該ページを省略してよい。そのときは作品 `_meta.md` または `render_instruction.user_directives.page_notes` に **「背景は前ページ pYY の ○○ を再利用」** と一言残す。
+
+### 「背景」だけではない（オブジェクト・UI も含む）
+
+`background_concepts[]` は **室内・外景の空間設計** に加え、ページ内で繰り返し効く **オブジェクト／UI／小道具** の参照資料も載せる。
+
+- 例: 執筆アプリのグレーUI、実験机とキーボード、窓からの五月の空、モニタ光だけの画面プレート
+- コマの `subjects[]` で `type: object`（または `character_id` なしの重要物）があるとき、**ページを通じて一貫させたいもの**は、コマタグだけに頼らず **背景概念としても切り出す**のが正しい運用
+- 各要素は **人物を主役にしない**英語 `prompt`（`description` は日本語可）と、`negative_tags`（`people`, `chimpanzee`, `1boy` 等）で **背景資料生成**（`background-concepts`）向けに書く
+
+### フィールドと生成
+
+- 型の正本: `tools/manga_prompt_ir/schemas/manga_page.py` の `BackgroundConcept`
+- 必須: `concept_id`, `title`, `description`, `prompt`（例は `tools/manga_prompt_ir/examples/manga_page.yaml`）
+- 画像生成: `image_provider_novel_manga_batch.py --source background-concepts`（`--mode` 別名可）。品質点検はスキル **`manga-tag-quality-gate`** の「背景概念」節
 
 ## `_how_to/manga_tag.md` との役割分担（漫画タグ・語彙・置き換え）
 
@@ -270,7 +295,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 - `render_instruction.prompt_header` / `panel_policy` / `character_policy` が入り、YAML単体で作画依頼として成立する。
 - キャラクター固定特徴が、登場するすべてのコマへ引き継がれる。
 - ページ単位で、コマ数、読み順、段・大小・視線誘導のいずれかが読める。
-- 背景概念を使う場合は、`background_concepts[].concept_id` / `description` / `prompt` があり、人物なしの背景資料生成として読める。複数視点を出す場合は `concept_id` に `establishing` / `wide` / `close` / `reverse` / `overhead` などの視点語を含める。
+- **`background_concepts[]`**: Manga Tag Mode では上記「`background_concepts[]`（Manga Tag Mode）」に従い、**1ページ最低1件**（シーン最初のページは establishing 系を含む）を原則とする。各件に `concept_id` / `title` / `description` / `prompt` があり、人物なしの背景資料として読める。空間に加え **UI・小道具・反復オブジェクト** も載せてよい。
 
 ## 参考コマンド
 

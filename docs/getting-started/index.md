@@ -4,18 +4,14 @@
 
 Monogatari Coach は、チャットへの指示だけで小説の企画・執筆・画像生成までを進めるフレームワークです。AI が作業を担い、ユーザーは「何を作るか」の判断に集中できます。
 
-## 1. rulesync を入れる
+## 1. Node.js を入れる
 
-Node.js と `rulesync` を導入します。
+Node.js を導入します。Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出すため、`corepack enable`、`pnpm` のグローバルインストール、`rulesync` のグローバルインストールはいずれも不要です。
 
 - Node.js:
   https://nodejs.org/en/download
 - rulesync:
   https://github.com/dyoshikawa/rulesync
-
-```bash
-npm install -g rulesync
-```
 
 ## 2. uv を入れる
 
@@ -115,7 +111,10 @@ uv run python howto_init.py
 ルール再生成:
 
 ```bash
-rulesync generate
+corepack pnpm dlx rulesync generate
+
+# 後方互換ラッパーを使う場合
+uv run python sync_rules.py
 ```
 
 `.rulesync/` のルール・スキルを更新したあとに実行します。生成後は `AGENTS.md` / `CLAUDE.md` の差分を確認し、入口ファイルに意図しない肥大化や欠落がないか見ます。

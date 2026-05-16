@@ -52,7 +52,8 @@
 - **正本→副本の再生成（export）**
   - `tools/novel_prompt_ir_export_md.py`（YAML IR から互換 Markdown を出す）
 - **ルールの配布（distribution）**
-  - `rulesync generate`（`.rulesync/` を入口へ同期）
+  - `corepack pnpm dlx rulesync generate`（`.rulesync/` を入口へ同期）
+  - `uv run python sync_rules.py`（後方互換ラッパー経由で同じ生成を実行）
 
 ## ユーザーが確認できるもの（成果物）
 

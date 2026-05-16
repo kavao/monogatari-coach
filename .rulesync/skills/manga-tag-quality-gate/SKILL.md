@@ -3,7 +3,8 @@ name: manga-tag-quality-gate
 description: >-
   Manga Tag Mode で manga/pages/*.yaml の漫画ページIRを作成・改稿するときに、
   「誰が」「誰に」「どこで」「何をしているか」「どのセリフが誰のものか」に加え、
-  コマ割り・ページレイアウト（コマ数、段・大小、読み順、構図語）が明確かを点検する。
+  コマ割り・ページレイアウト（コマ数、段・大小、読み順、構図語）と
+  background_concepts[]（1ページ最低1件・シーン導入・UI/オブジェクト含む）が明確かを点検する。
   部分アップや身体の一部だけのコマでも意味が読めるように品質ゲートをかける。
   manga/manga_XX.md の Step1 / Step2 は検証後に必要時のみ出す互換出力として扱う。
 targets: ["*"]
@@ -142,7 +143,31 @@ targets: ["*"]
 - コマ本文・具体度: `panels[].summary`, `panels[].subjects[]`, `panels[].composition`, `panels[].camera`, `panels[].text`, `panels[].prompt_tags`
 - ページ方針・コマ順: `render_instruction`（`prompt_header` / `panel_policy` 等）、`manga.panel_layout`
 
-### 7. Step2（`_how_to/manga.md` の **互換出力: step2** に準拠）
+### 7. 背景概念（`background_concepts[]`）
+
+**目的**: コマタグだけでは、舞台・光・反復する UI／小道具の参照が弱く、`background-concepts` 生成に渡す材料が無いまま画像生成に進みやすい。Manga Tag Mode の完了条件の一部とする。
+
+**この節で足りること**
+
+- **1ページ最低1件**の `background_concepts[]` があるか（未記載・`[]` のみは NG）。
+- **シーン・場所の最初のページ**では、読者に空間を見せる **establishing / wide** 系が **1件以上** あるか。
+- **「背景」カテゴリだけに限定しない**。執筆 UI、実験机、窓と外景など、ページで繰り返す **オブジェクト** も `concept_id` / `prompt` で切り出されているか。
+- 重要な `subjects[]`（`type: object` 等）が、コマだけでなく背景概念にも載っているか（一貫性）。
+- 各件の `prompt` が英語で、人物なしの背景資料として読めるか。`negative_tags` に `people` 等があるか。
+
+**YAML で見る場所**
+
+- `background_concepts[]`（`scene` と併せて舞台の英語 `*_en` が揃っているかも確認）
+- 再利用のみのページは `_meta.md` または `render_instruction.user_directives.page_notes` に再利用メモがあるか
+
+**典型的な不足（失敗パターン）**
+
+- `panels[]` のみ完成し、`background_concepts` が無い（064 プロローグ初回のような取りこぼし）。
+- 室内全景はあるが、**ページの核になる UI や小道具**（例: エディター画面）がコマ subject だけで背景概念に無い。
+
+詳細・生成コマンドはスキル **`manga-prompt-ir`** の「`background_concepts[]`（Manga Tag Mode）」を正とする。
+
+### 8. Step2（`_how_to/manga.md` の **互換出力: step2** に準拠）
 
 点検のたびに **`_how_to/manga.md` を開き**、**「互換出力: step2」** 節を正として読む（雛形は **`_how_to.example/manga.md`** の同節）。
 
@@ -153,7 +178,7 @@ targets: ["*"]
 - **抽象名詞で終わらない** / **行為を消すのではなく構図に言い換える** / **モデレーション配慮の言い換え**は、**悪い例・良い例・言い換え目安**まで **`manga.md` の step2 節に従う**（本スキル §1〜§5 と重なる主語・帰属はそちらも併用）。
 - **互換 Markdown の形**: エクスポートは `novel_prompt_ir_export_md.py` が **`manga.panel_layout`・`meta.reading_order`・`panels[].composition.layout`・`step2_summary`（無ければ `summary`）** から組み立てる。Step2 だけ弱めたいときは IR に **`panels[].step2_summary`** を置き、**`summary` は Step1（コマ生成）向けに具体のまま**残せる（`manga.md` の「互換 Markdown の Step2」節と同じ）。
 
-### 8. レイアウト・読み順（Step1 / Step2 横断の確認）
+### 9. レイアウト・読み順（Step1 / Step2 横断の確認）
 
 **目的**: ページ丸ごと生成（`step2-pages`）や精密ページ生成（`step1-pages`）では、**コマ境界と読み順**が無いと「ただのカット列」になりやすい。細部の書き方の正本は引き続き **`manga.md` の「コマのページ内位置（レイアウト）を明記する」** および **step1 / step2 の出力例**。
 
@@ -168,7 +193,7 @@ targets: ["*"]
 - Step2（または `step2_summary`）に **コマ番号だけ**あり、**段・大小が一切無い**。
 - Step1 相当で **コマ数・コマ割り宣言が無く**、`panel_id` 列だけ並んでいる。
 
-### 9. 色モード（モノクロ／限定色／カラー）の確認
+### 10. 色モード（モノクロ／限定色／カラー）の確認
 
 **目的**: `color_palette.mode` と `manga.visual_tags`、`render_instruction` の方向が食い違うと、互換 Markdown やページ生成プロンプトの冒頭文だけがカラー／モノクロに寄ってしまう。ページYAMLの `color_palette.mode` を正本とし、矛盾は `novel_prompt_ir_validate.py` の **WARNING** で確認する。
 
@@ -181,7 +206,7 @@ targets: ["*"]
 
 ## 改稿手順
 
-1. **`_how_to/manga.md` の「互換出力: step1」「互換出力: step2」** を開き、上記 §6・§7 の要約と照合できる状態にする。
+1. **`_how_to/manga.md` の「互換出力: step1」「互換出力: step2」** を開き、上記 §6・§7・§8 の要約と照合できる状態にする。§7（背景概念）とスキル **`manga-prompt-ir`** の `background_concepts[]` 節も満たす。
 2. 対象の小説本文と `manga/pages/*.yaml` の各 Page を上から読む。
 3. コマごとに §1〜§5（主語・関係・行為・セリフ・部分アップ）を確認する。
 4. §6（step1 準拠）で具体度・1コマ1タグ・レイアウト入口を確認する。
