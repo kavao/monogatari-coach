@@ -36,6 +36,7 @@ globs: ["**/*"]
 | 書評・興味判定 | `novels/<作品>/_reader/*.md` | チャット上の要約 |
 | キャラクタータグ | `novels/<作品>/tag/characters/*.yaml` | `tag/<romaji>.md` |
 | 漫画ページ | `novels/<作品>/manga/pages/*.yaml` | `manga/manga_XX.md` |
+| 挿絵ページ | `novels/<作品>/illustrations/pages/*.yaml` | `illustrations/illustration_XX.md` |
 
 ## NovelAI 向けタグ分離（パイプ区切り）
 
@@ -113,6 +114,33 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 - 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`
 
+## 挿絵IR
+
+定義:
+挿絵IRは、小説本文から漫画ではない一枚絵・章扉・表紙などを作るための YAML IR である。型は漫画ページIRと同じ `MangaPagePrompt` を使い、`meta.intent: illustration` で用途を区別する。
+
+必須:
+
+- 挿絵ページの正本は `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` とする。
+- `panels[]` は漫画のコマではなく、構図を分解する構成セルとして扱う。単体挿絵は1セル、群像・複合構図は複数セルを許容する（複合構図の判断・生成方針は **`.rulesync/rules/overview.md`** の Illustration Tag Mode）。
+- 既定は枠線なし・パネル境界なしの一枚絵とし、枠を使う場合は `manga.panel_layout` または `render_instruction.user_directives.page_notes` に意図を明記する。
+- セリフ・効果音などの `text` は原則空にする。画像内文字が必要な場合だけ理由と配置を明記する。
+- 画像保存先は `novels/<作品>/illustrations/_assets/illustration_XX/` とする。
+- 検証は `tools/novel_prompt_ir_validate.py` で行い、画像生成は dry-run から本番までの手順に従う。
+
+役割:
+
+| ファイル | 役割 |
+|----------|------|
+| `illustrations/pages/*.yaml` | 挿絵・表紙の編集正本 |
+| `illustrations/_assets/<illustration_XX>/` | 挿絵・表紙画像の保存先 |
+| `illustrations/illustration_XX.md` | 任意の可読副本・外部連携用 |
+
+参照:
+
+- Illustration Prompt IR: `.rulesync/skills/illustration-prompt-ir/SKILL.md`
+- 操作説明: `docs/image-generation/illustration-prompt-ir.md`
+
 ## 画像保存先
 
 定義:
@@ -122,6 +150,7 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 - キャラクター画像は `novels/<作品>/tag/<romaji>/` に保存する。
 - 漫画ページ・コマ画像は `novels/<作品>/manga/_assets/<manga_XX>/` に保存する。
+- 挿絵・表紙画像は `novels/<作品>/illustrations/_assets/<illustration_XX>/` に保存する。
 - コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。
 - ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。必要な場合だけ任意で使う。
 

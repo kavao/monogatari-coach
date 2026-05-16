@@ -39,6 +39,13 @@ def test_manga_page_yaml_validates_and_renders() -> None:
     assert "bad_hands" in rendered.negative_tags
 
 
+def test_illustration_page_yaml_validates() -> None:
+    page = load_model(_EXAMPLES / "illustration_page.yaml", MangaPagePrompt)
+    assert page.meta.intent == "illustration"
+    assert page.meta.illustration_type == "chapter_illustration"
+    assert len(page.panels) == 1
+
+
 def test_text_elements_are_extractable() -> None:
     page = load_model(_EXAMPLES / "manga_page.yaml", MangaPagePrompt)
     elements = extract_text_elements(page)

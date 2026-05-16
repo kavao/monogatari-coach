@@ -39,6 +39,14 @@ from typing import Any
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 FORGE_MODEL_FAMILY_ENV = "MONOCRI_FORGE_MODEL_FAMILY_DEFAULT"
+GROK_MODEL_TIER_ENV = "MONOCRI_GROK_MODEL_TIER_DEFAULT"
+
+
+def missing_auth_message(auth_env: str) -> str:
+    return (
+        f"{auth_env} が見つかりません。.env または環境変数を設定してください。\n"
+        "設定の不足確認: python tools/env_check.py"
+    )
 
 
 # NovelAI nai-diffusion-4 / 4.5 系の UC プリセット文字列（参考用）。
@@ -296,6 +304,14 @@ def apply_provider_env_overrides(
             )
         return apply_forge_model_preset(out)
 
+    if provider == "grok":
+        raw_tier = resolve_env_value(GROK_MODEL_TIER_ENV, dotenv_map)
+        if raw_tier:
+            out["default_model"] = str(
+                resolve_named_value(raw_tier, out.get("model_aliases"))
+            )
+        return out
+
     return out
 
 
@@ -518,6 +534,9 @@ def merge_provider_defaults(
     }
     if "metadata" in params:
         out["metadata"] = params["metadata"]
+    for meta_key in ("prompt_formatter", "negative_mode"):
+        if meta_key in params:
+            out[meta_key] = params[meta_key]
     if provider == "forge":
         if "scheduler" in params or "default_scheduler" in provider_cfg:
             sched = params.get("scheduler", provider_cfg.get("default_scheduler"))
@@ -615,7 +634,8 @@ def merge_provider_defaults(
         return out
 
     if provider in _GROK_FAMILY:
-        out["model"] = params.get("model", provider_cfg["default_model"])
+        raw_model = params.get("model", provider_cfg["default_model"])
+        out["model"] = str(resolve_named_value(raw_model, provider_cfg.get("model_aliases")))
         out["response_format"] = params.get(
             "response_format", provider_cfg.get("default_response_format", "b64_json")
         )
@@ -1332,10 +1352,7 @@ def main(argv: list[str] | None = None) -> int:
         auth_env = str(provider_cfg.get("auth_env", "NOVELAI_ACCESS_TOKEN"))
         token = resolve_env_value(auth_env, dotenv_map)
         if not token and not args.dry_run:
-            print(
-                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
-                file=sys.stderr,
-            )
+            print(missing_auth_message(auth_env), file=sys.stderr)
             return 2
 
         base_url = str(provider_cfg.get("base_url", "https://image.novelai.net")).rstrip("/")
@@ -1394,10 +1411,7 @@ def main(argv: list[str] | None = None) -> int:
         auth_env = str(provider_cfg.get("auth_env", "XAI_API_KEY"))
         token = resolve_env_value(auth_env, dotenv_map)
         if not token and not args.dry_run:
-            print(
-                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
-                file=sys.stderr,
-            )
+            print(missing_auth_message(auth_env), file=sys.stderr)
             return 2
         base_url = str(provider_cfg.get("base_url", "https://api.x.ai/v1")).rstrip("/")
         generate_path = str(provider_cfg.get("generate_path", "/images/generations"))
@@ -1434,10 +1448,7 @@ def main(argv: list[str] | None = None) -> int:
         auth_env = str(provider_cfg.get("auth_env", "OPENAI_API_KEY"))
         token = resolve_env_value(auth_env, dotenv_map)
         if not token and not args.dry_run:
-            print(
-                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
-                file=sys.stderr,
-            )
+            print(missing_auth_message(auth_env), file=sys.stderr)
             return 2
         base_url = str(provider_cfg.get("base_url", "https://api.openai.com/v1")).rstrip("/")
         generate_path = str(provider_cfg.get("generate_path", "/images/generations"))
@@ -1474,10 +1485,7 @@ def main(argv: list[str] | None = None) -> int:
         auth_env = str(provider_cfg.get("auth_env", "OPENROUTER_API_KEY"))
         token = resolve_env_value(auth_env, dotenv_map)
         if not token and not args.dry_run:
-            print(
-                f"{auth_env} が見つかりません。.env または環境変数を設定してください。",
-                file=sys.stderr,
-            )
+            print(missing_auth_message(auth_env), file=sys.stderr)
             return 2
         base_url = str(provider_cfg.get("base_url", "https://openrouter.ai/api/v1")).rstrip("/")
         generate_path = str(provider_cfg.get("generate_path", "/chat/completions"))

@@ -20,10 +20,13 @@ class Position(str, Enum):
 class MangaMeta(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    intent: Literal["manga_page", "manga_panel"]
+    intent: Literal["manga_page", "manga_panel", "illustration"]
     reading_order: ReadingOrder = ReadingOrder.rtl
     aspect_ratio: str = "2:3"
     page_count: int = 1
+    source_text: str | None = None
+    source_anchor: str | None = None
+    illustration_type: str | None = None
 
 
 class MangaStyle(BaseModel):

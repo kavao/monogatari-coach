@@ -162,9 +162,15 @@ c. プロフィールについても深く掘り下げてください。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
    - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/image_provider_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
    - コマ画像は **`manga/_assets/<manga_XX>/`** に展開する（詳細は §2.2.2・スキル **novel-image-layout**）
-10. _meta.md
+10. illustrations/pages/illustration_XX_pYY.yaml（挿絵・表紙タグ正本・YAML IR）
+   - 小説本文の場面・章扉・表紙向けの一枚絵（または明示した複合レイアウト）を YAML IR で管理する（スキル **illustration-prompt-ir**）。型は漫画ページと同じ `MangaPagePrompt` で、`meta.intent: illustration` とする。
+   - YAML 上の **`panels[]` は漫画のコマではなく構成セル**（構図・配置の単位）。単体挿絵はセル1件を推奨。群像・複合構図が要る作品だけセルを複数にできる（§2.2.3）。
+   - 命名の例: 表紙 `illustration_00_p01.yaml`、第1章挿絵 `illustration_01_pYY.yaml`（番号設計は作品 `_meta.md` の「挿絵・表紙」に書く）。
+   - **互換出力（任意）**: `illustrations/illustration_XX.md`（初期運用では必須にしない）。
+   - 生成画像は **`illustrations/_assets/<illustration_XX>/`** に集約する（詳細は §2.2.3・スキル **novel-image-layout**）
+11. _meta.md
    - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
-   - `_how_to/meta.md` のフォーマットに従って生成・更新される。
+   - `_how_to/meta.md` のフォーマットに従って生成・更新される（挿絵の密度・表紙方針は同ファイル「画像・漫画生成設定」の **挿絵・表紙** 節）。
 
 **執筆前の資料・ディレクトリ確認（曖昧にしない）**
 - 原則、**`novel_text` 以外**が揃ってから本文執筆に入る（上記 1〜5・7・10 と、空でもよい **`_novel_text/`**・**`_reader/`**）。
@@ -339,6 +345,85 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### 画像生成の指示文テンプレ（チャットで使う）
 生成モードの判定語は上記「生成モードの用語統一」を正とする。実行コマンド例は `docs/image-generation/index.md` の「よく使うコマンド」を参照する。
+
+### 2.2.3 Illustration Tag Mode（挿絵・表紙タグ出力：本文参照後／挿絵生成前）
+小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、挿絵・章扉・表紙用の YAML IR を作成する。漫画とは **運用パスだけ分離**し、スキーマは漫画ページ IR と同型（`meta.intent: illustration`）とする。
+原則として、**本文または構成案が確定した後**、挿絵の画像生成の前に行う。**表紙は作品ごとに計画に含める**（有無・単行本想定は `_meta.md` の「挿絵・表紙」に書く）。
+
+**禁止**: Illustration Tag Mode の初手として `illustrations/illustration_XX.md` だけを直接新規作成して正本にしないこと。正本は `illustrations/pages/*.yaml` とし、互換 Markdown は必要なときだけエクスポートする。
+
+#### 目的
+- 本文の山場・章頭・表紙などを、漫画のコマ割り前提にしない一枚絵（または明示した複合レイアウト）として言語化し、AI 画像生成に渡せる状態にする。
+- 人物・場面・構図・光・タグ・ネガ・生成指示を YAML IR に構造化する（スキル **illustration-prompt-ir**）。
+
+#### 参照ルール（必須）
+- 作業開始前に作品 `_meta.md` の **挿絵・表紙** 節を読み、挿絵の密度・優先場面・表紙の有無を確認する。
+- **`panels[].prompt_tags` の英語トークン**は `_how_to/manga_tag.md` の語彙・置き換えに合わせる（挿絵専用の別語彙表は必須にしない）。創作技法の組み立ては `_how_to/manga.md` を必要に応じて参照する。
+- **型の正本**は `tools/manga_prompt_ir/schemas/manga_page.py`（`MangaMeta.intent` に `illustration`）。**実データの正本**は `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml`。検証は **`tools/novel_prompt_ir_validate.py`**（本番前は `--strict-quality` を推奨）。
+- **キャラクター外見の継承**はスキル **`manga-tag-character-sync`** と同順（`tag/characters/*.yaml` → `character.md` → `tag/<romaji>.md`）。
+- **枠線**: 挿絵の既定は **枠線なし・パネル境界なし**。`manga.panel_layout` または `render_instruction.user_directives.page_notes` で方針を明示する。枠を使う場合は omit／ネガと矛盾しないよう一度だけ理由を書く。
+
+#### 出力先（必須）
+- **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/illustrations/pages/illustration_XX_pYY.yaml`
+- **画像保存先**: `novels/[novel_code]_[novel_title]/illustrations/_assets/<illustration_XX>/`
+- **互換 Markdown（任意）**: `novels/[novel_code]_[novel_title]/illustrations/illustration_XX.md`
+
+#### `panels[]`＝構成セル（漫画の「コマ」との違い）
+- YAML のキー名は漫画と同じ `panels[]` / `Panel` だが、挿絵では **コマ割り・読み順・段組**を主目的にしない。
+- **`panel_id` はセル番号**として扱う。各セルの `summary`・`subjects`・`composition.*_en`・`camera`・`lighting` に、その領域で何を見せるかを書く。
+- **単体挿絵（既定）**: セル **1件**。1セル内に複数 `subjects` を置いて群像を描く（表紙で中央人物＋脇役＋背景光など）ことも多い。
+- **`text`（セリフ・効果音）**は原則空。画像内文字が要る場合だけ `text_policy` と `page_notes` で明示する。
+
+#### 複合構図が要る作品だけ（セル複数）
+次のいずれかに当てはまるときだけ、**1 YAML 内で `panels[]` を2件以上**にする。それ以外の作品はセル1件でよい。
+
+- 画面を **領域ごとに説明したい**（例: 右にバストアップ、奥に広い情景、別レイヤーの小物）。
+- セルごとに **画角・光・主役が違う**ため、1セルにまとめるとプロンプトが曖昧になる。
+- 後から **セル単位の差し替え生成**を検討する可能性がある。
+
+**書き方の要点**
+
+1. **ファイル全体の関係** — `manga.panel_layout` に「右セルは前景バスト、左奥は広角の情景」のように **空間関係を日本語で**書く（漫画の「上段2コマ」型の段組指示は書かない）。
+2. **セルごとの役割** — 各 `panels[].summary` に、そのセルが担う部分だけを書く。
+3. **ユーザ指示の正本** — 全体方針は `render_instruction.user_directives.page_notes`、全セル共通タグは `defaults.required_prompt_tags` / `omit_prompt_tags`。
+4. **検証** — セル複数は `novel_prompt_ir_validate.py` が WARNING を出すことがある（群像として許容）。単体挿絵なのにセルが複数なら見直す。
+
+**画像生成との対応（現行ツール）**
+
+| 狙い | 運用 |
+|------|------|
+| **1枚にまとめた完成挿絵**（表紙・章扉の既定） | セル1件、またはセル複数でも **1 YAML → `image_provider_novel_illustration_batch.py` で1ジョブ**（全セルのタグを統合）。`render_instruction` と `panel_layout` で合成意図を明示する。 |
+| **セルごとに別画像** | セル複数 YAML を **セル相当のタグ単位で分けて別ジョブ**にする運用は、現行挿絵バッチの拡張または漫画 `step1-panels` 相当の明示指定が必要。複合構図が要る作品は、Tag Mode 完了時に `_meta.md` へ「生成は1枚合成／セル別」の方針を1行メモしておく。 |
+
+複合構図が不要な作品では、セル複数にしないことでタグの混線と検証 WARNING を減らせる。
+
+#### ページ別の指示メモ（ユーザ指示の正本）
+品質修正で「何を直すか」がブレるときは、挿絵 YAML の `render_instruction.user_directives` に残す（漫画ページと同フィールド）。詳細は **`.rulesync/skills/illustration-prompt-ir/SKILL.md`** と `docs/image-generation/illustration-prompt-ir.md`。
+
+#### チャット→修正→検証→再生成（ぶれない流れ）
+1. `_meta.md` の挿絵・表紙方針と本文・キャラ正本を確認する。
+2. `illustrations/pages/*.yaml` を作成・更新する。
+3. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で検証する。
+4. `python tools/image_provider_novel_illustration_batch.py novels/<作品> --dry-run` で provider・保存先・プロンプトを確認する。
+5. ユーザー承認後に本番生成し、**`illustrations/_assets/` にファイルが存在すること**を確認してから完了報告する（横断正本: **`.rulesync/rules/concepts.md`** の「画像生成: dry-run から本番まで」）。
+
+チャットの最小トリガー例:
+
+```
+本文から挿絵タグを作成してください。
+```
+
+表紙だけ:
+
+```
+表紙用の挿絵IRを作成してください。illustration_00 としてください。
+```
+
+#### 手動手順（明確化）
+詳細は **`.rulesync/skills/illustration-prompt-ir/SKILL.md`**、操作コマンドは `docs/image-generation/illustration-prompt-ir.md` と `docs/image-generation/index.md`（`MONOCRI_ILLUSTRATION_*`）を参照する。
+
+#### 画像生成の指示文テンプレ（チャットで使う）
+挿絵・表紙の既定は **`image_provider_novel_illustration_batch.py`**。表紙向け比率は `--aspect-ratio book_cover`（2:3）など。コマンド例は `docs/image-generation/illustration-prompt-ir.md` を正とする。
 
 ### 2.3 Writing Mode
 1. **執筆前チェック（推奨・新規作品では必須に近い）**

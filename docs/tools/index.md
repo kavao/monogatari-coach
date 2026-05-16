@@ -261,6 +261,16 @@ uv run python howto_init.py
 
 ---
 
+### `env_check.py` — `.env` 不足確認
+
+`.env.example` の版、`.env` の不足キー、選択中 provider に必要な API キー不足を確認します。
+
+```bash
+python tools/env_check.py
+```
+
+---
+
 ### `tools_temp/` — ローカル試行領域
 
 `tools/` の正規スクリプトを直接編集せず、コピーして試行錯誤するための一時領域です。Git 管理外（`README.md` のみ追跡）。

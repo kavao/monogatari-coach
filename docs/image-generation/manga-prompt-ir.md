@@ -92,6 +92,34 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 - 修正は **常に YAML 側**。`manga_XX.md` が要るときだけ再エクスポート。
 - **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `image_provider_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。
 
+### ページ生成の provider 別 formatter
+
+`--source step1-pages` / `--source step2-pages` は、YAML から作った既存のページ指示文を素材にしつつ、provider 設定に応じて `tools/manga_prompt_ir/prompt_formatters.py` の formatter を通します。Grok / OpenAI / OpenRouter 系の既定は `manga_page_instruction` で、英語の `Page Structure` / `Panel Outline` / `Character Anchors` / `Do not include` を添え、`negative_prompt` は prompt 内の `Do not include` へ移します。
+
+```bash
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step1-pages --provider grok_pro --dry-run
+
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step2-pages --provider grok_pro --dry-run
+```
+
+`--prompt-formatter tag_csv` を付けると、旧来の日本語ページ指示文と native `negative_prompt` の形に戻して比較できます。既定値は `config/image_generation.json` の `providers.*.prompt_formatter` で管理します。
+
+### コマ生成の provider 別 formatter
+
+`--source step1-panels` も同じ resolver を通ります。既定では、NovelAI は `novelai_pipe` のまま **`ベース | キャラ`** 形式と native `negative_prompt` を維持し、Forge は `tag_csv` を維持します。Grok / OpenAI / OpenRouter 系は `natural_sections` になり、1コマ分の `Panel Context` / `Characters` / `Composition` / `Lighting and Mood` / `Visual Tag Hints` / `Do not include` へ整理します。
+
+```bash
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step1-panels --provider grok_pro --dry-run
+
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step1-panels --provider novelai --dry-run
+```
+
+NovelAI で `|` 分割を使わない比較は、従来どおり `--no-novelai-pipe-character-tags` を付けます。この場合、effective formatter は `tag_csv` と表示されます。
+
 ### 互換 Markdown を出すとき（`novel_prompt_ir_export_md.py`）
 
 **`--manga-page` を渡す実行では、手順を一本化するため `--novelai-pipe-tags` を付ける**と、Step1 の各コマ `tag` 行が NovelAI 向け **`ベース | キャラ`** 形式になり、`image_provider_novel_manga_batch`（step1-panels 等）と形が揃います。付けないと Step1 がカンマ一列になりやすい。
@@ -324,7 +352,7 @@ character_snapshots: []
 3. `panels[].omit_negative_tags` に書いた断片を、1〜2 の結果から除去
 4. `panels[].negative_tags` を追加（重複除去）
 
-**ページ生成**（`step1-pages` / `step2-pages`）ではジョブ単位のネガは主に CLI の `--negative-prompt`。上記の `technical` / `panels[]` ネガフィールドは **コマ単位生成向け**と捉える。
+**ページ生成**（`step1-pages` / `step2-pages`）では、CLI の `--negative-prompt` と `technical.negative_tags` をページ単位のネガとして扱います。`manga_page_instruction` formatter 使用時は、これらが prompt 内の `Do not include` へ移り、API に渡す `negative_prompt` は空になります。`panels[].negative_tags` / `panels[].omit_negative_tags` は **コマ単位生成向け**です。
 
 語彙・運用例: `_how_to.example/manga_tag.md` の「コマ別ネガ」。
 

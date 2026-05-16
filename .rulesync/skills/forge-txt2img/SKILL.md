@@ -41,9 +41,13 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source background-concepts`（既定 `grok`） |
+| `MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT` | `image_provider_novel_illustration_batch.py`（挿絵・表紙生成。既定 `grok_pro`） |
+| `MONOCRI_ILLUSTRATION_MODEL_DEFAULT` | `image_provider_novel_illustration_batch.py` で provider に渡すモデル名または alias。空なら provider の `default_model` |
+| `MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT` | `image_provider_novel_illustration_batch.py` の既定アスペクト。表紙向け既定は `book_cover`（2:3） |
+| `MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT` | `image_provider_novel_illustration_batch.py` の既定解像度。Grok 向け既定は `2k` |
 | `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
-| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `pro`）。`grok_pro` を直接使う運用では不要 |
+| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `quality` / 互換 `pro`）。`grok_pro` を直接使う運用では不要 |
 
 ### grok と grok_pro の使い分け
 
@@ -52,9 +56,27 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | provider | 使用モデル | 主な用途 |
 |----------|-----------|----------|
 | `grok` | `grok-imagine-image`（standard） | キャラタグ一括生成など単体画像 |
-| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages / background-concepts） |
+| `grok_pro` | `grok-imagine-image-quality` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵の高品質生成 |
 
-ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として認識し、API 呼び出しは同じ xAI エンドポイントを共有する。プロバイダ名の違いが `config/image_generation.json` の `default_model` を切り替える唯一の手段であり、`MONOCRI_GROK_MODEL_TIER_DEFAULT` はオーバーライド手段として残すが、**漫画向けは `grok_pro` を直接指定するほうが意図が明確**。
+ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として認識し、API 呼び出しは同じ xAI エンドポイントを共有する。プロバイダ名の違いが `config/image_generation.json` の `default_model` を切り替える唯一の手段であり、`MONOCRI_GROK_MODEL_TIER_DEFAULT` はオーバーライド手段として残すが、**漫画・挿絵の高品質生成向けは `grok_pro` を直接指定するほうが意図が明確**。
+
+`grok_pro` は旧 provider 名との互換名として残す。xAI の `grok-imagine-image-pro` は 2026-05-15 退役対象のため、現在の `grok_pro.default_model` は `grok-imagine-image-quality` とする。
+
+xAI の現行画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付ける。`config/image_generation.json` では、表紙向けに `book_cover` / `cover_portrait` = `2:3`、漫画縦向けに `manga_b5_portrait` / `portrait` = `3:4`、縦長ストーリー向けに `story_vertical` = `9:16` を preset として持つ。
+
+### provider別 prompt formatter
+
+`config/image_generation.json` の `providers.*.prompt_formatter` で、生成前のプロンプト整形を provider ごとに切り替える。
+
+| formatter | 主な用途 |
+|-----------|----------|
+| `tag_csv` | Forge / NovelAI 向けの従来タグ列 |
+| `novelai_pipe` | NovelAI の漫画コマ向け `base | character` 形式 |
+| `natural_sections` | Grok / OpenAI / OpenRouter の挿絵・表紙向け自然文 |
+| `manga_page_instruction` | Grok / OpenAI / OpenRouter の漫画ページ向け自然文 |
+| `background_brief` | 背景資料生成向け |
+
+Grok / OpenAI 系は native `negative_prompt` を持たない、または効き方が異なるため、formatter 側で `Do not include:` に統合する。dry-run では `prompt_formatter` と `negative_mode` を確認する。
 
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
 
@@ -90,9 +112,9 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 | **ページ生成** | `--source step2-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro` |
 | **背景概念生成** | `--source background-concepts` | **grok**（既定）または **OpenAI** | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok` |
 
-**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** を基本とする。1ページを1枚にまとめる **step1-pages / step2-pages** は **`grok_pro`（proモデル）を既定**とする。**background-concepts** は本番コマではなく背景資料生成として扱い、既定は `.env` と docs に合わせて **`grok`** とする。
+**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** を基本とする。1ページを1枚にまとめる **step1-pages / step2-pages** は **`grok_pro`（qualityモデル）を既定**とする。**background-concepts** は本番コマではなく背景資料生成として扱い、既定は `.env` と docs に合わせて **`grok`** とする。
 
-## 漫画生成の API 対応範囲（2026-04-12 時点）
+## 漫画生成の API 対応範囲（2026-05-16 時点）
 
 - **コマ生成**:
   **Forge / NovelAI / Grok / OpenAI** に対応。

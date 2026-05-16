@@ -63,6 +63,15 @@ from manga_prompt_ir.user_directives import (
     apply_to_tags as apply_user_directives_to_tags,
     omit_tags_for_panel as user_directives_omit_tags,
 )
+from manga_prompt_ir.prompt_formatters import (
+    NATIVE_NEGATIVE,
+    NOVELAI_PIPE,
+    TAG_CSV,
+    format_manga_panel_prompt,
+    format_manga_page_prompt,
+    provider_config_from_root,
+    resolve_prompt_formatter,
+)
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -1531,6 +1540,7 @@ def iter_yaml_manga_jobs(
     style_helper: str | None,
     *,
     cli_negative_prompt: str,
+    prompt_formatter: str,
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
     color_mode_override: str | None = None,
@@ -1601,6 +1611,20 @@ def iter_yaml_manga_jobs(
                 f"日本の漫画のコマ割りとして、ページ全体を1枚で生成してください。\n\n"
                 f"{body}"
             )
+            technical = page.get("technical") or {}
+            page_negative = merge_panel_negative_prompt(
+                cli_negative_prompt, as_list(technical.get("negative_tags")), [], []
+            )
+            bundle = format_manga_page_prompt(
+                page,
+                source=source,
+                existing_prompt=prompt,
+                negative_prompt=page_negative,
+                formatter=prompt_formatter,
+            )
+            prompt = bundle.prompt
+            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+                prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             all_jobs.append(
                 {
                     "stem": stem,
@@ -1608,6 +1632,9 @@ def iter_yaml_manga_jobs(
                     "koma": "00",
                     "prefix": f"{stem}_p{page_num:02d}",
                     "prompt": prompt,
+                    "negative_prompt": bundle.negative_prompt,
+                    "prompt_formatter": bundle.formatter,
+                    "negative_mode": bundle.negative_mode,
                     "output_dir": base.as_posix(),
                 }
             )
@@ -1629,6 +1656,20 @@ def iter_yaml_manga_jobs(
             prompt = f"{intro}\n\n{extra_text}\n\n{body}" if extra_text else f"{intro}\n\n{body}"
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
+            technical = page.get("technical") or {}
+            page_negative = merge_panel_negative_prompt(
+                cli_negative_prompt, as_list(technical.get("negative_tags")), [], []
+            )
+            bundle = format_manga_page_prompt(
+                page,
+                source=source,
+                existing_prompt=prompt,
+                negative_prompt=page_negative,
+                formatter=prompt_formatter,
+            )
+            prompt = bundle.prompt
+            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+                prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             all_jobs.append(
                 {
                     "stem": stem,
@@ -1636,6 +1677,9 @@ def iter_yaml_manga_jobs(
                     "koma": "00",
                     "prefix": f"{stem}_p{page_num:02d}_step1page",
                     "prompt": prompt,
+                    "negative_prompt": bundle.negative_prompt,
+                    "prompt_formatter": bundle.formatter,
+                    "negative_mode": bundle.negative_mode,
                     "output_dir": base.as_posix(),
                 }
             )
@@ -1659,14 +1703,24 @@ def iter_yaml_manga_jobs(
                 merged_neg = merge_panel_negative_prompt(
                     cli_negative_prompt, tech_neg, panel_neg, panel_omit
                 )
+                bundle = format_manga_panel_prompt(
+                    page,
+                    panel,
+                    tag_prompt=tags,
+                    negative_prompt=merged_neg,
+                    formatter=prompt_formatter,
+                    style_prefix=STYLE_PREFIX,
+                )
                 all_jobs.append(
                     {
                         "stem": stem,
                         "page": str(page_num),
                         "koma": str(panel_index),
                         "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
-                        "prompt": STYLE_PREFIX + tags,
-                        "negative_prompt": merged_neg,
+                        "prompt": bundle.prompt,
+                        "negative_prompt": bundle.negative_prompt,
+                        "prompt_formatter": bundle.formatter,
+                        "negative_mode": bundle.negative_mode,
                         "output_dir": base.as_posix(),
                     }
                 )
@@ -1682,6 +1736,7 @@ def iter_jobs_by_input(
     input_kind: str,
     *,
     cli_negative_prompt: str,
+    prompt_formatter: str,
     no_character_anchors: bool = False,
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
@@ -1695,6 +1750,7 @@ def iter_jobs_by_input(
             provider,
             style_helper,
             cli_negative_prompt=cli_negative_prompt,
+            prompt_formatter=prompt_formatter,
             use_novelai_pipe_split=use_novelai_pipe_split,
             step2_paraphrase=step2_paraphrase,
             color_mode_override=color_mode_override,
@@ -1811,6 +1867,21 @@ def main(argv: list[str] | None = None) -> int:
             " provider=grok ならページ生成向け補助文を自動付与"
         ),
     )
+    p.add_argument(
+        "--prompt-formatter",
+        choices=(
+            "tag_csv",
+            "novelai_pipe",
+            "natural_sections",
+            "manga_page_instruction",
+            "background_brief",
+        ),
+        default=None,
+        help=(
+            "provider別プロンプト整形の上書き。未指定時は "
+            "config/image_generation.json の providers.*.prompt_formatter を参照"
+        ),
+    )
     p.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
     p.add_argument("--max-page", type=int, default=None, help="処理する Page 番号の上限（含む）")
     p.add_argument("--min-koma", type=int, default=None, help="処理するコマ番号の下限（含む）。ページ生成ジョブは koma=0")
@@ -1851,12 +1922,29 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    try:
+        prompt_formatter = resolve_prompt_formatter(
+            provider,
+            args.source,
+            provider_cfg=provider_config_from_root(root, provider),
+            cli_formatter=args.prompt_formatter,
+        )
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
-    use_novelai_pipe = (
+    if (
         provider == "novelai"
         and args.input == "yaml"
         and args.source == "step1-panels"
-        and not args.no_novelai_pipe_character_tags
+        and args.no_novelai_pipe_character_tags
+        and prompt_formatter == NOVELAI_PIPE
+    ):
+        prompt_formatter = TAG_CSV
+    use_novelai_pipe = (
+        args.input == "yaml"
+        and args.source == "step1-panels"
+        and prompt_formatter == NOVELAI_PIPE
     )
     from manga_prompt_ir.step2_paraphrase import (
         effective_paraphrase,
@@ -1876,6 +1964,7 @@ def main(argv: list[str] | None = None) -> int:
             args.style_helper,
             args.input,
             cli_negative_prompt=args.negative_prompt,
+            prompt_formatter=prompt_formatter,
             no_character_anchors=args.no_character_anchors,
             use_novelai_pipe_split=use_novelai_pipe,
             step2_paraphrase=step2_px,
@@ -1916,6 +2005,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"novel: {novel}")
     print(f"input: {input_used}")
     print(f"provider: {provider}")
+    print(f"prompt_formatter: {prompt_formatter}")
     if aspect_effective is not None:
         if args.aspect_ratio is not None:
             print(f"aspect_ratio: {aspect_effective} (--aspect-ratio)")
@@ -1942,6 +2032,8 @@ def main(argv: list[str] | None = None) -> int:
             "file_prefix": job["prefix"],
             "count": 1,
             "seed": None,
+            "prompt_formatter": job.get("prompt_formatter", prompt_formatter),
+            "negative_mode": job.get("negative_mode", NATIVE_NEGATIVE),
         }
         if job.get("metadata"):
             payload["metadata"] = job["metadata"]
@@ -1951,6 +2043,10 @@ def main(argv: list[str] | None = None) -> int:
             payload["resolution"] = args.resolution
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {out_dir_posix}")
+            print(
+                f"    formatter: {payload['prompt_formatter']} "
+                f"({payload['negative_mode']})"
+            )
             print(f"    prompt[:100]: {payload['prompt'][:100]}...")
             neg_show = payload["negative_prompt"]
             if len(neg_show) > 160:

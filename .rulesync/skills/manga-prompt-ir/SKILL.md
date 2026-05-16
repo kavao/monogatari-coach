@@ -52,6 +52,14 @@ targets: ["*"]
   各コマのネガを **`--negative-prompt` + `technical.negative_tags` + `panels[].negative_tags`** として合成し、
   **`panels[].omit_negative_tags`** に書いた断片（例: `split screen`）を共通ネガから除いてからコマ別ネガを足す。
   スキーマは `tools/manga_prompt_ir/schemas/manga_page.py` の `Panel.negative_tags` / `Panel.omit_negative_tags`。
+  provider 別 formatter は `tools/manga_prompt_ir/prompt_formatters.py` で解決する。NovelAI は既定で
+  `novelai_pipe`（`ベース | キャラ` + native negative）、Forge は `tag_csv`、Grok / OpenAI / OpenRouter 系は
+  `natural_sections`（コマ文脈・人物・構図・照明・タグヒント・`Do not include`）を使う。
+- **ページ単位生成**（`image_provider_novel_manga_batch.py`・`--source step1-pages` / `--source step2-pages`）では、
+  既存の `yaml_page_step1_text()` / `yaml_page_step2_text()` で組み立てたページ指示文を素材として、
+  `tools/manga_prompt_ir/prompt_formatters.py` の `manga_page_instruction` へ通す。Grok / OpenAI / OpenRouter 系では
+  `--negative-prompt` と `technical.negative_tags` を prompt 内の **`Do not include`** へ移し、API に渡す
+  `negative_prompt` は空にする。旧来形式との比較は `--prompt-formatter tag_csv` で行える。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
 - 背景を先に起こす場合は `background_concepts[]` を使う。背景概念は本番コマではなく背景資料であり、Grok / OpenAI のような自然文・構造理解が強い provider へ渡し、人物を主役にしない空間設計として生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Validate manga-prompt-ir YAML files with the Pydantic schemas."""
+"""Validate manga/illustration prompt IR YAML files with the Pydantic schemas."""
 
 from __future__ import annotations
 
@@ -57,14 +57,16 @@ def load_yaml(path: Path) -> dict:
 
 def collect_files(args: argparse.Namespace) -> tuple[list[Path], list[Path]]:
     character_files = [Path(p) for p in args.character]
-    manga_page_files = [Path(p) for p in args.manga_page]
+    page_files = [Path(p) for p in args.manga_page]
+    page_files.extend(Path(p) for p in args.illustration_page)
     if args.novel_dir:
         novel_dir = Path(args.novel_dir)
         if not novel_dir.is_absolute():
             novel_dir = (repo_root() / novel_dir).resolve()
         character_files.extend(sorted((novel_dir / "tag" / "characters").glob("*.yaml")))
-        manga_page_files.extend(sorted((novel_dir / "manga" / "pages").glob("*.yaml")))
-    return character_files, manga_page_files
+        page_files.extend(sorted((novel_dir / "manga" / "pages").glob("*.yaml")))
+        page_files.extend(sorted((novel_dir / "illustrations" / "pages").glob("*.yaml")))
+    return character_files, page_files
 
 
 def has_text(value: str | None) -> bool:
@@ -169,6 +171,7 @@ def quality_warnings_for_page(
 ) -> list[str]:
     warnings: list[str] = []
     label = path.as_posix()
+    is_illustration = getattr(page.meta, "intent", None) == "illustration"
     warnings.extend(_user_directive_warnings_for_page(label, page))
     render_instruction = page.render_instruction
     has_render_instruction = any(
@@ -187,11 +190,45 @@ def quality_warnings_for_page(
     if not has_text(render_instruction.prompt_header):
         warnings.append(f"{label}: render_instruction.prompt_header が空です（外部の冒頭依頼文に依存します）")
     if not has_text(render_instruction.panel_policy):
-        warnings.append(f"{label}: render_instruction.panel_policy が空です（コマ割り指示が弱くなります）")
+        if is_illustration:
+            warnings.append(f"{label}: render_instruction.panel_policy が空です（構成セルの扱いが弱くなります）")
+        else:
+            warnings.append(f"{label}: render_instruction.panel_policy が空です（コマ割り指示が弱くなります）")
     if not has_text(render_instruction.character_policy):
         warnings.append(f"{label}: render_instruction.character_policy が空です（キャラクター外見継承が弱くなります）")
     if not has_text(page.manga.panel_layout):
-        warnings.append(f"{label}: manga.panel_layout が空です（ページ内の段・大小・読み順が弱くなります）")
+        if is_illustration:
+            warnings.append(f"{label}: manga.panel_layout が空です（一枚絵としての空間配置・枠線有無が弱くなります）")
+        else:
+            warnings.append(f"{label}: manga.panel_layout が空です（ページ内の段・大小・読み順が弱くなります）")
+    if is_illustration and len(page.panels) > 1:
+        warnings.append(
+            f"{label}: illustration の panels[] が複数あります。群像・複合構図なら問題ありませんが、単体挿絵は1セルを推奨します"
+        )
+    if is_illustration:
+        layout_text = str(page.manga.panel_layout or "")
+        negative_tags = {str(tag).lower() for tag in page.technical.negative_tags}
+        omitted_tags = {
+            str(tag).lower()
+            for tag in page.render_instruction.user_directives.defaults.omit_prompt_tags
+        }
+        suppresses_borders = any(
+            "comic panel" in tag or "panel border" in tag or "panel borders" in tag
+            for tag in negative_tags | omitted_tags
+        )
+        declares_no_borders = any(
+            word in layout_text
+            for word in ("枠線なし", "枠なし", "パネル境界なし", "セル境界なし")
+        )
+        declares_borders = any(word in layout_text for word in ("枠あり", "装飾枠", "分割画面", "split screen"))
+        if declares_borders and suppresses_borders:
+            warnings.append(
+                f"{label}: 枠線を使う意図が manga.panel_layout にありますが、omit/negative 側で枠線系タグを抑止しています"
+            )
+        if not declares_borders and not declares_no_borders and not suppresses_borders:
+            warnings.append(
+                f"{label}: illustration は既定で枠線なしです。manga.panel_layout か omit/negative_tags で枠線方針を明示してください"
+            )
     for color_warning in validate_color_consistency(color_page_data or page, root=repo_root()):
         warnings.append(f"{label}: {color_warning}")
 
@@ -203,8 +240,9 @@ def quality_warnings_for_page(
         prefix = f"{label}: panel {panel.panel_id}"
         step2_text = effective_step2_summary_text(panel)
         if step2_text in ABSTRACT_ONLY_SUMMARIES:
+            summary_label = "セル要約" if is_illustration else "Step2 用要約（step2_summary 優先、なければ summary）"
             warnings.append(
-                f"{prefix}: Step2 用要約（step2_summary 優先、なければ summary）が抽象語のみです: {step2_text!r}"
+                f"{prefix}: {summary_label}が抽象語のみです: {step2_text!r}"
             )
         if any(word in step2_text for word in PARTIAL_CUT_WORDS):
             has_owner = any(
@@ -288,10 +326,11 @@ def quality_warnings_for_page(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate manga-prompt-ir YAML files")
-    parser.add_argument("novel_dir", nargs="?", help="Novel directory containing tag/characters and manga/pages")
+    parser = argparse.ArgumentParser(description="Validate manga/illustration prompt IR YAML files")
+    parser.add_argument("novel_dir", nargs="?", help="Novel directory containing tag/characters, manga/pages, and illustrations/pages")
     parser.add_argument("--character", action="append", default=[], help="Character YAML file")
     parser.add_argument("--manga-page", action="append", default=[], help="Manga page YAML file")
+    parser.add_argument("--illustration-page", action="append", default=[], help="Illustration YAML file")
     parser.add_argument(
         "--strict-quality",
         action="store_true",
@@ -301,9 +340,9 @@ def main(argv: list[str] | None = None) -> int:
 
     CharacterPrompt, MangaPagePrompt = load_models()
     validate_color_consistency = load_color_validator()
-    character_files, manga_page_files = collect_files(args)
-    if not character_files and not manga_page_files:
-        parser.error("provide novel_dir, --character, or --manga-page")
+    character_files, page_files = collect_files(args)
+    if not character_files and not page_files:
+        parser.error("provide novel_dir, --character, --manga-page, or --illustration-page")
 
     character_ids: set[str] = set()
     character_variants: dict[str, set[str]] = {}
@@ -321,10 +360,12 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             errors.append(f"{path}: {exc}")
 
-    for path in manga_page_files:
+    page_counts: dict[str, int] = {"manga_page": 0, "manga_panel": 0, "illustration": 0}
+    for path in page_files:
         try:
             page_data = load_yaml(path)
             page = MangaPagePrompt.model_validate(page_data)
+            page_counts[str(page.meta.intent)] = page_counts.get(str(page.meta.intent), 0) + 1
             missing = [cid for cid in page.character_ids if cid not in character_ids]
             subject_missing = [
                 subject.character_id
@@ -344,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
                     color_page_data=page_data,
                 )
             )
-            print(f"OK manga_page: {path}")
+            print(f"OK {page.meta.intent}: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")
 
@@ -364,7 +405,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"validated characters={len(character_files)} manga_pages={len(manga_page_files)} "
+        f"validated characters={len(character_files)} manga_pages={page_counts.get('manga_page', 0)} "
+        f"manga_panels={page_counts.get('manga_panel', 0)} illustrations={page_counts.get('illustration', 0)} "
         f"quality_warnings={len(warnings)}"
     )
     return 0

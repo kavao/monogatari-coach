@@ -27,11 +27,15 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
 | `novelai` | `nai-diffusion-4-5-full` など | コマ生成（クラウド） |
 | `grok` | `grok-imagine-image`（standard） | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
-| `grok_pro` | `grok-imagine-image-pro` | 漫画ページ生成（step1-pages / step2-pages） |
+| `grok_pro` | `grok-imagine-image-quality` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵の高品質生成 |
 | `openai` | `gpt-image-1.5` など | ページ生成の代替 |
 | `openrouter` | `google/gemini-2.5-flash-image` など | OpenRouter 経由の画像生成 |
 
-`grok` と `grok_pro` は同じ xAI API エンドポイントを使いますが、`config/image_generation.json` の `default_model` が異なります。ツール内部では `_GROK_FAMILY = {"grok", "grok_pro"}` として同系として扱います。
+`grok` と `grok_pro` は同じ xAI API エンドポイントを使いますが、`config/image_generation.json` の `default_model` が異なります。ツール内部では `_GROK_FAMILY = {"grok", "grok_pro"}` として同系として扱います。`grok_pro` は provider 名の互換名として残し、中身は xAI の現行高品質画像モデル `grok-imagine-image-quality` を指します。
+
+`grok-imagine-image-pro` は xAI の 2026-05-15 退役対象です。古い設定から移行する場合は `grok-imagine-image-quality` を使います。
+
+xAI の画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付けます。代表 preset は `square` = `1:1`、`portrait` / `manga_b5_portrait` = `3:4`、`book_cover` / `cover_portrait` = `2:3`、`story_vertical` = `9:16`、`landscape` / `wide` = `16:9` です。
 
 ---
 
@@ -40,6 +44,13 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 `--provider` を省略したとき、バッチツールは `.env` の下記変数を参照します。
 
 ```dotenv
+MONOCRI_ENV_VERSION=2026-05-16
+
+NOVELAI_ACCESS_TOKEN=
+XAI_API_KEY=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+
 # キャラクタータグ一括生成 (image_provider_novel_tag_batch.py)
 MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT=novelai
 
@@ -54,6 +65,12 @@ MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro
 
 # 漫画背景概念生成 (--source background-concepts)
 MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok
+
+# 挿絵・表紙生成 (image_provider_novel_illustration_batch.py)
+MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT=grok_pro
+MONOCRI_ILLUSTRATION_MODEL_DEFAULT=
+MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT=book_cover
+MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 
 # Forge のモデル族 (sdxl / flux)
 MONOCRI_FORGE_MODEL_FAMILY_DEFAULT=
@@ -73,6 +90,26 @@ MONOCRI_MANGA_COLOR_MODE_DEFAULT=monochrome
 **漫画バッチの縦横比**: CLI `--aspect-ratio` が **最優先**。未指定かつ実際のプロバイダが `grok_pro` のときだけ `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` が `aspect_ratio_preset` に効く（それ以外のプロバイダでは無視）。
 
 **漫画ページの色モード**: 優先順位は CLI `--color-mode` > ページYAMLの `color_palette.mode` > `.env` の `MONOCRI_MANGA_COLOR_MODE_DEFAULT` > スキーマ既定 `monochrome`。`--color-mode` はその実行だけの上書きで、YAML を自動変更しません。`novel_prompt_ir_validate.py` は `color_palette.mode` と `manga.visual_tags` / `render_instruction` の矛盾を WARNING として出しますが、センターカラーや扉絵だけカラーなどの例外を想定し、通常運用では自動修正・通常エラー化しません。
+
+**挿絵バッチの既定値**: `image_provider_novel_illustration_batch.py` は CLI 未指定時に `MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT`、`MONOCRI_ILLUSTRATION_MODEL_DEFAULT`、`MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT`、`MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT` を参照します。既定は表紙・章扉を想定して `grok_pro`、`book_cover`（2:3）、`2k` です。モデル名は空なら provider の `default_model` を使います。
+
+**不足確認**: `.env.example` の更新後は `python tools/env_check.py` を実行します。`MONOCRI_ENV_VERSION` の不一致、新しいキーの不足、選択中 provider に必要な API キー不足をまとめて表示します。
+
+---
+
+## provider別 prompt formatter
+
+`config/image_generation.json` の `providers.*.prompt_formatter` で、同じ YAML IR を provider ごとに違う形へ整形します。
+
+| formatter | 主な provider | 形式 |
+|-----------|---------------|------|
+| `tag_csv` | Forge / NovelAI | 従来のカンマ区切りタグ列 + native `negative_prompt` |
+| `novelai_pipe` | NovelAI の漫画コマ生成 | `base | character A | character B` |
+| `natural_sections` | Grok / OpenAI / OpenRouter の挿絵・表紙 | `Composition / Characters / Lighting / Do not include` |
+| `manga_page_instruction` | Grok / OpenAI / OpenRouter のページ生成 | `Page goal / Layout / Panels / Character anchors / Do not include` |
+| `background_brief` | 背景資料生成 | `Environment / Camera / Lighting / Mood` |
+
+挿絵/表紙バッチでは `--prompt-formatter` で一時上書きできます。Grok / OpenAI 系では `negative_prompt` を API に送らず、`Do not include:` セクションへ統合します。
 
 ---
 
@@ -171,7 +208,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
   --manga-stem manga_01 --source step1-panels
 ```
 
-### 漫画精密ページ生成（step1-pages / grok_pro）
+### 漫画精密ページ生成（step1-pages / grok_pro = quality）
 
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
@@ -183,7 +220,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
   --aspect-ratio manga_b5_portrait --resolution 2k
 ```
 
-### 漫画ページ生成（step2-pages / grok_pro）
+### 漫画ページ生成（step2-pages / grok_pro = quality）
 
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
@@ -245,11 +282,12 @@ python tools/image_provider_generate.py \
 | 種別 | 保存先 |
 |------|--------|
 | 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/`（**章 `manga_XX` 直下が標準。ページ別サブフォルダは推奨しない**） |
+| 挿絵 / 表紙 | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 | キャラクター立ち絵 | `novels/<作品>/tag/<romaji>/` |
 
 コマ画像は同一フォルダ内で `file_prefix`（例: `manga_01_p02_k03`）により区別する。`image_provider_novel_manga_batch --subdir-by-page` は例外的な用途のみ。
 
-フォルダ一括作成は `python tools/novel_image_layout.py scaffold <作品> --panels N`。
+フォルダ一括作成は `python tools/novel_image_layout.py scaffold <作品> --panels N`。挿絵は `illustrations/pages/illustration_XX_pYY.yaml` から `illustrations/_assets/illustration_XX/` を作成する。
 
 ---
 
