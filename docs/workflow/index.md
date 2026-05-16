@@ -38,19 +38,4 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 
 公式の `.rulesync/skills/` とは別に、投稿変換や個人用の手順を **`_how_to/skills/<名前>/SKILL.md`** で持てます。雛形は **`_how_to.example/skills/`**、スクリプトは **`_how_to/tools/`** に置くのが既定です。概要・索引・具体例は **[ユーザスキルと雛形の置き場](user-skills.md)** を参照してください。
 
-## 詳細参照
-
-- 全体ルール:
-  [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md)
-- 文字数:
-  [`/.rulesync/skills/novel-char-count/SKILL.md`](../../.rulesync/skills/novel-char-count/SKILL.md)
-- 画像レイアウト:
-  [`/.rulesync/skills/novel-image-layout/SKILL.md`](../../.rulesync/skills/novel-image-layout/SKILL.md)
-- 執筆前確認:
-  [`/.rulesync/skills/novel-project-readiness/SKILL.md`](../../.rulesync/skills/novel-project-readiness/SKILL.md)
-- 資料取り込み:
-  [`/.rulesync/skills/source-material-intake/SKILL.md`](../../.rulesync/skills/source-material-intake/SKILL.md)
-- 企画・設計:
-  [`/.rulesync/skills/novel-planning/SKILL.md`](../../.rulesync/skills/novel-planning/SKILL.md)
-- 下読み・興味判定の保存:
-  [`/.rulesync/skills/novel-reader-output/SKILL.md`](../../.rulesync/skills/novel-reader-output/SKILL.md)
+技術仕様の正本は [`.rulesync/rules/`](../../.rulesync/rules/) と [`.rulesync/skills/`](../../.rulesync/skills/) にあります。

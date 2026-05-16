@@ -10,6 +10,33 @@
 
 ---
 
+## 操作一覧
+
+**初回導入**:
+[1. 状態確認](#1-状態確認) /
+[2. 新規作品を始める](#2-新規作品を一から始める) /
+[3. 既存資料を取り込む](#3-既存資料を取り込んで展開する) /
+[4. 執筆を再開する](#4-執筆を再開するセッション再開)
+
+**制作フロー**:
+[A. 企画・設計](#a-企画設計を固める) /
+[B. 執筆](#b-執筆する) /
+[C. 清書・校正](#c-清書文章校正する) /
+[D. 下読み](#d-下読き足きり判定する) /
+[E. 興味判定](#e-一般読者視点で興味を判定する) /
+[F. メタ情報更新](#f-メタ情報を更新する)
+
+**画像生成（任意）**:
+[G. キャラタグ作成](#g-キャラクター画像タグを作るtag-mode) /
+[H. キャラ画像生成](#h-キャラクター画像を生成する) /
+[I. 漫画タグ作成](#i-漫画ページタグを作るmanga-tag-mode) /
+[J. 漫画画像生成](#j-漫画画像を生成する) /
+[K. 挿絵IR作成](#k-挿絵表紙の-ir-を作るillustration-tag-mode) /
+[L. 挿絵生成](#l-挿絵表紙を生成する) /
+[M. 背景資料生成](#m-背景画像背景資料を生成する)
+
+---
+
 ## 初回導入
 
 ### 1. 状態確認
@@ -217,7 +244,7 @@ python tools/novel_char_count.py novels/NNN_作品名
 3. 結果を `novels/<作品>/_reader/YYYYMMDD_HHMM.md` に保存する
 4. チャットには判定（合格／不合格・5段階評価）と改善ポイントの要約だけを返す
 
-保存先と完了条件の正本は `.rulesync/skills/novel-reader-output/SKILL.md` です。
+詳しい保存先と手順は [Reader Output](reader-output.md) を参照してください。
 
 *（このモードは LLM が直接処理するため、CLI ツールは使いません）*
 
@@ -235,7 +262,7 @@ python tools/novel_char_count.py novels/NNN_作品名
 3. 結果を `novels/<作品>/_reader/interest_YYYYMMDD.md` に保存する
 4. チャットには「継続 / 離脱」の判定と決め手を1〜3行で返す
 
-保存先と完了条件の正本は `.rulesync/skills/novel-reader-output/SKILL.md` です。
+詳しい保存先と手順は [Reader Output](reader-output.md) を参照してください。
 
 *（このモードは LLM が直接処理するため、CLI ツールは使いません）*
 
@@ -518,25 +545,9 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 ---
 
-## その他のツール（間接的に使われるもの）
+## その他のツール
 
-Monogatari Coach が内部で利用するツールのうち、ユーザーが直接呼び出すことは少ないものをまとめます。知っておくと手動で実行・確認したいときに役立ちます。
-
-| ツール | 用途 | CLI 例 |
-|--------|------|--------|
-| `tools/workspace_audit_log.py` | 査証ログ・日記への追記 | `python tools/workspace_audit_log.py append "内容"` |
-| `tools/env_check.py` | `.env` と `.env.example` の差分・不足キー確認 | `python tools/env_check.py` |
-| `tools/novel_code_allocate.py` | 作品番号（novel_code）の採番・検証 | `python tools/novel_code_allocate.py novels/` |
-| `tools/novel_project_check.py` | 必須ファイル・ディレクトリの揃いを確認 | `python tools/novel_project_check.py novels/NNN_作品名` |
-| `tools/novel_char_count.py` | 小説本文の文字数を集計 | `python tools/novel_char_count.py novels/NNN_作品名` |
-| `tools/novel_image_layout.py` | 画像保存先フォルダを一括作成 | `python tools/novel_image_layout.py scaffold novels/NNN_作品名` |
-| `tools/novel_prompt_ir_embed_snapshots.py` | キャラ外見をページ YAML に埋め込む | `python tools/novel_prompt_ir_embed_snapshots.py novels/NNN_作品名` |
-| `tools/novel_prompt_ir_validate.py` | YAML IR の型・参照・品質を検証 | `python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality` |
-| `tools/novel_prompt_ir_export_md.py` | YAML IR を互換 Markdown に変換 | `python tools/novel_prompt_ir_export_md.py --help` |
-| `tools/image_provider_generate.py` | 単体画像を1枚生成（バッチではなく手動試作向け） | `python tools/image_provider_generate.py --probe --provider forge` |
-| `tools/image_provider_novel_illustration_batch.py` | 挿絵・表紙を一括生成 | `python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 --dry-run` |
-| `tools/json_weighted_pick.py` | JSON リストから確率付き乱数選択（命名などで使用） | `python tools/json_weighted_pick.py _how_to/name_creature.json` |
-| `tools/codex_builtin_image_archive.py` | Codex 内蔵画像を作品フォルダへアーカイブ | `python tools/codex_builtin_image_archive.py --help` |
+手動で実行できる全ツールの一覧とコマンド例は [Tools（ツールリファレンス）](../tools/index.md) を参照してください。
 
 ---
 

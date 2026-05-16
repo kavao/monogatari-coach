@@ -11,8 +11,6 @@
 - メモや下書きを `proposal.md` / `design_specification.md` / `character.md` などへ整理したい
 - 既存作品の資料を崩さず、参照用に保全しながら制作へ進みたい
 
-実行手順の正本は [source-material-intake](../../.rulesync/skills/source-material-intake/SKILL.md) です。
-
 ## チャットへの指示文
 
 これだけで動きます。

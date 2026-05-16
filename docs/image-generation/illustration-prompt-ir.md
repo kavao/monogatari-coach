@@ -50,80 +50,53 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の挿
 
 ## 最小 YAML
 
+必須・推奨フィールドだけを含む最小構成です。`character_snapshots`・`background_concepts`・`technical` などは省略できます。
+
 ```yaml
 schema_version: "1.0"
 meta:
   intent: illustration
   aspect_ratio: "2:3"
-  page_count: 1
   source_anchor: "novel_text01.md#scene-01"
-  illustration_type: "chapter_illustration"
 render_instruction:
   task: このYAMLを、小説挿絵1枚分の作画依頼書として扱う。
   prompt_header: 本文の一場面を、漫画のコマ枠前提にしない完成イラストとして描く。
   panel_policy: panels[] は構成セル。単体ならセル1件を一枚絵として統合する。
-  character_policy: character_snapshots または character_id の固定外見・服装・禁止事項を反映する。
+  character_policy: character_id の固定外見・服装を反映する。
   text_policy: 画像内文字は原則入れない。
-  output_policy: 1枚の完成挿絵として出力する。枠線は既定なし。
-  user_directives:
-    page_notes:
-      - 枠線なし。漫画ページではなく一枚絵として扱う。
-    defaults:
-      required_prompt_tags: []
-      omit_prompt_tags:
-        - comic panel
-        - panel borders
+  output_policy: 枠線なし。1枚の完成挿絵として出力する。
 manga:
-  genre_tags:
-    - illustration
-  visual_tags:
-    - anime illustration
-    - detailed background
-  panel_layout: 枠線なし・一枚絵・セル境界の黒枠なし
+  panel_layout: 枠線なし・一枚絵
 scene:
-  location: 深夜の自室
   location_en: small bedroom at night
 character_ids:
   - kazuki
-character_snapshots: []
-background_concepts: []
 panels:
   - panel_id: 1
     summary: 机に向かう主人公が、光るスマホに手を伸ばす。
     subjects:
       - character_id: kazuki
-        description: 机に向かう主人公
-        description_en: protagonist at desk
-        pose_action: スマホに手を伸ばす
         pose_action_en: reaching toward phone
-        expression: 警戒している
         expression_en: wary
     composition:
       framing_en: medium shot
-      focus_en: lit smartphone on desk
-    camera:
-      shot_size_en: medium shot
     lighting:
       quality_en: dark room lit by phone screen
-    text:
-      dialogue: []
-      narration: []
-      monologue: []
-      sfx: []
-    mood_atmosphere_en:
-      - quiet tension
     prompt_tags:
       - phone_screen_light
 color_palette:
   mode: full_color
-technical:
-  resolution: 2k
-  quality_level: high
-  negative_tags:
-    - bad anatomy
-    - comic panel borders
-    - split screen
 ```
+
+よく使うオプションフィールド:
+
+| フィールド | 用途 |
+|-----------|------|
+| `technical.negative_tags` | 出力に含めたくないタグ |
+| `technical.resolution` | `2k` / `4k` など |
+| `background_concepts[]` | 背景資料生成に使う場所・構図のメモ |
+| `character_snapshots[]` | キャラ外見を YAML に埋め込む場合（`embed_snapshots.py` で自動生成） |
+| `render_instruction.user_directives.page_notes` | ページ単位の指示メモ |
 
 ---
 

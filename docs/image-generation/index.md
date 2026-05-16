@@ -14,6 +14,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 - 詳細スキル: [`image-provider`（旧 `forge-txt2img`）](../../.rulesync/skills/forge-txt2img/SKILL.md)
 - 漫画ページ IR・検証・パイプライン: [manga-prompt-ir.md](manga-prompt-ir.md)
 - 互換 Step1/Step2・タグ生成テンプレ: [manga-tag-generation.md](manga-tag-generation.md)
+- 挿絵・表紙 IR・バッチ生成: [illustration-prompt-ir.md](illustration-prompt-ir.md)
 - Step2 編集時の必読チェック（創作技法・`_how_to`）: [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)
 
 ---
@@ -204,26 +205,17 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 
 複数視点を作る場合は `concept_id` に `establishing` / `wide` / `close` / `reverse` / `overhead` などの視点語を含めると、メタ情報と画像ファイルを追跡しやすいです。
 
-### Grok のプロンプト上限と自動圧縮
-
-Grok API のプロンプト上限は **UTF-8 バイト数**で管理されています（日本語 1 文字 ≒ 3 バイト）。
+### Grok の縦横比と自動圧縮
 
 `image_provider_novel_manga_batch.py` で **provider=grok_pro** かつ `--aspect-ratio` 未指定のとき、縦横比は次の順で決まります。
 
 1. CLI `--aspect-ratio`
-2. `.env` の `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO`（例: `manga_b5_portrait` → API では `3:4`）
-3. 上記が無い場合のコード既定: **`manga_b5_portrait`**（`1:1` には落ちない）
+2. `.env` の `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO`（例: `manga_b5_portrait` → `3:4`）
+3. コード既定: `manga_b5_portrait`（`1:1` には落ちない）
 
-`--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、子プロセスへ preset が渡ります。
+`--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、設定が正しく渡っています。
 
-`config/image_generation.json` の `providers.grok_pro.max_prompt_bytes`（既定 `7800`）が設定されていると、`image_provider_novel_manga_batch.py` が step1-pages のプロンプトを自動圧縮します。
-
-圧縮フェーズ（上限に収まった時点で停止）:
-
-1. `render_instruction` ブロック行を除去
-2. `- tag:` 行（キャラ固定タグ列）を除去
-3. `- 日本語訳:` 行を除去
-4. バイト数ベースの末尾切り捨て + `[...省略]`
+プロンプトが長くなりすぎた場合（step1-pages で日本語が多いとき）、`config/image_generation.json` の `max_prompt_bytes` に基づいて自動圧縮されます。圧縮が起きているかは `--dry-run` の出力で確認できます。
 
 ---
 
@@ -315,9 +307,7 @@ python tools/image_provider_generate.py --probe --provider forge
 
 ### OpenRouter
 
-OpenRouter 経由の画像生成は、OpenRouter の `/api/v1/chat/completions` に `modalities: ["image", "text"]` と `image_config` を渡す方式です。画像は `choices[].message.images[].image_url.url` に base64 data URL として返ります。利用できる画像モデルは OpenRouter Models API の `output_modalities=image` で確認します。
-
-`OPENROUTER_API_KEY` には、OpenRouter の通常の API Key を設定します。Management API Key は `/api/v1/keys` などの管理APIには使えますが、`/api/v1/chat/completions` には使えないため、`HTTP 401: User not found` になることがあります。
+`OPENROUTER_API_KEY` には、OpenRouter の通常の API Key を設定します（Management API Key では `HTTP 401: User not found` になります）。
 
 ```bash
 python tools/image_provider_generate.py \
@@ -357,5 +347,5 @@ python tools/image_provider_generate.py \
 
 ## 参考
 
-- プロバイダ詳細・Flux 固有パラメータ: [`image-provider`（旧 `forge-txt2img`）](../../.rulesync/skills/forge-txt2img/SKILL.md)
-- ワークフロー全体: [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md)
+- ワークフロー全体: [Workflow](../workflow/index.md)
+- ツールリファレンス: [Tools](../tools/index.md)

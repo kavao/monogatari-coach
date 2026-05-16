@@ -48,4 +48,3 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 - [Workflow の入口](index.md)
 - [`_how_to/tools/README.md`](../../_how_to/tools/README.md)（ユーザ用 Python の置き場）
 - [Project Structure の `_how_to/` ガイド](../project-structure/how-to-area.md)
-- 作業計画上の整理メモ（事後記録）: [`_workingspace/plans/202605.md`](../../_workingspace/plans/202605.md) の「完了（今月）」節
