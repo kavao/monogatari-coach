@@ -38,6 +38,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 |----------|-----------------|
 | `MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT` | `image_provider_novel_tag_batch.py`（キャラタグ一括生成） |
 | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-panels`（コマ生成） |
+| `MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND` | `image_provider_novel_manga_batch.py --source step1-panels` で `--omit-panel-background` と同等（`1` / `true`） |
 | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step1-pages`（精密ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source step2-pages`（ページ生成。既定 `grok_pro`） |
 | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT` | `image_provider_novel_manga_batch.py --source background-concepts`（既定 `grok`） |
@@ -128,6 +129,8 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
   **`step1-panels` / `step1-pages` / `step2-pages`** では、作品フォルダの **`tag/*.md`** を参照し、本文に登場が見えるキャラごとに **状況に最も近い Danbooru Tags ブロック**を prompt へ自動注入する。本文側には **キャラ名** と、必要なら **オンボーディング / βテスト開始 / 緊急修復** などの状況語を明記しておくと安定しやすい。
 - **注入のオフ（`--no-character-anchors`）**:
   **`tag/*.md` を読まず**、STYLE_PREFIX ＋ Step 本文のみを送る。使いどころの例: **Grok で step1-pages / step2-pages が拒否**するとき、または注入語を入れたくない実験時。**step1-panels を NovelAI で回す通常運用ではオフ不要**（上表「推奨プロバイダ分担」参照）。
+- **背景を描かせない（`--omit-panel-background`）**:
+  **`--source step1-panels` のみ**。YAML から舞台・場所・浴室・湯気などのタグを外し、`simple_background` 等を付与。先に **`background-concepts`** で出した背景資料と Photoshop 等で合成する前提。CLI または `MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND=1`。
 - **ページ生成の非対応**:
   **Forge / NovelAI** は、このスキルの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。
 
@@ -364,7 +367,7 @@ python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョン�
 
 **一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/comic/`）** は `tools/image_provider_novel_manga_batch.py` を使う。
 
-- `--source step1-panels`（既定）: Step1 の `tag:` を**コマ単位**で抽出して生成する。
+- `--source step1-panels`（既定）: Step1 の `tag:` を**コマ単位**で抽出して生成する。背景資料と合成する場合は **`--omit-panel-background`**（`step1-panels` のみ）。
 - `--source step1-pages`: 各 Page の **Step1 全体を1ジョブ**として扱い、**各コマの詳細情報を保ったままページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**精密ページ生成向けの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 - `--source step2-pages`: 各 Page の **Step2 全体を1ジョブ**として扱い、**ページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**商業カラーマンガ寄りの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 

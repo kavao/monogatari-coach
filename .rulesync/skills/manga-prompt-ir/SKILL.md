@@ -107,6 +107,14 @@ targets: ["*"]
 - 必須: `concept_id`, `title`, `description`, `prompt`（例は `tools/manga_prompt_ir/examples/manga_page.yaml`）
 - 画像生成: `image_provider_novel_manga_batch.py --source background-concepts`（`--mode` 別名可）。品質点検はスキル **`manga-tag-quality-gate`** の「背景概念」節
 
+## `panels[].summary_en`（コマ要約の英訳）と NovelAI タグ併用
+
+- **各 `panels[]` に `summary`（日本語）を書いたら、必ず翻訳ツールで `summary_en` を付与する**（手書きしない）。
+  - コマンド: `python tools/novel_manga_panel_summary_en.py novels/<作品>`（`OPENAI_API_KEY`、任意で `MONOCRI_SUMMARY_EN_MODEL`）
+  - `summary` を直したら **再翻訳**（`summary_en_source` と不一致なら `novel_prompt_ir_validate.py` が警告／`--strict-quality` で失敗）
+- **NovelAI `step1-panels`**: `summary_en` は **`prompt_tags` と同じプロンプトのベース側**に併用（既定 ON。`--no-include-panel-summary` で無効化）
+- 品質ゲート（スキル **`manga-tag-quality-gate`** と併用）: 全コマで `summary` / `summary_en` ペア、`summary_en` に CJK なし
+
 ## `_how_to/manga_tag.md` との役割分担（漫画タグ・語彙・置き換え）
 
 **創作技法としてのコマ割り・ページ設計・IR の組み立て**は **`_how_to/manga.md`**（雛形は `_how_to.example/manga.md`）。構造・型・正本/副本の横断定義は **`.rulesync/rules/concepts.md`** と本スキル、検証の実装は `novel_prompt_ir_validate.py` が担う。**ツール連携の手順の詳細**は **`docs/image-generation/manga-prompt-ir.md`**、**互換 Markdown の Step1/Step2 長文テンプレ・実例**は **`docs/image-generation/manga-tag-generation.md`**。一方、**コマ単位の英語タグ語彙・置き換え・NSFW 表記の慣例**は **`_how_to/manga_tag.md`**（雛形は `_how_to.example/manga_tag.md`）を正とする。**Step2 要約・抽象ページ指示**は **`_how_to/manga_tag_step2.md`**（雛形 **`_how_to.example/manga_tag_step2.md`**）を正とする。
@@ -254,6 +262,8 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 人間向きの記述の正本は **`_how_to.example/tag.md`**（ユーザー領域の `_how_to/tag.md` はローカル調整可）の「YAML IR の `costume.outfit_tags`」節。
 
 ## 互換 Markdown エクスポートの既定（`--novelai-pipe-tags`）
+
+**完了条件**（チャットや Write だけで `manga_XX.md` を書いて完了扱いにしない）は **`.rulesync/rules/concepts.md`** の「漫画互換Markdownの完了条件」とスキル **`novel-manga-md-output`** を正とする。
 
 `tools/novel_prompt_ir_export_md.py` で **`manga/manga_XX.md`**（各 `## Page N` 内の **`### Step1`** の **`- **tag**：`** 行を含む）を出力するときは、**エージェント・手動とも次を既定とする**。
 

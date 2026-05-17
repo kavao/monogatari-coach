@@ -263,6 +263,17 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
   --manga-stem manga_01 --source step1-panels
 ```
 
+**背景を描かせない（背景資料と合成する前提）**
+
+`--source step1-panels` のときだけ有効。舞台・場所・浴室設備・湯気などのタグをプロンプトから外し、`simple_background` 等を付与する。
+
+```bash
+python tools/image_provider_novel_manga_batch.py novels/066_作品名 \
+  --manga-stem manga_01 --source step1-panels --omit-panel-background --dry-run
+```
+
+環境変数 `MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND=1` でも同じ（CLI フラグが優先）。
+
 ### 漫画精密ページ生成（step1-pages / grok_pro = quality）
 
 ```bash

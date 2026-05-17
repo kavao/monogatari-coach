@@ -89,6 +89,34 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 - Manga Tag 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`, `docs/image-generation/manga-tag-generation.md`
 
+## 漫画互換Markdownの完了条件
+
+定義:
+`novels/<作品>/manga/manga_XX.md`（Step1 / Step2 の互換副本）を新規作成・更新したと報告してよいのは、**`tools/novel_prompt_ir_export_md.py` が書き出したファイル**であり、チャットやエージェントの **Write だけで Step1/Step2 全文を組み立てた状態**ではない。
+
+必須:
+
+1. **正本の更新**: 先に `manga/pages/manga_XX_pYY.yaml` を作成・改稿する（編集正本は YAML のみ）。
+2. **検証**: `python tools/novel_prompt_ir_validate.py novels/<作品>` を実行する。本番・互換出力前は **`--strict-quality` を推奨**する。`character_snapshots` 不足時は `python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>` を先に実行する。
+3. **エクスポート**: `python tools/novel_prompt_ir_export_md.py` で `manga/manga_XX.md` を出力する。漫画を含むときは **`--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け `ベース | キャラ` 形式にする）。章の全ページは **`--manga-page` に p01…pNN を列挙した1回の実行**で出し、ページごとに別実行で上書きしない。
+4. **事実確認**（エクスポート直後）: **`Read`** で当該 `manga/manga_XX.md` を確認し、少なくとも次を満たすこと。
+   - HTML コメント `manga-prompt-ir互換ヘッダ` がある
+   - `## IR正本` に、今回列挙した `manga/pages/*.yaml` が載っている
+   - 各 `## Page N` に `### Step1`（全コマの `tag` 行）と `### Step2`（コマ数と同数の `- コマ…` 行）がある
+5. **報告の順序**: 上記 3→4 の **後** に、**更新パス**（`manga/manga_XX.md`）と **IR 正本のページ YAML パス**を添えて完了を伝える。
+
+禁止:
+
+- チャットへの Step1/Step2 貼り付け、またはエージェントの **Write/StrReplace だけ**で `manga/manga_XX.md` を新規・全面更新して **互換出力完了**としない。
+- 互換 Markdown を正本として手書きで増殖させ、YAML を更新しないまま Manga Tag Mode を完了扱いにしない。
+- 「エクスポートした」「互換 MD を更新した」と、**`novel_prompt_ir_export_md.py` の実行と `Read` による確認の前**に述べない。
+
+参照:
+
+- 実行手順: `.rulesync/skills/novel-manga-md-output/SKILL.md`
+- エクスポート既定: `.rulesync/skills/manga-prompt-ir/SKILL.md` の「互換 Markdown エクスポートの既定」
+- 操作説明: `docs/image-generation/manga-prompt-ir.md`
+
 ## Manga Tag Mode の最小ワークフロー
 
 定義:
@@ -255,9 +283,16 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 - dry-run で示した保存先に画像ファイルが存在することを確認する。
 - 確認後に、保存先を添えて完了報告する。
 
+漫画互換Markdown（`manga/manga_XX.md`）:
+
+- `tools/novel_prompt_ir_export_md.py` で出力する（詳細は上記「漫画互換Markdownの完了条件」）。
+- エクスポート後に `Read` でヘッダ・IR正本・Step1/Step2 の構造を確認する。
+- チャットや Write だけで互換 MD を書いた状態では完了ではない。
+
 参照:
 
 - 本文出力: `.rulesync/skills/novel-text-file-output/SKILL.md`
+- 漫画互換 Markdown: `.rulesync/skills/novel-manga-md-output/SKILL.md`
 - 清書出力: `.rulesync/skills/novel-refinement-output/SKILL.md`
 - 画像生成: `.rulesync/skills/forge-txt2img/SKILL.md`
 
@@ -331,6 +366,41 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 
 - Manga Tag 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/index.md`
+
+## チャットモード
+
+定義:
+チャットモードは、作品契約（Phase 0）→ あらすじ（Phase 1）→ 執筆前パック（Phase 2）→ シーンカード（Phase 3）→ セグメント執筆（Phase 4）という段階をゲートで刻みながら進める対話型執筆方式である。
+
+必須:
+
+- 正本の所在は変わらない。本文は `novels/<作品>/_novel_text/novel_text*.md`、設定は同フォルダ内の各ファイルとする。
+- `_chat/` フォルダ（副本）はセッションログ・シーンカード・ルールブック・state の一時置き場であり、完了扱いは正本への反映後とする。
+- セグメント完了の定義は「完了扱い条件」と同一（正本への書き込み・確認・パス明示）。
+- TRPG モードを使う場合、`_chat/rulebook.md` の生成後にユーザーの承認を得てから `_chat/state/*.md` の初期化へ進む。
+
+参照:
+
+- スキル手順: `.rulesync/skills/novel-chat-mode/SKILL.md`
+- パラメータテンプレート: `_how_to.example/trpg_rulebook.md`
+- 操作説明: `docs/workflow/chat-writing-mode.md`
+
+## TRPGパラメータ体系
+
+定義:
+チャットモードの TRPG セッションで使うパラメータは、個人能力・成長段階・関係性・物語状態の4カテゴリに分類し、尺度と更新条件を `_chat/rulebook.md` に定義してから運用する。
+
+必須:
+
+- パラメータは4カテゴリのどれかに分類し、カテゴリあたり2〜3個に絞る。
+- セッション中のパラメータ変化は `[STATE UPDATE]` ブロックで「旧値 → 新値」の形で示す。
+- セッション終了時に `_chat/state/*.md` へ現在値を書き戻す。
+- `rulebook.md` の生成はジャンル別プリセットを出発点とし、ユーザー承認後に確定する。
+
+参照:
+
+- スキル手順: `.rulesync/skills/novel-chat-mode/SKILL.md`
+- テンプレート: `_how_to.example/trpg_rulebook.md`
 
 ## rulesync
 

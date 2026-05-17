@@ -17,6 +17,10 @@
 YAML 入力・**step1-panels**（コマ単位）時は、各コマの `negative_prompt` を
 `--negative-prompt` + `technical.negative_tags` + `panels[].negative_tags` から合成し、
 `panels[].omit_negative_tags` に列挙した断片を合成前の集合から除去する（split screen の出し分け等）。
+
+**`--omit-panel-background`**（`MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND=1` でも可）:
+step1-panels 向けに、舞台・背景・照明・場所タグをプロンプトから外し、
+`simple_background` 等を足して背景資料と合成しやすいコマ絵を狙う。
 """
 
 from __future__ import annotations
@@ -58,6 +62,7 @@ from manga_prompt_ir.scene_prompt import (
     subject_situational_tag_tokens,
     subject_tag_line_token,
 )
+from manga_prompt_ir.summary_en import panel_summary_en_tag_tokens
 from manga_prompt_ir.color_mode import (
     VALID_COLOR_MODES,
     page_color_mode_label,
@@ -83,6 +88,70 @@ INPUT_CHOICES = ("yaml", "markdown")
 MANGA_ASSET_SUBDIR_BACKGROUND = "backgrounds"
 MANGA_ASSET_SUBDIR_COMIC = "comic"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
+MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV = "MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND"
+MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV = "MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY"
+
+# step1-panels + --omit-panel-background: 背景・舞台タグの除去と簡素背景の付与
+OMIT_PANEL_BACKGROUND_ADD_TAGS = [
+    "simple_background",
+    "white_background",
+    "plain_background",
+    "depth_of_field",
+    "blurry_background",
+    "soft_lighting",
+]
+OMIT_PANEL_BACKGROUND_NEGATIVE_FRAGMENTS = [
+    "detailed_background",
+    "scenery",
+    "landscape",
+    "architecture",
+    "interior",
+    "room",
+    "bathroom",
+    "background",
+]
+BACKGROUND_PROMPT_TAG_SUBSTRINGS = (
+    "bathroom",
+    "bathtub",
+    "bath tub",
+    "tile",
+    "tiles",
+    "porcelain",
+    "grout",
+    "steam",
+    "fog",
+    "mist",
+    "humid",
+    "interior",
+    "scenery",
+    "landscape",
+    "architecture",
+    "hallway",
+    "door frame",
+    "ceiling",
+    "floor tile",
+    "wall tile",
+    "renovated",
+    "family bathroom",
+    "cream beige",
+    "gray beige",
+    "warm gray",
+    "brushed nickel",
+    "fixture",
+    "faucet",
+    "shower",
+    "wall sconce",
+    "crescent moon",
+    "moon lamp",
+    "amber glow",
+    "hallway light",
+    "led light",
+    "establishing",
+    "onsen",
+    "hot spring",
+    "water surface",
+    "splashing water",
+)
 MANGA_STEP1_PAGES_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT"
 MANGA_STEP2_PROVIDER_ENV = "MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT"
 MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
@@ -727,6 +796,63 @@ def filter_single_panel_tags(values: list[str]) -> list[str]:
     return [value for value in values if not is_single_panel_layout_tag(value)]
 
 
+def _normalize_tag_for_match(value: str) -> str:
+    return value.strip().lower().replace("_", " ")
+
+
+def is_background_prompt_tag(value: str) -> bool:
+    """舞台・背景・浴室設備寄りのタグか（コマ単体合成向け omit 用）。"""
+    normalized = _normalize_tag_for_match(value)
+    if not normalized:
+        return False
+    return any(part in normalized for part in BACKGROUND_PROMPT_TAG_SUBSTRINGS)
+
+
+def filter_background_prompt_tags(values: list[str]) -> list[str]:
+    return [value for value in values if not is_background_prompt_tag(value)]
+
+
+def apply_omit_panel_background_tags(values: list[str]) -> list[str]:
+    """背景省略モード: 残タグから舞台系を落とし、簡素背景タグを付与する。"""
+    filtered = filter_background_prompt_tags(values)
+    filtered.extend(OMIT_PANEL_BACKGROUND_ADD_TAGS)
+    return unique(filtered)
+
+
+def resolve_omit_panel_background(cli_flag: bool, root: Path) -> bool:
+    if cli_flag:
+        return True
+    env = load_dotenv(root / ".env").get(MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV, "")
+    return str(env).strip().lower() in ("1", "true", "yes", "on")
+
+
+def resolve_include_panel_summary(
+    *,
+    cli_no_flag: bool,
+    root: Path,
+    source: str,
+) -> bool:
+    """step1-panels: ``summary_en`` をベースタグ列に併用（既定 ON）。"""
+    if source != "step1-panels":
+        return False
+    if cli_no_flag:
+        return False
+    env = load_dotenv(root / ".env").get(MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV, "")
+    if str(env).strip().lower() in ("0", "false", "no", "off"):
+        return False
+    return True
+
+
+def _extend_base_summary_en_tags(
+    base: list[str],
+    panel: dict,
+    *,
+    include_panel_summary: bool,
+) -> None:
+    if include_panel_summary:
+        base.extend(panel_summary_en_tag_tokens(panel, include=True))
+
+
 def character_display_name(character: dict, character_id: str) -> str:
     name = character.get("name") or character_id
     name_en = character.get("name_en") or character_id
@@ -756,6 +882,8 @@ def yaml_panel_tags(
     characters: dict[str, dict],
     *,
     single_panel: bool = False,
+    omit_panel_background: bool = False,
+    include_panel_summary: bool = False,
 ) -> list[str]:
     manga = page.get("manga") or {}
     scene = panel.get("scene") or page.get("scene") or {}
@@ -766,16 +894,23 @@ def yaml_panel_tags(
     tags.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
     tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
     tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
-    # English / Danbooru-style scene line (IR: background_notes_en only; no JP fallback) — NovelAI/CLIP
-    tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
-    tags.extend(str(v) for v in as_list(manga.get("background_tags")))
-    tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
-    tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+    _extend_base_summary_en_tags(tags, panel, include_panel_summary=include_panel_summary)
+    if not omit_panel_background:
+        # English / Danbooru-style scene line (IR: background_notes_en only; no JP fallback)
+        tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
+        tags.extend(str(v) for v in as_list(manga.get("background_tags")))
+        loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
+        tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+        tags.extend(lighting_tag_tokens(lighting))
+        tags.extend(composition_layout_tag_token(composition, single_panel=single_panel))
+    panel_prompt_tags = as_list(panel.get("prompt_tags"))
+    if omit_panel_background:
+        panel_prompt_tags = filter_background_prompt_tags(
+            [str(v) for v in panel_prompt_tags]
+        )
+    tags.extend(str(v) for v in panel_prompt_tags)
     tags.extend(composition_tag_tokens(composition))
     tags.extend(camera_tag_tokens(camera))
-    tags.extend(lighting_tag_tokens(lighting))
-    tags.extend(composition_layout_tag_token(composition, single_panel=single_panel))
     for subject in as_list(panel.get("subjects")):
         if not isinstance(subject, dict):
             continue
@@ -796,6 +931,8 @@ def yaml_panel_tags(
     tags = apply_user_directives_to_tags(tags, page, panel)
     if single_panel:
         tags = filter_single_panel_tags(tags)
+    if omit_panel_background:
+        tags = apply_omit_panel_background_tags(tags)
     return tags
 
 
@@ -805,6 +942,8 @@ def yaml_panel_tags_novelai_split(
     characters: dict[str, dict],
     *,
     single_panel: bool = False,
+    omit_panel_background: bool = False,
+    include_panel_summary: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     """
     NovelAI の「ベース | キャラA | キャラB | …」入力向けにタグを分割する。
@@ -824,15 +963,24 @@ def yaml_panel_tags_novelai_split(
     base.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
     base.extend(str(v) for v in as_list(manga.get("genre_tags")))
     base.extend(str(v) for v in as_list(manga.get("visual_tags")))
-    base.extend(comma_split_tags(scene_prompt_background_notes(scene)))
-    base.extend(str(v) for v in as_list(manga.get("background_tags")))
-    base.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
-    base.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+    _extend_base_summary_en_tags(base, panel, include_panel_summary=include_panel_summary)
+    if not omit_panel_background:
+        base.extend(comma_split_tags(scene_prompt_background_notes(scene)))
+        base.extend(str(v) for v in as_list(manga.get("background_tags")))
+        loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
+        base.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
+        base.extend(lighting_tag_tokens(lighting))
+        base.extend(
+            composition_layout_tag_token(composition, single_panel=single_panel)
+        )
+    panel_prompt_tags = as_list(panel.get("prompt_tags"))
+    if omit_panel_background:
+        panel_prompt_tags = filter_background_prompt_tags(
+            [str(v) for v in panel_prompt_tags]
+        )
+    base.extend(str(v) for v in panel_prompt_tags)
     base.extend(composition_tag_tokens(composition))
     base.extend(camera_tag_tokens(camera))
-    base.extend(lighting_tag_tokens(lighting))
-    base.extend(composition_layout_tag_token(composition, single_panel=single_panel))
     for subject in as_list(panel.get("subjects")):
         if not isinstance(subject, dict):
             continue
@@ -868,6 +1016,11 @@ def yaml_panel_tags_novelai_split(
     if single_panel:
         base = filter_single_panel_tags(base)
         character_segments = [filter_single_panel_tags(seg) for seg in character_segments]
+    if omit_panel_background:
+        base = apply_omit_panel_background_tags(base)
+        character_segments = [
+            apply_omit_panel_background_tags(seg) for seg in character_segments
+        ]
     return base, character_segments
 
 
@@ -1592,6 +1745,8 @@ def iter_yaml_manga_jobs(
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
     color_mode_override: str | None = None,
+    omit_panel_background: bool = False,
+    include_panel_summary: bool = False,
 ) -> list[dict[str, str]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
@@ -1748,19 +1903,39 @@ def iter_yaml_manga_jobs(
             for panel_index, panel in enumerate(panels, start=1):
                 if use_novelai_pipe_split:
                     btags, char_segs = yaml_panel_tags_novelai_split(
-                        page, panel, characters, single_panel=True
+                        page,
+                        panel,
+                        characters,
+                        single_panel=True,
+                        omit_panel_background=omit_panel_background,
+                        include_panel_summary=include_panel_summary,
                     )
                     tags = join_novelai_pipe_tag_line(btags, char_segs)
                 else:
                     tags = join_tags(
-                        yaml_panel_tags(page, panel, characters, single_panel=True)
+                        yaml_panel_tags(
+                            page,
+                            panel,
+                            characters,
+                            single_panel=True,
+                            omit_panel_background=omit_panel_background,
+                            include_panel_summary=include_panel_summary,
+                        )
                     )
                 if not tags:
                     continue
                 panel_neg = as_list(panel.get("negative_tags"))
                 panel_omit = as_list(panel.get("omit_negative_tags"))
+                extra_neg = (
+                    list(OMIT_PANEL_BACKGROUND_NEGATIVE_FRAGMENTS)
+                    if omit_panel_background
+                    else []
+                )
                 merged_neg = merge_panel_negative_prompt(
-                    cli_negative_prompt, tech_neg, panel_neg, panel_omit
+                    cli_negative_prompt,
+                    tech_neg + extra_neg,
+                    panel_neg,
+                    panel_omit,
                 )
                 bundle = format_manga_panel_prompt(
                     page,
@@ -1770,6 +1945,14 @@ def iter_yaml_manga_jobs(
                     formatter=prompt_formatter,
                     style_prefix=STYLE_PREFIX,
                 )
+                job_meta: dict[str, object] = {
+                    "kind": "manga-panel",
+                    "source": source,
+                }
+                if omit_panel_background:
+                    job_meta["omit_panel_background"] = True
+                if include_panel_summary:
+                    job_meta["include_panel_summary"] = True
                 all_jobs.append(
                     {
                         "stem": stem,
@@ -1781,6 +1964,7 @@ def iter_yaml_manga_jobs(
                         "prompt_formatter": bundle.formatter,
                         "negative_mode": bundle.negative_mode,
                         "output_dir": comic_dir.as_posix(),
+                        "metadata": job_meta,
                     }
                 )
     return all_jobs
@@ -1800,6 +1984,8 @@ def iter_jobs_by_input(
     use_novelai_pipe_split: bool = False,
     step2_paraphrase: bool | None = None,
     color_mode_override: str | None = None,
+    omit_panel_background: bool = False,
+    include_panel_summary: bool = False,
 ) -> tuple[str, list[dict[str, str]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -1813,6 +1999,8 @@ def iter_jobs_by_input(
             use_novelai_pipe_split=use_novelai_pipe_split,
             step2_paraphrase=step2_paraphrase,
             color_mode_override=color_mode_override,
+            omit_panel_background=omit_panel_background,
+            include_panel_summary=include_panel_summary,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -1911,6 +2099,23 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "作品フォルダの tag/*.md からキャラ固定特徴を読み込まず、"
             "prompt への自動注入も行わない（step1 の tag: 本文と STYLE_PREFIX のみ）"
+        ),
+    )
+    p.add_argument(
+        "--omit-panel-background",
+        action="store_true",
+        help=(
+            "step1-panels（コマ生成）のみ: 舞台・背景・場所・照明タグをプロンプトから外し、"
+            "simple_background 等を付与。背景資料と合成する前提。"
+            f" 環境変数 {MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV}=1 でも有効"
+        ),
+    )
+    p.add_argument(
+        "--no-include-panel-summary",
+        action="store_true",
+        help=(
+            "step1-panels: panels[].summary_en をベースタグ列に載せない（既定は載せる）。"
+            f" 環境変数 {MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV}=0 でも無効化"
         ),
     )
     p.add_argument(
@@ -2017,6 +2222,20 @@ def main(argv: list[str] | None = None) -> int:
         bool(args.step2_paraphrase),
         bool(args.no_step2_paraphrase),
     )
+    omit_panel_background = resolve_omit_panel_background(
+        bool(args.omit_panel_background), root
+    )
+    if omit_panel_background and args.source != "step1-panels":
+        print(
+            "warning: --omit-panel-background は step1-panels のみ有効です（無視します）",
+            file=sys.stderr,
+        )
+        omit_panel_background = False
+    include_panel_summary = resolve_include_panel_summary(
+        cli_no_flag=bool(args.no_include_panel_summary),
+        root=root,
+        source=args.source,
+    )
     try:
         input_used, jobs = iter_jobs_by_input(
             novel,
@@ -2031,6 +2250,8 @@ def main(argv: list[str] | None = None) -> int:
             use_novelai_pipe_split=use_novelai_pipe,
             step2_paraphrase=step2_px,
             color_mode_override=args.color_mode,
+            omit_panel_background=omit_panel_background,
+            include_panel_summary=include_panel_summary,
         )
     except (FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -2079,6 +2300,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"(env {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV})"
             )
     print(f"jobs: {len(jobs)}")
+    if omit_panel_background:
+        print("omit_panel_background: true (step1-panels)")
+    if include_panel_summary and args.source == "step1-panels":
+        print("include_panel_summary: true (panels[].summary_en をベースタグに併用)")
     if args.source == "step2-pages" and input_used == "yaml":
         print(f"step2_paraphrase (effective): {effective_paraphrase(step2_px)}")
 

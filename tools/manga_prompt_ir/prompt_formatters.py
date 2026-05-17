@@ -397,9 +397,13 @@ def manga_panel_context_lines(page: dict[str, Any], panel: dict[str, Any]) -> li
     panel_id = panel.get("panel_id")
     if panel_id:
         lines.append(f"- Panel ID: {panel_id}")
-    summary = panel.get("summary") or panel.get("translation")
-    if summary:
-        lines.append(f"- Scene: {summary}")
+    summary_en = panel.get("summary_en")
+    if summary_en and str(summary_en).strip():
+        lines.append(f"- Scene: {str(summary_en).strip()}")
+    else:
+        summary = panel.get("summary") or panel.get("translation")
+        if summary:
+            lines.append(f"- Scene: {summary}")
     panel_layout = manga.get("panel_layout")
     if panel_layout:
         lines.append(f"- Parent page layout: {panel_layout}")

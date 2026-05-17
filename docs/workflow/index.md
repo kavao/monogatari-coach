@@ -4,6 +4,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 まずは **指示文（コピペ）**で進められるページを起点にしてください。
 
 - **最重要**: [指示出しベースのワークフロー](instruction-driven.md)
+- **チャットモード（対話型・TRPG）**: [チャットモード](chat-writing-mode.md) — ゲートを刻みながら進める対話型執筆／TRPG セッション形式でパラメータを追跡しながら小説を作る
 - **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
