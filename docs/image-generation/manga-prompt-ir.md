@@ -258,6 +258,30 @@ panels:
   - 中央ページ（`p09`〜`p11`）は `defaults.omit_prompt_tags` に書く
   - 端点（`p08:3` / `p12:1`）だけ `panels[].omit_prompt_tags` を使う
 
+### §5 漫画タグ層を YAML へ一括転記する
+
+`_meta.md` §5 の「漫画タグ層（区間・常時上乗せ）」テーブルを合意したあと、各ページ YAML の `render_instruction.user_directives.defaults` へ手で複写するのを忘れないようにするためのツールです。
+
+まず dry-run で転記内容を確認します。
+
+```bash
+python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル
+```
+
+内容を確認したら `--apply` を付けて実際に書き換えます。
+
+```bash
+python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル --apply
+```
+
+実行後、各ページ YAML に `defaults.required_prompt_tags` / `defaults.omit_prompt_tags` が設定され、`page_notes` に `_meta §5: <区間>` の追跡メモが追記されます。
+
+- **`_meta.md`** が見つからない場合や §5 テーブルが空の場合は、その旨が表示されて終了します。
+- `--no-note` を付けると `page_notes` への追記を省略できます。
+- 既に同じ `_meta §5:` エントリが `page_notes` にある場合は重複追記しません。
+
+---
+
 以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
 
 ### スキーマ主要フィールドの説明

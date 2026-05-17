@@ -49,9 +49,9 @@ targets: ["*"]
 ページ YAML を書く前に、作品 **`_meta.md`** で次を**別表**で合意する。
 
 1. **「漫画 variant 対応（TPO 正本）」** — 区間ごとの **状況バリアント（`01_` 以降）** → YAML は `subjects[].variant_id`
-2. **「漫画タグ層（区間・常時上乗せ）」** — 区間ごとに全コマへ足す／外す **英語タグ** → YAML は区間内各ページの `render_instruction.user_directives.defaults`（バッチは `_meta` を直接読まない）
+2. **「漫画タグ層（区間・常時上乗せ）」** — 区間ごとに全コマへ足す／外す **英語タグ** → YAML は区間内各ページの `render_instruction.user_directives.defaults`（バッチは `_meta` を直接読まない）。§5 テーブルから YAML への転記漏れを防ぐには `python tools/novel_manga_apply_tag_defaults.py novels/<作品> [--apply]` を使う。
 
-表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode の最小ワークフロー」。
+表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode ワークフロー」。
 - `character_id` はキャラクター一貫性の主キーとし、ページ側の `character_ids` と各コマの `subjects[].character_id` から参照する。
 - セリフ、モノローグ、ナレーション、効果音は混ぜず、`text.dialogue` / `text.monologue` / `text.narration` / `text.sfx` に分ける。
 - 漫画ページ YAML を単体で画像モデルへ渡す運用では、`render_instruction` に作画依頼文を入れる。外側の Markdown やチャット冒頭文が無くても、何を描くか・コマ割りをどう扱うか・キャラクター外見をどう継承するかが読める状態を正とする。
@@ -270,17 +270,15 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 人間向きの記述の正本は **`_how_to.example/tag.md`**（ユーザー領域の `_how_to/tag.md` はローカル調整可）の「YAML IR の `costume.outfit_tags`」節。
 
-## 互換 Markdown エクスポートの既定（`--novelai-pipe-tags`）
+## `--novelai-pipe-tags` の規則（漫画エクスポート時）
 
-**完了条件**（チャットや Write だけで `manga_XX.md` を書いて完了扱いにしない）は **`.rulesync/rules/concepts.md`** の「漫画互換Markdownの完了条件」とスキル **`novel-manga-md-output`** を正とする。
+> エクスポートの**手順・完了条件**はスキル **`novel-manga-md-output`** を正とする。本節は Step1 タグ形式に関わる **フラグの規則**のみを扱う。
 
-`tools/novel_prompt_ir_export_md.py` で **`manga/manga_XX.md`**（各 `## Page N` 内の **`### Step1`** の **`- **tag**：`** 行を含む）を出力するときは、**エージェント・手動とも次を既定とする**。
+`tools/novel_prompt_ir_export_md.py` で `manga/manga_XX.md` を出力するとき、**`--novelai-pipe-tags` を必ず付ける**。
 
-- **`--novelai-pipe-tags` を必ず付ける**
-  Step1 の各コマ `tag` 行が **`ベース側 | キャラ側`**（NovelAI の `|` 分割）になり、`tools/image_provider_novel_manga_batch.py` の **`provider=novelai`・YAML・`--source step1-panels`** が組み立てるプロンプト形状と整合する。
-  **付けないと** Step1 が **カンマ区切りの1本**だけになり、互換 `manga_XX.md` とバッチ実装の前提がずれる。
-- **例外（付けない）**: キャラクター互換だけを **`tag/<character_id>.md`** に出す実行（`--manga-page` なし）では、Step1 の `tag` 行が無いため **`--novelai-pipe-tags` は不要**。
-- **Step2 との関係**: Step2 ブロックは `panel_step2_description` 系で別組み立てのため **`--novelai-pipe-tags` の有無で Step2 本文は変わらない**。それでも **漫画ファイルを一括エクスポートするコマンドでは付けておく**と、同じ `manga_XX.md` 生成手順が一本化される。
+- Step1 の各コマ `tag` 行が `ベース側 | キャラ側`（NovelAI の `|` 分割）になり、`image_provider_novel_manga_batch.py`（`provider=novelai`・`--source step1-panels`）のプロンプト形状と整合する。付けないと Step1 がカンマ区切り1本になり、バッチの前提とずれる。
+- **例外**: `--manga-page` を渡さずキャラクター互換（`tag/<character_id>.md`）だけを出す実行では Step1 `tag` 行がないため不要。
+- **Step2**: `--novelai-pipe-tags` の有無で Step2 本文は変わらない。ただし漫画ファイルを一括エクスポートするコマンドでは付けておくと手順が一本化される。
 
 詳細はスキル **`image-provider（旧 forge-txt2img）`**（NovelAI の `|` 区切り）も参照。
 

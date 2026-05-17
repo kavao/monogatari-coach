@@ -53,12 +53,7 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 
 - Markdown 互換層: `.rulesync/skills/novel-tag-md-format/SKILL.md`
 - 漫画 IR: `.rulesync/skills/manga-prompt-ir/SKILL.md`
-
-参照:
-
 - ルール作成規約: `.rulesync/rules/rule-authoring.md`
-- 漫画 IR: `.rulesync/skills/manga-prompt-ir/SKILL.md`
-- Markdown 互換層: `.rulesync/skills/novel-tag-md-format/SKILL.md`
 
 ## 漫画IRと互換Markdown
 
@@ -96,50 +91,44 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 
 必須:
 
-1. **正本の更新**: 先に `manga/pages/manga_XX_pYY.yaml` を作成・改稿する（編集正本は YAML のみ）。
-2. **検証**: `python tools/novel_prompt_ir_validate.py novels/<作品>` を実行する。本番・互換出力前は **`--strict-quality` を推奨**する。`character_snapshots` 不足時は `python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>` を先に実行する。
-3. **エクスポート**: `python tools/novel_prompt_ir_export_md.py` で `manga/manga_XX.md` を出力する。漫画を含むときは **`--novelai-pipe-tags` を付ける**（Step1 の `tag` 行を NovelAI 向け `ベース | キャラ` 形式にする）。章の全ページは **`--manga-page` に p01…pNN を列挙した1回の実行**で出し、ページごとに別実行で上書きしない。
-4. **事実確認**（エクスポート直後）: **`Read`** で当該 `manga/manga_XX.md` を確認し、少なくとも次を満たすこと。
-   - HTML コメント `manga-prompt-ir互換ヘッダ` がある
-   - `## IR正本` に、今回列挙した `manga/pages/*.yaml` が載っている
-   - 各 `## Page N` に `### Step1`（全コマの `tag` 行）と `### Step2`（コマ数と同数の `- コマ…` 行）がある
-5. **報告の順序**: 上記 3→4 の **後** に、**更新パス**（`manga/manga_XX.md`）と **IR 正本のページ YAML パス**を添えて完了を伝える。
+- YAML IR 正本（`manga/pages/*.yaml`）を更新してからエクスポートする。
+- `tools/novel_prompt_ir_validate.py` で検証し、`tools/novel_prompt_ir_export_md.py` でエクスポートする。
+- エクスポート直後に `Read` でヘッダ・IR正本・Step1/Step2 の構造を確認してから完了報告する。
+- 更新パス（`manga/manga_XX.md`）と IR 正本の YAML パスを添えて完了を伝える。
 
 禁止:
 
-- チャットへの Step1/Step2 貼り付け、またはエージェントの **Write/StrReplace だけ**で `manga/manga_XX.md` を新規・全面更新して **互換出力完了**としない。
-- 互換 Markdown を正本として手書きで増殖させ、YAML を更新しないまま Manga Tag Mode を完了扱いにしない。
-- 「エクスポートした」「互換 MD を更新した」と、**`novel_prompt_ir_export_md.py` の実行と `Read` による確認の前**に述べない。
+- チャットや Write だけで `manga/manga_XX.md` を新規・全面更新して互換出力完了としない。
+- YAML を更新しないまま互換 Markdown だけを直して Manga Tag Mode を完了扱いにしない。
+- `novel_prompt_ir_export_md.py` の実行と `Read` による確認の前に「エクスポートした」と述べない。
 
 参照:
 
-- 実行手順: `.rulesync/skills/novel-manga-md-output/SKILL.md`
-- エクスポート既定: `.rulesync/skills/manga-prompt-ir/SKILL.md` の「互換 Markdown エクスポートの既定」
+- 実行手順（コマンド・フラグ詳細）: `.rulesync/skills/novel-manga-md-output/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`
 
-## Manga Tag Mode の最小ワークフロー
+## Manga Tag Mode ワークフロー
 
 定義:
 Manga Tag Mode は、小説本文とキャラクター正本から漫画ページ YAML IR を作り、検証し、必要に応じて互換Markdownや画像生成へ進める作業である。
 
 必須:
 
-1. 本文正本 `novels/<作品>/_novel_text/novel_text*.md` とキャラクター正本を確認する。
-2. 作品 `_meta.md` の **TPO → variant 対応表**（「漫画 variant 対応（TPO 正本）」節）を確認または作成し、状況バリアント（`01_` 以降）を区間ごとに固定する。あわせて **漫画タグ層（区間・常時上乗せ）** 節で、ページ区間ごとの `required` / `omit` 英語タグを合意する（variant 表に混ぜない）。書き方は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。
-3. `manga/pages/*.yaml` を作成・更新する（`subjects[].variant_id` は §4 どおり。区間の常時タグは §5 を各ページの `render_instruction.user_directives.defaults` に複写。`00_base` を漫画の主 variant にしない）。
-4. 主語、関係、行為、セリフ帰属、部分アップの意味、コマ割りを品質ゲートで確認する。
-5. `tools/novel_prompt_ir_validate.py` で検証する。本番生成前は `--strict-quality` を推奨する。
-6. 互換Markdownが必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
-7. 画像生成は「画像生成: dry-run から本番まで」に従う。
+1. 本文正本とキャラクター正本を確認する。
+2. 作品 `_meta.md` の §4（TPO → variant 対応表）と §5（漫画タグ層）を区間ごとに合意する（書き方は `_how_to.example/meta.md` を正とする）。
+3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。
+4. 品質ゲートで確認し、`tools/novel_prompt_ir_validate.py` で検証する。
+5. 互換 Markdown が必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
+6. 画像生成は「画像生成: dry-run から本番まで」に従う。
 
 禁止:
 
-- 互換Markdownだけを新規作成・修正して Manga Tag Mode 完了扱いにしない。
-- 生成前検証を YAML IR ではなく、互換Markdownだけで済ませない。
+- 互換 Markdown だけを新規作成・修正して Manga Tag Mode 完了扱いにしない。
+- 生成前検証を YAML IR ではなく、互換 Markdown だけで済ませない。
 
 参照:
 
-- Manga Prompt IR: `.rulesync/skills/manga-prompt-ir/SKILL.md`
+- 詳細手順: `.rulesync/skills/manga-prompt-ir/SKILL.md`
 - 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`
 

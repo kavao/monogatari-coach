@@ -61,6 +61,6 @@ python tools/novel_prompt_ir_export_md.py \
 
 ## 関連
 
-- 型・エクスポート既定: `.rulesync/skills/manga-prompt-ir/SKILL.md`
+- `--novelai-pipe-tags` フラグの規則（なぜ付けるか）: `.rulesync/skills/manga-prompt-ir/SKILL.md` の「`--novelai-pipe-tags` の規則」
 - 品質点検: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作: `docs/image-generation/manga-prompt-ir.md`

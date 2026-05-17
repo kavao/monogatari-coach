@@ -312,7 +312,7 @@ _how_to/tag.md のルールに従い、各人物について
 
 #### チャット→修正→検証→再生成（ぶれない流れ）
 
-横断正本は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode の最小ワークフロー」。作業は **YAML IR 更新 → 検証 → 必要なら互換 Markdown 再エクスポート → 画像生成 dry-run** の順に進める。互換 `manga/manga_XX.md` の完了条件（**`novel_prompt_ir_export_md.py` 実行＋`Read` 確認**。チャットや Write だけで MD を書いて完了扱いにしない）は **「漫画互換Markdownの完了条件」** とスキル **`novel-manga-md-output`** を正とする。
+横断正本は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode ワークフロー」。作業は **YAML IR 更新 → 検証 → 必要なら互換 Markdown 再エクスポート → 画像生成 dry-run** の順に進める。互換 `manga/manga_XX.md` の完了条件（**`novel_prompt_ir_export_md.py` 実行＋`Read` 確認**。チャットや Write だけで MD を書いて完了扱いにしない）は **「漫画互換Markdownの完了条件」** とスキル **`novel-manga-md-output`** を正とする。
 
 チャットの最小トリガー例（話し言葉・1行）:
 
