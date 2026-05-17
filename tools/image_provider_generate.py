@@ -32,9 +32,17 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# ポーション／Vibe 以外の参照画像（PNG 等）に importInfo が無いときの内部既定
+_PLAIN_IMAGE_REF_STRENGTH = 0.6
+_PLAIN_IMAGE_REF_IE = 1.0
+# importInfo に strength / IE が無い vibe 項目の内部既定
+_VIBE_MISSING_IMPORT_STRENGTH = 1.0
+_VIBE_MISSING_IMPORT_IE = 1.0
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -210,6 +218,312 @@ def repo_root() -> Path:
 
 def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _strip_data_url(value: str) -> str:
+    if value.startswith("data:") and "," in value:
+        return value.split(",", 1)[1]
+    return value
+
+
+def _is_probably_base64(value: str) -> bool:
+    text = _strip_data_url(value).strip()
+    if len(text) < 24:
+        return False
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r")
+    return all(ch in allowed for ch in text)
+
+
+def _find_image_b64_in_json(data: Any) -> list[str]:
+    found: list[str] = []
+    preferred_keys = {
+        "image",
+        "original_image",
+        "source_image",
+        "reference_image",
+        "referenceImage",
+        "dataURL",
+        "data_url",
+    }
+
+    def walk(node: Any, key_hint: str = "") -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, str(k))
+            return
+        if isinstance(node, list):
+            for item in node:
+                walk(item, key_hint)
+            return
+        if not isinstance(node, str):
+            return
+        text = node.strip()
+        if text.startswith("data:image/"):
+            found.append(_strip_data_url(text))
+        elif key_hint in preferred_keys and _is_probably_base64(text):
+            found.append(_strip_data_url(text))
+
+    walk(data)
+    return found
+
+
+@dataclass(frozen=True)
+class NovelaiVibeRefItem:
+  """1 参照スロット分（encoding + バンドル内 strength / IE）。"""
+
+  encoding_b64: str
+  strength: float
+  information_extracted: float
+  from_bundle_meta: bool = False
+
+
+def _clamp_reference_coefficient(value: float) -> float:
+  return max(0.0, min(1.0, float(value)))
+
+
+def _import_info_from_vibe_dict(vibe: dict[str, Any]) -> tuple[float, float]:
+  info = vibe.get("importInfo") or vibe.get("import_info") or {}
+  if not isinstance(info, dict):
+    info = {}
+  raw_s = info.get("strength")
+  raw_ie = info.get("information_extracted", info.get("informationExtracted"))
+  strength = (
+    float(raw_s) if raw_s is not None else _VIBE_MISSING_IMPORT_STRENGTH
+  )
+  information_extracted = (
+    float(raw_ie) if raw_ie is not None else _VIBE_MISSING_IMPORT_IE
+  )
+  return strength, information_extracted
+
+
+def _encoding_b64_from_vibe_dict(vibe: dict[str, Any]) -> str | None:
+  encodings = vibe.get("encodings")
+  if encodings is None:
+    return None
+
+  def walk(node: Any) -> str | None:
+    if isinstance(node, dict):
+      enc = node.get("encoding")
+      if isinstance(enc, str) and _is_probably_base64(enc):
+        return _strip_data_url(enc).strip()
+      for value in node.values():
+        found = walk(value)
+        if found:
+          return found
+    elif isinstance(node, list):
+      for item in node:
+        found = walk(item)
+        if found:
+          return found
+    return None
+
+  return walk(encodings)
+
+
+def _extract_vibe_ref_items_from_json(data: Any) -> list[NovelaiVibeRefItem]:
+  out: list[NovelaiVibeRefItem] = []
+  if isinstance(data, dict):
+    vibes = data.get("vibes")
+    if isinstance(vibes, list):
+      for vibe in vibes:
+        if not isinstance(vibe, dict):
+          continue
+        strength, ie = _import_info_from_vibe_dict(vibe)
+        enc = _encoding_b64_from_vibe_dict(vibe)
+        if enc:
+          out.append(
+            NovelaiVibeRefItem(
+              encoding_b64=enc,
+              strength=strength,
+              information_extracted=ie,
+              from_bundle_meta=True,
+            )
+          )
+      if out:
+        return out
+    if data.get("encodings"):
+      strength, ie = _import_info_from_vibe_dict(data)
+      enc = _encoding_b64_from_vibe_dict(data)
+      if enc:
+        return [
+          NovelaiVibeRefItem(
+            encoding_b64=enc,
+            strength=strength,
+            information_extracted=ie,
+            from_bundle_meta=True,
+          )
+        ]
+
+  encodings = _find_vibe_encoding_b64_in_json(data)
+  return [
+    NovelaiVibeRefItem(
+      encoding_b64=enc,
+      strength=_PLAIN_IMAGE_REF_STRENGTH,
+      information_extracted=_PLAIN_IMAGE_REF_IE,
+      from_bundle_meta=False,
+    )
+    for enc in encodings
+  ]
+
+
+def load_reference_vibe_items_from_file(path: Path) -> list[NovelaiVibeRefItem]:
+  suffix = path.suffix.lower()
+  raw = path.read_bytes()
+  image_suffixes = {".png", ".jpg", ".jpeg", ".webp"}
+  if suffix in image_suffixes:
+    return [
+      NovelaiVibeRefItem(
+        encoding_b64=base64.b64encode(raw).decode("ascii"),
+        strength=_PLAIN_IMAGE_REF_STRENGTH,
+        information_extracted=_PLAIN_IMAGE_REF_IE,
+        from_bundle_meta=False,
+      )
+    ]
+  if suffix in {".naiv4vibe", ".naiv4vibebundle"}:
+    items: list[NovelaiVibeRefItem] = []
+    if zipfile.is_zipfile(io.BytesIO(raw)):
+      with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+        for info in zf.infolist():
+          if Path(info.filename).suffix.lower() != ".json":
+            continue
+          try:
+            items.extend(
+              _extract_vibe_ref_items_from_json(
+                json.loads(zf.read(info).decode("utf-8"))
+              )
+            )
+          except Exception:
+            continue
+        if items:
+          return items
+        for info in zf.infolist():
+          name = info.filename.lower()
+          if Path(name).suffix in image_suffixes:
+            items.append(
+              NovelaiVibeRefItem(
+                encoding_b64=base64.b64encode(zf.read(info)).decode("ascii"),
+                strength=_PLAIN_IMAGE_REF_STRENGTH,
+                information_extracted=_PLAIN_IMAGE_REF_IE,
+                from_bundle_meta=False,
+              )
+            )
+        if items:
+          return items
+    try:
+      data = json.loads(raw.decode("utf-8"))
+    except Exception:
+      data = None
+    if data is not None:
+      items = _extract_vibe_ref_items_from_json(data)
+      if items:
+        return items
+    raise ValueError(
+      f"{path} から Vibe Transfer 用画像を抽出できませんでした。"
+      ".naiv4vibe/.naiv4vibeBundle の encoding または元画像を確認してください。"
+    )
+  raise ValueError(
+    f"参照画像として未対応の拡張子です: {path} "
+    "(対応: .png, .jpg, .jpeg, .webp, .naiv4vibe, .naiv4vibeBundle)"
+  )
+
+
+def build_novelai_reference_coefficients(
+  paths: list[str],
+  root: Path,
+  *,
+  strength_multiplier: float = 1.0,
+  information_extracted_multiplier: float = 1.0,
+) -> tuple[list[float], list[float], bool]:
+  """パス列から参照スロットごとの strength / IE を組み立てる。
+
+  ``strength_multiplier`` / ``information_extracted_multiplier`` は
+  バンドル内 ``importInfo``（無い項目は PNG 既定 0.6 / 1.0）への**乗数**。
+  比率維持のため、バンドルメタ由来または strength が複数値のときは
+  ``normalize_reference_strength_multiple`` を False にする。
+  """
+  items: list[NovelaiVibeRefItem] = []
+  for raw in paths:
+    path = Path(str(raw))
+    if not path.is_absolute():
+      path = (root / path).resolve()
+    if not path.is_file():
+      raise ValueError(f"参照画像ファイルが見つかりません: {path}")
+    items.extend(load_reference_vibe_items_from_file(path))
+
+  strengths = [
+    _clamp_reference_coefficient(item.strength * strength_multiplier)
+    for item in items
+  ]
+  ies = [
+    _clamp_reference_coefficient(
+      item.information_extracted * information_extracted_multiplier
+    )
+    for item in items
+  ]
+  has_varying_strength = len({round(s, 8) for s in strengths}) > 1
+  uses_bundle_meta = any(item.from_bundle_meta for item in items)
+  normalize = not (uses_bundle_meta or has_varying_strength)
+  return strengths, ies, normalize
+
+
+def _find_vibe_encoding_b64_in_json(data: Any) -> list[str]:
+    found: list[str] = []
+
+    def walk(node: Any, key_hint: str = "") -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, str(k))
+            return
+        if isinstance(node, list):
+            for item in node:
+                walk(item, key_hint)
+            return
+        if key_hint == "encoding" and isinstance(node, str) and _is_probably_base64(node):
+            found.append(_strip_data_url(node).strip())
+
+    walk(data)
+    return found
+
+
+def _load_reference_image_file(path: Path) -> list[str]:
+    return [item.encoding_b64 for item in load_reference_vibe_items_from_file(path)]
+
+
+def _coerce_float_list(value: Any, *, count: int, default: float) -> list[float]:
+    if value is None:
+        items: list[float] = []
+    elif isinstance(value, list):
+        items = [float(v) for v in value]
+    else:
+        items = [float(value)]
+    if len(items) > count:
+        return items[:count]
+    return items + [default for _ in range(count - len(items))]
+
+
+def load_novelai_reference_images(params: dict[str, Any], root: Path) -> list[str]:
+    refs: list[str] = []
+    raw_refs = params.get("reference_image_multiple", [])
+    if isinstance(raw_refs, str):
+        raw_refs = [raw_refs]
+    if isinstance(raw_refs, list):
+        for item in raw_refs:
+            if isinstance(item, str) and _is_probably_base64(item):
+                refs.append(_strip_data_url(item).strip())
+            elif item:
+                raise ValueError("reference_image_multiple は base64 文字列の配列で指定してください。")
+    raw_paths = params.get("reference_image_paths", params.get("reference_image_path", []))
+    if isinstance(raw_paths, str):
+        raw_paths = [raw_paths]
+    if isinstance(raw_paths, list):
+        for raw_path in raw_paths:
+            path = Path(str(raw_path))
+            if not path.is_absolute():
+                path = root / path
+            if not path.is_file():
+                raise ValueError(f"参照画像ファイルが見つかりません: {path}")
+            refs.extend(_load_reference_image_file(path))
+    return refs
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -511,6 +825,7 @@ def merge_provider_defaults(
     provider: str,
     provider_cfg: dict[str, Any],
     params: dict[str, Any],
+    root: Path | None = None,
 ) -> dict[str, Any]:
     width_default = provider_cfg["default_width"]
     height_default = provider_cfg["default_height"]
@@ -631,6 +946,67 @@ def merge_provider_defaults(
             out["prefer_brownian"] = bool(params["prefer_brownian"])
         if "v4_use_coords" in params:
             out["v4_use_coords"] = bool(params["v4_use_coords"])
+        root_path = root or repo_root()
+        refs = load_novelai_reference_images(params, root_path)
+        if refs:
+            out["reference_image_multiple"] = refs
+            raw_paths = params.get(
+                "reference_image_paths", params.get("reference_image_path", [])
+            )
+            if isinstance(raw_paths, str):
+                raw_paths = [raw_paths]
+            resolved_paths: list[str] = []
+            if isinstance(raw_paths, list):
+                for raw_path in raw_paths:
+                    path = Path(str(raw_path))
+                    if not path.is_absolute():
+                        path = root_path / path
+                    resolved_paths.append(path.as_posix())
+            raw_strength = params.get("reference_strength_multiple")
+            raw_ie = params.get("reference_information_extracted_multiple")
+            explicit_strength = (
+                isinstance(raw_strength, list) and len(raw_strength) == len(refs)
+            )
+            explicit_ie = isinstance(raw_ie, list) and len(raw_ie) == len(refs)
+            if explicit_strength and explicit_ie:
+                out["reference_strength_multiple"] = [float(v) for v in raw_strength]
+                out["reference_information_extracted_multiple"] = [
+                    float(v) for v in raw_ie
+                ]
+                out["normalize_reference_strength_multiple"] = bool(
+                    params.get(
+                        "normalize_reference_strength_multiple",
+                        provider_cfg.get(
+                            "default_normalize_reference_strength_multiple", True
+                        ),
+                    )
+                )
+            else:
+                strength_mult = (
+                    float(raw_strength)
+                    if raw_strength is not None
+                    and not isinstance(raw_strength, list)
+                    else 1.0
+                )
+                ie_mult = (
+                    float(raw_ie)
+                    if raw_ie is not None and not isinstance(raw_ie, list)
+                    else 1.0
+                )
+                strengths, ies, normalize = build_novelai_reference_coefficients(
+                    resolved_paths,
+                    root_path,
+                    strength_multiplier=strength_mult,
+                    information_extracted_multiplier=ie_mult,
+                )
+                out["reference_strength_multiple"] = strengths
+                out["reference_information_extracted_multiple"] = ies
+                if "normalize_reference_strength_multiple" in params:
+                    out["normalize_reference_strength_multiple"] = bool(
+                        params["normalize_reference_strength_multiple"]
+                    )
+                else:
+                    out["normalize_reference_strength_multiple"] = normalize
         return out
 
     if provider in _GROK_FAMILY:
@@ -762,7 +1138,11 @@ def build_novelai_payload(
         "characterPrompts": [],
         "use_coords": merged["use_coords"],
         "deliberate_euler_ancestral_bug": merged["deliberate_euler_ancestral_bug"],
-        "reference_strength_multiple": [],
+        "reference_image_multiple": merged.get("reference_image_multiple", []),
+        "reference_information_extracted_multiple": merged.get(
+            "reference_information_extracted_multiple", []
+        ),
+        "reference_strength_multiple": merged.get("reference_strength_multiple", []),
         "normalize_reference_strength_multiple": merged[
             "normalize_reference_strength_multiple"
         ],
@@ -1171,10 +1551,24 @@ def save_openrouter_response(
     return saved
 
 
+def _redact_large_payload_values(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _redact_large_payload_values(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_large_payload_values(v) for v in value]
+    if isinstance(value, str) and len(value) > 240 and _is_probably_base64(value):
+        return f"{value[:80]}...(base64 {len(value)} chars)"
+    return value
+
+
 def print_dry_run(provider: str, api_url: str, payload: dict[str, Any]) -> None:
     print(
         json.dumps(
-            {"provider": provider, "url": api_url, "payload": payload},
+            {
+                "provider": provider,
+                "url": api_url,
+                "payload": _redact_large_payload_values(payload),
+            },
             ensure_ascii=False,
             indent=2,
         )
@@ -1275,9 +1669,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        merged = merge_provider_defaults(provider, provider_cfg, params)
+        merged = merge_provider_defaults(provider, provider_cfg, params, root=root)
     except KeyError as e:
         print(f"config に必要キーがありません: {e}", file=sys.stderr)
+        return 2
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
         return 2
 
     sys.stderr.write(

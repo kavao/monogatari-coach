@@ -34,6 +34,7 @@ DEFAULT_REQUIRED_FILES = (
     "character.md",
     "world.md",
     "_meta.md",
+    "_meta.yaml",
 )
 
 DEFAULT_REQUIRED_DIRS = (
@@ -174,7 +175,28 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="novel_image_layout.py と連携して tag/<romaji>/ と manga/_assets/ の完全性を検証",
     )
+    p.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
+    )
     args = p.parse_args(argv)
+
+    if args.bootstrap:
+        from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
+
+        work = args.work_dir
+        if not work.is_absolute():
+            work = scaffold_root() / work
+        work = work.resolve()
+        print(f"bootstrap: {work}")
+        try:
+            for rel, status in bootstrap_novel(work, scaffold_root()):
+                print(f"  {rel}: {status}")
+        except FileNotFoundError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        print()
 
     result = check_novel_project(
         args.work_dir,

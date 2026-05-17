@@ -43,6 +43,13 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 | `character.md` | 登場人物のプロフィール、課題、目的、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術 |
 | `_meta.md` | 進捗、伏線、次回タスク |
+| `_meta.yaml` | 画像生成の機械可読設定（NovelAI ポーション等） |
+
+新規作品では、資料を揃えたあと次を実行します。
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+```
 
 作成後は、必要に応じて設計の弱い部分を自己評価し、心理描写や具体的なシーンを増やします。
 

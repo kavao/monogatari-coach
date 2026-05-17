@@ -115,6 +115,75 @@ NovelAI 公式ドキュメントでは、User Settings の Account 画面にあ�
 NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 ```
 
+### NovelAI Vibe Transfer
+
+`tools/image_provider_generate.py` の NovelAI provider は、Vibe Transfer / ポーション用に `reference_image_paths` または `reference_image_multiple` を受け付けます。
+
+- `reference_image_paths`: PNG / JPEG / WEBP / `.naiv4vibe` / `.naiv4vibeBundle` のパス配列。`.naiv4vibe` / `.naiv4vibeBundle` は、ファイル内の `encodings.*.encoding` を優先して NovelAI API へ渡します。画像を含む形式なら画像も読み込みます。
+- `reference_image_multiple`: 画像をbase64化した文字列配列。`data:image/...;base64,` 付きでも受け付けます。
+- `reference_information_extracted_multiple`: 各参照の Information Extracted。**スカラー**のときはバンドル内 `importInfo` への乗数（省略時 `1.0`）。**配列**のときはスロットごとの絶対値。
+- `reference_strength_multiple`: 各参照の Reference Strength。**スカラー**のときはバンドル内 `importInfo.strength` への乗数（省略時 `1.0`）。**配列**のときはスロットごとの絶対値。`.naiv4vibebundle` の `vibes[]` ごとに `importInfo` を読み、比率を保ったまま乗算する。
+- `normalize_reference_strength_multiple`: V4系の複数参照正規化。バンドル内メタで strength が複数値のときは比率維持のため自動で `false`。PNG 単体などは既定 `true`。
+
+#### params JSON 例
+
+ポーションファイルを渡す場合:
+
+```json
+{
+  "provider": "novelai",
+  "prompt": "1girl, fantasy, detailed, cinematic lighting",
+  "negative_prompt": "lowres, blurry, bad hands",
+  "model": "nai-diffusion-4-5-full",
+  "reference_image_paths": ["_how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle"],
+  "reference_information_extracted_multiple": [1.0],
+  "reference_strength_multiple": [0.6],
+  "normalize_reference_strength_multiple": true,
+  "output_dir": "outputs/novelai",
+  "file_prefix": "novelai_vibe",
+  "count": 1
+}
+```
+
+PNG / JPEG / WEBP を参照画像として使う場合も同じ `reference_image_paths` に指定します。
+
+```json
+{
+  "provider": "novelai",
+  "prompt": "1girl, fantasy, detailed",
+  "negative_prompt": "lowres, blurry, bad hands",
+  "model": "nai-diffusion-4-5-full",
+  "reference_image_paths": ["outputs/references/style.png"],
+  "reference_information_extracted_multiple": [1.0],
+  "reference_strength_multiple": [0.6],
+  "output_dir": "outputs/novelai",
+  "file_prefix": "novelai_vibe",
+  "count": 1
+}
+```
+
+#### 実行手順
+
+まず `--dry-run` で `reference_image_multiple` が入っていることを確認します。dry-run では長いbase64/encoding文字列は伏せ字表示になります。
+
+```powershell
+python tools/image_provider_generate.py --params path\to\novelai_vibe_params.json --dry-run
+```
+
+ユーザー承認後に本番実行します。本番は Anlas/API 消費が発生する可能性があります。
+
+```powershell
+python tools/image_provider_generate.py --params path\to\novelai_vibe_params.json
+```
+
+生成後は、`output_dir` に PNG と同名 JSON が保存されます。同名 JSON の `novelai_payload_request.parameters.reference_image_multiple` に、ポーションまたは参照画像由来の値が記録されます。
+
+#### 調整目安
+
+- `reference_strength_multiple` / `reference_information_extracted_multiple`（漫画バッチ・`.env`）: バンドル内 `importInfo` への**乗数**。基本は `1.0`（NovelAI UI エクスポート値どおり）。全体を薄めたいときは `0.5` など。
+- バンドル内 vibe ごとの比率は維持される（例: 0.22 と 0.2 → 乗数 0.5 で 0.11 と 0.1）。
+- スロットごとに絶対値を直接指定したいときは params JSON で配列 `[0.45, 0.6]` を渡す（乗数モードではない）。
+
 ### xAI / Grok
 
 `provider=grok` または `provider=grok_pro` を使う場合は、`.env` の `XAI_API_KEY` に xAI Console の API キーを入れます。

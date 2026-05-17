@@ -30,7 +30,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --check-image-
 
 **使用タイミング**: Writing Mode に入る直前、またはユーザーが「執筆して」と言った直後。終了コード **0** を確認してから本文執筆に入る。
 
-- **必須ファイル**（いずれも一定バイト数以上）: `proposal.md`, `design_specification.md`, `config.md`, `character.md`, `world.md`, `_meta.md`
+- **必須ファイル**（いずれも一定バイト数以上）: `proposal.md`, `design_specification.md`, `config.md`, `character.md`, `world.md`, `_meta.md`, `_meta.yaml`
 - **必須ディレクトリ**（空でよい）: `_novel_text/`, `_reader/`
 - **config / フォルダ名**: `tools/novel_code_allocate.py verify` と同じ整合（`novel_ID` 表とフォルダ先頭番号）
 
@@ -44,6 +44,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --check-image-
 | `--require-manga-dir` | `manga/` があることを必須 |
 | `--min-file-bytes N` | 空ファイル除けのしきい値（既定 48） |
 | `--json` | CI やエージェント向け JSON 出力 |
+| `--bootstrap` | `_meta.yaml` / `_novel_text/` / `_reader/` / `references/novelai/` を不足分だけ作成してからチェック |
 
 ## 不足時の典型対処
 

@@ -45,6 +45,39 @@
 # III. 画像・漫画生成設定（Image / Manga Generation）
 漫画タグ（Manga Tag Mode）・画像生成の既定設定を記録します。エージェントはセッション開始時にここを参照し、`--color-mode` 等のフラグを決定します。
 
+## 0. 機械可読メタ（`_meta.yaml`・定量）
+
+散文・進捗・§4/§5 の表は **`_meta.md`** のまま。**バッチが読む数値・パス**は作品フォルダ直下の **`_meta.yaml`** に書く（雛形: **`_how_to.example/_meta.yaml.example`**）。
+
+新規作品では Plan 完了時に次を実行する:
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+```
+
+| 項目 | 正本 | 備考 |
+|------|------|------|
+| 執筆進捗・伏線・投稿文 | `_meta.md` | LLM 向け散文 |
+| NovelAI ポーション（path / strength） | `_meta.yaml` → `novelai.portions` | `image_provider_novel_manga_batch.py` が自動読込 |
+| コマのタグ・variant | `manga/pages/*.yaml` | 実行の最終正本 |
+
+**優先順位（ポーション）**: CLI `--novelai-reference-image-path` ＞ `_meta.yaml` ＞ `.env` ＞ なし。
+
+```yaml
+# _meta.yaml（抜粋）
+version: 1
+novelai:
+  portion_default: cross_flat
+  portion_fallback: cross_flat
+  portions:
+    cross_flat:
+      path: _how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle
+      strength: 0.6
+      information_extracted: 1.0
+```
+
+別ポーションを試すとき: `--novelai-portion-id work_manga`。詳細は **`_how_to.example/image_refs/novelai/README.md`**。
+
 ## 1. 色モード
 - **作品基準**: （`full_color` / `monochrome` / `limited_color` のいずれかを記載）
 - **備考**: （センターカラー・巻頭カラーなど意図的に別モードを使うページがあれば記載）

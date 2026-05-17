@@ -32,6 +32,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -90,6 +91,9 @@ MANGA_ASSET_SUBDIR_COMIC = "comic"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV = "MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND"
 MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV = "MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY"
+MANGA_NOVELAI_REFERENCE_PATHS_ENV = "MONOCRI_MANGA_NOVELAI_REFERENCE_IMAGE_PATHS"
+MANGA_NOVELAI_REFERENCE_STRENGTH_ENV = "MONOCRI_MANGA_NOVELAI_REFERENCE_STRENGTH"
+MANGA_NOVELAI_REFERENCE_IE_ENV = "MONOCRI_MANGA_NOVELAI_REFERENCE_INFORMATION_EXTRACTED"
 
 # step1-panels + --omit-panel-background: 背景・舞台タグの除去と簡素背景の付与
 OMIT_PANEL_BACKGROUND_ADD_TAGS = [
@@ -824,6 +828,167 @@ def resolve_omit_panel_background(cli_flag: bool, root: Path) -> bool:
         return True
     env = load_dotenv(root / ".env").get(MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV, "")
     return str(env).strip().lower() in ("1", "true", "yes", "on")
+
+
+@dataclass(frozen=True)
+class NovelaiReferenceResolution:
+    paths: list[str]
+    strength: float  # バンドル内 importInfo への乗数（既定 1.0）
+    information_extracted: float  # 同上
+    source: str  # cli | _meta.yaml | .env | default
+
+
+def _resolve_cli_reference_paths(cli_paths: list[str], root: Path) -> list[str]:
+    paths = [p.strip() for p in cli_paths if p and str(p).strip()]
+    resolved: list[str] = []
+    for raw in paths:
+        path = Path(raw)
+        if not path.is_absolute():
+            path = (root / path).resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"reference image path not found: {path}")
+        resolved.append(path.as_posix())
+    return resolved
+
+
+def resolve_novelai_reference(
+    cli_paths: list[str],
+    root: Path,
+    *,
+    novel_dir: Path | None = None,
+    portion_id: str | None = None,
+    cli_strength: float | None = None,
+    cli_information_extracted: float | None = None,
+) -> NovelaiReferenceResolution:
+    """NovelAI Vibe / ポーション: CLI > 作品 _meta.yaml > .env > 既定。"""
+    if cli_paths:
+        paths = _resolve_cli_reference_paths(cli_paths, root)
+        strength = (
+            float(cli_strength)
+            if cli_strength is not None
+            else resolve_novelai_reference_strength(None, root)
+        )
+        ie = (
+            float(cli_information_extracted)
+            if cli_information_extracted is not None
+            else resolve_novelai_reference_information_extracted(None, root)
+        )
+        return NovelaiReferenceResolution(
+            paths=paths,
+            strength=strength,
+            information_extracted=ie,
+            source="cli",
+        )
+
+    if novel_dir is not None:
+        from novel_meta_yaml import resolve_novelai_portion
+
+        try:
+            portion = resolve_novelai_portion(
+                novel_dir, root, portion_id=portion_id
+            )
+        except (FileNotFoundError, ValueError) as e:
+            raise FileNotFoundError(str(e)) from e
+        if portion is not None:
+            strength = (
+                float(cli_strength)
+                if cli_strength is not None
+                else portion.strength
+            )
+            ie = (
+                float(cli_information_extracted)
+                if cli_information_extracted is not None
+                else portion.information_extracted
+            )
+            label = f" ({portion.label})" if portion.label else ""
+            return NovelaiReferenceResolution(
+                paths=list(portion.paths),
+                strength=strength,
+                information_extracted=ie,
+                source=f"_meta.yaml#{portion.id}{label}",
+            )
+
+    env_paths: list[str] = []
+    env = load_dotenv(root / ".env").get(MANGA_NOVELAI_REFERENCE_PATHS_ENV, "")
+    if str(env).strip():
+        env_paths = [
+            p.strip()
+            for p in str(env).replace(",", ";").split(";")
+            if p.strip()
+        ]
+    if env_paths:
+        paths = _resolve_cli_reference_paths(env_paths, root)
+        strength = resolve_novelai_reference_strength(cli_strength, root)
+        ie = resolve_novelai_reference_information_extracted(
+            cli_information_extracted, root
+        )
+        return NovelaiReferenceResolution(
+            paths=paths,
+            strength=strength,
+            information_extracted=ie,
+            source=".env",
+        )
+
+    return NovelaiReferenceResolution(
+        paths=[],
+        strength=resolve_novelai_reference_strength(cli_strength, root),
+        information_extracted=resolve_novelai_reference_information_extracted(
+            cli_information_extracted, root
+        ),
+        source="default",
+    )
+
+
+def resolve_novelai_reference_paths(cli_paths: list[str], root: Path) -> list[str]:
+    """後方互換。CLI / .env のみ（作品 _meta.yaml は見ない）。"""
+    return resolve_novelai_reference(cli_paths, root).paths
+
+
+def resolve_novelai_reference_strength(cli_value: float | None, root: Path) -> float:
+    if cli_value is not None:
+        return float(cli_value)
+    env = load_dotenv(root / ".env").get(MANGA_NOVELAI_REFERENCE_STRENGTH_ENV, "")
+    if str(env).strip():
+        return float(env)
+    return 1.0
+
+
+def resolve_novelai_reference_information_extracted(
+    cli_value: float | None, root: Path
+) -> float:
+    if cli_value is not None:
+        return float(cli_value)
+    env = load_dotenv(root / ".env").get(MANGA_NOVELAI_REFERENCE_IE_ENV, "")
+    if str(env).strip():
+        return float(env)
+    return 1.0
+
+
+def novelai_reference_job_fields(
+    paths: list[str],
+    *,
+    strength: float,
+    information_extracted: float,
+    root: Path,
+) -> dict[str, Any]:
+    if not paths:
+        return {}
+    from image_provider_generate import build_novelai_reference_coefficients
+
+    strengths, ies, normalize = build_novelai_reference_coefficients(
+        paths,
+        root,
+        strength_multiplier=strength,
+        information_extracted_multiplier=information_extracted,
+    )
+    if not strengths:
+        return {}
+    return {
+        "reference_image_paths": paths,
+        "reference_strength_multiple": strengths,
+        "reference_information_extracted_multiple": ies,
+        "normalize_reference_strength_multiple": normalize,
+    }
 
 
 def resolve_include_panel_summary(
@@ -2175,6 +2340,45 @@ def main(argv: list[str] | None = None) -> int:
             "YAML由来のページ指示文にだけ反映する"
         ),
     )
+    p.add_argument(
+        "--novelai-reference-image-path",
+        action="append",
+        default=[],
+        dest="novelai_reference_image_paths",
+        metavar="PATH",
+        help=(
+            "provider=novelai 時: Vibe Transfer / ポーション（.naiv4vibe / .naiv4vibebundle 等）。"
+            " 複数指定可。未指定時は作品 _meta.yaml の novelai.portions、"
+            f" 無ければ .env の {MANGA_NOVELAI_REFERENCE_PATHS_ENV}（; 区切り）"
+        ),
+    )
+    p.add_argument(
+        "--novelai-portion-id",
+        default=None,
+        metavar="ID",
+        help=(
+            "作品 _meta.yaml の novelai.portions から使う ID。"
+            " 未指定時は portion_default"
+        ),
+    )
+    p.add_argument(
+        "--novelai-reference-strength",
+        type=float,
+        default=None,
+        help=(
+            "バンドル内 importInfo.strength への乗数（既定 1.0）。"
+            f" .env の {MANGA_NOVELAI_REFERENCE_STRENGTH_ENV} でも指定可"
+        ),
+    )
+    p.add_argument(
+        "--novelai-reference-information-extracted",
+        type=float,
+        default=None,
+        help=(
+            "バンドル内 importInfo.information_extracted への乗数（既定 1.0）。"
+            f" .env の {MANGA_NOVELAI_REFERENCE_IE_ENV} でも指定可"
+        ),
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -2225,6 +2429,33 @@ def main(argv: list[str] | None = None) -> int:
     omit_panel_background = resolve_omit_panel_background(
         bool(args.omit_panel_background), root
     )
+    try:
+        novelai_ref = resolve_novelai_reference(
+            list(args.novelai_reference_image_paths or []),
+            root,
+            novel_dir=novel,
+            portion_id=args.novelai_portion_id,
+            cli_strength=args.novelai_reference_strength,
+            cli_information_extracted=args.novelai_reference_information_extracted,
+        )
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    novelai_ref_paths = novelai_ref.paths
+    novelai_ref_strength = novelai_ref.strength
+    novelai_ref_ie = novelai_ref.information_extracted
+    novelai_ref_source = novelai_ref.source
+    novelai_ref_fields = novelai_reference_job_fields(
+        novelai_ref_paths if provider == "novelai" else [],
+        strength=novelai_ref_strength,
+        information_extracted=novelai_ref_ie,
+        root=root,
+    )
+    if novelai_ref_paths and provider != "novelai":
+        print(
+            f"warning: --novelai-reference-image-path は provider={provider} では無視します",
+            file=sys.stderr,
+        )
     if omit_panel_background and args.source != "step1-panels":
         print(
             "warning: --omit-panel-background は step1-panels のみ有効です（無視します）",
@@ -2304,6 +2535,25 @@ def main(argv: list[str] | None = None) -> int:
         print("omit_panel_background: true (step1-panels)")
     if include_panel_summary and args.source == "step1-panels":
         print("include_panel_summary: true (panels[].summary_en をベースタグに併用)")
+    if novelai_ref_paths:
+        print(
+            f"novelai_reference: {len(novelai_ref_paths)} file(s) "
+            f"(source={novelai_ref_source})"
+        )
+        for ref in novelai_ref_paths:
+            print(f"  - {ref}")
+        print(
+            f"  strength_multiplier={novelai_ref_strength} "
+            f"ie_multiplier={novelai_ref_ie}"
+        )
+        if novelai_ref_fields:
+            rs = novelai_ref_fields.get("reference_strength_multiple", [])
+            ri = novelai_ref_fields.get("reference_information_extracted_multiple", [])
+            print(f"  resolved slots: {len(rs)} normalize={novelai_ref_fields.get('normalize_reference_strength_multiple')}")
+            if rs:
+                print(f"  reference_strength_multiple={rs}")
+            if ri:
+                print(f"  reference_information_extracted_multiple={ri}")
     if args.source == "step2-pages" and input_used == "yaml":
         print(f"step2_paraphrase (effective): {effective_paraphrase(step2_px)}")
 
@@ -2330,6 +2580,8 @@ def main(argv: list[str] | None = None) -> int:
             payload["aspect_ratio_preset"] = aspect_effective
         if args.resolution is not None:
             payload["resolution"] = args.resolution
+        if novelai_ref_fields:
+            payload.update(novelai_ref_fields)
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {out_dir_posix}")
             print(

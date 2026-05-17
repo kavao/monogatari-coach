@@ -1,4 +1,6 @@
 # - 創作技法ファイル (how_to/)
+0. **（画像参照・横断）** [`image_refs/novelai/README.md`](image_refs/novelai/README.md)
+   - NovelAI Vibe / ポーション（`.naiv4vibebundle`）。普段使いは `_how_to/image_refs/novelai/` に置く。作品固有は `novels/<作品>/references/novelai/`。
 0. **（ユーザスキル・雛形）** [`skills/_index.md`](skills/_index.md)
    - リポジトリに同梱する**雛形**の一覧。初回はここを **`_how_to/skills/<名前>/` にコピー**してから編集する（正本と副本の扱いは **`.rulesync/rules/concepts.md`**「正本と副本」）。
    - 既にコピー済みの**作業用**一覧は **`_how_to/skills/_index.md`** を正とする（雛形にないスキルが列挙されることもある）。

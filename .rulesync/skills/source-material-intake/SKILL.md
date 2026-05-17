@@ -44,7 +44,8 @@ targets: ["*"]
    - 資料上の作品名が揺れる場合は、`config.md` に「資料上の別名」を残す。
 4. **作品フォルダへ展開**
    - `novels/<novel_code>_<novel_title>/` を作成、または既存作品を更新する。
-   - `proposal.md`, `design_specification.md`, `config.md`, `character.md`, `world.md`, `_meta.md`, `_novel_text/`, `_reader/` を揃える。
+   - `proposal.md`, `design_specification.md`, `config.md`, `character.md`, `world.md`, `_meta.md`, `_meta.yaml`, `_novel_text/`, `_reader/` を揃える。
+   - `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` 雛形と `references/novelai/` を作成する。
 5. **原資料の保全**
    - 原資料は改変しない。
    - 必要に応じて作品フォルダ内の `_source_material/` に参照用として退避する。

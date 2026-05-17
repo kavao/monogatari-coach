@@ -35,6 +35,22 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 
 # 漫画フォルダまで揃えたい場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
+
+# _meta.yaml 等を不足分だけ作成してからチェック
+python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
+```
+
+---
+
+### `novel_scaffold.py` — 新規作品の `_meta.yaml` 雛形
+
+Plan Mode で作品フォルダを作った直後に実行します。`_meta.yaml`（雛形: `_how_to.example/_meta.yaml.example`）、`references/novelai/README.md`、`_novel_text/`、`_reader/` を作成します。既存の `_meta.yml` は `_meta.yaml` にリネームします。
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+
+# _meta.yaml のみ
+python tools/novel_scaffold.py novels/NNN_作品名 --meta-only
 ```
 
 ---
