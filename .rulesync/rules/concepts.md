@@ -125,11 +125,12 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 必須:
 
 1. 本文正本 `novels/<作品>/_novel_text/novel_text*.md` とキャラクター正本を確認する。
-2. `manga/pages/*.yaml` を作成・更新する。
-3. 主語、関係、行為、セリフ帰属、部分アップの意味、コマ割りを品質ゲートで確認する。
-4. `tools/novel_prompt_ir_validate.py` で検証する。本番生成前は `--strict-quality` を推奨する。
-5. 互換Markdownが必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
-6. 画像生成は「画像生成: dry-run から本番まで」に従う。
+2. 作品 `_meta.md` の **TPO → variant 対応表**（「漫画 variant 対応（TPO 正本）」節）を確認または作成し、状況バリアント（`01_` 以降）を区間ごとに固定する。あわせて **漫画タグ層（区間・常時上乗せ）** 節で、ページ区間ごとの `required` / `omit` 英語タグを合意する（variant 表に混ぜない）。書き方は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。
+3. `manga/pages/*.yaml` を作成・更新する（`subjects[].variant_id` は §4 どおり。区間の常時タグは §5 を各ページの `render_instruction.user_directives.defaults` に複写。`00_base` を漫画の主 variant にしない）。
+4. 主語、関係、行為、セリフ帰属、部分アップの意味、コマ割りを品質ゲートで確認する。
+5. `tools/novel_prompt_ir_validate.py` で検証する。本番生成前は `--strict-quality` を推奨する。
+6. 互換Markdownが必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
+7. 画像生成は「画像生成: dry-run から本番まで」に従う。
 
 禁止:
 

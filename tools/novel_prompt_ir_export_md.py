@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -149,6 +150,18 @@ def snapshot_tags(snapshot: dict[str, Any]) -> list[str]:
     return unique(tags)
 
 
+_VARIANT_ID_NUM = re.compile(r"^(\d+)_")
+
+
+def variant_heading_index(variant: dict[str, Any], one_based_fallback: int) -> int:
+    """`00_base` → 0, `01_normal` → 1。番号なし ID は従来どおり 1 始まりの連番。"""
+    vid = str(variant.get("variant_id") or "")
+    m = _VARIANT_ID_NUM.match(vid)
+    if m:
+        return int(m.group(1))
+    return one_based_fallback
+
+
 def render_character_md(character: dict[str, Any]) -> str:
     character_id = character["character_id"]
     name = character.get("name") or character_id
@@ -185,9 +198,10 @@ def render_character_md(character: dict[str, Any]) -> str:
             if not isinstance(variant, dict):
                 continue
             tags = variant.get("danbooru_tags") or []
+            heading_n = variant_heading_index(variant, index)
             lines.extend(
                 [
-                    f"## {index}. {variant.get('title') or variant.get('variant_id') or '状況'}",
+                    f"## {heading_n}. {variant.get('title') or variant.get('variant_id') or '状況'}",
                     f"説明: {variant.get('description') or '構造化IRの状況別タグ。'}",
                     "",
                     "**Danbooru Tags:**",
