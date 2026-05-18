@@ -125,6 +125,17 @@ NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 - `reference_strength_multiple`: 各参照の Reference Strength。**スカラー**のときはバンドル内 `importInfo.strength` への乗数（省略時 `1.0`）。**配列**のときはスロットごとの絶対値。`.naiv4vibebundle` の `vibes[]` ごとに `importInfo` を読み、比率を保ったまま乗算する。
 - `normalize_reference_strength_multiple`: V4系の複数参照正規化。バンドル内メタで strength が複数値のときは比率維持のため自動で `false`。PNG 単体などは既定 `true`。
 
+#### strength / IE の指定方式まとめ
+
+| 入力方式 | `reference_strength_multiple` の扱い | `reference_information_extracted_multiple` の扱い |
+|----------|--------------------------------------|---------------------------------------------------|
+| **スカラー**（例: `0.5`） | バンドル内 `importInfo.strength` への乗数。バンドル内 vibe ごとの比率を保ったまま全件に適用。 | バンドル内 `importInfo.information_extracted` への乗数。 |
+| **配列**（例: `[0.45, 0.6]`） | スロットごとの絶対値として直接送信。件数は `reference_image_multiple` の件数と一致が必要。 | スロットごとの絶対値。 |
+| **省略**（指定なし） | スカラー乗数 `1.0` として動作（バンドル値をそのまま使用）。 | 同左。 |
+| **base64 直指定**（`reference_image_multiple` に base64 のみ） | `importInfo` がないため、PNG 等のプレーン参照と同じ既定値（strength `0.6`）× スカラー乗数で件数補完。 | 既定値（IE `1.0`）× スカラー乗数で件数補完。 |
+
+> **注意**: base64 直指定時にスロットごとの絶対値を使いたい場合は、`reference_strength_multiple` と `reference_information_extracted_multiple` を件数と同じ長さの配列で明示します。
+
 #### params JSON 例
 
 ポーションファイルを渡す場合:
@@ -183,6 +194,7 @@ python tools/image_provider_generate.py --params path\to\novelai_vibe_params.jso
 - `reference_strength_multiple` / `reference_information_extracted_multiple`（漫画バッチ・`.env`）: バンドル内 `importInfo` への**乗数**。基本は `1.0`（NovelAI UI エクスポート値どおり）。全体を薄めたいときは `0.5` など。
 - バンドル内 vibe ごとの比率は維持される（例: 0.22 と 0.2 → 乗数 0.5 で 0.11 と 0.1）。
 - スロットごとに絶対値を直接指定したいときは params JSON で配列 `[0.45, 0.6]` を渡す（乗数モードではない）。
+- 係数は `0.01`〜`1.0` の範囲に自動 clamp されます。`0` を渡しても `0.01` として送信されます（API の不定挙動を回避するための下限）。
 
 ### xAI / Grok
 

@@ -278,7 +278,8 @@ class NovelaiVibeRefItem:
 
 
 def _clamp_reference_coefficient(value: float) -> float:
-  return max(0.0, min(1.0, float(value)))
+  # NovelAI API は 0 を送ると不定挙動の可能性があるため下限を 0.01 にする
+  return max(0.01, min(1.0, float(value)))
 
 
 def _import_info_from_vibe_dict(vibe: dict[str, Any]) -> tuple[float, float]:
@@ -999,6 +1000,20 @@ def merge_provider_defaults(
                     strength_multiplier=strength_mult,
                     information_extracted_multiplier=ie_mult,
                 )
+                # base64 直指定時は resolved_paths が空になり strengths/ies が空になる。
+                # refs がある（direct base64）のに strengths が空なら PNG 既定値で件数補完する。
+                if not strengths and refs:
+                    strengths = [
+                        _clamp_reference_coefficient(
+                            _PLAIN_IMAGE_REF_STRENGTH * strength_mult
+                        )
+                        for _ in refs
+                    ]
+                    ies = [
+                        _clamp_reference_coefficient(_PLAIN_IMAGE_REF_IE * ie_mult)
+                        for _ in refs
+                    ]
+                    normalize = True
                 out["reference_strength_multiple"] = strengths
                 out["reference_information_extracted_multiple"] = ies
                 if "normalize_reference_strength_multiple" in params:

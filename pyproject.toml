@@ -8,6 +8,9 @@ dependencies = [
   "types-PyYAML>=6.0,<7",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tools/tests"]
+
 [tool.pyright]
 # PyYAML は実行時に問題なく import できるが、環境によっては「ソースから解決できない」
 # （reportMissingModuleSource）が誤検知される。デバッガではなく静的解析の設定。

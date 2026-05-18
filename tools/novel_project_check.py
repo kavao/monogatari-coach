@@ -27,6 +27,7 @@ import novel_image_layout as nil  # noqa: E402
 
 
 # overview.md「小説ファイル」に基づく執筆開始前の必須（本文ファイルは未作成でもよい）
+# _meta.yaml は画像生成・ポーション運用でのみ必須（--require-meta-yaml で有効化）
 DEFAULT_REQUIRED_FILES = (
     "proposal.md",
     "design_specification.md",
@@ -34,7 +35,6 @@ DEFAULT_REQUIRED_FILES = (
     "character.md",
     "world.md",
     "_meta.md",
-    "_meta.yaml",
 )
 
 DEFAULT_REQUIRED_DIRS = (
@@ -69,6 +69,7 @@ def check_novel_project(
     min_file_bytes: int,
     require_tag_md: bool,
     require_manga_dir: bool,
+    require_meta_yaml: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -108,6 +109,16 @@ def check_novel_project(
         if not st["ok"]:
             out["ok"] = False
             out["issues"].append(f"必須ディレクトリ: {name} — {st.get('reason')}")
+
+    meta_yaml = work / "_meta.yaml"
+    meta_yaml_ok = meta_yaml.is_file()
+    out["optional"]["meta_yaml_exists"] = meta_yaml_ok
+    if require_meta_yaml:
+        st = _file_status(meta_yaml, min_file_bytes)
+        out["required_files"].append({"name": "_meta.yaml", **st})
+        if not st["ok"]:
+            out["ok"] = False
+            out["issues"].append(f"必須ファイル: _meta.yaml — {st.get('reason', 'bad')}（--require-meta-yaml 指定）")
 
     tag_dir = work / "tag"
     tag_mds = sorted(tag_dir.glob("*.md")) if tag_dir.is_dir() else []
@@ -176,6 +187,11 @@ def main(argv: list[str] | None = None) -> int:
         help="novel_image_layout.py と連携して tag/<romaji>/ と manga/_assets/ の完全性を検証",
     )
     p.add_argument(
+        "--require-meta-yaml",
+        action="store_true",
+        help="_meta.yaml を必須チェック対象にする（画像生成・ポーション運用時に指定）",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -203,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         min_file_bytes=args.min_file_bytes,
         require_tag_md=args.require_tag,
         require_manga_dir=args.require_manga_dir,
+        require_meta_yaml=args.require_meta_yaml,
     )
 
     if args.check_image_layout:
@@ -244,6 +261,9 @@ def main(argv: list[str] | None = None) -> int:
 
     opt = result.get("optional") or {}
     print("  任意（参考）:")
+    if not args.require_meta_yaml:
+        meta_yaml_label = "あり" if opt.get("meta_yaml_exists") else "なし（画像生成時は --bootstrap または手動作成）"
+        print(f"    _meta.yaml: {meta_yaml_label}")
     print(f"    tag/*.md: {opt.get('tag_md_count', 0)} 件")
     if opt.get("tag_romaji_dirs_missing"):
         print(

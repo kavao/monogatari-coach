@@ -15,7 +15,22 @@ sys.path.insert(0, str(ROOT / "tools"))
 from image_provider_generate import (  # noqa: E402
     build_novelai_reference_coefficients,
     load_reference_vibe_items_from_file,
+    merge_provider_defaults,
+    _clamp_reference_coefficient,
 )
+
+# merge_provider_defaults(provider="novelai", ...) に必要な最低限のフィールド
+_NOVELAI_MIN_CFG: dict = {
+    "default_model": "nai-diffusion-4-5-full",
+    "default_width": 1024,
+    "default_height": 1024,
+    "default_steps": 28,
+    "default_cfg_scale": 6.5,
+    "default_sampler_name": "k_euler_ancestral",
+}
+
+# _is_probably_base64 を通過する最低限の擬似 base64（長さ 24 以上・許可文字のみ）
+_FAKE_B64 = "A" * 40
 
 
 def _mini_bundle(path: Path, vibes: list[dict]) -> None:
@@ -80,6 +95,88 @@ def test_bundle_multiplier_scales_all_slots(tmp_path: Path) -> None:
     )
     assert strengths == pytest.approx([0.1, 0.2])
     assert ies == pytest.approx([1.0, 1.0])  # clamped at 1.0
+
+
+def test_base64_direct_gets_default_coefficients(tmp_path: Path) -> None:
+    """reference_image_multiple に base64 を直接渡したとき strength/IE が既定値で補完される。"""
+    merged = merge_provider_defaults(
+        "novelai",
+        _NOVELAI_MIN_CFG,
+        {"prompt": "test", "reference_image_multiple": [_FAKE_B64]},
+        root=tmp_path,
+    )
+    assert merged["reference_image_multiple"] == [_FAKE_B64]
+    assert merged["reference_strength_multiple"] == pytest.approx([0.6])
+    assert merged["reference_information_extracted_multiple"] == pytest.approx([1.0])
+
+
+def test_base64_direct_with_scalar_strength_multiplier(tmp_path: Path) -> None:
+    """reference_image_multiple base64 直指定 + スカラー乗数が正しく適用される。"""
+    merged = merge_provider_defaults(
+        "novelai",
+        _NOVELAI_MIN_CFG,
+        {
+            "prompt": "test",
+            "reference_image_multiple": [_FAKE_B64],
+            "reference_strength_multiple": 0.5,
+        },
+        root=tmp_path,
+    )
+    assert merged["reference_strength_multiple"] == pytest.approx([0.3])  # 0.6 * 0.5
+    assert merged["reference_information_extracted_multiple"] == pytest.approx([1.0])
+
+
+def test_base64_direct_two_slots_get_default_coefficients(tmp_path: Path) -> None:
+    """base64 を 2 件渡したとき、strength/IE がそれぞれ 2 件補完される。"""
+    merged = merge_provider_defaults(
+        "novelai",
+        _NOVELAI_MIN_CFG,
+        {"prompt": "test", "reference_image_multiple": [_FAKE_B64, _FAKE_B64]},
+        root=tmp_path,
+    )
+    assert merged["reference_strength_multiple"] == pytest.approx([0.6, 0.6])
+    assert merged["reference_information_extracted_multiple"] == pytest.approx([1.0, 1.0])
+
+
+def test_clamp_lower_bound_is_0_01() -> None:
+    """係数 0 を渡したとき 0.01 に丸められる（API エラー回避）。"""
+    assert _clamp_reference_coefficient(0.0) == pytest.approx(0.01)
+    assert _clamp_reference_coefficient(-1.0) == pytest.approx(0.01)
+
+
+def test_clamp_upper_bound_is_1_0() -> None:
+    """係数が 1.0 を超えたとき 1.0 に丸められる。"""
+    assert _clamp_reference_coefficient(2.0) == pytest.approx(1.0)
+    assert _clamp_reference_coefficient(1.5) == pytest.approx(1.0)
+
+
+def test_clamp_midrange_unchanged() -> None:
+    """0.01〜1.0 の範囲は変化しない。"""
+    assert _clamp_reference_coefficient(0.6) == pytest.approx(0.6)
+    assert _clamp_reference_coefficient(0.01) == pytest.approx(0.01)
+    assert _clamp_reference_coefficient(1.0) == pytest.approx(1.0)
+
+
+def test_bundle_multiplier_zero_clamps_to_0_01(tmp_path: Path) -> None:
+    """乗数 0 を渡したとき strength が 0.01 に丸められる（下限 clamp）。"""
+    bundle = tmp_path / "zero.naiv4vibebundle"
+    _mini_bundle(
+        bundle,
+        [
+            {
+                "encodings": {"m": {"u": {"encoding": "E" * 40}}},
+                "importInfo": {"strength": 0.5, "information_extracted": 0.8},
+            }
+        ],
+    )
+    strengths, ies, _ = build_novelai_reference_coefficients(
+        [bundle.as_posix()],
+        tmp_path,
+        strength_multiplier=0.0,
+        information_extracted_multiplier=0.0,
+    )
+    assert strengths == pytest.approx([0.01])
+    assert ies == pytest.approx([0.01])
 
 
 def test_flat2_bundle_matches_novelai_export(tmp_path: Path) -> None:
