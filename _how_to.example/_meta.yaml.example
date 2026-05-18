@@ -21,3 +21,46 @@ novelai:
       path: references/novelai/WORK_CODE_scene.naiv4vibebundle
       strength: 1.0
       information_extracted: 1.0
+
+# ── 名前付きレシピ（--workflow で呼び出す）──────────────────────────
+# 優先順位: CLI 明示フラグ > workflow 設定 > .env / 既定値
+# 利用可能 ID を確認: python tools/image_provider_novel_manga_batch.py novels/NNN --list-workflows
+workflows:
+  manga_step1_default:
+    label: 漫画コマ・標準（フル画風・背景なし）
+    source: step1-panels
+    omit_panel_background: true
+    color_mode: full_color
+    novelai_portion_id: cross_flat
+    strength: 1.0
+    information_extracted: 1.0
+
+  manga_step1_soft:
+    label: 漫画コマ・ポーション薄め（細部ブレを抑える）
+    source: step1-panels
+    omit_panel_background: true
+    color_mode: full_color
+    novelai_portion_id: cross_flat
+    strength: 0.5
+    information_extracted: 0.5
+
+# ── 将来（version 2 検討中）: タグ層デフォルトの YAML 移行 ─────────────
+# 現行は _meta.md §5「漫画タグ層」テーブルを
+# tools/novel_manga_apply_tag_defaults.py が解析し、page YAML へ転記する。
+# 手順: _meta.md §5 を編集 → --apply でページ YAML へ反映 → IR 検証 → 生成
+#
+# 将来的に §5 の内容を _meta.yaml の tag_defaults へ移し、
+# ツールが MD 解析なしで読めるようにすることを検討している（schema version 2）。
+# 移行後の想定スキーマ（コメントアウト）:
+#
+# tag_defaults:
+#   - range: manga_01_p01
+#     source: novel_text01 浴室
+#     required: [steam, bathroom, bathtub, white_bathtub, cream_beige_tiles, warm_amber_lighting]
+#     omit: [outdoor, sky, classroom, forest]
+#     memo: ""
+#   - range: manga_01_p02–p04
+#     source: 同シーン継続
+#     required: [steam, bathtub, upright_straddle, in_bathtub, close_proximity]
+#     omit: [outdoor, sky, classroom, forest]
+#     memo: ""

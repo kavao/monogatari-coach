@@ -322,6 +322,56 @@ dry-run の出力で `provider: grok_pro` / `jobs: 4` などを確認し、ユ�
 
 ---
 
+## 名前付きレシピ（`workflows`）
+
+`_meta.yaml` に `workflows` セクションを書いておくと、8個のフラグを毎回手組みせずにレシピ名1つで呼び出せます。
+
+```yaml
+# _meta.yaml
+workflows:
+  manga_step1_default:
+    source: step1-panels
+    omit_panel_background: true
+    color_mode: full_color
+    novelai_portion_id: cross_flat
+    strength: 1.0
+    information_extracted: 1.0
+
+  manga_step1_soft:
+    source: step1-panels
+    omit_panel_background: true
+    color_mode: full_color
+    novelai_portion_id: cross_flat
+    strength: 0.5        # ポーション薄め
+    information_extracted: 0.5
+```
+
+```bash
+# 登録されているレシピ名を確認する
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 --list-workflows
+
+# レシピで dry-run → 承認後に本番
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --workflow manga_step1_soft --dry-run
+
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --workflow manga_step1_soft
+```
+
+**優先順位**: CLI 明示フラグ > `--workflow` 設定 > `.env` / 既定値
+
+`--workflow` を使いつつ一部だけ上書きする例:
+
+```bash
+# レシピ適用 + provider だけ CLI で強制上書き
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --workflow manga_step1_default --provider forge --dry-run
+```
+
+雛形は `_how_to.example/_meta.yaml.example` の `workflows` 節を参照してください。
+
+---
+
 ## よく使うコマンド
 
 ### キャラタグ一括生成

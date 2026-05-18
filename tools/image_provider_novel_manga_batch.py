@@ -2215,7 +2215,7 @@ def main(argv: list[str] | None = None) -> int:
         "--mode",
         dest="source",
         choices=("step1-panels", "step1-pages", "step2-pages", "background-concepts"),
-        default="step1-panels",
+        default=None,
         help=(
             "生成モード（--mode は同義の別名。ルール・チャットの「コマ生成」等と対応）。"
             "YAML入力では step1-panels は panels[].prompt_tags 等をコマ単位で使用、"
@@ -2379,6 +2379,21 @@ def main(argv: list[str] | None = None) -> int:
             f" .env の {MANGA_NOVELAI_REFERENCE_IE_ENV} でも指定可"
         ),
     )
+    p.add_argument(
+        "--workflow",
+        default=None,
+        metavar="ID",
+        help=(
+            "作品 _meta.yaml の workflows セクションに登録した名前付きレシピ ID。"
+            " CLI 明示フラグで個別に上書き可能。"
+            " 利用可能な ID は --list-workflows で確認できる"
+        ),
+    )
+    p.add_argument(
+        "--list-workflows",
+        action="store_true",
+        help="作品 _meta.yaml に登録された workflows 一覧を表示して終了",
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -2388,6 +2403,51 @@ def main(argv: list[str] | None = None) -> int:
     if not novel.is_dir():
         print(f"error: ディレクトリがありません: {novel}", file=sys.stderr)
         return 2
+
+    # ── --list-workflows: 一覧表示して終了
+    from novel_meta_yaml import list_workflows, resolve_workflow  # noqa: E402
+    if args.list_workflows:
+        wfs = list_workflows(novel)
+        if not wfs:
+            print("(workflows が _meta.yaml に未登録です)", file=sys.stderr)
+            return 0
+        for wf_id, entry in wfs.items():
+            label = (entry or {}).get("label", "")
+            suffix = f"  # {label}" if label else ""
+            print(f"  {wf_id}{suffix}")
+        return 0
+
+    # ── --workflow: レシピ設定を args の未設定フィールドに適用
+    # 優先順位: CLI 明示フラグ > workflow 設定 > 元の既定値
+    if args.workflow:
+        try:
+            wf = resolve_workflow(novel, args.workflow)
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            print(f"error: --workflow: {e}", file=sys.stderr)
+            return 2
+        # source: CLI 未指定（None）のときだけ workflow から補完
+        if args.source is None and "source" in wf:
+            args.source = wf["source"]
+        # bool フラグ: False（store_true の暗黙デフォルト）かつ workflow が True のとき補完
+        if not args.omit_panel_background and wf.get("omit_panel_background"):
+            args.omit_panel_background = True
+        # None フィールド群
+        for wf_key, attr in (
+            ("color_mode", "color_mode"),
+            ("novelai_portion_id", "novelai_portion_id"),
+            ("strength", "novelai_reference_strength"),
+            ("information_extracted", "novelai_reference_information_extracted"),
+            ("provider", "provider"),
+            ("aspect_ratio", "aspect_ratio"),
+        ):
+            if getattr(args, attr) is None and wf_key in wf:
+                setattr(args, attr, wf[wf_key])
+        print(f"workflow={args.workflow!r} を適用しました", file=sys.stderr)
+
+    # source の最終デフォルト（CLI/workflow どちらも未指定なら step1-panels）
+    if args.source is None:
+        args.source = "step1-panels"
+
     try:
         provider = resolve_batch_provider(root, args.source, args.provider)
     except ValueError as e:

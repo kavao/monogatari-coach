@@ -118,6 +118,43 @@ def _portion_entry(
     )
 
 
+def list_workflows(novel_dir: Path) -> dict[str, Any]:
+    """``_meta.yaml`` の ``workflows`` セクション全体を返す（なければ空 dict）。"""
+    data = load_meta_yaml(novel_dir)
+    if data is None:
+        return {}
+    return dict(data.get("workflows", {}) or {})
+
+
+def resolve_workflow(novel_dir: Path, workflow_id: str) -> dict[str, Any]:
+    """``_meta.yaml`` の ``workflows[workflow_id]`` を返す。
+
+    Raises:
+        FileNotFoundError: _meta.yaml が存在しない
+        ValueError: workflows セクションが未定義
+        KeyError: workflow_id が見つからない
+    """
+    path = find_meta_yaml_path(novel_dir)
+    if path is None:
+        raise FileNotFoundError(
+            f"{novel_dir / META_YAML_FILENAME} が見つかりません"
+        )
+    data = load_meta_yaml(novel_dir) or {}
+    workflows = data.get("workflows", {}) or {}
+    if not workflows:
+        raise ValueError(
+            f"{path}: workflows セクションが定義されていません"
+        )
+    if workflow_id not in workflows:
+        available = ", ".join(workflows.keys())
+        raise KeyError(
+            f"workflow {workflow_id!r} が見つかりません。"
+            f"利用可能: {available}"
+        )
+    entry = workflows[workflow_id]
+    return dict(entry) if isinstance(entry, dict) else {}
+
+
 def resolve_novelai_portion(
     novel_dir: Path,
     root: Path,

@@ -162,8 +162,26 @@ uv run python sync_rules.py
 uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 ```
 
+## 10. 新規作品を始める
+
+初期設定が終わったら、1コマンドで新規作品フォルダを準備できます。
+
+```bash
+# 作品名を渡すと採番→フォルダ作成→scaffold→状態確認まで一括実行
+python tools/novel_onboard.py "作品タイトル"
+
+# 実行前にフォルダパスと採番だけ確認する
+python tools/novel_onboard.py "作品タイトル" --dry-run
+```
+
+実行後に `[Plan Mode] → 企画書を作成してください（proposal.md から）` と出たら、チャットで「企画書を作成してください」と伝えるだけで制作が始まります。
+
+---
+
 ## 次に読む
 
 - チャットからどう指示するか知りたい → [ワークフロー（指示テンプレ付き）](../workflow/instruction-driven.md)
+- どちらの進め方が合うか確認したい → [ワークフロー入口（資料先出し vs 対話先出し）](../workflow/index.md)
+- 詰まったとき → [トラブルシューティング](../workflow/troubleshooting.md)
 - 画像生成の設定を行いたい → [Image Generation](../image-generation/index.md)
 - リポジトリ構成を把握したい → [Project Structure](../project-structure/index.md)
