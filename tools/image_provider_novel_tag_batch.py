@@ -286,6 +286,41 @@ def main(argv: list[str] | None = None) -> int:
             "複数可。未指定なら全バリアントを処理する。"
         ),
     )
+    p.add_argument(
+        "--workflow",
+        default=None,
+        metavar="ID",
+        help=(
+            "作品 _meta.yaml の workflows セクションに登録した名前付きレシピ ID。"
+            " novelai_portion_id / strength / information_extracted を適用する。"
+            " 利用可能な ID は --list-workflows で確認できる"
+        ),
+    )
+    p.add_argument(
+        "--list-workflows",
+        action="store_true",
+        help="作品 _meta.yaml に登録された workflows 一覧を表示して終了",
+    )
+    p.add_argument(
+        "--novelai-portion-id",
+        default=None,
+        metavar="ID",
+        help="NovelAI ポーション ID（_meta.yaml の novelai.portions）。--workflow より CLI が優先",
+    )
+    p.add_argument(
+        "--novelai-reference-strength",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="NovelAI Vibe strength 乗数（例: 0.5）。--workflow より CLI が優先",
+    )
+    p.add_argument(
+        "--novelai-reference-information-extracted",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="NovelAI information_extracted 乗数。--workflow より CLI が優先",
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -295,6 +330,36 @@ def main(argv: list[str] | None = None) -> int:
     if not novel.is_dir():
         print(f"error: ディレクトリがありません: {novel}", file=sys.stderr)
         return 2
+
+    from novel_meta_yaml import list_workflows, resolve_workflow  # noqa: E402
+
+    if args.list_workflows:
+        wfs = list_workflows(novel)
+        if not wfs:
+            print("(workflows が _meta.yaml に未登録です)", file=sys.stderr)
+            return 0
+        for wid, entry in wfs.items():
+            label = (entry or {}).get("label", "")
+            print(f"{wid}\t{label}")
+        return 0
+
+    novelai_portion_id = args.novelai_portion_id
+    novelai_ref_strength = args.novelai_reference_strength
+    novelai_ref_ie = args.novelai_reference_information_extracted
+
+    if args.workflow:
+        try:
+            wf = resolve_workflow(novel, args.workflow)
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            print(f"error: --workflow: {e}", file=sys.stderr)
+            return 2
+        if novelai_portion_id is None and wf.get("novelai_portion_id"):
+            novelai_portion_id = str(wf["novelai_portion_id"])
+        if novelai_ref_strength is None and wf.get("strength") is not None:
+            novelai_ref_strength = float(wf["strength"])
+        if novelai_ref_ie is None and wf.get("information_extracted") is not None:
+            novelai_ref_ie = float(wf["information_extracted"])
+        print(f"workflow={args.workflow!r} を適用しました", file=sys.stderr)
 
     try:
         provider = resolve_batch_provider(root, args.provider)
@@ -330,9 +395,52 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {provider_cli} がありません", file=sys.stderr)
         return 2
 
+    from image_provider_novel_manga_batch import (  # noqa: E402
+        novelai_reference_job_fields,
+        resolve_novelai_reference,
+    )
+
+    try:
+        novelai_ref = resolve_novelai_reference(
+            [],
+            root,
+            novel_dir=novel,
+            portion_id=novelai_portion_id,
+            cli_strength=novelai_ref_strength,
+            cli_information_extracted=novelai_ref_ie,
+        )
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    novelai_ref_fields = novelai_reference_job_fields(
+        novelai_ref.paths if provider == "novelai" else [],
+        strength=novelai_ref.strength,
+        information_extracted=novelai_ref.information_extracted,
+        root=root,
+    )
+
     print(f"novel : {novel}")
     print(f"provider: {provider}")
     print(f"jobs  : {len(jobs)}")
+    if args.workflow:
+        print(f"workflow: {args.workflow}")
+    if novelai_ref.paths:
+        print(
+            f"novelai_reference: {len(novelai_ref.paths)} file(s) "
+            f"(source={novelai_ref.source})"
+        )
+        print(
+            f"  strength_multiplier={novelai_ref.strength} "
+            f"ie_multiplier={novelai_ref.information_extracted}"
+        )
+        if novelai_ref_fields:
+            rs = novelai_ref_fields.get("reference_strength_multiple", [])
+            ri = novelai_ref_fields.get("reference_information_extracted_multiple", [])
+            if rs:
+                print(f"  reference_strength_multiple={rs}")
+            if ri:
+                print(f"  reference_information_extracted_multiple={ri}")
 
     for job in jobs:
         neg_parts = [args.negative_prompt]
@@ -353,6 +461,8 @@ def main(argv: list[str] | None = None) -> int:
             payload["aspect_ratio_preset"] = args.aspect_ratio
         if args.resolution is not None:
             payload["resolution"] = args.resolution
+        if novelai_ref_fields:
+            payload.update(novelai_ref_fields)
 
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {job['output_dir']}")
