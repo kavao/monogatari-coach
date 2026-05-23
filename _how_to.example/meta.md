@@ -45,6 +45,39 @@
 # III. 画像・漫画生成設定（Image / Manga Generation）
 漫画タグ（Manga Tag Mode）・画像生成の既定設定を記録します。エージェントはセッション開始時にここを参照し、`--color-mode` 等のフラグを決定します。
 
+## 0. 機械可読メタ（`_meta.yaml`・定量）
+
+散文・進捗・§4/§5 の表は **`_meta.md`** のまま。**バッチが読む数値・パス**は作品フォルダ直下の **`_meta.yaml`** に書く（雛形: **`_how_to.example/_meta.yaml.example`**）。
+
+新規作品では Plan 完了時に次を実行する:
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+```
+
+| 項目 | 正本 | 備考 |
+|------|------|------|
+| 執筆進捗・伏線・投稿文 | `_meta.md` | LLM 向け散文 |
+| NovelAI ポーション（path / strength） | `_meta.yaml` → `novelai.portions` | `image_provider_novel_manga_batch.py` が自動読込 |
+| コマのタグ・variant | `manga/pages/*.yaml` | 実行の最終正本 |
+
+**優先順位（ポーション）**: CLI `--novelai-reference-image-path` ＞ `_meta.yaml` ＞ `.env` ＞ なし。
+
+```yaml
+# _meta.yaml（抜粋）
+version: 1
+novelai:
+  portion_default: cross_flat
+  portion_fallback: cross_flat
+  portions:
+    cross_flat:
+      path: _how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle
+      strength: 0.6
+      information_extracted: 1.0
+```
+
+別ポーションを試すとき: `--novelai-portion-id work_manga`。詳細は **`_how_to.example/image_refs/novelai/README.md`**。
+
 ## 1. 色モード
 - **作品基準**: （`full_color` / `monochrome` / `limited_color` のいずれかを記載）
 - **備考**: （センターカラー・巻頭カラーなど意図的に別モードを使うページがあれば記載）
@@ -63,6 +96,74 @@
 - **挿絵にしない条件**: （例: ネタバレ箇所、回想のみの章）
 - **表紙**: （作る／後回し／外注）。作る場合のメモ（単行本・カクヨム表紙サイズ、ロゴ・タイトル安全圏）
 - **IR の番号設計（メモ）**: （例: `illustration_00`＝表紙、`illustration_01`〜＝章挿絵。実体は `novels/<作品>/illustrations/pages/` の YAML 正本）
+
+## 4. 漫画 variant 対応（TPO 正本・YAML より先に更新）
+
+Manga Tag では **`manga/pages/*.yaml` より先に**、本文区間ごとの **状況バリアント（`01_` 以降）** をここで固定し、チャットで合意してから YAML に落とす。書き方・`00_base` の扱いは **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。
+
+| 区間（ページ／本文） | 本文参照 | （キャラID）variant | … | メモ |
+|----------------------|----------|---------------------|---|------|
+| （例: manga_01_p01–p04） | novel_text01 … | yuma: `06_nude` | … | 連続場面 |
+
+**variant 表に「常時タグ」を混ぜない。** 衣装・裸露・固定外見はキャラの `variant_id` と `tag/characters/*.yaml` の責務。区間で全コマに足す**場・光・画風・禁止トークン**は **§5 タグ層** に書く。
+
+## 5. 漫画タグ層（区間・常時上乗せ・YAML より先に更新）
+
+**ページのあいだ（例: `manga_01_p01`〜`p04`）で、全コマに同じ属性タグを足したい／外したい**とき用。variant 対応（§4）と**別表**にする。
+
+| 役割 | 何を書くか | 正本（合意） | 実行（バッチが読む） |
+|------|------------|--------------|----------------------|
+| キャラの身体・衣装 | `variant_id` | §4 の表 | `panels[].subjects[].variant_id` |
+| **区間の常時タグ** | 英語トークン列 | **§5 の表（本節）** | 区間内の**各ページ YAML** の `render_instruction.user_directives.defaults` |
+| コマ固有 | 姿勢・画角・接触など | チャット／`summary` | `panels[].prompt_tags` |
+
+**ツールは `_meta.md` の §5 を自動読み込みしない。** 合意した内容を、区間に含まれる **ページごとに同じ `defaults` ブロック**として YAML に写す（写し忘れ防止のため、§5 の表に「YAML 反映済」列を足してもよい）。
+
+### 表の書き方（最小）
+
+```markdown
+### 漫画タグ層（区間・常時上乗せ）
+
+| 区間 | 本文参照 | required（全コマに足す） | omit（全コマから外す） | メモ |
+|------|----------|--------------------------|-------------------------|------|
+| manga_01_p01–p04 | novel_text01 浴室 | steam, bathroom, warm_amber_lighting | outdoor, sky, classroom | §4 浴室 variant と併用 |
+```
+
+- **区間**の表記は §4 と同じ（`manga_01_p01–p04`、項名、本文章など）。
+- **required / omit** は `manga_tag.md` の語彙に合わせた **英語トークン**（カンマ区切りを表のセルに書いてよい）。
+- **コマだけ例外**にしたいときは、§5 ではなく該当 `panels[].required_prompt_tags` / `omit_prompt_tags` に書く。
+
+### YAML への反映（区間 → 各ページ）
+
+区間 `manga_01_p01`〜`p04` なら、**4ファイルすべて**に同型の `defaults` を入れる。
+
+```yaml
+render_instruction:
+  user_directives:
+    page_notes:
+      - "_meta §5: manga_01_p01–p04 浴室タグ層"
+    defaults:
+      required_prompt_tags:
+        - steam
+        - bathroom
+        - warm_amber_lighting
+      omit_prompt_tags:
+        - outdoor
+        - sky
+```
+
+- 合成順・検証は **`render_instruction.user_directives`**（`tools/manga_prompt_ir/user_directives.py`）。`step1-panels` / 互換 Step1 エクスポートの両方に効く。
+- **ページをまたぐ同一舞台**では、`scene` / `background_notes_en` / `manga.genre_tags` も揃える。§5 は **`prompt_tags` への強制加算・除外**が目的（§4 variant とは独立）。
+- **背景資料と合成する**運用では、コマから浴室タグを外したい区間は §5 の required を見直すか、`--omit-panel-background` を検討（`docs/image-generation/index.md`）。
+
+### 推奨のやりとり順（§4 とセット）
+
+1. §4 で **variant** を区間ごとに合意する。
+2. §5 で **常時タグ** を区間ごとに合意する（「この間はずっと湯気」「屋外タグは禁止」など）。
+3. `manga/pages/*.yaml` を書く（`variant_id` は §4、`defaults` は §5 をページ単位に複写）。
+4. `embed_snapshots` → `novel_prompt_ir_validate.py` → エクスポート／生成。
+
+詳細なフィールド定義は **`.rulesync/skills/manga-prompt-ir/SKILL.md`** の「ユーザ指示の正本」を参照。
 
 ---
 

@@ -236,6 +236,10 @@ class Panel(BaseModel):
 
     panel_id: int
     summary: str
+    # コマ要約の英語（summary から tools/novel_manga_panel_summary_en.py で翻訳）。NovelAI step1-panels でタグと併用。
+    summary_en: str | None = None
+    # 翻訳元の summary 原文（整合チェック用）。翻訳ツールが summary と同値で更新する。
+    summary_en_source: str | None = None
     # ページ生成（互換 Step2 行）向け。未設定なら summary を代用（tools: panel_step2_description）
     step2_summary: str | None = None
     scene: Scene | None = None

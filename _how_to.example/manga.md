@@ -115,9 +115,74 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 - **検証の正本**: `python tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality` 推奨）。スキーマ違反は exit 1、品質は警告（`--strict-quality` で失敗扱い）。
 - **英語タグの引き出し**（行動 等）: `_how_to/manga_tag.md` を参照。合格条件の定義ではない。
 
+### TPO → variant 対応表（ページ YAML より先に固定する）
+
+**漫画タグ（Manga Tag）では、いきなり `manga/pages/*.yaml` を書かない。** 先に作品メモで **時・場・身体状態（TPO）ごとの状況バリアント** を決め、チャット上で合意してから YAML に落とす。コマの `prompt_tags` だけで衣装・裸露を表そうとすると、variant が選ばれず物語の一貫性が崩れやすい。
+
+#### 正本の置き場所
+
+| 内容 | 正本 |
+|------|------|
+| **TPO → variant の表** | 各作品の **`_meta.md`** 内「**漫画 variant 対応（TPO 正本）**」節（無ければ新設） |
+| **区間の常時タグ（required / omit）** | 各作品の **`_meta.md`** 内「**漫画タグ層（区間・常時上乗せ）**」節（`_how_to.example/meta.md` §5）。実行は区間内各ページの `user_directives.defaults` |
+| ページ・コマの詳細 | `manga/pages/manga_XX_pYY.yaml` |
+| キャラの状況別タグ定義 | `tag/characters/<character_id>.yaml` の `prompt_variants` |
+| 固定外見の一覧（0 番） | 同上の **`00_base`**（**漫画の主 variant にはしない**。詳細は `_how_to.example/tag.md`） |
+
+#### 表の書き方（最小）
+
+```markdown
+### 漫画 variant 対応（TPO 正本・YAML より先に更新）
+
+| 区間（ページ／本文） | 本文参照 | キャラA variant | キャラB variant | メモ |
+|----------------------|----------|-----------------|-----------------|------|
+| manga_01_p01–p04 | novel_text01 浴室 | yuma: `06_nude` | miu: `06_nude` | 連続場面・着替えなし |
+```
+
+**variant 表の列に「常時足すタグ」は書かない。** 区間で全コマに同じ英語タグを載せたい／外したい場合は、`_meta.md` の **「漫画タグ層（区間・常時上乗せ）」**（`_how_to.example/meta.md` §5）に **別表**で書き、YAML では `render_instruction.user_directives.defaults.required_prompt_tags` / `omit_prompt_tags` へ写す。バッチは `_meta` ではなく **ページ YAML の `defaults`** を読む。
+
+#### タグ層（variant とは別の区間表）
+
+| 層 | 例 | `_meta` | ページ YAML |
+|----|-----|---------|-------------|
+| キャラ身体・衣装 | `06_nude` | §4 variant 表 | `subjects[].variant_id` |
+| 区間の常時タグ | `steam`, `bathroom` | §5 タグ層表 | 区間内**各ページ**の `user_directives.defaults` |
+| コマ固有 | 画角・接触 | — | `panels[].prompt_tags` |
+
+```markdown
+### 漫画タグ層（区間・常時上乗せ）
+
+| 区間 | required（全コマに足す） | omit（全コマから外す） | メモ |
+|------|--------------------------|-------------------------|------|
+| manga_01_p01–p04 | steam, bathroom | outdoor, classroom | §4 と併用 |
+```
+
+- **区間**はページ連番または項名でよい。**連続する同一 TPO では variant を一定**にする（次節「タイムライン」）。
+- 列の値は **`01_normal` `06_nude` など状況バリアント（`01_` 以降）** を書く。`00_base` は表に載せない（載せる場合は「例外」列に理由を1行）。
+- キャラ YAML に無い `variant_id` は書かない（先に Tag Mode で `prompt_variants` を用意する）。
+
+#### 推奨のやりとり順
+
+1. `_novel_text`・`character.md`・`tag/characters/*.yaml` を読む。
+2. **`_meta.md` に §4 variant 表の草案**を書き、チャットで「この区間はこの variant」で合意する（修正は表だけ直す）。
+3. **同じく `_meta.md` に §5 タグ層表**を書き、「このページのあいだは常にこれを足す／外す」で合意する。
+4. 合意後に **`manga/pages/*.yaml`** を作成する。各 `subjects[]` の `variant_id` は **§4 どおり**。区間内の各ページに **§5 どおりの `user_directives.defaults`** を複写する。
+5. **`panels[].prompt_tags`** は構図・場の演出・姿勢・局部・行為など **コマ固有**を書く。衣装・裸露レベルは **variant に任せ、コマに重ね書きしない**（合成時の二重載せ防止。将来の subtract 実装とも整合）。区間共通の湯気・禁止屋外タグなどは **§5 → `defaults` に任せ、全コマの `prompt_tags` に二重記載しない**。
+6. `python tools/novel_prompt_ir_embed_snapshots.py` → `novel_prompt_ir_validate.py`（`--strict-quality`）→ 必要なら `novel_prompt_ir_export_md.py`。
+
+#### `00_base` との役割分担（漫画）
+
+| 用途 | `00_base` | 状況バリアント（`01_` 以降） |
+|------|-----------|------------------------------|
+| キャラ Tag・固定一覧 | ○ 正本 | 各状況の立ち絵 |
+| 漫画 `subjects[].variant_id` | **原則×**（消極的・例外のみ） | **○ 主役** |
+| コマ `prompt_tags` | 身份・髪目など書かない | 湯気・画角・行為など足す |
+
+やむを得ず漫画で `00_base` を使うときは、`render_instruction.user_directives.page_notes` に **理由を1行**残す。
+
 ### variant はコマ単位ではなくタイムラインで決める
 
-小説本文からページYAMLへ落とすとき、`variant_id`（および `prompt_variant_id` / `costume_variant`）は **その場その場のコマだけを見て付け替えない**。まず `_novel_text` の **時系列と場の連続性** を踏まえ、**どの区間で衣装・身体的状態が同じか／どの節目で変わるか** を決める。
+小説本文からページYAMLへ落とすとき、`variant_id`（および `prompt_variant_id` / `costume_variant`）は **その場その場のコマだけを見て付け替えない**。まず **`_meta.md` の TPO → variant 表**（前節）と `_novel_text` の **時系列と場の連続性** を踏まえ、**どの区間で衣装・身体的状態が同じか／どの節目で変わるか** を決める。
 
 - **連続した同一場面**（同じ時間帯・同じ空間で、着替えやフェーズ移行がまだ起きていない）では、登場キャラの variant は **原則として一定**とする。コマが進んで調整するのはポーズ・アングル・接写・セリフなど **コマ固有の記述**であり、**variant をコマごとに気まぐれに変えない**（連続コマで、理由なく服装や肌の見え方だけが切り替わるのを防ぐ）。
 - variant を変えてよいのは、**本文上はっきり境目があるとき**に限る（移動、時間経過、着脱・治療段階の推移など）。迷ったら「直前のページ／コマと **まだ同じ状況か**」を問い、同じなら **同じ variant を維持**する。

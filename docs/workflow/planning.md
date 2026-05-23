@@ -43,6 +43,13 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 | `character.md` | 登場人物のプロフィール、課題、目的、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術 |
 | `_meta.md` | 進捗、伏線、次回タスク |
+| `_meta.yaml` | 画像生成の機械可読設定（NovelAI ポーション等） |
+
+新規作品では、資料を揃えたあと次を実行します。
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+```
 
 作成後は、必要に応じて設計の弱い部分を自己評価し、心理描写や具体的なシーンを増やします。
 
@@ -54,6 +61,24 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 
 ```bash
 python tools/novel_project_check.py novels/NNN_作品名
+```
+
+人物プロフィールの構造を先に確認する場合は、次を実行します。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+```
+
+不足項目の追記案や、表形式から `- **ラベル**:` 形式への変換案も見たい場合は、次のようにします。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
+```
+
+執筆前チェックに character.md の構造 lint も含める場合は、次のようにします。
+
+```bash
+python tools/novel_project_check.py novels/NNN_作品名 --require-character-structure --character-profile plan
 ```
 
 結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。

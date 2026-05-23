@@ -1,0 +1,129 @@
+schema_version: 1
+
+format:
+  heading_required_pattern: "^# 登場人物"
+  character_heading_pattern: "^.+（.+）$"
+  table_policy: warn
+  skip_headings:
+    - "備考"
+    - "設定メモ"
+    - "用語集"
+
+profiles:
+  visual:
+    description: "Tag Mode 前に、見た目の書き漏れを減らすための最小チェック。"
+    require_fields:
+      - "名前"
+      - "外見"
+  plan:
+    description: "Plan 完了・執筆前に、人物の声と物語上の役割を確認する。"
+    extends: visual
+    require_fields:
+      - "性格"
+      - "一人称"
+      - "口調"
+      - "目標"
+  body_therapy:
+    description: "身体的なケアや変化が物語上重要な作品向け。性別に応じたボディー子項目も検証する。"
+    extends: plan
+    require_fields:
+      - "ボディーの特徴"
+      - "服装"
+    apply_body_gender_rules: true
+
+# 年齢・立場 などから性別テンプレを推定（ボディー子項目の必須・禁止に使う）
+gender_detection:
+  field: "年齢"
+  patterns:
+    male:
+      - "男性"
+      - "男"
+    female:
+      - "女性"
+      - "女"
+      - "若妖精"
+  # 推定できないときは body_gender_rules をスキップし WARN のみ
+
+# 「ボディーの特徴」直下の - **子ラベル**: 形式を性別で検証（body_therapy + apply_body_gender_rules）
+body_gender_rules:
+  parent_field: "ボディーの特徴"
+  male:
+    require_child_labels:
+      - "体型"
+      - "傘突起"
+      - "感度"
+      - "持続力"
+      - "秘髪"
+    forbid_child_labels:
+      - "水袋"
+      - "臀部"
+      - "苺突起"
+      - "栗突起"
+      - "治療穴の位置"
+      - "餅ヒダ（全体）"
+      - "大餅ヒダ"
+      - "小餅ヒダ"
+      - "治療穴の内部"
+      - "未使用膜"
+  female:
+    require_child_labels:
+      - "水袋"
+      - "臀部"
+      - "苺突起"
+      - "栗突起"
+      - "治療穴の位置"
+      - "餅ヒダ（全体）"
+      - "大餅ヒダ"
+      - "小餅ヒダ"
+      - "治療穴の内部"
+      - "未使用膜"
+      - "秘髪"
+    forbid_child_labels:
+      - "体型"
+      - "傘突起"
+      - "感度"
+      - "持続力"
+
+fields:
+  "名前":
+    aliases: []
+    min_chars: 1
+  "年齢":
+    aliases:
+      - "年齢・立場"
+  "性格":
+    min_chars: 10
+  "一人称":
+    min_chars: 1
+  "口調":
+    min_chars: 8
+  "目標":
+    aliases:
+      - "目的"
+    min_chars: 8
+  "外見":
+    aliases:
+      - "外見（Tag Mode 用メモ）"
+      - "見た目"
+    min_chars: 20
+  "服装":
+    aliases:
+      - "衣装"
+      - "衣服"
+    when_present:
+      min_children: 1
+      require_child_labels:
+        - "普段着"
+  "ボディーの特徴":
+    aliases:
+      - "身体的特徴"
+      - "身体の特徴"
+    when_present:
+      min_children: 1
+
+_examples:
+  custom_profile:
+    description: "作品固有の必須項目を増やすときは、_how_to/character_checklist.yaml にコピーして調整する。"
+    extends: plan
+    require_fields:
+      - "ワンポイント特徴"

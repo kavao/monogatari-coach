@@ -10,6 +10,10 @@
   "sampler_name": "k_euler_ancestral",
   "model": "nai-diffusion-4-5-full",
   "uc_preset": 0,
+  "reference_image_paths": [],
+  "reference_information_extracted_multiple": [],
+  "reference_strength_multiple": [],
+  "normalize_reference_strength_multiple": true,
   "output_dir": "outputs/novelai",
   "file_prefix": "novelai",
   "count": 1

@@ -8,6 +8,46 @@
 
 ## テキスト・プロジェクト管理
 
+### `novel_onboard.py` — 新規作品オンボーディング
+
+新規作品を1コマンドで準備します。作品名を渡すと採番・フォルダ作成・scaffold・プロジェクト確認・次の一言まで一括で実行します。
+
+```bash
+# 作品名を渡す（コードを自動採番）
+python tools/novel_onboard.py "作品タイトル"
+
+# フルパスを指定（コードはパスから取得）
+python tools/novel_onboard.py novels/067_作品タイトル
+
+# 実行前に採番とフォルダパスだけ確認する
+python tools/novel_onboard.py "作品タイトル" --dry-run
+```
+
+実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
+
+---
+
+### `novel_status.py` — 作品ダッシュボード
+
+作品フォルダの状態を1コマンドで一覧表示します。プロジェクト状態・本文文字数・漫画 IR 件数・最新生成画像・`_meta.yaml` 設定を一画面に集約します。セッション再開時や「今どこまで進んでいるか」を確認したいときに使います。
+
+```bash
+# 作品の状態を確認する
+python tools/novel_status.py novels/NNN_作品名
+
+# 漫画 IR の検証も同時に行う
+python tools/novel_status.py novels/NNN_作品名 --validate
+
+# 次にすべきことだけを1行で確認する（状態機械による判定）
+python tools/novel_status.py novels/NNN_作品名 --next
+```
+
+`--next` は「ファイルが何も揃っていない→Plan Mode」「本文はあるがタグがない→Tag Mode」など、ファイルシステムの状態から次のステップを自動判定します。チャットモード作品（`_meta.md` に「執筆モード: チャットモード」がある）は「次のセグメントを執筆してください」を返します。
+
+詰まったときは [トラブルシューティング](../workflow/troubleshooting.md) を参照してください。
+
+---
+
 ### `novel_char_count.py` — 文字数集計
 
 小説本文（`_novel_text/*.md`）の文字数を Unicode NFC コードポイントで集計します。エディタの文字数カウントではなく、このスクリプトの結果を公式数値として扱います。
@@ -35,6 +75,22 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 
 # 漫画フォルダまで揃えたい場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
+
+# _meta.yaml 等を不足分だけ作成してからチェック
+python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
+```
+
+---
+
+### `novel_scaffold.py` — 新規作品の `_meta.yaml` 雛形
+
+Plan Mode で作品フォルダを作った直後に実行します。`_meta.yaml`（雛形: `_how_to.example/_meta.yaml.example`）、`references/novelai/README.md`、`_novel_text/`、`_reader/` を作成します。既存の `_meta.yml` は `_meta.yaml` にリネームします。
+
+```bash
+python tools/novel_scaffold.py novels/NNN_作品名
+
+# _meta.yaml のみ
+python tools/novel_scaffold.py novels/NNN_作品名 --meta-only
 ```
 
 ---
@@ -95,6 +151,54 @@ python tools/novel_prompt_ir_export_md.py \
 
 # ヘルプを見る
 python tools/novel_prompt_ir_export_md.py --help
+```
+
+---
+
+### `novel_manga_apply_tag_defaults.py` — §5 漫画タグ層の自動転記
+
+`_meta.md` の §5「漫画タグ層（区間・常時上乗せ）」テーブルを読み取り、対応するページ YAML（`manga/pages/*.yaml`）の `render_instruction.user_directives.defaults` へ転記します。§5 を手動でページ YAML に書き写す作業を省き、書き忘れ・書き間違いを防ぎます。
+
+**固定手順（MD 表を編集 → YAML 反映 → 画像生成へ）**:
+
+```bash
+# 1. _meta.md §5 テーブルを編集したあと、転記内容を確認する（dry-run・既定）
+python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名
+
+# 2. 問題なければ実際にページ YAML へ書き込む
+python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 --apply
+
+# 3. IR を検証する（本番生成前推奨）
+python tools/novel_prompt_ir_validate.py novels/NNN_作品名
+
+# 4. 必要なら互換 Markdown を再エクスポートして画像生成 dry-run へ進む
+python tools/novel_prompt_ir_export_md.py \
+  --character novels/NNN_作品名/tag/characters/chara.yaml \
+  --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml \
+  --output-dir novels/NNN_作品名 --manga-stem manga_01 --novelai-pipe-tags
+```
+
+`--apply` で書き換わる場所:
+- `manga/pages/<ページ>.yaml` の `render_instruction.user_directives.defaults.required_prompt_tags`
+- `manga/pages/<ページ>.yaml` の `render_instruction.user_directives.defaults.omit_prompt_tags`
+- 追跡用の `page_notes` エントリ（`--no-note` で省略可）
+
+**§5 テーブルの書き方（`_meta.md` 内）**:
+
+| 区間 | 本文参照 | required | omit | メモ |
+|------|---------|----------|------|------|
+| manga_01_p01 | novel_text01 浴室 | steam, bathroom, bathtub | outdoor, sky | — |
+| manga_01_p02–p04 | 同シーン継続 | steam, bathtub, upright_straddle | outdoor, sky | |
+
+区間には単一ページ（`manga_01_p01`）と範囲指定（`manga_01_p01–p04`、em dash / en dash / ハイフンのいずれも可）が使えます。
+
+```bash
+# _meta.md のパスを直接指定する場合
+python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 \
+  --meta path/to/_meta.md --apply
+
+# page_notes への追記を省略する場合
+python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 --apply --no-note
 ```
 
 ---

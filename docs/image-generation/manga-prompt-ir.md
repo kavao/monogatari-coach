@@ -37,7 +37,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 1. 本文を読んでコマ・ページに分解する
 2. `novels/<作品>/manga/pages/manga_XX_pYY.yaml` を作成する（ページ定義の正本）
 3. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で型・参照・品質を検証する
-4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する
+4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する（**チャットやエージェントの Write だけでは不可**。完了条件は `.rulesync/rules/concepts.md` の「漫画互換Markdownの完了条件」・スキル `novel-manga-md-output`）
 
 ### ユーザーが確認できるもの
 
@@ -93,6 +93,22 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 - 通常は `--input yaml` が既定。旧 Markdown 互換だけ `--input markdown`。
 - 修正は **常に YAML 側**。`manga_XX.md` が要るときだけ再エクスポート。
 - **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `image_provider_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。
+
+### コマ要約の英訳（`summary_en`）と NovelAI 併用
+
+各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。`summary_en` は手書きではなく、翻訳ツールで `summary` から生成する。
+
+```bash
+# 全ページの未翻訳コマを英訳して YAML に書き込む（OPENAI_API_KEY 等が必要）
+python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
+
+# 検証（欠落・陳腐化・CJK は警告、--strict-quality で失敗）
+python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
+```
+
+- **`summary_en_source`**: 翻訳時点の `summary` 原文。`summary` を直したあと不一致なら再翻訳が必要（validate が検出）。
+- **コマ生成**: `step1-panels` では既定で **`summary_en` をベースタグ列に併用**（`prompt_tags` と同じプロンプト内）。無効化は `--no-include-panel-summary` または `MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY=0`。
+- 環境変数: `MONOCRI_SUMMARY_EN_MODEL`（既定 `gpt-4o-mini`）、`MONOCRI_SUMMARY_EN_PROVIDER`（`openrouter` 可）。
 
 ### ページ生成の provider 別 formatter
 
@@ -241,6 +257,30 @@ panels:
 - **強制削除（ネガ例）**: 同じ範囲で、屋外っぽいタグが混ざるのを防ぐ
   - 中央ページ（`p09`〜`p11`）は `defaults.omit_prompt_tags` に書く
   - 端点（`p08:3` / `p12:1`）だけ `panels[].omit_prompt_tags` を使う
+
+### §5 漫画タグ層を YAML へ一括転記する
+
+`_meta.md` §5 の「漫画タグ層（区間・常時上乗せ）」テーブルを合意したあと、各ページ YAML の `render_instruction.user_directives.defaults` へ手で複写するのを忘れないようにするためのツールです。
+
+まず dry-run で転記内容を確認します。
+
+```bash
+python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル
+```
+
+内容を確認したら `--apply` を付けて実際に書き換えます。
+
+```bash
+python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル --apply
+```
+
+実行後、各ページ YAML に `defaults.required_prompt_tags` / `defaults.omit_prompt_tags` が設定され、`page_notes` に `_meta §5: <区間>` の追跡メモが追記されます。
+
+- **`_meta.md`** が見つからない場合や §5 テーブルが空の場合は、その旨が表示されて終了します。
+- `--no-note` を付けると `page_notes` への追記を省略できます。
+- 既に同じ `_meta §5:` エントリが `page_notes` にある場合は重複追記しません。
+
+---
 
 以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
 

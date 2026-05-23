@@ -20,6 +20,7 @@
 
 **制作フロー**:
 [A. 企画・設計](#a-企画設計を固める) /
+[A'. チャットモード](#a-チャットモードで始める対話型執筆--trpg) /
 [B. 執筆](#b-執筆する) /
 [C. 清書・校正](#c-清書文章校正する) /
 [D. 下読み](#d-下読き足きり判定する) /
@@ -38,6 +39,8 @@
 ---
 
 ## 初回導入
+
+> **チャットモード（対話型・TRPG）** を使いたい場合は [チャットモード](chat-writing-mode.md) も参照してください。会話しながらゲートを刻んで進めるワークフローと、TRPG セッション形式でパラメータを追跡しながら小説にする方法を説明しています。
 
 ### 1. 状態確認
 
@@ -545,6 +548,37 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 ---
 
+---
+
+### A'. チャットモードで始める（対話型執筆 / TRPG）
+
+```text
+チャットモードで新規作品を始めたいです。
+```
+
+**このように動きます:**
+1. Phase 0（作品契約）として読後感・主軸・トーン・尺感・結末の方向・禁止事項の6項目を確認する
+2. 合意した内容を `proposal.md` または `_meta.md` の「作品契約」節に保存する
+3. Phase 1〜2（あらすじ・執筆前パック）へ進み、軽量な資料を揃える
+4. Phase 3〜4（シーンカード → セグメント執筆 → ゲート）を繰り返す
+
+TRPG セッション形式にしたい場合:
+
+```text
+TRPGセッション形式で進めたいです。
+```
+
+**このように動きます（TRPG）:**
+1. `proposal.md` / `world.md` / `character.md` を読んでジャンルを判断する
+2. ジャンルに合ったパラメータを選び、`_chat/rulebook.md` を作成してユーザーに確認を求める
+3. 承認後に `_chat/state/char_state.md` / `world_state.md` を初期化する
+4. GM として物語を語り、イベントごとに `[STATE UPDATE]` ブロックでパラメータを更新する
+5. セッション終了後、ログを清書して `_novel_text/` に保存する
+
+詳細は [チャットモード](chat-writing-mode.md) を参照してください。
+
+---
+
 ## その他のツール
 
 手動で実行できる全ツールの一覧とコマンド例は [Tools（ツールリファレンス）](../tools/index.md) を参照してください。
@@ -564,7 +598,7 @@ Monogatari Coach は、チャット欄への書き込みだけでは作業を完
 | キャラタグ（正本） | `novels/<作品>/tag/characters/<id>.yaml` |
 | キャラタグ（互換） | `novels/<作品>/tag/<romaji>.md` |
 | 漫画ページ（正本） | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
-| 漫画ページ（互換） | `novels/<作品>/manga/manga_XX.md` |
+| 漫画ページ（互換） | `novels/<作品>/manga/manga_XX.md`（**`novel_prompt_ir_export_md.py` で生成**。手書き・チャットのみは正本扱いにしない） |
 | 挿絵・表紙（正本） | `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` |
 | 生成画像（キャラ） | `novels/<作品>/tag/<romaji>/` |
 | 生成画像（漫画） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |

@@ -161,6 +161,14 @@ def _user_directive_warnings_for_page(label: str, page) -> list[str]:
     return warnings
 
 
+def load_summary_en_validator():
+    tools_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(tools_dir))
+    from manga_prompt_ir.summary_en import summary_en_quality_issues
+
+    return summary_en_quality_issues
+
+
 def quality_warnings_for_page(
     path: Path,
     page,
@@ -168,10 +176,14 @@ def quality_warnings_for_page(
     *,
     validate_color_consistency,
     color_page_data: dict | None = None,
-) -> list[str]:
+    strict_quality: bool = False,
+    summary_en_quality_issues=None,
+) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
+    errors: list[str] = []
     label = path.as_posix()
     is_illustration = getattr(page.meta, "intent", None) == "illustration"
+    is_manga = getattr(page.meta, "intent", None) == "manga_page"
     warnings.extend(_user_directive_warnings_for_page(label, page))
     render_instruction = page.render_instruction
     has_render_instruction = any(
@@ -236,8 +248,20 @@ def quality_warnings_for_page(
     used_ids: set[str] = set()
     snapshot_keys = page_snapshot_keys(page)
     snapshot_ids = {snapshot.character_id for snapshot in page.character_snapshots}
+    if summary_en_quality_issues is None:
+        summary_en_quality_issues = load_summary_en_validator()
+
     for panel in page.panels:
         prefix = f"{label}: panel {panel.panel_id}"
+        panel_map = panel.model_dump() if hasattr(panel, "model_dump") else {}
+        se_warn, se_err = summary_en_quality_issues(
+            panel_map,
+            panel_label=prefix,
+            require_for_manga=is_manga,
+            strict=strict_quality,
+        )
+        warnings.extend(se_warn)
+        errors.extend(se_err)
         step2_text = effective_step2_summary_text(panel)
         if step2_text in ABSTRACT_ONLY_SUMMARIES:
             summary_label = "セル要約" if is_illustration else "Step2 用要約（step2_summary 優先、なければ summary）"
@@ -322,7 +346,7 @@ def quality_warnings_for_page(
         warnings.append(
             f"{label}: 使用キャラクターに対する character_snapshots がありません: {', '.join(missing_snapshot_ids)}"
         )
-    return warnings
+    return warnings, errors
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -348,6 +372,8 @@ def main(argv: list[str] | None = None) -> int:
     character_variants: dict[str, set[str]] = {}
     errors: list[str] = []
     warnings: list[str] = []
+    quality_errors: list[str] = []
+    summary_en_quality_issues = load_summary_en_validator()
 
     for path in character_files:
         try:
@@ -376,15 +402,17 @@ def main(argv: list[str] | None = None) -> int:
             if missing or subject_missing:
                 unknown = sorted(set(missing + subject_missing))
                 raise ValueError(f"unknown character_id reference: {', '.join(unknown)}")
-            warnings.extend(
-                quality_warnings_for_page(
-                    path,
-                    page,
-                    character_variants,
-                    validate_color_consistency=validate_color_consistency,
-                    color_page_data=page_data,
-                )
+            page_warnings, page_errors = quality_warnings_for_page(
+                path,
+                page,
+                character_variants,
+                validate_color_consistency=validate_color_consistency,
+                color_page_data=page_data,
+                strict_quality=bool(args.strict_quality),
+                summary_en_quality_issues=summary_en_quality_issues,
             )
+            warnings.extend(page_warnings)
+            quality_errors.extend(page_errors)
             print(f"OK {page.meta.intent}: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")
@@ -394,20 +422,25 @@ def main(argv: list[str] | None = None) -> int:
         for warning in warnings:
             print(f"- {warning}", file=sys.stderr)
 
+    if quality_errors:
+        print("Summary EN quality errors:", file=sys.stderr)
+        for item in quality_errors:
+            print(f"- {item}", file=sys.stderr)
+
     if errors:
         print("Validation failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
 
-    if args.strict_quality and warnings:
-        print("Validation failed: strict quality warnings were found", file=sys.stderr)
+    if args.strict_quality and (warnings or quality_errors):
+        print("Validation failed: strict quality warnings/errors were found", file=sys.stderr)
         return 1
 
     print(
         f"validated characters={len(character_files)} manga_pages={page_counts.get('manga_page', 0)} "
         f"manga_panels={page_counts.get('manga_panel', 0)} illustrations={page_counts.get('illustration', 0)} "
-        f"quality_warnings={len(warnings)}"
+        f"quality_warnings={len(warnings)} summary_en_errors={len(quality_errors)}"
     )
     return 0
 

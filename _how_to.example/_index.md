@@ -1,4 +1,6 @@
 # - 創作技法ファイル (how_to/)
+0. **（画像参照・横断）** [`image_refs/novelai/README.md`](image_refs/novelai/README.md)
+   - NovelAI Vibe / ポーション（`.naiv4vibebundle`）。普段使いは `_how_to/image_refs/novelai/` に置く。作品固有は `novels/<作品>/references/novelai/`。
 0. **（ユーザスキル・雛形）** [`skills/_index.md`](skills/_index.md)
    - リポジトリに同梱する**雛形**の一覧。初回はここを **`_how_to/skills/<名前>/` にコピー**してから編集する（正本と副本の扱いは **`.rulesync/rules/concepts.md`**「正本と副本」）。
    - 既にコピー済みの**作業用**一覧は **`_how_to/skills/_index.md`** を正とする（雛形にないスキルが列挙されることもある）。
@@ -28,6 +30,9 @@
    - キャラクターごとの画像タグを作成する。新規運用ではスキル **manga-prompt-ir** を優先し、`tag/characters/<character_id>.yaml` を人間編集用の正本、`tag/<romaji>.md` を既存バッチ互換出力として扱う
    - `tag/<romaji>.md` の見出し・**Danbooru Tags** 行の置き方は、Forge 一括生成（`tools/image_provider_novel_tag_batch.py`）と整合させるため、同ファイル内「Markdown ファイル形式（機械抽出と整合）」およびスキル **novel-tag-md-format** を参照
    - 目・髪・肌・種族など**固定特徴が状況ブロック間で抜けなく一貫しているか**は、スキル **novel-tag-character-consistency**（`.rulesync/skills/novel-tag-character-consistency/SKILL.md`）で確認
+10.5. character_checklist.yaml, character.md.example
+   - `character.md` の必須ラベル・任意ラベル・条件付き子項目を宣言するチェックリスト雛形。運用時は `_how_to/character_checklist.yaml` にコピーして調整する
+   - `tools/novel_character_md_check.py` とスキル **novel-character-profile** で参照する
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
 12．manga.md, manga_tag.md, manga_tag_step2.md
    - **manga.md**: 本文から漫画ページIRを起こす手順・YAML構造・**バリアントとタグ注入の優先**（実装と同一の表）・検証の参照先。コマ割りの設計の中心。

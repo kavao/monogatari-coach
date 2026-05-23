@@ -63,6 +63,7 @@ targets: ["*"]
 | `manga.md` 上の意図 | 主に見る YAML |
 |---------------------|----------------|
 | Step1：各コマの見出し・具体描写 | `panels[].summary`, `panels[].subjects[]`, `panels[].composition`, `panels[].camera`, `panels[].text`, `panels[].prompt_tags` |
+| Step1：コマ要約の英訳（NovelAI タグ併用） | **`panels[].summary_en`**（`tools/novel_manga_panel_summary_en.py` で `summary` から生成）、**`summary_en_source`** が `summary` と一致 |
 | Step1：ページ全体の作画方針・コマ割の扱い | `render_instruction`（`task` / `prompt_header` / `panel_policy` / `character_policy`）、`manga.panel_layout` |
 | Step2：段・左右・大小・読み順 | `manga.panel_layout`, `meta.reading_order`, `panels[].composition.layout`（互換 Markdown では1行に畳まれる） |
 | Step2：コマ要約（抽象寄り・安全寄りの言い換え） | **`panels[].step2_summary` を優先**（無ければ `summary` が Step2 行に流用される。`manga.md` の「Step2 だけ弱めたい」と同じ） |
