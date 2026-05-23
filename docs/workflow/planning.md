@@ -63,6 +63,24 @@ python tools/novel_scaffold.py novels/NNN_作品名
 python tools/novel_project_check.py novels/NNN_作品名
 ```
 
+人物プロフィールの構造を先に確認する場合は、次を実行します。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+```
+
+不足項目の追記案や、表形式から `- **ラベル**:` 形式への変換案も見たい場合は、次のようにします。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
+```
+
+執筆前チェックに character.md の構造 lint も含める場合は、次のようにします。
+
+```bash
+python tools/novel_project_check.py novels/NNN_作品名 --require-character-structure --character-profile plan
+```
+
 結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。
 
 ## 関連ページ

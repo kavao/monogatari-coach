@@ -10,155 +10,158 @@
 
 ---
 
-## Tag Mode チェックリスト（`tag.md` を実際のタグへ「効かせる」）
+## バリアント2階層（000番台・100番台）
 
-> 注意: `tag.md` はルール文書であり、画像生成ツールが自動で読み込む設定ファイルではない。
-> **「効かせる」＝YAML IR（`tag/characters/*.yaml`）または互換 MD（`tag/*.md`）へ反映した**という意味になる。
-> 以降は、その反映漏れを防ぐためのチェックリストである。
+キャラクタータグは **服装スロット（000番台）** と **資料・ポーズスロット（100番台）** に分ける。100番台は000番台の衣装状態と**合成**し、三面図・紹介シート・決めポーズなど**参照画像**を作る（漫画の `variant_id` には使わない）。
 
-### 1) 固定特徴（全バリアント共通）
+| 帯 | `variant_id` 先頭 | 用途 | 漫画 `subjects[].variant_id` |
+|----|-------------------|------|------------------------------|
+| **000** | `000_base` | 固定外見のみ（衣装・ポーズ・背景なし） | 使わない |
+| **000番台** | `001_` … `099_` | **服装・衣装状態**（平服・戦闘服・水着 等） | **使う** |
+| **100番台** | `100_` … `199_` | **資料用**（紹介・三面図・ポーズ・該当作品の治療/結合資料等） | **使わない** |
 
-- **固定特徴**（髪・目・肌・体格・種族特徴・固定小物）の**一覧の正本**は、**0 番 `00_base`** の `danbooru_tags` に置く（次節）。1 番以降の状況バリアントにも同じ固定タグを**再掲してよい**（立ち絵1枚完結用）。
-- 各バリアントの `danbooru_tags` へ漏れなく入れる（または YAML 側の `character_tags` / `manga_rules.consistency_tags` として保持する）。
-- **固定に入れてよい**: 髪色・目色・肌・種族特徴・固定小物（例: 星型ヘアピン）など、全状況で不変のもの。
-- **固定に入れない**: 平服/水着/治療服など状況で切り替わる衣装、`standing` など姿勢、屋内/屋外/背景。
-  - 理由: 固定タグはレンダリング時に全バリアントへ混入しやすく、**水着に平服が混ざる**事故が起きる。
+### 番号・見出し・`variant_id`（3桁固定）
 
-#### YAML IR の `costume.outfit_tags`（混入事故の主因になりやすい）
+- **形式**: **`NNN_short_slug`**（3桁ゼロ埋め＋英字スラッグ）。例: `000_base`, `001_normal`, `100_intro`, `101_turnaround`。
+- **互換 Markdown** の見出しは **`## NNN. 短い見出し`** とし、**`NNN` ＝ `variant_id` 先頭3桁**に揃える。
+- **YAML IR** の `prompt_variants` 配列順は見出しの**数値昇順**（`000` → `001` → … → `100` → `101`）。
+- **レガシー2桁**（`00_base`, `01_normal`）は移行まで有効。触るタイミングで3桁へ揃える。
 
-構造化IR（`tag/characters/<character_id>.yaml`）では、次を必ず守る。
-
-- **`costume.outfit_tags` は「全バリアントで常に合成される固定側」**として扱われる（実装はスキル **`manga-prompt-ir`** の `CharacterPrompt.fixed_prompt_tags()`）。そのためここに **平服・制服・水着・ベビードール・パジャマ等** を置くと、**裸体（nude）や別衣装のバリアントにも衣服タグが混ざる**。
-- **衣装で状況が変わるタグは、必ず `prompt_variants[].danbooru_tags` にだけ書く**。`costume.main_outfit` は日本語メモとして残してよいが、**Danbooru 行に載せたい衣装英語トークンはバリアント側**が正本。
-- **迷ったら `costume.outfit_tags: []`**（空配列）にし、衣装は各バリアントの `danbooru_tags` のみで表現する。
-- **常に身につける固定小物**（例: 取り外さない指輪）だけを `outfit_tags` に置く運用は可。**状況で外すリボンや首飾り**は、外れるバリアントでは `danbooru_tags` 側にのみ書く。
-
-**関連ツール**: `tools/image_provider_novel_tag_batch.py`（キャラ一括画像）、`tools/novel_prompt_ir_export_md.py`（互換 `tag/<romaji>.md` 出力）は上記の固定合成に従う。漫画側では `tools/novel_prompt_ir_embed_snapshots.py` がスナップショットを埋め込むため、IR の誤りは **キャラタグと漫画コマの両方**に波及しうる。
-
-### 2) 状況バリアント（最低限）
-
-- **先頭に 0 番（固定基礎）**を置き、そのあと状況別を並べる（詳細は次節「0 番・固定基礎バリアント」）。
-- 状況別では、最低でも次を用意する。また劇内で別のバリアントがある場合は追加する:
-  - 通常時（`01_` 以降）
-  - 戦闘時
-  - 水着
-- 省略する場合は「この作品では発生しない」等、**省略理由を説明**に残す。
-
-#### 0 番・固定基礎バリアント（`00_base`）
-
-漫画 IR や「バリアントを土台にコマで足す」運用のため、**衣装・姿勢・背景・表情・行為に依存しない固定見た目だけ**をまとめたブロックを **0 番**として先頭に置く。
+### 000番台（服装スロット）
 
 | 項目 | 内容 |
 |------|------|
-| 見出し（互換 MD） | `## 0. 固定基礎`（または `0. 固定基礎`） |
-| `variant_id`（YAML） | **`00_base`**（`00_fixed` 等でも可。作品内で統一） |
-| `danbooru_tags` に入れる | 性別・年齢帯・体格、髪色・髪型、目色、肌、種族特徴、**取り外さない固定小物**（例: 腕の狼タトゥー）、キャラ名トークン |
-| 入れない | 衣装（`tank_top`, `nude`, `bikini` 等）、`standing` 等の姿勢、屋内/屋外・照明・背景、典型表情（`cheerful_expression` 等）、`nsfw`、局部・行為タグ |
-| Caption / 和訳 | 固定外見の説明のみ。衣装・場所・ポーズは書かない |
+| 代表例 | `001_normal` ＝ **平服**（作品の通常時衣装） |
+| `danbooru_tags` に入れる | 衣装・アクセ・状況に応じた裸露タグ、固定特徴の**再掲は可** |
+| **入れない** | **`standing` および一切の姿勢タグ**、シーン背景、三面図タグ、資料向け劇的ポーズ |
+| 背景 | **原則なし**（単色背景が要る場合は100番台へ） |
 
-- **漫画ページ**では、原則 **状況バリアント（`01_` 以降）** を `subjects[].variant_id` に指定し、**衣装・裸露・湯気・構図・表情**は `panels[].prompt_tags` で上乗せする。`00_base` を漫画の主 variant にしない理由と TPO 表の書き方は **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする（ユーザー領域は `_how_to/manga.md`）。
-- **キャラ単体画像**（`image_provider_novel_tag_batch.py`）で立ち絵1枚が欲しいときは、**0 番だけでは貧弱になりやすい**ので、通常は **`01_normal` 等を生成**する。0 番を画像化するかは任意（参照・差分確認用）。生成を省くときは `--variant-id 01_normal` 等で絞る。
-- **1 番以降**（通常時・戦闘時・水着…）の `danbooru_tags` には、引き続き **固定特徴を再掲してよい**（txt2img 1 ブロック完結のため）。0 番は「固定だけの正本リスト」として重複を許容する。
+- **漫画**: `subjects[].variant_id` は **000番台のみ**。構図・表情・ポーズ・場所は `panels[].prompt_tags` で上乗せする。
 
-#### バリアント番号（管理用・最小）
+### 100番台（資料・ポーズスロット）
 
-- **互換 Markdown**（`tag/<romaji>.md`）では、**`## 0.`（固定基礎）を先頭**に置き、続けて状況ごとに **`## 1.` `## 2.` … と連番**にする（見出し体裁の細部は後述「Markdown ファイル形式」）。
-- **YAML IR**（`tag/characters/*.yaml`）では、`prompt_variants` の**配列の並び**を、その連番と**同じ順**にする（先頭＝`00_base` ＝ `## 0.`、次が `## 1.` …）。
-- **`variant_id`（推奨）**: 見出し番号 **`N` と同じ整数を ID の先頭に付ける**（**0 番は `00_`**、1 番以降は **`01_` `02_` …**）。形式は **`NN_short_slug`** とする（例: `00_base`, `01_normal`, `02_battle`）。**2桁ゼロ埋め**を推奨する。末尾の `short_slug` は意味のある英字でよい。**既存で 1 始まりのみのファイル**は、触るタイミングで **先頭に `00_base` を挿し、以降の番号・ID を繰り下げ**てよい。
-- バリアントを増やすときは、手間が少ないのは **末尾に追加して連番の最後を増やす**こと。**0 番の後に**状況を挿入する場合は、**以降の見出し番号・`variant_id` の番号部分・YAML の配列順をまとめて繰り下げ**て整合を取る。
+| 標準ID | 見出し例 | 内容 |
+|--------|----------|------|
+| **`100_intro`** | キャラクター紹介 | 紹介用シート（文字要素あり可） |
+| **`101_turnaround`** | 三面図 | 正・側・後を**1バリアントに集約** |
+| **`102_signature_pose`** | 決めポーズ | 作品の「顔となる」ポーズ |
 
-### 3) `tag.md` の特殊ルール適用（該当キャラのみ）
+| 項目 | 内容 |
+|------|------|
+| **`combines_with`** | 平服資料は **`001_normal`**。 ほか衣装状態に合う000番台 |
+| 各ブロック | **`説明`・`組み合わせ`・`Caption`・`和訳` を必ず書く** |
+| 入れない | 衣装・裸露状態の差し替え（000番台へ）、治療室・ベッド等の**シーン背景** |
 
-- **出力の前提**:
-  - まず物語タイトルを表示し、プロフィールの詳細を反映したうえで、状況に応じた写実的な描写で人物を記述する。
-  - 事前に変換リストに基づいて単語を適切に変換する。
-- **状況別に作る（列挙）**:
-  - 通常時 / 戦闘時 / 水着 など作品で定義された状況
-- **通常時→他状況への引き継ぎ**:
-  - 通常時で書いたタグのうち、顔の飾りや種族特徴は他状況にも引き継ぐ。
-- **水着**:
-  - 男の娘には `Swimsuit bottom skirt` を加える。
-- **背景・変換**:
-  - `translucent` を含むタグは避け、代わりに `gleasy` に置き換える。
-  - `glowing_iris` は避ける（戦闘/特異現象に寄るため）。
+#### 100番台の NovelAI パイプ区切り
 
-### 4) 互換 Markdown（`tag/<romaji>.md`）の最低限構造
+```text
+（100番台の資料・構図タグ） | （組み合わせ先000番台のタグ列）
+```
 
-- 各状況ブロックは次の順を崩さない:
-  - `**説明**` → `**Danbooru Tags:**` →（次行にタグ1行）→ `**Caption:**` → `**和訳:**`
-- タグ本文は **必ず1行**（カンマ区切り、行頭インデントなし）。
+- **`|` の左**: 資料・画角・ポーズ・行為（103/104）タグ。
+- **`|` の右**: `combines_with` の000番台 `danbooru_tags` を**そのまま複写**（`(character)` プレースホルダ不可）。
+- エクスポート: `novel_prompt_ir_export_md.py --novelai-pipe-tags`（ツール未対応時は MD 上で `|` まで手書き）。
 
-`tag/<romaji>.md` を直接書く場合でも、将来 YAML 化しやすいように、各状況について次を明確にする。
+### 000・固定基礎（`000_base`）
 
-- `character_id`
-- 日本語の状況説明
-- 固定特徴（髪・目・肌・体格・種族・固定小物）
-- 状況別 Danbooru Tags
-- Caption
-- 和訳
+衣装・姿勢・背景・表情・行為は書かない（下記チェックリスト参照）。
 
-登場人物を描画ＡＩに依頼するための補助ツールです。
-ひとまず、物語のタイトルについて表示を出してから、最初にプロフィールの詳細を反映し、状況に応じた写実的な描写で人物の描写をしてください
-事前に変換リストに基づいて単語を適切に変換してください。
-登場人物について、それぞれ指定された状況（通常時、戦闘義、水着、別途定義されている物がある場合はそれを出す）ごとに作成してください。
-通常時で書いたタグのうち顔に付ける飾りや、種族に属するものは、他の状況にも引き継いでください。
-glowing_irisが含まれるタグについては、目が輝くというのは戦闘時や、モンスターなどの特異な現象が多いため、光源があるように輝かせないようにしてください。
-シーンの格好の再現も出来れば行うと好ましいです
-タグやcaptionには必ずそれぞれ英語で登場人物の名前を入れてください。
-タグ出力は全員もお願いします。メッセージが足りない場合には分割で構いません
+---
 
-まず日本語での説明を書きます。
-続いて、stable diffusionやnovelAIに渡す種類の形のタグをコンマ(,)区切りで作成してください。
-画像AIで生成する時のcaptionを英語で書いてください。和訳の説明も添えます
+## Tag Mode チェックリスト（`tag.md` を実際のタグへ「効かせる」）
 
-## Markdown ファイル形式（`tag/<romaji>.md`・機械抽出と整合）
+> `tag.md` はルール文書であり、画像生成ツールが自動読み込みしない。**反映＝YAML IR または互換 MD へ書き込んだ状態**。
 
-作品フォルダに **`novels/<作品>/tag/<romaji>.md`** として保存するときは、人間が読みやすいことに加え、**`tools/image_provider_novel_tag_batch.py`（Forge 一括 txt2img）** が安定して **Danbooru 行を取り出せる**形に揃える。ブレると一括でスキップされたり、意図しないブロック分割になる。
+### 1) 固定特徴（全バリアント共通）
+
+- **固定特徴の正本**は **`000_base`** の `danbooru_tags`。000番台には再掲可（**姿勢は100番台**）。
+- **固定に入れない**: 状況で変わる衣装、`standing` 等の姿勢、背景。
+
+#### YAML IR の `costume.outfit_tags`
+
+- **`costume.outfit_tags` は全バリアントに合成される**。衣装英語トークンは **`prompt_variants[].danbooru_tags` のみ**。
+- 迷ったら **`costume.outfit_tags: []`**。
+
+### 2) 状況バリアント（最低限）
+
+- **先頭 `000_base`** → **000番台（服装）** → **100番台（資料）** の順。
+- **000番台**の例: `001_normal`（平服）、戦闘時、水着… 作品に応じて追加。
+- **100番台**（漫画 `variant_id` には使わない）: `100_intro` / `101_turnaround` / `102_signature_pose`、該当作品なら `103_show_treatment` / `104_union_vaginal`。
+- 省略するときは**省略理由**を説明に残す。
+
+#### 固定基礎バリアント（`000_base`）
+
+| 項目 | 内容 |
+|------|------|
+| 見出し | `## 000. 固定基礎` |
+| `variant_id` | **`000_base`** |
+| 入れる | 性別・体格・髪・目・肌・種族・固定小物・キャラ名トークン |
+| 入れない | 衣装、姿勢、背景、表情、nsfw、局部・行為 |
+
+- **漫画**: `variant_id` は000番台。TPO 表は **`_how_to.example/manga.md`**（ユーザー領域は `_how_to/manga.md`）。
+
+#### バリアント番号（管理用）
+
+- 000番台・100番台は**末尾追加**が基本。途中挿入時は見出し・ID・YAML 配列を**一括繰り下げ**。
+
+### 4) 互換 Markdown の最低限構造
+
+- 順序: `**説明**` → `**Danbooru Tags:**` → タグ1行 → `**Caption:**` → `**和訳:**`
+- **100番台**は先頭に `**組み合わせ**: 001_normal`等を推奨。
+
+---
+
+## 執筆依頼文（チャット用の要約）
+
+登場人物を描画AI向けにタグ化する。物語タイトルを示したうえ、プロフィールを反映する。
+
+- 状況ごとに **説明 → Danbooru Tags（1行）→ Caption（英語）→ 和訳**。
+- タグ・Caption に**英語のキャラ名**を入れる。
+- **000番台**は衣装のみ（姿勢・背景なし）。**100番台**は資料用で `資料タグ | 000番台タグ` のパイプ形式。
+- キャラ全員分。長いときは分割可。
+
+---
+
+## Markdown ファイル形式（`tag/<romaji>.md`）
+
+`tools/image_provider_novel_tag_batch.py` が **Danbooru 行**を安定抽出できる形に揃える。
 
 ### ファイル先頭
 
-- **レベル1見出し**を1行（例: `# 白峰 ゆい（Yui Shiramine）`）。
-- 任意で画風メモ・`---` による区切りを置いてよい。
+- `# キャラ名（英語名）` を1行。任意で画風メモ・`---`。
 
-### 状況ブロック（1キャラあたり複数）
+### 状況ブロック
 
-- **セクション見出し**は次のいずれかに統一する（**`N=0` は固定基礎、`N=1` 以降は状況別・当該キャラ内で連番**）。
-  - **推奨**: `## N. 短い見出し`（例: `## 0. 固定基礎`, `## 1. 通常時`）。目次・差分・ツールの区切りが一番明確。
-  - **互換**: 行頭が `### N.` または **`N. 見出し` だけの行**（先頭の `#` なし）も抽出対象。ただし本文中の「1. 〜」と誤認しやすいので、**新規作成では `## N.` を推奨**。
-  - **YAML との対応**: `tag/characters/<character_id>.yaml` の `prompt_variants` は、**この `N` の並びと同じ順**に並べる（上記「バリアント番号（管理用・最小）」）。
-- **ブロック内の並び**（この順を推奨）:
-  1. `**説明**: …`
-  2. 空行
-  3. **Danbooru ラベル行**（次項）
-  4. **タグ本文**（次行・**1行**・カンマ区切り。行頭にスペースやタブを付けない）
-  5. 空行
-  6. `**Caption:**` と英語キャプション（**1行推奨**）
-  7. 空行
-  8. `**和訳:**` と日本語（ラベル表記は `**和訳:**` に揃える）
+- 見出し: **`## NNN.`**（`NNN` ＝ `variant_id` 先頭3桁、数値昇順）。
+- **100番台**: `**組み合わせ**:` 行を推奨。Danbooru は **`資料タグ | 000番台タグ列`**。
 
-### `Danbooru Tags` 行（一括抽出の要）
+### `Danbooru Tags` 行
 
-- **ラベル行**は次の形にする（Markdown の太字として **`:` の位置が一定**になるようにする）。
-  - 例: `**Danbooru Tags:**`（行全体が `**` で囲まれた「Danbooru Tags:」）
-- **タグ本文は必ず次の行**に書く。同じ行に続けて書かない。
-- **タグ本文は1行にまとめる**（複数行に分けると一括は先頭行のみ使用）。
-- ラベルを `Danbooru Tags` 以外の表記に変えない（スクリプトは `Danbooru Tags` を識別子として検索する）。
+- ラベル: `**Danbooru Tags:**`（次行にタグ本文・**1行**）。
+- **NovelAI パイプ**:
+  - **000番台（服装のみ）**: パイプなしでキャラタグのみが基本。
+  - **100番台**: **`資料タグ | combines_with の000番台タグ列`**。
 
-### 検証コマンド（執筆後）
-
-リポジトリルートで、対象作品パスを渡して **ドライラン**する。ジョブ数と `prompt` 先頭が表示されれば抽出OK。
+### 検証
 
 ```bash
 python tools/image_provider_novel_tag_batch.py novels/<作品フォルダ名> --dry-run
+python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/characters/<id>.yaml --output-dir tools_temp/ir_export_sample --novelai-pipe-tags
 ```
 
-詳細な運用はスキル **`novel-tag-md-format`**（`.rulesync/skills/novel-tag-md-format/SKILL.md`）および **`image-provider（旧 forge-txt2img）`** を参照。
+詳細: スキル **`novel-tag-md-format`**、**`image-provider`**。
 
-出力例となります
+---
+
+## 出力例（フィオナ・ストームブレイド／3桁・2階層）
+
+一般向けサンプルキャラ。レガシー2桁例は `_how_to/tag.md` 末尾の旧例を参照。
+
 ```
 フィオナ・ストームブレイド（Fiona Stormblade）
-0. 固定基礎
-説明: フィオナの固定外見のみ。15歳の熱血戦士体型。母似の顔立ち。燃えるようなオレンジ色のショートヘア、琥珀色の瞳、色白の肌。母の落書き風の狼タトゥー（腕・取り外さない）。衣装・場所・表情・ポーズはここでは指定しない。
+
+000. 固定基礎
+**説明**: フィオナの固定外見のみ。15歳の熱血戦士体型。母似の顔立ち。燃えるようなオレンジ色のショートヘア、琥珀色の瞳、色白の肌。母の落書き風の狼タトゥー（腕・取り外さない）。衣装・場所・表情・ポーズは指定しない。
 
 Danbooru Tags:
 female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade
@@ -168,38 +171,93 @@ Fiona Stormblade, a sporty young woman with orange short hair, amber eyes, fair 
 
 和訳: オレンジのショートヘアと琥珀色の瞳、色白の肌を持つスポーティな若い女性フィオナ・ストームブレイド。腕に狼のタトゥーがある。
 
-1. 通常時
-説明: フィオナの普段の姿。15歳の熱血戦士で、母似の快活な顔立ち。燃えるようなオレンジ色のショートヘアが風を切り、琥珀色の瞳が好奇心で輝く。筋肉質の体に狼の刺青風タトゥー（母の落書き）を付け、タンクトップとショーツで訓練場に立つポジティブな笑顔。
+001. 平服（通常時）
+**説明**: 普段の訓練着。タンクトップとショーツ。快活な笑顔は Caption で示すが、姿勢・訓練場の背景タグは載せない（資料が要れば100番台）。
 
 Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, standing, training_ground, warm_lighting, fiona_stormblade
+female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
 
 Caption:
-A sporty young woman with windswept orange short hair and curious amber eyes, wearing a tank top and shorts with a wolf tattoo on her arm, stands cheerfully on a training ground with a bright smile.
+Fiona Stormblade in her usual tank top and shorts, cheerful bright smile, sporty build and wolf tattoo on her arm.
 
-和訳: 風を切る燃えるようなオレンジ色のショートヘアと好奇心に満ちた琥珀色の瞳を持つスポーティな若い女性が、タンクトップとショーツを着け、腕に狼のタトゥーを付け、訓練場で明るい笑顔を浮かべて立っています。
+和訳: いつものタンクトップとショーツに、明るい笑顔のフィオナ。スポーティな体型と腕の狼タトゥー。
 
-2. 戦闘時
-説明: フィオナが戦闘に臨む姿。豪剣を振り、筋肉質の体が力強く動き、オレンジ色のショートヘアが激しく乱れる。琥珀色の瞳が燃え、狼のタトゥーが汗で光り、不屈の精神で突進するポーズ。
+002. 戦闘時
+**説明**: 革の鎧と大剣の戦闘服。決意の表情はタグに含めるが、ダイナミックポーズ・戦場・立ち姿は100番台へ分離する。
 
 Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, determined_expression, sweat, dynamic_pose, greatsword, leather_armor, boots, standing, battlefield, dramatic_lighting, fiona_stormblade
+female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, determined_expression, greatsword, leather_armor, boots, fiona_stormblade
 
 Caption:
-A sporty young woman with disheveled orange short hair and burning amber eyes charges with a greatsword in leather armor, standing dynamically on a battlefield, sweat highlighting her wolf tattoo.
+Fiona Stormblade in leather armor with a greatsword, determined expression, wolf tattoo visible on her arm.
 
-和訳: 乱れたオレンジ色のショートヘアと燃える琥珀色の瞳を持つスポーティな若い女性が、革の鎧を纏い大剣を振り、戦場でダイナミックに突進します。汗が狼のタトゥーを光らせています。
+和訳: 革の鎧と大剣を携えたフィオナ。決意に満ちた表情と腕の狼タトゥー。
 
-3. 水着
-説明: フィオナが水着姿で遊ぶ場面。筋肉質のスポーティな体がビキニで強調され、オレンジ色のショートヘアが水で跳ね、琥珀色の瞳が輝く。狼のタトゥーが日光に映え、ハイテンションな笑顔。
+003. 水着
+**説明**: ビキニの水着衣装のみ。ビーチ・立ち・日光は載せない。
 
 Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, energetic_expression, wet_hair, water_droplets, bikini, standing, beach, sunlight, fiona_stormblade
+female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, energetic_expression, wet_hair, water_droplets, bikini, fiona_stormblade
 
 Caption:
-A sporty young woman with splashed orange short hair and sparkling amber eyes wears a bikini on a sunny beach, standing energetically with water droplets accenting her wolf tattoo.
+Fiona Stormblade in a bikini, wet orange hair and energetic expression, wolf tattoo on her arm.
 
-和訳: 水しぶきのかかったオレンジ色のショートヘアと輝く琥珀色の瞳を持つスポーティな若い女性が、ビキニを着て陽光のビーチでエネルギッシュに立っています。水滴が狼のタトゥーを強調します。
+和訳: ビキニ姿のフィオナ。濡れたオレンジの髪と活気ある表情、狼のタトゥー。
+
+--- 100番台（資料）。`|` 右は **組み合わせ** の000番台タグ列を複写 ---
+
+100. キャラクター紹介
+**組み合わせ**: 001_normal
+**説明**: 作品紹介用のキャラクターシート。平服で白背景。プロフィール用の文字レイアウトを許容する。
+
+Danbooru Tags:
+character sheet, reference sheet, character profile, clean white background, simple background, text, english text, high detail, masterpiece | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+
+Caption:
+Fiona Stormblade, character introduction sheet on white background, tank top and shorts, cheerful expression, reference layout with text elements.
+
+和訳: 白背景の紹介シート。タンクトップとショーツの平服で、快活な表情のフィオナ。
+
+101. 三面図
+**組み合わせ**: 001_normal
+**説明**: 正面・側面・背面の三面図資料。同一平服・同一プロポーションで白背景に揃える。
+
+Danbooru Tags:
+three views, front view, side view, back view, character sheet, reference sheet, same girl, clean white background, simple background, high detail, masterpiece | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+
+Caption:
+Fiona Stormblade, turnaround reference, front side and back views, white background, consistent tank top and shorts outfit.
+
+和訳: フィオナの三面図。白背景で正・側・後を同一の訓練着で統一した参照資料。
+
+102. 決めポーズ
+**組み合わせ**: 001_normal
+**説明**: 作品の決めポーズ資料。両手を腰に、視線はこちら。背景は白のみ。
+
+Danbooru Tags:
+decisive pose, signature pose, powerful pose, hands on hips, confident smile, looking at viewer, standing, full body, clean white background, masterpiece, best quality | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+
+Caption:
+Fiona Stormblade, signature pose with hands on hips, confident smile, looking at viewer, full body on white background, tank top and shorts.
+
+和訳: 決めポーズのフィオナ。腰に手を当て、こちらを見る自信ある笑み。全身・白背景。
+
 ```
 
-次に、作風、画風タグについて、全体で共通で適用するとよい物を挙げます。
+---
+
+## 作風・画風タグ（作品共通・任意）
+
+ファイル先頭やバッチの style 指定で、全体に共通適用するとよい例:
+
+```
+{best quality}, {very aesthetic}, {ultra-detailed}, {best illustration},
+```
+
+---
+
+## `_how_to/tag.md` との関係
+
+- **正本（雛形）**: 本ファイル **`_how_to.example/tag.md`**
+- **ユーザー調整**: **`_how_to/tag.md`** — 作品固有の特殊ルール・長い出力例・ジャンル固有の列挙を足す
+- 恒久ルールを変えるときは **本ファイルを先に更新**し、必要なら `_how_to/tag.md` に反映する

@@ -23,6 +23,7 @@ if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
 import novel_code_allocate as nca  # noqa: E402
+import novel_character_md_check as ncmc  # noqa: E402
 import novel_image_layout as nil  # noqa: E402
 
 
@@ -70,6 +71,10 @@ def check_novel_project(
     require_tag_md: bool,
     require_manga_dir: bool,
     require_meta_yaml: bool = False,
+    require_character_structure: bool = False,
+    character_profile: str = "plan",
+    character_strict: bool = False,
+    character_suggest: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -109,6 +114,37 @@ def check_novel_project(
         if not st["ok"]:
             out["ok"] = False
             out["issues"].append(f"必須ディレクトリ: {name} — {st.get('reason')}")
+
+    if require_character_structure:
+        try:
+            char_result = ncmc.check_character_file(
+                work / "character.md",
+                novel_dir=work,
+                profile=character_profile,
+                strict=character_strict,
+                suggest=character_suggest,
+                root=Path(__file__).resolve().parent.parent,
+            )
+        except Exception as e:
+            char_result = {
+                "ok": False,
+                "profile": character_profile,
+                "strict": character_strict,
+                "suggest": character_suggest,
+                "errors": [{"level": "ERROR", "message": str(e)}],
+                "warnings": [],
+                "suggestions": [],
+                "characters": [],
+            }
+        out["optional"]["character_structure"] = char_result
+        if not char_result.get("ok"):
+            out["ok"] = False
+            for issue in char_result.get("errors") or []:
+                character = issue.get("character")
+                prefix = f"{character}: " if character else ""
+                out["issues"].append(
+                    f"character.md 構造: {prefix}{issue.get('message', 'bad')}"
+                )
 
     meta_yaml = work / "_meta.yaml"
     meta_yaml_ok = meta_yaml.is_file()
@@ -192,6 +228,26 @@ def main(argv: list[str] | None = None) -> int:
         help="_meta.yaml を必須チェック対象にする（画像生成・ポーション運用時に指定）",
     )
     p.add_argument(
+        "--require-character-structure",
+        action="store_true",
+        help="character.md をチェックリスト YAML に基づいて構造 lint する",
+    )
+    p.add_argument(
+        "--character-profile",
+        default="plan",
+        help="character.md 構造 lint の profile（既定: plan）",
+    )
+    p.add_argument(
+        "--character-strict",
+        action="store_true",
+        help="character.md 構造 lint の移行猶予 WARN を ERROR 扱いにする",
+    )
+    p.add_argument(
+        "--character-suggest",
+        action="store_true",
+        help="character.md 構造 lint の不足項目追記案・表形式変換案を JSON 出力に含める",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -220,6 +276,10 @@ def main(argv: list[str] | None = None) -> int:
         require_tag_md=args.require_tag,
         require_manga_dir=args.require_manga_dir,
         require_meta_yaml=args.require_meta_yaml,
+        require_character_structure=args.require_character_structure,
+        character_profile=args.character_profile,
+        character_strict=args.character_strict,
+        character_suggest=args.character_suggest,
     )
 
     if args.check_image_layout:
@@ -273,6 +333,16 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"    manga/: {'あり' if opt.get('manga_dir_exists') else 'なし'}"
     )
+    if args.require_character_structure:
+        ch = opt.get("character_structure") or {}
+        print(
+            "    character.md 構造: "
+            + ("OK" if ch.get("ok") else "NG")
+            + f"（profile: {ch.get('profile', args.character_profile)}）"
+        )
+        warnings = ch.get("warnings") or []
+        if warnings:
+            print(f"    character.md WARN: {len(warnings)} 件")
 
     if result["ok"] and not result.get("issues"):
         print("\n=== 結果: OK ===")
