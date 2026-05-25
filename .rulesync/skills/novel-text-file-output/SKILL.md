@@ -15,17 +15,18 @@ targets: ["*"]
 
 横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。このスキルは、小説本文出力でその条件を満たすための実行手順を定める。
 
-## 執筆「完了」の定義（本文出力での適用）
+## 完了の定義（本文出力での適用）
 
 ユーザーに「執筆した」「本文を出した」「ファイルに保存した」などと **完了扱い**で伝えてよいのは、`.rulesync/rules/concepts.md` の「完了扱い条件」を満たしたときに限る。本スキルでは次の順で適用する。
 
 1. **正本の更新**: `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）に、エージェントの **ファイル書き込み**（新規・追記・置換）が行われている。チャットへの貼り付けだけでは **完了ではない**。
 2. **事実確認**（書き込み直後、いずれか必須）:
-   - **`Read`** で当該 `novel_text*.md` を読み、内容が保存されていることを確認する。**末尾への追記**なら **末尾数十行** でよい。**途中への挿入・シーン追加**なら、**追加した段落を含む範囲**（挿入位置の前後）を読む（`offset` / `limit` でよい）。
-   - または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、**分量がゼロでないこと・章の想定と整合すること**を確認する（定義はスキル **`novel-char-count`**）。途中挿入では **ファイル単位の増分**の確認に使う。
-3. **報告の順序**: 上記 1→2 の **後** に、**更新パス**を含めてユーザーへ報告する。確認前に「保存した」「執筆を完了した」と述べ **ない**。
+   - **`Read`** で当該 `novel_text*.md` を読み、内容が保存されていることを確認する。
+   - または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、分量を確認する。
+3. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスクを更新する。
+4. **報告の順序**: 上記 1〜3 の **後** に、**更新パス**を含めてユーザーへ報告する。確認・反映前に「保存した」「執筆を完了した」と述べ **ない**。
 
-**禁止（幻覚完了の防止）**: 正本更新と確認を満たす前に、執筆・保存の **完了**をユーザーに告げない。
+**禁止（幻覚完了の防止）**: 正本更新・確認・ストーリー反映を満たす前に、執筆・保存の **完了**をユーザーに告げない。
 
 **ツールでリポジトリに書けない環境**（ワークスペース非接続の対話のみ等）では、本文を提示し手動で `_novel_text` へ保存するよう依頼する。その場合、**当リポジトリ上の執筆完了とはみなさない**（「下書きを提示した」にとどめ、必要なら完了条件を明示する）。
 
@@ -53,6 +54,21 @@ targets: ["*"]
 2. **確認**: **`Read`**（追記は末尾でよい／挿入は追加箇所の前後）または **`python tools/novel_char_count.py`** のいずれかで、保存内容・分量を検証する。
 3. **報告**: ユーザー向け返答に、**更新したファイルのパス**（リポジトリ相対でよい）を明示する。確認 **後** に完了を伝える。
 
+## 執筆直後の機械校正（推奨・任意）
+
+上記 1〜3 で **執筆完了**としたあと、同一ターンまたは直後のターンで、誤打・体裁の第一校正として次を実行する（詳細はスキル **`novel-text-rewrite-lint`**）。
+
+```bash
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_textXX.md --profile grammar --fix-dry-run
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_textXX.md --profile grammar --fix
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_textXX.md --profile grammar
+```
+
+- **`--profile grammar` を付ける**（未指定の `default` では `　「`・半角 `,` 等は `--fix` 対象外）。
+- 変更が多いときは **`_novel_text_backup/` へ `vNNN` 退避**してから `--fix`（`novel-refinement-output` の採番規則と同じ）。
+- fix 後は **追加した段落付近を `Read`** し、意図しない置換がないか確認する。
+- **`grammar --fix` だけでは「清書完了」と報告しない**（文学的な rewrite と `--strict` ゲートは別フェーズ）。
+
 ## 査証・メタ
 
 - 進捗や文字数を **`_workingspace/log/`** や **`_meta.md`** に書くときは、**ファイルに存在する内容**に基づく（会話の記憶だけに頼らない）。
@@ -61,6 +77,7 @@ targets: ["*"]
 ## 関連
 
 - 執筆**前**の資料・フォルダ: スキル **`novel-project-readiness`**（`tools/novel_project_check.py`）
+- 執筆直後の誤打・体裁の機械校正: **`novel-text-rewrite-lint`**（`grammar --fix`）
 - **`rewrite.md` による清書・旧版退避と正本更新**: スキル **`novel-refinement-output`**
 - 分量の公式カウント: **`novel-char-count`**（`tools/novel_char_count.py`）
 - 画像生成の計画・承認・完了検証: **`image-provider（旧 forge-txt2img）`**

@@ -38,11 +38,36 @@ gender_detection:
     male:
       - "男性"
       - "男"
+      - "男若妖精"
     female:
       - "女性"
       - "女"
-      - "若妖精"
+      - "女若妖精"
+  # 若妖精は 男若妖精／女若妖精 の一体表記を推奨（gender_detection と species_notes を参照）
   # 推定できないときは body_gender_rules をスキップし WARN のみ
+
+# 若妖精の年齢・立場の書き方（ボディー抽選・character.md 運用の特記。lint 自動検証はしない）
+species_notes:
+  若妖精:
+    adult_status: >-
+      若妖精は物語・社会通念上「成年」として扱う。未成年の人間少女・少年として読ませる
+      人間換算の年齢表現は使わない。
+    age_field:
+      label: "年齢・立場"
+      write:
+        - "女若妖精（成年）・妖精学校通学（女性の例。立場は作品に合わせる）"
+        - "男若妖精（成年）・…（男性の例。立場は作品に合わせる）"
+        - "性別＋若妖精を分けず、男若妖精／女若妖精 の一体表記を使う（body_gender_rules 推定用）"
+      do_not_write:
+        - "若妖精（成年）・女性・… のように種族と性別を別語で並べる書き方（推奨しない）"
+        - "人間の○歳・○才"
+        - "人間相当・人間換算の年齢"
+        - "高校○年生など、人間の学校段階だけでの年齢の言い換え"
+    body_pick_age_band:
+      value: 若妖精
+      meaning: >-
+        episode_mature.json の体型・ボディー分類用。--age-band 若妖精 は抽選キーであり、
+        プロフィールの年齢欄に数値や人間年齢を書く理由にはならない。
 
 # 「ボディーの特徴」直下の - **子ラベル**: 形式を性別で検証（body_therapy + apply_body_gender_rules）
 body_gender_rules:

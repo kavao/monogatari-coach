@@ -316,9 +316,23 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> \
 
 # dry-run 例（キャラタグ一括）
 python tools/image_provider_novel_tag_batch.py novels/<作品> --dry-run
+
+# 全ジョブの positive 先頭へタグ追加（試行用。本番前に dry-run で prompt を確認）
+python tools/image_provider_novel_tag_batch.py novels/<作品> \
+  --prepend-tags solo simple_background --dry-run
 ```
 
-dry-run の出力で `provider: grok_pro` / `jobs: 4` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
+**タグの前後追加**（`prepend_tags` → 固定タグ → `danbooru_tags` → `append_tags`）:
+
+| 層 | 指定 |
+|----|------|
+| 作品 | `_meta.yaml` の `character_tag_batch` |
+| キャラ | `tag/characters/<id>.yaml` の `tag_batch`（任意） |
+| CLI | `--prepend-tags` / `--append-tags`（その実行のみ） |
+
+negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
+
+dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
 
 ---
 

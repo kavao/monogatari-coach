@@ -14,7 +14,7 @@
 
 | ファイル | 用途 | strength 目安 |
 |----------|------|----------------|
-| `2026-05-17_flat.naiv4vibebundle` | **普段使い**（フラット／標準画風） | 0.55〜0.65 |
+| `2026-05-17_flat2.naiv4vibebundle` | **普段使い**（フラット／標準画風・既定） | 0.55〜0.65（soft 時は乗数 0.5） |
 
 ファイル名は `YYYY-MM-DD_説明.naiv4vibebundle` のように日付＋用途で付けると、後から `_meta.md` と対応しやすい。
 
@@ -43,9 +43,9 @@
 作品に `_meta.yaml` が無いとき、リポジトリルートの `.env` で横断既定を入れられる（CLI・`_meta.yaml` が優先）。
 
 ```dotenv
-MONOCRI_MANGA_NOVELAI_REFERENCE_IMAGE_PATHS=_how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle
-MONOCRI_MANGA_NOVELAI_REFERENCE_STRENGTH=1.0
-MONOCRI_MANGA_NOVELAI_REFERENCE_INFORMATION_EXTRACTED=1.0
+MONOCRI_MANGA_NOVELAI_REFERENCE_IMAGE_PATHS=_how_to/image_refs/novelai/2026-05-17_flat2.naiv4vibebundle
+MONOCRI_MANGA_NOVELAI_REFERENCE_STRENGTH=0.5
+MONOCRI_MANGA_NOVELAI_REFERENCE_INFORMATION_EXTRACTED=0.5
 ```
 
 複数ファイルは **セミコロン区切り**（例: `file1.naiv4vibebundle;file2.naiv4vibebundle`）。
@@ -71,7 +71,7 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> `
 # CLI で上書き（最優先）
 python tools/image_provider_novel_manga_batch.py novels/<作品> `
   --input yaml --manga-stem manga_01 --source step1-panels `
-  --novelai-reference-image-path "_how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle" `
+  --novelai-reference-image-path "_how_to/image_refs/novelai/2026-05-17_flat2.naiv4vibebundle" `
   --dry-run
 ```
 

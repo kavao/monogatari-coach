@@ -1,0 +1,226 @@
+schema_version: 1
+
+meta:
+  description: "_novel_text 向け rewrite 機械 lint ルール定義"
+  source_doc: "_how_to.example/rewrite.md"
+  canonical_verified: "2026-05-25（既存稿 559 ファイルで U+2026×2 のみ確認）"
+
+# ────────────────────────────────────────────
+# デフォルト動作
+# ────────────────────────────────────────────
+defaults:
+  target_globs:
+    - "_novel_text/novel_text*.md"
+  skip_line_patterns:
+    - "^\\s*#"     # Markdown 見出し（章タイトル・節タイトル）
+    - "^\\s*$"     # 空行
+    - "^---"       # front matter 境界
+    - "^-\\s"      # Markdown リスト項目（- ミミ：等のメモ行）
+    - "^\\*\\*"    # Markdown 太字見出し（**ボディーの変化・経験ログ** 等）
+    - "^>"         # Markdown ブロック引用
+    - "^\\|"       # Markdown テーブル行
+
+# ────────────────────────────────────────────
+# B. 三点リーダー（rewrite §1 文体）
+#    ellipsis.canonical を正形として宣言し、
+#    forbidden にそれ以外の出現パターンを列挙する。
+# ────────────────────────────────────────────
+ellipsis:
+  canonical: "……"   # U+2026 × 2（既存稿の統計で唯一の使用形）
+  forbidden:
+    - id: ellipsis_ascii
+      level: error
+      pattern: "\\.{2,}"
+      message: "半角 ASCII ピリオドの連続。「……」（U+2026 × 2）に置き換える"
+    - id: ellipsis_wrong_unicode
+      level: warning
+      # 単独 U+2026（直前・直後が U+2026 でない）を検出。
+      # 「……」（U+2026 × 2）の中の 1 個を誤検知しないよう後読み・先読みで除外。
+      pattern: "(?<!…)…(?!…)"
+      message: "単独「…」（U+2026 × 1）は作品方針外。「……」（U+2026 × 2）にする"
+
+# ────────────────────────────────────────────
+# A・C: 文体ルール（rewrite §9 / §1）
+# ────────────────────────────────────────────
+rules:
+
+  # ── A. 章番号・前章メタ参照（rewrite §9）──────────────────────────────
+  - id: chapter_meta_label
+    level: warning
+    patterns:
+      - "前章"
+      - "次章"
+      - "あの章"
+      - "前回の章"
+      - "第[一二三四五六七八九十百千\\d]+章"
+    message: >-
+      本文に章番号・前章ラベル。rewrite §9 に従い時間・身体記憶の表現へ置換。
+      例:「第二章でお腹の上に受けた白い温かさ」
+      →「お腹の上に受けた白い温かさを思い出しながら」
+
+  - id: chapter_meta_compare
+    level: warning
+    patterns:
+      - "第[一二三四五六七八九十\\d]+章と"
+      - "前の章と同じ"
+      - "いつもの章"
+    message: >-
+      前章と比較するメタ参照。rewrite §9 に従い「教わった順」等に置換。
+      例:「第二章と全く同じ手順で」→「教わった順どおり、身体はもうその流れを覚えている」
+
+  - id: author_meta
+    level: warning
+    patterns:
+      - "この章では"
+      - "次章に"
+      - "プロットどおり"
+    message: >-
+      執筆者目線のメタ表現。地の文・セリフとして成立するよう書き直す（rewrite §8・§9）
+
+  # ── C. カギ括弧と句点（rewrite §1）───────────────────────────────────
+  - id: dialogue_trailing_period
+    level: warning
+    patterns:
+      # 閉じカギ括弧の直前の句点のみ対象。
+      # 「そうね。私たちなら」のような文中句点（句点が閉じ括弧の直前でない）は許容。
+      - "。」"
+    message: >-
+      閉じカギ括弧の直前に句点。rewrite §1 の通りセリフ末は句点不要。
+      例:「こんにちは。」→「こんにちは」
+
+  - id: dialogue_leading_indent
+    level: warning
+    patterns:
+      # 「・『で始まるセリフ行の先頭に全角スペースがある（インデント不要な行に誤ってインデントを付けた）
+      - "^　[「『]"
+    message: >-
+      「・『で始まるセリフ行の先頭に全角スペースがあります。
+      rewrite §1: セリフ行（「／『で始まる行）はインデント不要。先頭の全角スペースを削除してください
+
+  # ── E. 文法クイックチェック（執筆直後向け）──────────────────────────────
+  # 清書前の「明らかな誤記」を機械的に検出する。rewrite §1〜§10 とは別レイヤーとして
+  # --profile grammar または --profile full で使う。
+
+  - id: punctuation_consecutive
+    level: error
+    patterns:
+      # 同一または異なる句読点の連続（誤打の可能性が高い）
+      - "。。"
+      - "、、"
+      - "。、"
+      - "、。"
+    message: "句読点が連続しています。不要な重複を削除してください"
+
+  - id: ascii_comma_in_prose
+    level: warning
+    patterns:
+      # 半角カンマ（U+002C）。直前が ASCII 英数字のときは除外（1,000 / Hello, world 等）。
+      # ひらがな・カタカナ・漢字・全角記号の直後は誤打とみなす（例: うん,そう → うん、そう）。
+      - "(?<![0-9A-Za-z]),"
+    message: >-
+      日本語本文・セリフ内の半角カンマ（,）。読点は全角「、」（U+3001）に置き換える。
+      英数字の区切り（1,000 等）は検出しない
+
+  - id: empty_dialogue
+    level: warning
+    patterns:
+      # セリフが空の状態（書きかけの可能性）
+      - "「」"
+    message: "空のカギ括弧があります。書きかけの可能性"
+
+  - id: duplicate_particle
+    level: info
+    patterns:
+      # 同じ助詞が直接連続する誤打（「彼がが」「それをを」等）。
+      # 除外理由:
+      #   は: 「はは（母）」「ははは（笑い声）」が誤検知しやすい
+      #   も: 「もも（桃）」等が誤検知
+      #   の: 「ものの（逆接）」「もののように」が非常に多く誤検知
+      #   でで: 「まで + で」（「ここまででいいかい」）を除外するため (?<!ま) で抑制
+      - "をを"
+      - "がが"
+      - "にに"
+      - "(?<!ま)でで"
+    message: "助詞が連続しています。誤打の可能性があります（でで は「まで＋で」を除外済み）"
+
+  - id: fullwidth_space_double
+    level: info
+    patterns:
+      # 全角スペース 2 字以上の連続（インデントは 1 字で統一。rewrite §1）
+      - "　　"
+    message: "全角スペースが連続しています。段落インデントは全角1字で統一"
+
+  # ── D. 段落インデント（rewrite §1）── stateful ──────────────────────────
+  # patterns は空。Python 側の _check_paragraph_indent() が状態付きチェックを行う。
+  # 除外条件（Python 実装済み）:
+  #   - 「 または 『 で直接始まる行（セリフ行）
+  #   - 空行・front matter（---）
+  #   - Markdown 非本文要素（skip_line_patterns にマッチする行）
+  # 注意: 見出し直後の第1行もインデント必須（除外しない）
+  - id: paragraph_indent
+    level: warning
+    patterns: []
+    message: >-
+      地の文の行頭に全角スペース（　）がありません。
+      rewrite §1: 「／『で始まらない本文行は全角スペース 1 字でインデント（見出し直後の第1行も含む）
+
+# ────────────────────────────────────────────
+# プロファイル（--profile で選択）
+# ────────────────────────────────────────────
+profiles:
+  default:
+    description: "通常の清書後 lint（ルール A + B + C）"
+    rules:
+      - chapter_meta_label
+      - chapter_meta_compare
+      - author_meta
+      - ellipsis_ascii
+      - ellipsis_wrong_unicode
+      - dialogue_trailing_period
+
+  grammar:
+    description: "執筆直後のクイックチェック（ルール C + D + E）。清書前の誤打・書きかけ・インデント漏れを検出"
+    rules:
+      - dialogue_leading_indent
+      - paragraph_indent
+      - punctuation_consecutive
+      - ascii_comma_in_prose
+      - empty_dialogue
+      - duplicate_particle
+      - fullwidth_space_double
+
+  full:
+    description: "執筆後の総合チェック（default + grammar）。清書前に一度走らせる"
+    extends: default
+    rules:
+      - dialogue_leading_indent
+      - paragraph_indent
+      - punctuation_consecutive
+      - ascii_comma_in_prose
+      - empty_dialogue
+      - duplicate_particle
+      - fullwidth_space_double
+
+  minimal:
+    description: "章メタ未整備の旧稿向け。句読点のみ確認したいとき（ルール B + C）"
+    rules:
+      - ellipsis_ascii
+      - ellipsis_wrong_unicode
+      - dialogue_trailing_period
+
+  strict_all:
+    description: "体裁総仕上げ（フェーズ3以降）。default + 段落インデント"
+    extends: default
+    rules:
+      - paragraph_indent   # フェーズ3で実装予定
+
+# ────────────────────────────────────────────
+# allowlist（作品 YAML で上書き・追記可）
+# ────────────────────────────────────────────
+# 物語内カウンタ（章番号ではない）など、誤検知を許容するフレーズをここに列挙する。
+# 行全体を skipするのではなく、フレーズ単位でマッチを免除する。
+# 例: novels/069_…/novel_text_rewrite_rules.yaml に追記
+#   allowlist_patterns:
+#     - "二回目の◎"
+#     - "三回目の"
+allowlist_patterns: []

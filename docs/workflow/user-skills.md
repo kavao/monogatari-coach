@@ -43,6 +43,18 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 
 ---
 
+## 例：body_therapy ボディー抽選（character-body-pick）
+
+`character.md` の **ボディーの特徴** を書くとき、`episode_mature.json` から性別・年齢帯に応じた候補文を抽選する流れの一例です。構造 lint は公式の **`tools/novel_character_md_check.py`** のまま使い、抽選だけをユーザスキルに分離しています。
+
+- **雛形（基本）**: [`_how_to.example/skills/character-body-pick/`](../../_how_to.example/skills/character-body-pick/)
+- **完全版（作業用）**: [`_how_to/skills/character-body-pick/`](../../_how_to/skills/character-body-pick/)
+- **実装**: [`_how_to/tools/novel_character_body_pick.py`](../../_how_to/tools/novel_character_body_pick.py)
+
+チャットでは「`_how_to/skills/character-body-pick/SKILL.md` を読んで、女性・若者でボディー候補を抽選して」と指示すれば動きます。抽選結果を `character.md` に反映したあと、`python tools/novel_character_md_check.py novels/<作品> --profile plan` で必須ラベルを確認してください。
+
+---
+
 ## 関連リンク
 
 - [Workflow の入口](index.md)

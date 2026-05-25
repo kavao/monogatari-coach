@@ -11,7 +11,7 @@ novelai:
   portions:
     cross_flat:
       label: 横断・普段使い（フラット画風）
-      path: _how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle
+      path: _how_to/image_refs/novelai/2026-05-17_flat2.naiv4vibebundle
       # バンドル内 importInfo への乗数（1.0 = UI エクスポート値どおり）
       strength: 1.0
       information_extracted: 1.0
@@ -21,6 +21,15 @@ novelai:
       path: references/novelai/WORK_CODE_scene.naiv4vibebundle
       strength: 1.0
       information_extracted: 1.0
+
+# ── キャラタグ一括（image_provider_novel_tag_batch.py）────────────────
+# 全キャラ・全バリアントの positive / negative に挿入する任意タグ。
+# 優先: 本節 → tag/characters/*.yaml の tag_batch → CLI --prepend-tags 等
+# character_tag_batch:
+#   prepend_tags: [simple_background, white_background]
+#   append_tags: []
+#   prepend_negative_tags: []
+#   append_negative_tags: []
 
 # ── 名前付きレシピ（--workflow で呼び出す）──────────────────────────
 # 優先順位: CLI 明示フラグ > workflow 設定 > .env / 既定値

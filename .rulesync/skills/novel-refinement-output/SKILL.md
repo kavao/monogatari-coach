@@ -39,6 +39,7 @@ description: >-
 
 ## 他フェーズとの関係（参照）
 
+- **執筆直後の機械校正（`grammar --fix`）**: スキル **`novel-text-rewrite-lint`**。`_novel_text` 保存後に誤打（`　「`・半角 `,`・`…` 等）を **安全な置換だけ** 直す。**本スキル（rewrite 清書）の前**に行ってよいが、**代わりにはしない**。
 - **Writing Mode §2.3 手順7（reader.md による清書）**: 手順どおりなら **`_novel_text/` 内の同一ファイル名を置換**する（下読み・体裁の清書）。
 - **本スキル（rewrite.md による文章校正）**: 手順7と同様に **`_novel_text/`** を更新するが、**更新前に必ず `_novel_text_backup/` へ旧版を退避する**。
 
@@ -47,10 +48,12 @@ description: >-
 1. **作業計画**: 対象の `novel_textXX.md` と、強化したい点（分量・描写・文体）を明示する。
 2. **入力を読む**: `_novel_text/novel_textXX.md` を正とする。
 3. **バックアップ採番**: `_novel_text_backup/` に、上書き対象の `novel_textXX.md` を **`<元ファイル名>_vNNN.md`** の形式で退避する。
-4. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル）。
+4. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル。**§9 章番号・前章メタ参照の除去**を含む）。
 5. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
 6. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
-   - **部分加筆・シーンの途中挿入**でも手順 3〜6 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
+7. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスクを更新する。
+8. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。
+   - **部分加筆・シーンの途中挿入**でも手順 3〜7 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
 
 ## 査証・メタ
 
@@ -61,3 +64,4 @@ description: >-
 - プロジェクト全体: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.5 Writing Mode Refinement」
 - 初稿のファイル出力: **`novel-text-file-output`**
 - 技法: **`_how_to/rewrite.md`**
+- 執筆直後の機械校正・清書後 lint: **`novel-text-rewrite-lint`**

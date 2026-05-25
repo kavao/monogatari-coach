@@ -18,6 +18,20 @@ config/image_generation.json で解決）。
 
 YAML の推奨書式: manga-prompt-ir スキル（.rulesync/skills/manga-prompt-ir/）の
 schemas/character.py と examples/character.yaml を参照。
+
+プロンプト組み立て（positive）:
+  STYLE_PREFIX
+  + prepend_tags（先頭追加・下記の順でマージ）
+  + fixed（character_tags / costume / consistency / appearance 固定）
+  + danbooru_tags（各 prompt_variants）
+  + append_tags（末尾追加）
+
+prepend / append の指定（後勝ちではなく連結。重複は先勝ちで除去）:
+  1. 作品 _meta.yaml の character_tag_batch
+  2. tag/characters/<id>.yaml の tag_batch
+  3. CLI --prepend-tags / --append-tags（その実行だけ）
+
+negative は DEFAULT_NEGATIVE + prepend_negative + YAML negative_tags + append_negative。
 """
 
 from __future__ import annotations
@@ -27,6 +41,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -124,6 +139,99 @@ def dedupe_tags(tags: list[str]) -> list[str]:
     return list(dict.fromkeys(t.strip() for t in tags if t and t.strip()))
 
 
+@dataclass(frozen=True)
+class TagBatchLayers:
+    """バッチ実行時にプロンプト前後へ挿入するタグ層。"""
+
+    prepend_tags: tuple[str, ...] = ()
+    append_tags: tuple[str, ...] = ()
+    prepend_negative_tags: tuple[str, ...] = ()
+    append_negative_tags: tuple[str, ...] = ()
+
+    @staticmethod
+    def empty() -> TagBatchLayers:
+        return TagBatchLayers()
+
+    def merge(self, other: TagBatchLayers) -> TagBatchLayers:
+        """self のあとに other を連結（同キー内の順序を保つ）。"""
+        return TagBatchLayers(
+            prepend_tags=tuple(dedupe_tags([*self.prepend_tags, *other.prepend_tags])),
+            append_tags=tuple(dedupe_tags([*self.append_tags, *other.append_tags])),
+            prepend_negative_tags=tuple(
+                dedupe_tags([*self.prepend_negative_tags, *other.prepend_negative_tags])
+            ),
+            append_negative_tags=tuple(
+                dedupe_tags([*self.append_negative_tags, *other.append_negative_tags])
+            ),
+        )
+
+
+def parse_tag_tokens(values: list[str] | None) -> list[str]:
+    """CLI の nargs またはカンマ区切り1引数をタグ列に展開する。"""
+    if not values:
+        return []
+    out: list[str] = []
+    for raw in values:
+        for part in str(raw).split(","):
+            token = part.strip()
+            if token:
+                out.append(token)
+    return out
+
+
+def layers_from_mapping(data: object | None) -> TagBatchLayers:
+    """_meta.yaml の character_tag_batch または character YAML の tag_batch。"""
+    if not isinstance(data, dict):
+        return TagBatchLayers.empty()
+
+    def _list(key: str) -> tuple[str, ...]:
+        raw = data.get(key) or []
+        if not isinstance(raw, list):
+            return ()
+        return tuple(dedupe_tags(str(x) for x in raw))
+
+    return TagBatchLayers(
+        prepend_tags=_list("prepend_tags"),
+        append_tags=_list("append_tags"),
+        prepend_negative_tags=_list("prepend_negative_tags"),
+        append_negative_tags=_list("append_negative_tags"),
+    )
+
+
+def load_novel_tag_batch_layers(novel_dir: Path) -> TagBatchLayers:
+    from novel_meta_yaml import load_meta_yaml
+
+    meta = load_meta_yaml(novel_dir)
+    if not meta:
+        return TagBatchLayers.empty()
+    return layers_from_mapping(meta.get("character_tag_batch"))
+
+
+def compose_positive_tags(
+    fixed: list[str],
+    danbooru: list[str],
+    layers: TagBatchLayers,
+) -> list[str]:
+    return dedupe_tags([*layers.prepend_tags, *fixed, *danbooru, *layers.append_tags])
+
+
+def compose_negative_prompt(
+    base_negative: str,
+    yaml_neg_extra: list[str],
+    layers: TagBatchLayers,
+) -> str:
+    parts: list[str] = []
+    if layers.prepend_negative_tags:
+        parts.append(", ".join(layers.prepend_negative_tags))
+    if base_negative.strip():
+        parts.append(base_negative.strip())
+    if yaml_neg_extra:
+        parts.append(", ".join(dedupe_tags(yaml_neg_extra)))
+    if layers.append_negative_tags:
+        parts.append(", ".join(layers.append_negative_tags))
+    return ", ".join(p for p in parts if p)
+
+
 def load_character_yaml(yaml_path: Path) -> dict:
     data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -157,6 +265,8 @@ def iter_tag_jobs(
     novel_dir: Path,
     only_char: set[str] | None,
     variant_ids: set[str] | None,
+    novel_layers: TagBatchLayers | None = None,
+    cli_layers: TagBatchLayers | None = None,
 ) -> list[dict]:
     """
     tag/characters/*.yaml を走査してジョブリストを返す。
@@ -177,6 +287,9 @@ def iter_tag_jobs(
             f"tag/characters/ に .yaml ファイルがありません: {char_dir}"
         )
 
+    base_layers = (novel_layers or TagBatchLayers.empty()).merge(
+        cli_layers or TagBatchLayers.empty()
+    )
     jobs: list[dict] = []
     for yaml_path in yaml_files:
         try:
@@ -190,6 +303,8 @@ def iter_tag_jobs(
             continue
 
         fixed = fixed_tags_from(char)
+        char_layers = layers_from_mapping(char.get("tag_batch"))
+        job_layers = base_layers.merge(char_layers)
         neg_extra: list[str] = char.get("negative_tags") or []
         variants: list[dict] = char.get("prompt_variants") or []
 
@@ -206,7 +321,7 @@ def iter_tag_jobs(
                 continue
 
             danbooru: list[str] = v.get("danbooru_tags") or []
-            all_tags = dedupe_tags(fixed + danbooru)
+            all_tags = compose_positive_tags(fixed, danbooru, job_layers)
             prompt = STYLE_PREFIX + ", ".join(all_tags)
             prefix = f"{char_id}_{vid}"
             output_dir = (novel_dir / "tag" / char_id).as_posix()
@@ -217,6 +332,7 @@ def iter_tag_jobs(
                 "prefix": prefix,
                 "prompt": prompt,
                 "neg_extra": neg_extra,
+                "tag_layers": job_layers,
                 "output_dir": output_dir,
             })
 
@@ -302,6 +418,37 @@ def main(argv: list[str] | None = None) -> int:
         help="作品 _meta.yaml に登録された workflows 一覧を表示して終了",
     )
     p.add_argument(
+        "--prepend-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help=(
+            "全ジョブの positive 先頭へ追加（fixed より前）。"
+            "カンマ区切り1引数可。例: --prepend-tags solo simple_background"
+        ),
+    )
+    p.add_argument(
+        "--append-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help="全ジョブの positive 末尾へ追加（danbooru_tags の後）",
+    )
+    p.add_argument(
+        "--prepend-negative-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help="negative 先頭へ追加（--negative-prompt より前）",
+    )
+    p.add_argument(
+        "--append-negative-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help="negative 末尾へ追加（YAML negative_tags の後）",
+    )
+    p.add_argument(
         "--novelai-portion-id",
         default=None,
         metavar="ID",
@@ -376,8 +523,23 @@ def main(argv: list[str] | None = None) -> int:
         if args.variant_id else None
     )
 
+    novel_layers = load_novel_tag_batch_layers(novel)
+    cli_layers = TagBatchLayers(
+        prepend_tags=tuple(parse_tag_tokens(args.prepend_tags)),
+        append_tags=tuple(parse_tag_tokens(args.append_tags)),
+        prepend_negative_tags=tuple(parse_tag_tokens(args.prepend_negative_tags)),
+        append_negative_tags=tuple(parse_tag_tokens(args.append_negative_tags)),
+    )
+    run_layers = novel_layers.merge(cli_layers)
+
     try:
-        jobs = iter_tag_jobs(novel, only_char, variant_ids)
+        jobs = iter_tag_jobs(
+            novel,
+            only_char,
+            variant_ids,
+            novel_layers=novel_layers,
+            cli_layers=cli_layers,
+        )
     except FileNotFoundError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -423,6 +585,16 @@ def main(argv: list[str] | None = None) -> int:
     print(f"novel : {novel}")
     print(f"provider: {provider}")
     print(f"jobs  : {len(jobs)}")
+    if run_layers.prepend_tags:
+        print(f"prepend_tags: {', '.join(run_layers.prepend_tags)}")
+    if run_layers.append_tags:
+        print(f"append_tags: {', '.join(run_layers.append_tags)}")
+    if run_layers.prepend_negative_tags or run_layers.append_negative_tags:
+        print(
+            "negative layers: "
+            f"prepend={list(run_layers.prepend_negative_tags)!r} "
+            f"append={list(run_layers.append_negative_tags)!r}"
+        )
     if args.workflow:
         print(f"workflow: {args.workflow}")
     if novelai_ref.paths:
@@ -443,10 +615,12 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  reference_information_extracted_multiple={ri}")
 
     for job in jobs:
-        neg_parts = [args.negative_prompt]
-        if job["neg_extra"]:
-            neg_parts.append(", ".join(job["neg_extra"]))
-        negative = ", ".join(filter(None, neg_parts))
+        job_layers: TagBatchLayers = job["tag_layers"]
+        negative = compose_negative_prompt(
+            args.negative_prompt,
+            job["neg_extra"],
+            job_layers,
+        )
 
         payload = {
             "provider": provider,

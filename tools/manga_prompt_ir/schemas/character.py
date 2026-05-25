@@ -49,6 +49,17 @@ class CharacterMangaRules(BaseModel):
     closeup_rules: str | None = None
 
 
+class CharacterTagBatchLayers(BaseModel):
+    """image_provider_novel_tag_batch.py 向けのプロンプト前後タグ（任意）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prepend_tags: list[str] = Field(default_factory=list)
+    append_tags: list[str] = Field(default_factory=list)
+    prepend_negative_tags: list[str] = Field(default_factory=list)
+    append_negative_tags: list[str] = Field(default_factory=list)
+
+
 class CharacterPromptVariant(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -75,6 +86,7 @@ class CharacterPrompt(BaseModel):
     manga_rules: CharacterMangaRules = Field(default_factory=CharacterMangaRules)
     prompt_variants: list[CharacterPromptVariant] = Field(default_factory=list)
     negative_tags: list[str] = Field(default_factory=list)
+    tag_batch: CharacterTagBatchLayers | None = None
 
     def fixed_prompt_tags(self) -> list[str]:
         tags: list[str] = []

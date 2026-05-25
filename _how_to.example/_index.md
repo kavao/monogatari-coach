@@ -45,3 +45,5 @@
    - 執筆の開始時・終了時に参照・更新することで、長期的な執筆の継続性を担保する。
 14.（カクヨム向けルビ）雛形 `skills/kakuyomu-convert/`
    - ユーザ作業用に `_how_to/skills/kakuyomu-convert/` へコピーして使う。最短手順は `USER_HINTS.md`（**コピー**／**カクヨムプラグイン**の2点）。`kakuyomu.csv.example` は同梱。実装は `_how_to/tools/kakuyomu_ruby_apply.py`
+15.（body_therapy ボディー抽選）雛形 `skills/character-body-pick/`
+   - 完全版は `_how_to/skills/character-body-pick/`。`episode_mature.json` から候補を抽選。実装は `_how_to/tools/novel_character_body_pick.py`。`character.md` 構造 lint は公式 `tools/novel_character_md_check.py` のまま

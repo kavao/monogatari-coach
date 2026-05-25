@@ -436,6 +436,7 @@ _how_to/tag.md のルールに従い、各人物について
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
+   - **執筆直後（推奨）**: 保存・確認のあと `tools/novel_text_rewrite_lint.py` を **`--profile grammar --fix`** で誤打・体裁を機械校正する（`--fix-dry-run` を先に）。rewrite 清書の代わりにはしない（スキル **`novel-text-rewrite-lint`**・**`novel-text-file-output`**）。
 6. 清書・文章校正では、**先に `_novel_text_backup/` へ旧版退避し、その後 `_novel_text/` 内の同一ファイル名を更新**する（詳細はスキル **`novel-refinement-output`**）。
    - 執筆・清書・追記の完了扱いは **`.rulesync/rules/concepts.md`** の「完了扱い条件」とスキル **`novel-text-file-output`** を正とする。
    - 分量比較が必要なときは、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。
@@ -461,7 +462,7 @@ flowchart TD
 執筆の「継続性」を担保し、外部投稿に向けた準備を行います。管理ファイルは各作品フォルダ直下の `_meta.md` です。
 
 - **執筆終了時（引き継ぎ）**:
-  - `_how_to/meta.md` のテンプレートに基づき、作品フォルダ内の `_meta.md`（内部メタ情報）を更新します。
+  - `_how_to/meta.md` のテンプレートに基づき、作品フォルダ内の `_meta.md`（内部メタ情報）を更新します（スキル **`novel-story-reflection`**）。
   - 現在の進捗、未回収の伏線、次回のタスクを明文化します。
 - **執筆開始時（再開）**:
   - 作品フォルダ内の `_meta.md` を読み込み、前回のコンテキストを完全に復旧させてから作業に入ります。
@@ -469,11 +470,15 @@ flowchart TD
 - **完結・投稿時**:
   - `_meta.md` の「外部メタ情報」を作成・更新し、プラットフォーム投稿用のキャッチコピーや紹介文を生成します。
 
+#### 執筆後のストーリー反映（同期）
+本文の保存・清書の直後に、最新の文字数、起きたイベント、次回タスクを `_meta.md` へ反映し、`design_specification.md`（プロット）との整合性を確認します。詳細はスキル **`novel-story-reflection`** を参照してください。
+
 ```mermaid
 flowchart TD
     Start[Session Start] --> ReadMeta[Read _meta.md]
     ReadMeta --> ExecuteTask[Perform Writing/Planning]
-    ExecuteTask --> UpdateMeta[Update _meta.md]
+    ExecuteTask --> SyncMeta[Sync Story Reflection]
+    SyncMeta --> UpdateMeta[Update _meta.md]
     UpdateMeta --> End[Session End]
 ```
 

@@ -9,6 +9,7 @@
 | ID | パス | 概要 |
 |----|------|------|
 | kakuyomu-convert | [`kakuyomu-convert/SKILL.md`](kakuyomu-convert/SKILL.md) | `kakuyomu.csv` に基づきカクヨムルビ記法を `_novel_text`（または指定入力）から機械挿入し **`_novel_text_re` に出力**。実装は **`_how_to/tools/kakuyomu_ruby_apply.py`** |
+| character-body-pick | [`character-body-pick/SKILL.md`](character-body-pick/SKILL.md) | `episode_mature.json` から `character.md` ボディー候補を抽選（**body_therapy** 向け）。実装は **`_how_to/tools/novel_character_body_pick.py`**。完全版は **`_how_to/skills/character-body-pick/`** |
 
 ## 呼び出し（手書き版）
 

@@ -105,6 +105,107 @@ python tools/novel_code_allocate.py novels/
 
 ---
 
+### `novel_text_rewrite_lint.py` — 本文 rewrite 機械 lint
+
+`_novel_text/*.md` を `rewrite.md`（§1・§9）の体裁規則に基づいて検査し、行番号付きで問題を報告します。清書後の取りこぼし確認と、清書完了ゲートに使います。
+
+ルール定義は `_how_to.example/novel_text_rewrite_rules.yaml`（作品単位の上書きは `novels/<作品>/novel_text_rewrite_rules.yaml`）で管理します。
+
+**検出するルール（既定プロファイル `default`）**:
+
+プロファイルによって検出内容を切り替えます。
+
+| `--profile` | 対象ルール | 主な用途 |
+|-------------|-----------|---------|
+| `default`（既定） | 章メタ・三点リーダー・`。」` | 清書後の取りこぼし確認 |
+| `grammar` | セリフ行頭・段落インデント・句読点連続・半角カンマ・空括弧・助詞重複・全角スペース | **執筆直後**のクイックチェック／`--fix` |
+| `full` | `default` + `grammar` の全ルール | 清書前の総合チェック |
+| `minimal` | 三点リーダー・`。」` のみ | 旧稿を句読点から直したいとき |
+
+**検出ルール一覧**:
+
+| rule_id | 内容 | レベル | profile |
+|---------|------|--------|---------|
+| `chapter_meta_label` | 「第○章」「前章」「次章」などの章番号・ラベル | warning | default/full |
+| `chapter_meta_compare` | 「第○章と同じ」等の前章比較 | warning | default/full |
+| `author_meta` | 「この章では」「プロットどおり」等の執筆者目線 | warning | default/full |
+| `ellipsis_ascii` | 半角 ASCII `...` の連続 | **error** | default/full |
+| `ellipsis_wrong_unicode` | 単独「…」（U+2026 × 1） | warning | default/full |
+| `dialogue_trailing_period` | 閉じカギ括弧直前の句点（`。」`） | warning | default/full |
+| `dialogue_leading_indent` | セリフ行頭の全角スペース（`　「`） | warning | grammar/full |
+| `paragraph_indent` | 地の文の行頭インデント不足 | warning | grammar/full |
+| `punctuation_consecutive` | `。。` `、、` など句読点の連続 | **error** | grammar/full |
+| `ascii_comma_in_prose` | 英数字以外の直後の半角 `,`（`うん,そう` 等） | warning | grammar/full |
+| `empty_dialogue` | 空のカギ括弧 `「」` | warning | grammar/full |
+| `duplicate_particle` | `をを` `がが` など助詞の重複 | info | grammar/full |
+| `fullwidth_space_double` | 全角スペースの連続 `　　` | info | grammar/full |
+
+**推奨ワークフロー（全体）**:
+
+| 段階 | コマンド | 意味 |
+|------|----------|------|
+| 執筆直後 | `grammar --fix-dry-run` → `grammar --fix` → `grammar` | 誤打の機械校正（**清書の代わりではない**） |
+| 清書前 | `--profile full` | A〜E の総合チェック |
+| 清書後 | `--strict`（既定 `default`） | 清書完了ゲート |
+
+```bash
+# 0. 執筆直後 — 誤打・体裁を機械校正（profile grammar 必須）
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_text03_2.md --profile grammar --fix-dry-run
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_text03_2.md --profile grammar --fix
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_text03_2.md --profile grammar
+
+# 1. 清書前 — rewrite ルールと文法を総合チェックする
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --profile full
+
+# 2. rewrite.md に従って清書（_novel_text_backup/ に退避してから _novel_text/ を更新）
+
+# 3. 清書完了ゲート — warning も exit 1 にして残りがないことを確認する
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
+```
+
+`--fix` で自動置換できる rule_id: `dialogue_leading_indent` `ascii_comma_in_prose` `ellipsis_ascii` `dialogue_trailing_period` `paragraph_indent`（いずれも **grammar プロファイル有効時**）。句読点連続・空「」・助詞重複は検出のみ。
+
+```bash
+# 単一ファイルを確認する
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_text03_2.md
+
+# CI・エージェント向けに JSON で出力する
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --json
+
+# 設定ファイルパスと有効ルールを表示する
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --verbose
+```
+
+スキル: 執筆直後は **`novel-text-file-output`** → **`novel-text-rewrite-lint`**（`grammar --fix`）。清書は **`novel-refinement-output`**。
+
+清書が完了したら `--strict` で exit 0 を確認してから「清書完了」と報告します（`novel-refinement-output` スキルと連動）。
+
+物語内カウンタ（「二回目の◎」など）を誤検知する場合は、`novels/<作品>/novel_text_rewrite_rules.yaml` の `allowlist_patterns` に追加します。
+
+#### novel-refinement-output との連携（推奨手順）
+
+`novel-refinement-output` スキルの手順6（確認）のあとに lint を実行するのが推奨ワークフローです。
+
+```bash
+# ① 清書前: 全体チェック（A〜E 全ルール）
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --profile full
+
+# ② rewrite.md に従って清書する（旧版を _novel_text_backup/ に退避してから更新）
+
+# ③ 清書後ゲート: --strict で warning も 0 を確認してから完了報告する
+python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
+```
+
+ステップ③で exit 0 が出たら、`_meta.md` の進捗節に以下の形式でメモを残します。
+
+```
+- lint: --strict で exit 0 確認（YYYY-MM-DD、profile: full → strict）
+```
+
+この1行が「清書完了」の機械的根拠として機能します。査証ログ（`_workingspace/log/YYYYMM.md`）にも同内容を追記してください。
+
+---
+
 ## IR（中間表現）関連
 
 漫画ページ・キャラクタータグを YAML IR（構造化定義ファイル）として管理するためのツール群です。IR の概要は [manga-prompt-ir.md](../image-generation/manga-prompt-ir.md) を参照してください。
@@ -235,7 +336,19 @@ python tools/image_provider_novel_tag_batch.py novels/NNN_作品名
 
 # provider を明示する場合
 python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 --provider novelai
+
+# 全ジョブの positive 先頭へタグを追加（試行・一時運用向け）
+python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
+  --prepend-tags solo simple_background --dry-run
 ```
+
+**プロンプトのタグ順**（positive）: 品質プリフィックス → `prepend_tags` → 固定タグ（YAML）→ バリアント `danbooru_tags` → `append_tags`。
+
+| 指定場所 | キー / フラグ |
+|----------|----------------|
+| 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` など |
+| `tag/characters/<id>.yaml` | `tag_batch.prepend_tags` など（任意） |
+| CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--prepend-negative-tags` / `--append-negative-tags` |
 
 生成画像の保存先: `novels/<作品>/tag/<romaji>/`
 

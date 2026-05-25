@@ -72,15 +72,15 @@ python tools/novel_project_check.py novels/<作品> --require-character-structur
 
 JSON で提案も含めたいときは `--character-suggest --json` を併用する。
 
-## ボディー候補の抽選（任意）
+## ボディー候補の抽選（body_therapy・任意）
 
-`body_therapy` 作品で `episode_mature.json` から候補文を引くときは、**ラベル名＝JSON トップレベルキー**（schema 2.0）として扱う。
+`episode_mature.json` からボディー子ラベルの候補文を引く処理は **ユーザスキル** に分離した。
 
-```bash
-python tools/novel_character_body_pick.py --gender female --age-band 若者 --json
-```
+- 雛形: `_how_to.example/skills/character-body-pick/SKILL.md`
+- 完全版: `_how_to/skills/character-body-pick/SKILL.md`
+- 実装: `_how_to/tools/novel_character_body_pick.py`
 
-旧キー名（`女性の体型` 等）はツール内の `episode_path` 正規化でのみエイリアス。新規実装ではラベル名をそのままキーに使う。
+チャットでユーザスキルを明示してから使う（公式 agent スキルには載らない）。
 
 ## 関連
 

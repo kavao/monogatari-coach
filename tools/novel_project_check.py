@@ -25,6 +25,7 @@ if str(_TOOLS_DIR) not in sys.path:
 import novel_code_allocate as nca  # noqa: E402
 import novel_character_md_check as ncmc  # noqa: E402
 import novel_image_layout as nil  # noqa: E402
+import novel_text_rewrite_lint as ntrl  # noqa: E402
 
 
 # overview.md「小説ファイル」に基づく執筆開始前の必須（本文ファイルは未作成でもよい）
@@ -75,6 +76,8 @@ def check_novel_project(
     character_profile: str = "plan",
     character_strict: bool = False,
     character_suggest: bool = False,
+    require_text_lint: bool = False,
+    text_lint_profile: str = "default",
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -181,6 +184,32 @@ def check_novel_project(
         out["ok"] = False
         out["issues"].append("manga/ がありません（--require-manga-dir 指定）")
 
+    if require_text_lint:
+        try:
+            lint_result = ntrl.run_lint(
+                work,
+                profile=text_lint_profile,
+                strict=True,
+                root=Path(__file__).resolve().parent.parent,
+            )
+            out["optional"]["text_lint"] = {
+                "ok": lint_result["ok"],
+                "profile": text_lint_profile,
+                "files_checked": len(lint_result.get("files_checked") or []),
+                "issues_count": len(lint_result.get("issues") or []),
+                "issues": lint_result.get("issues") or [],
+            }
+            if not lint_result["ok"]:
+                out["ok"] = False
+                cnt = len(lint_result.get("issues") or [])
+                out["issues"].append(
+                    f"本文 lint: {cnt} 件の問題あり（--require-text-lint / profile: {text_lint_profile}）"
+                )
+        except Exception as e:
+            out["optional"]["text_lint"] = {"ok": False, "error": str(e)}
+            out["ok"] = False
+            out["issues"].append(f"本文 lint 実行エラー: {e}")
+
     return out
 
 
@@ -248,6 +277,16 @@ def main(argv: list[str] | None = None) -> int:
         help="character.md 構造 lint の不足項目追記案・表形式変換案を JSON 出力に含める",
     )
     p.add_argument(
+        "--require-text-lint",
+        action="store_true",
+        help="本文 rewrite lint を --strict で実行し、違反があれば NG とする（清書完了ゲート）",
+    )
+    p.add_argument(
+        "--text-lint-profile",
+        default="default",
+        help="本文 lint のプロファイル（既定: default）",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -280,6 +319,8 @@ def main(argv: list[str] | None = None) -> int:
         character_profile=args.character_profile,
         character_strict=args.character_strict,
         character_suggest=args.character_suggest,
+        require_text_lint=args.require_text_lint,
+        text_lint_profile=args.text_lint_profile,
     )
 
     if args.check_image_layout:
@@ -343,6 +384,17 @@ def main(argv: list[str] | None = None) -> int:
         warnings = ch.get("warnings") or []
         if warnings:
             print(f"    character.md WARN: {len(warnings)} 件")
+
+    if args.require_text_lint:
+        tl = opt.get("text_lint") or {}
+        lint_ok = tl.get("ok", False)
+        cnt = tl.get("issues_count", 0)
+        files = tl.get("files_checked", 0)
+        print(
+            f"    本文 lint（profile: {args.text_lint_profile} --strict）: "
+            + ("OK" if lint_ok else f"NG — {cnt} 件")
+            + f"  {files} ファイル確認"
+        )
 
     if result["ok"] and not result.get("issues"):
         print("\n=== 結果: OK ===")
