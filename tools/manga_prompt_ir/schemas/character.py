@@ -67,6 +67,7 @@ class CharacterPromptVariant(BaseModel):
     title: str
     description: str
     danbooru_tags: list[str] = Field(default_factory=list)
+    combines_with: str | None = None
     caption: str | None = None
     translation: str | None = None
 
@@ -89,6 +90,9 @@ class CharacterPrompt(BaseModel):
     tag_batch: CharacterTagBatchLayers | None = None
 
     def fixed_prompt_tags(self) -> list[str]:
+        for variant in self.prompt_variants:
+            if variant.variant_id == "000_base" and variant.danbooru_tags:
+                return list(dict.fromkeys(variant.danbooru_tags))
         tags: list[str] = []
         tags.extend(self.character_tags)
         tags.extend(self.costume.outfit_tags)

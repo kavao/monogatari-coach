@@ -20,11 +20,14 @@ YAML の推奨書式: manga-prompt-ir スキル（.rulesync/skills/manga-prompt-
 schemas/character.py と examples/character.yaml を参照。
 
 プロンプト組み立て（positive）:
-  STYLE_PREFIX
-  + prepend_tags（先頭追加・下記の順でマージ）
-  + fixed（character_tags / costume / consistency / appearance 固定）
-  + danbooru_tags（各 prompt_variants）
-  + append_tags（末尾追加）
+  000〜099 番台:
+    STYLE_PREFIX + prepend + fixed + danbooru_tags + append（カンマ連結）
+
+  100番台かつ combines_with あり（_how_to.example/tag.md）:
+    NovelAI: STYLE_PREFIX + 「資料タグ | combines_with 先の danbooru_tags」（パイプ）
+    その他 provider: 000番台と同様に fixed + 資料 + 結合先をカンマ連結
+
+  100番台で combines_with が無い場合は従来どおり fixed + 資料タグのみ。
 
 prepend / append の指定（後勝ちではなく連結。重複は先勝ちで除去）:
   1. 作品 _meta.yaml の character_tag_batch
@@ -38,11 +41,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+_VARIANT_ID_NUM = re.compile(r"^(\d+)")
 
 try:
     import yaml
@@ -243,6 +249,91 @@ def load_character_yaml(yaml_path: Path) -> dict:
     return data
 
 
+def reference_slot_number(variant_id: str) -> int | None:
+    m = _VARIANT_ID_NUM.match((variant_id or "").strip())
+    if not m:
+        return None
+    return int(m.group(1))
+
+
+def is_reference_slot(variant_id: str) -> bool:
+    n = reference_slot_number(variant_id)
+    return n is not None and n >= 100
+
+
+def variants_by_id(variants: list[dict]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for v in variants:
+        vid = str(v.get("variant_id") or "").strip()
+        if vid:
+            out[vid] = v
+    return out
+
+
+def base_fixed_tags_from(char: dict, variants: list[dict]) -> list[str]:
+    """固定外見の正本は ``000_base`` の danbooru_tags（_how_to.example/tag.md）。"""
+    ref = variants_by_id(variants).get("000_base")
+    if ref:
+        base = list(ref.get("danbooru_tags") or [])
+        if base:
+            return base
+    return fixed_tags_from(char)
+
+
+def danbooru_for_combines_with(
+    variants: list[dict],
+    combines_with: str,
+    char: dict | None = None,
+) -> list[str]:
+    ref = variants_by_id(variants).get(combines_with.strip())
+    if not ref:
+        known = ", ".join(sorted(variants_by_id(variants)))
+        raise ValueError(
+            f"combines_with={combines_with!r} が prompt_variants にありません。"
+            f" 既存: {known or '(なし)'}"
+        )
+    target = list(ref.get("danbooru_tags") or [])
+    if char is not None:
+        base = base_fixed_tags_from(char, variants)
+        return dedupe_tags([*base, *target])
+    return target
+
+
+def compose_job_prompt(
+    char: dict,
+    variant: dict,
+    variants: list[dict],
+    job_layers: TagBatchLayers,
+    *,
+    use_novelai_pipe: bool,
+) -> str:
+    """1ジョブ分の positive プロンプト（STYLE_PREFIX 込み）。"""
+    base_fixed = base_fixed_tags_from(char, variants)
+    danbooru: list[str] = list(variant.get("danbooru_tags") or [])
+    vid = str(variant.get("variant_id") or "")
+    combines_raw = variant.get("combines_with")
+    combines = str(combines_raw).strip() if combines_raw else ""
+
+    if combines and is_reference_slot(vid):
+        right_tags = danbooru_for_combines_with(variants, combines, char)
+        if use_novelai_pipe:
+            from image_provider_novel_manga_batch import join_novelai_pipe_tag_line
+
+            left_tags = compose_positive_tags([], danbooru, job_layers)
+            body = join_novelai_pipe_tag_line(left_tags, [right_tags])
+            return STYLE_PREFIX + body
+        merged = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
+        return STYLE_PREFIX + ", ".join(merged)
+
+    if combines:
+        right_tags = danbooru_for_combines_with(variants, combines, char)
+        merged = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
+        return STYLE_PREFIX + ", ".join(merged)
+
+    all_tags = compose_positive_tags(base_fixed, danbooru, job_layers)
+    return STYLE_PREFIX + ", ".join(all_tags)
+
+
 def fixed_tags_from(char: dict) -> list[str]:
     """
     character_tags + costume.outfit_tags + manga_rules.consistency_tags
@@ -267,6 +358,8 @@ def iter_tag_jobs(
     variant_ids: set[str] | None,
     novel_layers: TagBatchLayers | None = None,
     cli_layers: TagBatchLayers | None = None,
+    *,
+    use_novelai_pipe: bool = False,
 ) -> list[dict]:
     """
     tag/characters/*.yaml を走査してジョブリストを返す。
@@ -302,7 +395,6 @@ def iter_tag_jobs(
         if only_char and char_id not in only_char:
             continue
 
-        fixed = fixed_tags_from(char)
         char_layers = layers_from_mapping(char.get("tag_batch"))
         job_layers = base_layers.merge(char_layers)
         neg_extra: list[str] = char.get("negative_tags") or []
@@ -320,9 +412,20 @@ def iter_tag_jobs(
             if variant_ids and vid not in variant_ids:
                 continue
 
-            danbooru: list[str] = v.get("danbooru_tags") or []
-            all_tags = compose_positive_tags(fixed, danbooru, job_layers)
-            prompt = STYLE_PREFIX + ", ".join(all_tags)
+            try:
+                prompt = compose_job_prompt(
+                    char,
+                    v,
+                    variants,
+                    job_layers,
+                    use_novelai_pipe=use_novelai_pipe,
+                )
+            except ValueError as e:
+                print(
+                    f"warning: {char_id}/{vid} を読み飛ばし ({e})",
+                    file=sys.stderr,
+                )
+                continue
             prefix = f"{char_id}_{vid}"
             output_dir = (novel_dir / "tag" / char_id).as_posix()
 
@@ -539,6 +642,7 @@ def main(argv: list[str] | None = None) -> int:
             variant_ids,
             novel_layers=novel_layers,
             cli_layers=cli_layers,
+            use_novelai_pipe=(provider == "novelai"),
         )
     except FileNotFoundError as e:
         print(f"error: {e}", file=sys.stderr)

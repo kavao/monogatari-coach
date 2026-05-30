@@ -93,27 +93,41 @@ def find_character_variant(character: dict[str, Any], variant_id: str | None) ->
     return None
 
 
-def character_tags(character: dict[str, Any], variant_id: str | None = None) -> list[str]:
-    variant = find_character_variant(character, variant_id)
-    if variant:
-        appearance = character.get("appearance") or {}
-        variant_tags: list[str] = []
-        variant_tags.extend(str(v) for v in as_list(character.get("character_tags")))
-        variant_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-        variant_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-        variant_tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
-        return unique(variant_tags)
-
+def base_danbooru_tags(character: dict[str, Any]) -> list[str]:
+    """固定外見の正本は ``000_base``（_how_to.example/tag.md）。"""
+    base_variant = find_character_variant(character, "000_base")
+    if base_variant:
+        tags = as_list(base_variant.get("danbooru_tags"))
+        if tags:
+            return unique([normalize_tag(t) for t in tags])
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
     rules = character.get("manga_rules") or {}
-    default_tags: list[str] = []
-    default_tags.extend(str(v) for v in as_list(character.get("character_tags")))
-    default_tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
-    default_tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
-    default_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-    default_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-    return unique(default_tags)
+    fallback: list[str] = []
+    fallback.extend(str(v) for v in as_list(character.get("character_tags")))
+    fallback.extend(str(v) for v in as_list(costume.get("outfit_tags")))
+    fallback.extend(str(v) for v in as_list(rules.get("consistency_tags")))
+    fallback.extend(str(v) for v in as_list(appearance.get("species_features")))
+    fallback.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
+    return unique(fallback)
+
+
+def character_tags(character: dict[str, Any], variant_id: str | None = None) -> list[str]:
+    if variant_id is None:
+        return base_danbooru_tags(character)
+    variant = find_character_variant(character, variant_id)
+    if variant:
+        return unique(
+            [
+                normalize_tag(t)
+                for t in (
+                    *base_danbooru_tags(character),
+                    *as_list(variant.get("danbooru_tags")),
+                )
+            ]
+        )
+
+    return base_danbooru_tags(character)
 
 
 def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
@@ -162,7 +176,39 @@ def variant_heading_index(variant: dict[str, Any], one_based_fallback: int) -> i
     return one_based_fallback
 
 
-def render_character_md(character: dict[str, Any]) -> str:
+def character_variant_danbooru_line(
+    variant: dict[str, Any],
+    variants: list[Any],
+    character: dict[str, Any],
+    *,
+    novelai_pipe_tags: bool,
+) -> str:
+    """100番台 + combines_with 時は ``資料 | 結合先``（_how_to.example/tag.md）。"""
+    tags = as_list(variant.get("danbooru_tags"))
+    combines_raw = variant.get("combines_with")
+    combines = str(combines_raw).strip() if combines_raw else ""
+    vid = str(variant.get("variant_id") or "")
+    if novelai_pipe_tags and combines:
+        from image_provider_novel_tag_batch import (  # noqa: E402
+            danbooru_for_combines_with,
+            is_reference_slot,
+        )
+
+        if is_reference_slot(vid):
+            right = danbooru_for_combines_with(
+                [v for v in variants if isinstance(v, dict)],
+                combines,
+                character,
+            )
+            return join_novelai_pipe_tag_line(tags, [right])
+    return join_tags(tags)
+
+
+def render_character_md(
+    character: dict[str, Any],
+    *,
+    novelai_pipe_tags: bool = False,
+) -> str:
     character_id = character["character_id"]
     name = character.get("name") or character_id
     name_en = character.get("name_en") or character_id
@@ -172,7 +218,7 @@ def render_character_md(character: dict[str, Any]) -> str:
     personality = character.get("personality") or {}
     rules = character.get("manga_rules") or {}
     variants = as_list(character.get("prompt_variants"))
-    base_tags = character_tags(character)
+    base_tags = base_danbooru_tags(character)
     summary_parts = [
         f"役割: {role}" if role else "",
         f"外見: {appearance.get('age_range')}, {appearance.get('body_type')}, {appearance.get('hair_color')} hair, {appearance.get('eye_color')} eyes",
@@ -188,7 +234,8 @@ def render_character_md(character: dict[str, Any]) -> str:
         "## 構造化IR由来メモ",
         f"- character_id: `{character_id}`",
         f"- 概要: {summary or '構造化IRから生成'}",
-        f"- 固定特徴: {', '.join(str(v) for v in base_tags) or 'なし'}",
+        f"- 固定特徴（000_base 正本）: {', '.join(str(v) for v in base_tags) or 'なし'}",
+        "- バッチ合成: 000〜099 は 000_base + 状況タグ。100番台は 資料タグ | combines_with（000_base+結合先）",
         f"- 変更禁止: {', '.join(str(v) for v in do_not_change) or 'なし'}",
         f"- Negative Tags: {', '.join(str(v) for v in as_list(character.get('negative_tags'))) or 'なし'}",
         "",
@@ -197,15 +244,25 @@ def render_character_md(character: dict[str, Any]) -> str:
         for index, variant in enumerate(variants, start=1):
             if not isinstance(variant, dict):
                 continue
-            tags = variant.get("danbooru_tags") or []
             heading_n = variant_heading_index(variant, index)
-            lines.extend(
+            tag_line = character_variant_danbooru_line(
+                variant,
+                variants,
+                character,
+                novelai_pipe_tags=novelai_pipe_tags,
+            )
+            block = [
+                f"## {heading_n}. {variant.get('title') or variant.get('variant_id') or '状況'}",
+                f"説明: {variant.get('description') or '構造化IRの状況別タグ。'}",
+            ]
+            combines = variant.get("combines_with")
+            if combines:
+                block.append(f"**組み合わせ**: `{combines}`")
+            block.extend(
                 [
-                    f"## {heading_n}. {variant.get('title') or variant.get('variant_id') or '状況'}",
-                    f"説明: {variant.get('description') or '構造化IRの状況別タグ。'}",
                     "",
                     "**Danbooru Tags:**",
-                    join_tags(tags),
+                    tag_line,
                     "",
                     "**Caption:**",
                     str(variant.get("caption") or f"{name_en}, consistent character design."),
@@ -215,6 +272,7 @@ def render_character_md(character: dict[str, Any]) -> str:
                     "",
                 ]
             )
+            lines.extend(block)
         return "\n".join(lines).rstrip() + "\n"
 
     normal_tags = join_tags(STYLE_TAGS + [name_en] + base_tags)
@@ -488,9 +546,15 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(f"invalid character IR: {character_path}")
         characters[str(character["character_id"])] = character
         if args.output_dir and not args.no_character_output:
-            write_or_print(args.output_dir / "tag" / f"{character['character_id']}.md", render_character_md(character))
+            write_or_print(
+                args.output_dir / "tag" / f"{character['character_id']}.md",
+                render_character_md(character, novelai_pipe_tags=args.novelai_pipe_tags),
+            )
         elif not args.output_dir:
-            write_or_print(None, render_character_md(character))
+            write_or_print(
+                None,
+                render_character_md(character, novelai_pipe_tags=args.novelai_pipe_tags),
+            )
 
     if args.manga_page:
         from manga_prompt_ir.step2_paraphrase import resolve_step2_paraphrase_flag
