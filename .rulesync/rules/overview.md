@@ -153,7 +153,7 @@ c. プロフィールについても深く掘り下げてください。
    - `_how_to/reader.md` を用いて行った下読み・書評の結果を、日時入りファイル名（例：`_reader/YYYYMMDD_HHMM.md`）で保存する
 8. tag/characters/<character_id>.yaml（キャラクタータグ正本・YAML IR）
    - キャラクターごとの外見・衣装・固定タグ・禁止変更項目を YAML IR として管理する（スキル **manga-prompt-ir**）
-   - `_how_to/tag.md` のルールに従い、通常時・状況別バリアントを定義する
+   - **concepts.md** の汎用テンプレートに従い、`000_base`・000番台（衣装）・100番台（資料）の `prompt_variants` を定義する（カスタムは作品 `_meta.md` のキャラタグ方針）
    - **互換出力（人間向けの副本・バッチ互換）**: `tag/<romaji>.md`（`tools/image_provider_novel_tag_batch.py` 向け Danbooru Tags 行。手作業での確認・差分レビューにも用いる）
    - 生成画像は **`tag/<romaji>/`** に集約する（詳細は §2.2.1・スキル **novel-image-layout**）
 9. manga/pages/manga_XX_pYY.yaml（漫画タグ正本・YAML IR）
@@ -232,8 +232,21 @@ flowchart TD
 - 新規・刷新後の運用では、まず YAML/JSON/Pydantic の構造化定義（スキル `manga-prompt-ir`）へ落とし、必要に応じて既存の `tag/<romaji>.md` へ互換出力する。
 
 #### 参照ルール（必須）
-- `_how_to/tag.md` を必ず参照し、同ファイルのルール・出力形式に従う。
-- 構造化タグを作る場合は、スキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` を正本にする。
+- **汎用テンプレート／カスタム要素／テンプレート一式**の正本は **`.rulesync/rules/concepts.md`**（「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」）。`_how_to/` の節構造にルールを依存させない。
+- **バリアント階層・完了条件**は同ファイル「Tag Mode バリアント階層（000番台・100番台）」を正とする。
+- 構造化タグの型・手順はスキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` を正とする。
+- `_how_to/tag.md` はユーザー調整の創作技法（Danbooru 語彙・`outfit_tags` 混入ルール等）の**任意参照**。必須の `variant_id` 一覧は concepts にある。
+
+#### バリアント階層（Tag Mode の標準成果物）
+
+| 帯 | `variant_id` 例 | 用途 | 漫画 `variant_id` |
+|----|-------------------|------|-------------------|
+| 固定基礎 | `000_base` | 髪・目・肌・種族・固定小物（衣装・姿勢なし） | 使わない |
+| **000番台** | `001_normal` 等 | 平服・治療服・水着・nude 等の**衣装状態** | **使う** |
+| **100番台** | `100_intro` / `101_turnaround` / `102_signature_pose` 等 | 紹介・三面図・決めポーズ**資料**（`combines_with` で000番台と合成） | **使わない** |
+
+- **000番台だけ**で Tag Mode を完了扱いにしない。100番台を省略するときは **省略理由**を `description` または `_meta.md` に残す。
+- 100番台の互換 Markdown は **`資料タグ | 000番台タグ列`**（`combines_with` の複写）。エクスポートは **`--novelai-pipe-tags`** を付ける。
 
 #### 出力先（必須）
 - **正本（YAML IR）**: `novels/[novel_code]_[novel_title]/tag/characters/<character_id>.yaml` に作成する。
@@ -252,9 +265,10 @@ flowchart TD
    - 主要人物は全員。必要があれば脇役も追加。
 3. **YAML IR の作成**
    - スキル **`manga-prompt-ir`** に従い、`tag/characters/` 配下に各キャラの YAML ファイルを作成する。
-   - 固定特徴、禁止事項、状況別バリアント（通常時／戦闘時／等）を定義する。
+   - **`prompt_variants` の順**: `000_base` → **000番台**（`001_normal` 平服、作品 `_meta.md` §4・劇に必要な衣装）→ **100番台（汎用）**（concepts の一覧: `100_intro` / `101_turnaround` / `102_signature_pose`）→ **カスタム**（作品 `_meta.md` の**キャラタグ方針・カスタム要素**に列挙した分のみ）。
+   - 100番台には **`combines_with`**（例: 平服資料は `001_normal` 等）を付ける。固定特徴・禁止事項は `character.md` と YAML。`outfit_tags` 混入等の技法は `_how_to/tag.md` を参照してよい（任意）。
 4. **Markdown へのエクスポート**
-   - **`python tools/novel_prompt_ir_export_md.py`** を使用し、YAML IR から互換 Markdown（`tag/<romaji>.md`）を出力する。
+   - **`python tools/novel_prompt_ir_export_md.py --novelai-pipe-tags`** を使用し、YAML IR から互換 Markdown（`tag/<romaji>.md`）を出力する。
 5. **分割運用**
    - キャラクター数が多い場合は、1キャラずつ確実に YAML 作成とエクスポートを行う。
 6. **外見タグの一貫性（推奨）**
@@ -269,9 +283,29 @@ Tag Modeでお願いします。
 novels/XXX_タイトル/character.md を参照して、
 novels/XXX_タイトル/tag/characters/ に主要人物全員の YAML IR を作成し、
 必要に応じて tag/<romaji>.md に互換出力してください。
-_how_to/tag.md のルールに従い、各人物について
-「通常時／戦闘時／（必要なら）水着（該当があれば）」を出力してください。
+concepts.md の汎用テンプレートに従い、各人物について
+000_base → 000番台（平服001_normal、作品に必要な衣装）→ 100番台
+（100_intro / 101_turnaround / 102_signature_pose、combines_with 付き。
+カスタムは作品 _meta.md のキャラタグ方針「カスタム要素」に列挙した ID のみ）
+まで tag/characters/*.yaml に書き、
+novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力してください。
+100番台を省略する場合は省略理由を description または _meta.md に残してください。
 ```
+
+**テンプレート一式（裁量を抑える・AI が勝手に省略しない）:**
+
+```
+Tag Mode（テンプレート一式）: novels/XXX_タイトル。
+concepts.md「Tag Mode テンプレート一式」に従い、
+主要キャラ全員で汎用テンプレート（000_base、100_intro / 101_turnaround / 102_signature_pose）、
+_meta.md §4 variant 表の000番台を tag/characters/*.yaml に作成し、combines_with 付きで
+（カスタムは _meta.md キャラタグ方針の「カスタム要素」列挙分のみ）
+novel_prompt_ir_validate.py のあと
+novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力。
+エージェント独自の「不要」判断で省略しない。除外する ID があるときだけチャットで列挙する。
+```
+
+作品ごとに常時テンプレート一式にする場合は、`_meta.md` の**キャラタグ方針**で **バリアント方針: テンプレート一式** と書く（フィールド定義は concepts「Tag Mode 作品メタ」。`_how_to.example/meta.md` は記載例のみ）。
 
 #### 画像生成（txt2img）の事前確認
 - 横断正本は **`.rulesync/rules/concepts.md`** の「画像生成: dry-run から本番まで」と「完了扱い条件」。

@@ -63,6 +63,10 @@ from manga_prompt_ir.scene_prompt import (
     subject_situational_tag_tokens,
     subject_tag_line_token,
 )
+from manga_prompt_ir.character_token_filter import (
+    collect_blocked_character_tokens,
+    filter_base_standalone_character_tokens,
+)
 from manga_prompt_ir.summary_en import panel_summary_en_tag_tokens
 from manga_prompt_ir.color_mode import (
     VALID_COLOR_MODES,
@@ -1186,6 +1190,8 @@ def yaml_panel_tags_novelai_split(
         character_segments = [
             apply_omit_panel_background_tags(seg) for seg in character_segments
         ]
+    blocked = collect_blocked_character_tokens(page, panel, characters)
+    base = filter_base_standalone_character_tokens(base, blocked)
     return base, character_segments
 
 

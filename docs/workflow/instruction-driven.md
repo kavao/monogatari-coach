@@ -306,10 +306,26 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 プロフィールからタグを作成してください。
 ```
 
+これだけ入力しても Monogatari Coach は Tag Mode を開始します。
+
+**正本（必須 ID・汎用／カスタムの分離）:** [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」。**創作技法（任意）:** `_how_to/tag.md`（Danbooru 語彙・`outfit_tags` 混入など）。
+
+**バリアントの3層（主要キャラごと）**
+
+| 帯 | 例 | 漫画で使うか |
+|----|-----|----------------|
+| `000_base` | 固定外見のみ | いいえ |
+| **000番台** | `001_normal`（平服）、治療服、水着 等 | **はい**（`variant_id`） |
+| **100番台（汎用）** | `100_intro`、`101_turnaround`、`102_signature_pose` | いいえ（参照画像用。`combines_with` で000番台と合成） |
+| **カスタム** | 作品が `_meta.md` に列挙した ID のみ（例: 資料・特殊衣装） | 帯は 000 または 100。共有マニュアルでは具体 ID を固定しない |
+
+000番台だけ作って終わりにせず、**汎用100番台まで YAML に書く**のが標準です。省略するときは理由を `description` または作品 `_meta.md` のキャラタグ方針に残します。
+
 **このように動きます:**
-1. `character.md` を読んで外見・服装・固定特徴を把握する
-2. `tag/characters/<character_id>.yaml` に YAML IR（構造化タグ定義）を作成する
-3. `tag/<romaji>.md` に互換 Markdown を出力する（画像生成バッチで使用）
+1. `character.md` を読んで外見・服装・固定特徴を把握する（初版は `_how_to/world_wear.md` を参照してよい）
+2. `tag/characters/<character_id>.yaml` に YAML IR を作成する（`000_base` → 000番台 → 100番台の順、`combines_with` 付き）
+3. `novel_prompt_ir_validate.py` で検証する
+4. `tag/<romaji>.md` に **`--novelai-pipe-tags`** 付きで互換 Markdown を出力する（100番台は `資料タグ | 000番台タグ` 形式）
 
 **使われるツール:**
 
@@ -317,10 +333,47 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 # 画像保存先フォルダを一括作成 ※ 自動呼び出し
 python tools/novel_image_layout.py scaffold novels/NNN_作品名
 
-# YAML IR → 互換 Markdown へエクスポート ※ 自動呼び出し
+# YAML IR 検証
+python tools/novel_prompt_ir_validate.py novels/NNN_作品名
+
+# YAML IR → 互換 Markdown へエクスポート（100番台のパイプ形式を含む）
 python tools/novel_prompt_ir_export_md.py \
   --character novels/NNN_作品名/tag/characters/chara.yaml \
-  --output-dir novels/NNN_作品名
+  --output-dir novels/NNN_作品名 \
+  --novelai-pipe-tags
+```
+
+**テンプレート一式（汎用 ID を AI 判断で省略しない）:**
+
+```text
+Tag Mode（テンプレート一式）でお願いします。
+```
+
+`concepts.md`「Tag Mode テンプレート一式」に従い、主要キャラごとに次を書きます。**カスタムはテンプレート一式だけでは追加されません**（作品メタに列挙した分のみ）。
+
+| 対象 | 内容 |
+|------|------|
+| 必ず（汎用） | `000_base`、`100_intro`、`101_turnaround`、`102_signature_pose`（`combines_with` 付き） |
+| 000番台 | `_meta.md` §4（漫画 variant 表）の `variant_id` をすべて YAML に揃える |
+| カスタム | `_meta.md` **キャラタグ方針**の **カスタム要素** に列挙した ID のみ |
+
+作品ごとに常時テンプレート一式にする場合は、`_meta.md` のキャラタグ方針で **バリアント方針: テンプレート一式** と書く（フィールド定義は `concepts.md`「Tag Mode 作品メタ」。記載例: `_how_to.example/meta.md` §6）。除外する ID があるときだけチャットで列挙する。
+
+**より詳細に指定したい場合（コピペ用）:**
+
+```text
+Tag Mode: novels/NNN_作品名。concepts.md の汎用テンプレートに従い、
+主要キャラ全員で 000_base → 000番台 → 100番台（100_intro, 101_turnaround,
+102_signature_pose、combines_with 付き）を tag/characters/*.yaml に作成。
+カスタムは _meta.md キャラタグ方針のカスタム要素列挙分のみ。
+--novelai-pipe-tags で tag/<romaji>.md を出力。
+```
+
+```text
+Tag Mode（テンプレート一式）: novels/NNN_作品名。
+concepts.md「Tag Mode テンプレート一式」に従い、汎用 ID と _meta.md §4 の 000番台を
+tag/characters/*.yaml に揃え、--novelai-pipe-tags で MD 出力。
+カスタムは _meta.md のカスタム要素列挙分のみ。除外 ID だけチャットで列挙。
 ```
 
 ---

@@ -20,6 +20,110 @@
 - **手と手だけ／キャラYAMLを載せない**: `character_id` 無し・`description_en`／`tag_token` で手の特徴だけ載せる運用は **`manga.md` の「手元・手と手など『キャラID注入を載せない』コマ」** を参照。
 - **`manga.genre_tags` / `manga.visual_tags`（ページ共通）**: 互換 Step1 の **各コマ `tag` 行**にページ単位で付く。**フルカラー運用では原則 `monochrome`・`screentone` を入れない**（コマの `prompt_tags` だけ整えても、ここに残ると白黒寄りが毎コマ付き続ける）。詳細は **`manga.md` の「`manga.genre_tags` / `manga.visual_tags`」**。
 
+## 目・視線・表情タグ（コマ用）
+
+**キャラの目の形・色**（`tsurime`, `brown_eyes` 等）は **`world_wear.md` §12** と `tag/characters/*.yaml` の **`000_base`** を正とする。本節は **コマごとに変わる**目元・視線・涙・瞳孔演出の語彙。運用コピーは通常 **`_how_to/manga_tag.md`** に同内容を置く。
+
+### 書き込み先
+
+| フィールド | 用途 |
+|-----------|------|
+| `panels[].prompt_tags` | **主**。Step1 生成にそのまま乗る英語タグ |
+| `panels[].subjects[].pose_action` / `expression_en` | 人物ごとの表情・視線（英語） |
+| `composition.focus_en` | 顔アップのとき `yuna's_face`, `hayate's_eyes` など |
+
+- **1コマあたり目関連は 1〜3 タグ**を目安。
+- **`000_base` と重複する形タグ**は毎コマに書かない（キャラ YAML から継承）。
+- 顔全体のタグ（`blush`, `open_mouth`, `ahegao`）と併用してよい。
+
+### 半目・開き・眠気
+
+| タグ (Danbooru) | 日本語・ニュアンス |
+|:---|:---|
+| `half-closed_eyes` | 半目 |
+| `half_lidded_eyes` | 半目（`half-closed_eyes` と併用しない） |
+| `sleepy_eyes` | 眠たそうな目 |
+| `wide_eyes` | 見開き（驚き・恐怖） |
+| `closed_eyes` | 目を閉じている |
+
+### 印象・性格・感情
+
+| タグ | 日本語（要約） |
+|:---|:---|
+| `sharp_eyes`, `gentle_eyes`, `kind_eyes` | 鋭い／優しい |
+| `seductive_eyes`, `alluring_eyes` | 妖艶 |
+| `innocent_eyes`, `smug_eyes`, `mischievous_eyes` | 無邪気／余裕／悪戯 |
+| `cold_eyes`, `warm_eyes`, `soft_eyes` | 冷たい／温かい／柔らかい |
+| `intense_eyes`, `fierce_eyes`, `sparkling_eyes`, `dull_eyes` | 強い／激しい／キラキラ／鈍い |
+| `tired_eyes`, `empty_eyes`, `dead_eyes`, `moist_eyes` | 疲れ／虚ろ／虚無／潤み |
+| `glaring`, `disdain`, `sassy_expression` | にらみ／軽蔑／生意気 |
+| `mysterious_eyes`, `wise_eyes`, `youthful_eyes`, `mature_eyes` 等 | 雰囲気・年齢印象 |
+
+### 涙・充血・クマ
+
+| タグ | 日本語 |
+|:---|:---|
+| `tears`, `teary_eyes`, `crying_eyes` | 涙・涙目 |
+| `bloodshot_eyes` | 充血 |
+| `dark_circles`, `bags_under_eyes` | クマ |
+
+### 視線・ポーズ
+
+| タグ | 日本語 |
+|:---|:---|
+| `looking_at_viewer`, `looking_away`, `averted_eyes` | こちら／逸らす |
+| `sideways_glance`, `upward_glance`, `downward_glance` | 横目／上目／下目 |
+| `intimate_gaze`, `piercing_gaze` | 親密／鋭い視線 |
+| `one_eye_closed`, `winking`, `rolling_eyes`, `crossed_eyes` | ウィンク／白目／寄り目 |
+
+- 上目遣いは **`upward_glance`**。形タグの `upturned_eyes` と混同しない。
+
+### 瞳孔の一時演出・品質・メイク
+
+| タグ | 用途 |
+|:---|:---|
+| `heart-shaped_pupils`, `star-shaped_pupils`, `symbol-shaped_pupils` | 記号瞳 |
+| `dilated_pupils`, `constricted_pupils` | 瞳孔開閉 |
+| `glowing_eyes`, `glowing_pupils` | 一時発光（常時は `000_base`） |
+| `beautiful_eyes`, `detailed_eyes`, `eye_reflection` | 描き込み補助 |
+| `eyeliner`, `eyeshadow`, `smoky_eyes` | メイク |
+
+固定の目の形は `variant_id` とキャラ継承に任せ、**コマでは変化分だけ** `prompt_tags` に書く。詳細表・YAML 例は **`_how_to/manga_tag.md`** の本節を正とする。
+
+## 眉毛・眉の表情タグ（コマ用）
+
+**眉の太さ・形・手入れ**（`thick_eyebrows`, `arched_eyebrows` 等）は **`world_wear.md` §13** と `tag/characters/*.yaml` の **`000_base`** を正とする。本節は **コマごとに変わる**眉の動き・乱れ・メイク結果の語彙。運用コピーは通常 **`_how_to/manga_tag.md`** に同内容を置く。
+
+### 書き込み先
+
+| フィールド | 用途 |
+|-----------|------|
+| `panels[].prompt_tags` | **主** |
+| `panels[].subjects[].pose_action` / `expression_en` | 例: `furrowed brow`, `raised eyebrows` |
+| `composition.focus_en` | 顔アップ |
+
+- **1コマあたり眉関連は 0〜2 タグ**を目安。`000_base` の形タグは毎コマに書かない。
+
+### 眉の動き・感情（要約）
+
+| タグ | 日本語（要約） |
+|:---|:---|
+| `furrowed_brow` / `furrowed_eyebrows` | ひそめる（併用しない） |
+| `raised_eyebrows`, `raised_inner_eyebrows` | 上げる／困り眉 |
+| `v-shaped_eyebrows`, `knit_eyebrows` | 八の字／寄せる |
+| `twitching_eyebrow`, `drooping_eyebrows` | ピクピク／垂れる |
+| `scowl`, `frown` | 不機嫌／しかめ面 |
+| `arched_eyebrow`, `smug`, `serious`, `determined`, `disdain` | 片眉上げ／ドヤ／真剣／決意／見下し |
+
+### 乱れ・メイク（§13 から回す状況タグ）
+
+| タグ | 日本語 |
+|:---|:---|
+| `messy_eyebrows`, `unkempt_eyebrows` | 乱れ／無手入れ |
+| `shaved_eyebrows`, `plucked_eyebrows`, `overplucked_eyebrows`, `drawn_eyebrows` | 剃り／抜き／描き足し |
+
+- 詳細表・YAML 例は **`_how_to/manga_tag.md`** の本節を正とする。
+
 ## コマ別ネガ（Negative prompt の出し分け）
 
 コマ単位の画像生成（`image_provider_novel_manga_batch.py --source step1-panels`）では、**ネガティブプロンプトは `panels[].prompt_tags`（ポジティブ側のタグ列）には書かない**。次の YAML フィールドと CLI で制御する。

@@ -42,6 +42,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - `_meta.md` を更新して進捗と引き継ぎを残して、と指示する
 5. **必要になったら派生モードへ**
    - 画像タグ（Tag Mode）や漫画（Manga Tag Mode）を「必要になったタイミングで」指示する
+   - Tag Mode で汎用 ID を省略させたくないときは **「Tag Mode（テンプレート一式）」**（正本: [concepts.md Tag Mode テンプレート一式](../../.rulesync/rules/concepts.md)）。作品固有の追加 ID は `_meta.md` の**キャラタグ方針・カスタム要素**に書く（指示例: [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）
 6. **品質を上げる**
    - 清書（文章校正）や下読み（書評）を、保存先ファイルを指定して指示する
 

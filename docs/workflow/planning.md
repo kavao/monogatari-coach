@@ -81,7 +81,7 @@ python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --s
 python tools/novel_project_check.py novels/NNN_作品名 --require-character-structure --character-profile plan
 ```
 
-結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。
+結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
 
 ## 関連ページ
 

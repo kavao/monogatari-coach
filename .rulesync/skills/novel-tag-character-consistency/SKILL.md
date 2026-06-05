@@ -35,6 +35,9 @@ targets: ["*"]
 - 肌：`fair_skin` など
 - 種族・体型：若妖精なら `_how_to/tag.md` の若妖精ルールに沿ったタグ群
 - 顔周りの固定（メガネ、リボン、種族の耳など）
+  - 固定小物は**大まかなタグだけで終わらせない**。色・形状まで `000_base` に入れる（`world_wear.md` §11 参照）
+  - 例: `glasses` → `glasses`, `black-framed_eyewear`, `rectangular_eyewear`
+  - 例: `hair_ribbon` → `hair_ribbon`, `white_ribbon`, `large_bow`
 - 性別・年齢層を表すタグ方針（`tag.md` の成人・若妖精の扱いに合わせる）
 - `manga_rules.consistency_tags` と `manga_rules.do_not_change` に入っている項目
 
@@ -64,6 +67,12 @@ YAML IR がまだ作成されていないキャラクターは下記の互換手
 - 髪が `long_hair` と `short_hair` でブロック間で矛盾
 - キャラAの目色タグがキャラBのファイルに混入
 - 若妖精なのに、ブロックによって種族関連タグが欠落
+- **[WARN] 固定小物が大まかタグのみ**: 以下が `000_base` に入っているが、色・形状タグが未指定
+  - `glasses` のみ → フレーム色（`black-framed_eyewear` 等）・形状（`rectangular_eyewear` 等）が未指定
+  - `hair_ribbon` のみ → リボン色（`white_ribbon` 等）・形状（`large_bow` 等）が未指定
+  - `necktie` のみ → ネクタイ色（`red_necktie` 等）が未指定
+  - `earrings` のみ → ピアス形状（`stud_earrings` 等）が未指定
+  - → 詳細タグを `000_base.danbooru_tags` に追加することを推奨する。語彙は `_how_to/world_wear.md` §11 を参照。
 
 ### 4. キャラ横断チェック（2人以上のとき）
 
@@ -96,3 +105,4 @@ python tools/image_provider_novel_tag_batch.py novels/<作品フォルダ> --dry
 - **画像フォルダ**: スキル **`novel-image-layout`**
 - **技法ルール**: **`_how_to/tag.md`**
 - **キャラ初版・`world_wear` 参照の必須範囲**: スキル **`manga-prompt-ir`**（「キャラクターIR・外見初版を新規に起こすとき」）
+- **小物・アクセサリータグ語彙**: `_how_to/world_wear.md` §11（眼鏡・リボン・ネクタイ・ネックレス・ピアスの色/形状タグ表）

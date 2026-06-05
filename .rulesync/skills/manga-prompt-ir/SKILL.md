@@ -75,6 +75,8 @@ targets: ["*"]
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。
 - **`composition` / `camera` / `lighting` とコマの状況語（タグ行）**: Step1 の機械連結タグ（`image_provider_novel_manga_batch`・`novel_prompt_ir_export_md`）では **`framing_en` / `focus_en` / `perspective_en` / `layout_en`**、**`camera` の `*_en`**、**`lighting` の `*_en`**、**`pose_action_en` / `expression_en`** を優先する。旧キー（`focus` 等）は **CJK を含まないときだけ**タグに載せる（`medium shot` のような英語のみは従来 YAML でも可）。**`panels[].mood_atmosphere_en`** があればタグに使い、無い場合は `mood_atmosphere` のうち CJK を含まない要素のみ。実装の中心は **`tools/manga_prompt_ir/scene_prompt.py`**。
+- **`focus_en` はキャラ ID 単体を書かない**（例: `yuna` / `hayate` は不可）。構図・注視点は **Danbooru 風の英語タグまたは短い英語フレーズ**（例: `glowing phone screen`, `lying figure on bed`, `hayate's eyes`）とし、固有名・外見固定は **`subjects[]` と NovelAI パイプのキャラ列**に任せる。
+- **NovelAI パイプのベース列（機械除外）**: `yaml_panel_tags_novelai_split`（`novel_prompt_ir_export_md` の `--novelai-pipe-tags` 含む）では、**スペースを含まない単独トークン**が当該ページの `character_id` / `name_en` / `name`（正規化後）と一致するとき **ベースから除外**する（`tools/manga_prompt_ir/character_token_filter.py`）。フレーズ（`summary_en` や `glowing phone screen`）は残る。非パイプの `yaml_panel_tags` では従来どおり載りうる。
 
 ### キャラクターIR・外見初版を新規に起こすとき（`world_wear.md`）
 
@@ -215,12 +217,13 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。
 
-- **Pydantic 上の型**: `variant_id` は **任意の文字列**。`_how_to/tag.md` で推奨される **`NN_short_slug`（2桁ゼロ埋め＋アンダースコア＋意味のあるslug）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
-- **命名規約の正本（人間向け）**: バリアントの並べ方・`variant_id` の付け方の詳細は **`_how_to/tag.md` の「バリアント番号（管理用・最小）」** を正とする。差分レビューや `tools/image_provider_novel_tag_batch.py` の `--variant-id` で特定バリアントだけ生成するときに、`01_normal` のように番号と並びを揃えておくと運用しやすい。
+- **Pydantic 上の型**: `variant_id` は **任意の文字列**。推奨形式 **`NNN_short_slug`（3桁ゼロ埋め）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
+- **命名・階層の正本**: **`.rulesync/rules/concepts.md`**（「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（衣装）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
+- **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **concepts.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
 - **互換 Markdown の `## 1.` など**: `tools/novel_prompt_ir_export_md.py` は、`prompt_variants` の **配列の並び順**に従い、状況ブロック見出しを `## 1.` `## 2.` … と付ける。**見出しの連番は `variant_id` の先頭数字から自動算出されない**（先頭要素が必ず `## 1.` に対応する）。
 - **検証ツール**: `tools/novel_prompt_ir_validate.py` は、漫画ページなどとの **参照整合**（存在しない `variant_id` を指していないか等）は確認するが、**`NN_short_slug` 形式かどうかは検証しない**。
 
-見出し番号と管理用 ID を一致させたい場合は、`prompt_variants` を意図した順に並べ、あわせて `variant_id` を `01_*`, `02_*` … と **`tag.md` に沿って**付ける。
+見出し番号と管理用 ID を一致させたい場合は、`prompt_variants` を **`000` → `001` → … → `100` → `101`** の数値昇順に並べ、互換 MD の見出しは **`## NNN.`**（`variant_id` 先頭3桁）に揃える。
 
 ## 重要: キャラクターの「固定タグ」と「バリアントタグ」の分離（混入事故防止）
 

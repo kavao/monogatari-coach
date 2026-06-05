@@ -23,13 +23,6 @@ profiles:
       - "一人称"
       - "口調"
       - "目標"
-  body_therapy:
-    description: "身体的なケアや変化が物語上重要な作品向け。性別に応じたボディー子項目も検証する。"
-    extends: plan
-    require_fields:
-      - "ボディーの特徴"
-      - "服装"
-    apply_body_gender_rules: true
 
 # 年齢・立場 などから性別テンプレを推定（ボディー子項目の必須・禁止に使う）
 gender_detection:
@@ -38,11 +31,9 @@ gender_detection:
     male:
       - "男性"
       - "男"
-      - "男若妖精"
     female:
       - "女性"
       - "女"
-      - "女若妖精"
   # 若妖精は 男若妖精／女若妖精 の一体表記を推奨（gender_detection と species_notes を参照）
   # 推定できないときは body_gender_rules をスキップし WARN のみ
 
@@ -75,39 +66,15 @@ body_gender_rules:
   male:
     require_child_labels:
       - "体型"
-      - "傘突起"
-      - "感度"
-      - "持続力"
-      - "秘髪"
     forbid_child_labels:
       - "水袋"
       - "臀部"
-      - "苺突起"
-      - "栗突起"
-      - "治療穴の位置"
-      - "餅ヒダ（全体）"
-      - "大餅ヒダ"
-      - "小餅ヒダ"
-      - "治療穴の内部"
-      - "未使用膜"
   female:
     require_child_labels:
       - "水袋"
       - "臀部"
-      - "苺突起"
-      - "栗突起"
-      - "治療穴の位置"
-      - "餅ヒダ（全体）"
-      - "大餅ヒダ"
-      - "小餅ヒダ"
-      - "治療穴の内部"
-      - "未使用膜"
-      - "秘髪"
     forbid_child_labels:
       - "体型"
-      - "傘突起"
-      - "感度"
-      - "持続力"
 
 fields:
   "名前":
@@ -139,12 +106,6 @@ fields:
       min_children: 1
       require_child_labels:
         - "普段着"
-  "ボディーの特徴":
-    aliases:
-      - "身体的特徴"
-      - "身体の特徴"
-    when_present:
-      min_children: 1
 
 _examples:
   custom_profile:

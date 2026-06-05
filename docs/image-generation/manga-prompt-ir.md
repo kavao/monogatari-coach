@@ -138,6 +138,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 NovelAI で `|` 分割を使わない比較は、従来どおり `--no-novelai-pipe-character-tags` を付けます。この場合、effective formatter は `tag_csv` と表示されます。
 
+**ベース列のキャラ単独トークン**: `novelai_pipe` 時、ベース側から **スペースなし**で `character_id` / `name_en` と一致するトークン（例: `focus_en: yuna`）は `character_token_filter` で除外される。`focus_en` はキャラ ID 単体ではなく構図タグ（例: `lying figure on bed`）を書く（`.rulesync/skills/manga-prompt-ir/SKILL.md`）。
+
 ### 互換 Markdown を出すとき（`novel_prompt_ir_export_md.py`）
 
 **`--manga-page` を渡す実行では、手順を一本化するため `--novelai-pipe-tags` を付ける**と、Step1 の各コマ `tag` 行が NovelAI 向け **`ベース | キャラ`** 形式になり、`image_provider_novel_manga_batch`（step1-panels 等）と形が揃います。付けないと Step1 がカンマ一列になりやすい。
