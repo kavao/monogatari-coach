@@ -91,6 +91,29 @@ git status --short
 - ユーザスキル（プラグイン相当）:
   [docs/workflow/user-skills.md](docs/workflow/user-skills.md)
 
+## novels/ の git 管理
+
+`novels/` は親リポジトリの `.gitignore` で除外されており、作品本文・タグ・漫画データは親リポジトリの履歴に含まれません（例外: `novels/000_old_man_next_door's_cake/` は親リポジトリで追跡）。
+
+`novels/` を独立した git リポジトリとして管理するには、以下を実行します。
+
+```bash
+cd novels
+git init
+git add .
+git commit -m "initial: novels ディレクトリを独立リポジトリとして初期化"
+```
+
+`novels/.gitignore`（親リポジトリで追跡）は、生成画像・アセットを除外済みです。
+
+| 除外対象 | パターン |
+|----------|----------|
+| 漫画コマ/ページ画像 + 隣接 JSON | `**/manga/_assets/` |
+| 挿絵・表紙画像 | `**/illustrations/_assets/` |
+| キャラクター生成画像 | `**/tag/**/*.png` 等 |
+
+`tag/*.md`・`tag/characters/*.yaml`・`manga/pages/*.yaml` などのテキスト資料は追跡対象です。
+
 ## 日常運用でよく使うコマンド
 
 初回化:

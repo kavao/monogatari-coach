@@ -555,7 +555,7 @@ def main(argv: list[str] | None = None) -> int:
         "--novelai-portion-id",
         default=None,
         metavar="ID",
-        help="NovelAI ポーション ID（_meta.yaml の novelai.portions）。--workflow より CLI が優先",
+        help="NovelAI ポーション ID（_meta.yaml の novelai.portions）。none で参照なし。--workflow より CLI が優先",
     )
     p.add_argument(
         "--novelai-reference-strength",

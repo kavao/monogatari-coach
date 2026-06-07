@@ -865,6 +865,21 @@ def resolve_novelai_reference(
     cli_information_extracted: float | None = None,
 ) -> NovelaiReferenceResolution:
     """NovelAI Vibe / ポーション: CLI > 作品 _meta.yaml > .env > 既定。"""
+    _disabled_portion = frozenset({"none", "off", "false", "0", "disabled"})
+    if (
+        portion_id is not None
+        and str(portion_id).strip().lower() in _disabled_portion
+        and not cli_paths
+    ):
+        return NovelaiReferenceResolution(
+            paths=[],
+            strength=resolve_novelai_reference_strength(cli_strength, root),
+            information_extracted=resolve_novelai_reference_information_extracted(
+                cli_information_extracted, root
+            ),
+            source="disabled",
+        )
+
     if cli_paths:
         paths = _resolve_cli_reference_paths(cli_paths, root)
         strength = (

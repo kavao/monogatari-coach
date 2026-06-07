@@ -17,6 +17,7 @@ writers/*
 !writers/000_default/writer_profile.md
 novels/*
 !novels/.gitkeep
+!novels/.gitignore
 !novels/_import/
 novels/_import/*
 !novels/_import/.gitkeep
