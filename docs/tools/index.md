@@ -76,9 +76,14 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 # 漫画フォルダまで揃えたい場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 
+# G3 足切り通過を必須にする場合（_meta.md または最新 _reader/*.md を確認）
+python tools/novel_project_check.py novels/NNN_作品名 --require-slush-g3
+
 # _meta.yaml 等を不足分だけ作成してからチェック
 python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 ```
+
+`--require-slush-g3` は、`_meta.md` に「足切りステータス: G3合格」が記録されているか、または最新の `_reader/YYYYMMDD_HHMM.md` に「スコア ≥ 55 かつ読むべき」が記録されているかを確認します。投稿前のゲートや校正着手前の確認に使います。
 
 ---
 
@@ -203,6 +208,73 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
 ```
 
 この1行が「清書完了」の機械的根拠として機能します。査証ログ（`_workingspace/log/YYYYMM.md`）にも同内容を追記してください。
+
+---
+
+---
+
+## 評価・下読み
+
+下読み・Editor Score・一貫性監査の前後に使うツール群です。チャットで評価を依頼するときの準備と結果確認をサポートします。
+
+詳しい評価フローは [Reader Output](../workflow/reader-output.md) を参照してください。
+
+### `novel_evaluation_prepare.py` — 評価セッション準備
+
+評価を始める前に、章別文字数・既存評価ファイルの一覧・frontmatter テンプレートを表示します。
+
+```bash
+# First Reader 用の準備情報を表示する（既定: --mode first-reader --gate G3）
+python tools/novel_evaluation_prepare.py novels/NNN_作品名
+
+# G2 足切り用
+python tools/novel_evaluation_prepare.py novels/NNN_作品名 --gate G2
+
+# Editor Score 用（あらすじ・スコア参照先を含む frontmatter テンプレを表示）
+python tools/novel_evaluation_prepare.py novels/NNN_作品名 --mode editor-score
+```
+
+章グループ（`ch01`〜`chNN`）ごとの文字数と合計・プロローグの別途カウント・`_reader/` に存在する評価ファイルとスコアを一覧表示します。コピー用の frontmatter テンプレートも出力します。
+
+---
+
+### `novel_evaluation_diff.py` — 評価スコア推移
+
+`_reader/` 内の評価ファイルを時系列で並べ、スコアの変化を表示します。清書前後の点差確認や、複数回の G1→G2→G3 評価の推移を追うときに使います。
+
+```bash
+# スコアが付いたファイルのみ表示（First Reader・Editor Score）
+python tools/novel_evaluation_diff.py novels/NNN_作品名
+
+# Synopsis・Interest Check も含めて全ファイルを表示
+python tools/novel_evaluation_diff.py novels/NNN_作品名 --all
+```
+
+フロントマターをスキップして本文スコアを正確に抽出します。旧形式（5段階・`4.5 / 5.0`）のファイルは「旧形式」として識別します。
+
+---
+
+### `novel_slush_gate_lint.py` — 評価ファイル必須項目チェック
+
+First Reader 評価ファイル（`_reader/YYYYMMDD_HHMM.md`）に必須の12項目（判定・総合点/100・ゲート段階・6評価項目・判定理由・足切り理由・改善点）が揃っているかを機械確認します。
+
+```bash
+# 特定ファイルをチェックする
+python tools/novel_slush_gate_lint.py novels/NNN_作品名/_reader/YYYYMMDD_HHMM.md
+
+# 作品フォルダを指定すると最新 YYYYMMDD_HHMM.md を自動選択する
+python tools/novel_slush_gate_lint.py novels/NNN_作品名
+
+# WARN も ERROR 扱いにする（厳格モード）
+python tools/novel_slush_gate_lint.py novels/NNN_作品名 --strict
+
+# JSON で出力する（CI 向け）
+python tools/novel_slush_gate_lint.py novels/NNN_作品名 --json
+```
+
+終了コード: 0（全通過）/ 1（ERROR あり）/ 2（WARN あり）/ 3（ファイルなし）
+
+旧形式ファイル（`reader_YYYYMMDD_HHMM.md`）には `総合点/100` 項目が存在しないため、ERROR になります。旧形式の評価は参考記録として残し、新形式で再評価することを推奨します。
 
 ---
 

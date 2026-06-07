@@ -390,7 +390,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 ## 評価出力の保存先
 
 定義:
-下読み・書評・一般読者の興味判定は、チャット上の感想ではなく、作品フォルダの `_reader/` に保存した評価ファイルを正本とする。
+下読み・書評・一般読者の興味判定は、チャット上の感想ではなく、作品フォルダの `_reader/` に保存した評価ファイルを正本とする。**First Reader は足切りゲートであり**、G1（冒頭）／G2（章完）／G3（全文）の3段階で運用する。
 
 必須:
 
@@ -399,16 +399,106 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 - チャットには判定、短い理由、改善ポイントの要約だけを返す。
 - 書評観点は `_how_to/reader.md`、興味判定のペルソナ・第一印象は `_how_to/standard_reader.md` を参照する。
 - 保存したファイルパスをチャットで明示してから完了扱いにする。
+- **足切り判定は100点閾値を優先する**（70点以上: 読むべき / 55〜69点: 強い美点1つ以上なら読むべき / 54点以下: 読まなくていい）。閾値の定義と6項目の配点は `_how_to.example/reader.md` を参照する。
+- **ゲート段階（G1/G2/G3）によってファイル名を変えない**。`_reader/YYYYMMDD_HHMM.md` を足切り・下読み兼用とし、段階はファイル内のヘッダに明記する。
 
 禁止:
 
 - チャットに書評本文を出しただけで、評価完了としない。
 - `_workingspace/log/` を作品ごとの書評本文の保存先にしない。査証ログには作業事実だけを追記する。
+- 5段階評価だけを根拠に足切り判定を行わない（100点換算で閾値を確認してから判定する）。
 
 参照:
 
 - 評価出力スキル: `.rulesync/skills/novel-reader-output/SKILL.md`
-- 操作説明: `docs/workflow/instruction-driven.md`
+- 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`
+
+## 評価ファイル命名と役割（全モード一覧）
+
+定義:
+評価モードごとに異なるファイル名を使い、保存先と完了条件を `_reader/` に統一する。
+
+| モード | 技法正本 | ファイル名 | 100点の意味 | 典型タイミング |
+|--------|----------|-----------|-------------|----------------|
+| First Reader（足切り） | `_how_to/reader.md` | `_reader/YYYYMMDD_HHMM.md` | 6項目100点（足切り用） | G1冒頭/G2章完/G3全文 |
+| Interest Check | `_how_to/standard_reader.md` | `_reader/interest_YYYYMMDD.md` | なし（合格/不合格） | 企画・第1章・投稿前 |
+| Editor Score | `_how_to/editor_score.md`（予定） | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（深掘り用） | 足切り通過後・推敲後 |
+| Consistency Audit | `_how_to/consistency_audit.md`（予定） | `_reader/consistency_YYYYMMDD.md` | なし（表形式） | 複数章完成後 |
+| Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
+
+必須:
+
+- ファイル名はモードごとに上表を参照し、既存名に勝手に接尾辞を追加しない。
+- `_reader/YYYYMMDD_HHMM.md`（First Reader）は足切り・下読み兼用とし、G1/G2/G3 段階によってファイル名を変えない。
+- 「予定」技法は対応するファイルが存在するまで、そのモードは実行しない。
+
+参照:
+
+- 保存手順: `.rulesync/skills/novel-reader-output/SKILL.md`
+- 深掘り評価手順（予定）: `.rulesync/skills/novel-evaluation-output/SKILL.md`
+- 操作説明: `docs/workflow/reader-output.md`
+
+## 足切りと深掘り評価の住み分け
+
+定義:
+First Reader（足切り）と Editor Score（深掘り）は配点・目的が異なる別モードであり、混同しない。
+
+| 観点 | First Reader（足切り） | Editor Score（予定・深掘り） |
+|------|------------------------|------------------------------|
+| 目的 | 読む／読まないの選別 | どこを直すと何点上がるか |
+| 技法正本 | `_how_to/reader.md` | `_how_to/editor_score.md`（予定） |
+| 配点 | 冒頭20＋キャラ20＋プロット20＋文章15＋わかりやすさ10＋独創15 | 構造20＋キャラ20＋文体20＋世界観20＋完成度20 |
+| 閾値 | 70 / 55–69（美点）/ 54 | 点数は参考。致命弱点の優先順位が主 |
+| 入力 | 対象章〜全文（短め） | あらすじ＋全文 or 重要章（長文多段） |
+| 実行条件 | 任意のタイミング | 足切り通過後を推奨 |
+
+必須:
+
+- 「Editor Score で足切りする」「足切り点数で深掘り改善する」という混用をしない。
+- 両モードを同一セッションで行う場合、先に足切り（First Reader）を完了してから Editor Score へ進む。
+- ジャンル別編集者ペルソナは、Phase 1 では `config.md` のジャンル参照のみとする（専用 persona ファイルは Phase 2 以降）。
+
+## 長文評価の閾値と前処理
+
+定義:
+作品全体（G3）または Editor Score で長文を一括評価することが困難な場合、Synopsis（あらすじ）を先行して作成し、段階的に評価を進める。
+
+必須:
+
+- 作品合計 **30,000字超**、または章単体 **8,000字超** の場合は、G3 全文足切り・Editor Score の前に Synopsis 先行を推奨する（P2 実装後は必須）。
+- Synopsis の書式は `_how_to/novel_synopsis_for_review.md`（予定）に従う。ファイルが未作成の間は、400字程度の客観的あらすじをチャット内で作成してから評価を進めてよい。
+- 章分割評価（文字数加重平均）の手順は `.rulesync/skills/novel-reader-output/SKILL.md` の「長文 G3 の分割評価」節を参照する。
+
+参照:
+
+- 長文パイプライン手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`「長文多段パイプライン」
+- 設計根拠: `_workingspace/plans/novel-evaluation-enhancement.md` Phase 2
+
+## 評価作業一時領域（`_reader/_work/`）
+
+定義:
+30,000字超の長文評価や章分割評価で生じる中間作業ファイル（章別スコアノート・集計メモ等）を置く一時領域。`_reader/` 直下の最終成果物と混在させない。
+
+必須:
+
+- `_reader/_work/<YYYYMMDD>/` を評価セッションの作業フォルダとする（`YYYYMMDD` は評価実施日）。
+- **最終成果物のみ** `_reader/` 直下に置く（命名は「評価ファイル命名と役割」の表に従う）。
+- 作業フォルダ内の標準ファイル:
+  - `ch01_eval.md`〜`chNN_eval.md`: 章ごとのスコアノート
+  - `step_b.md`: 構造・プロット・テーマの中間分析（あらすじから）
+  - `step_c.md`: 文体・描写の中間分析（章サンプルから）
+  - `aggregate.md`: 加重平均計算メモ（計算式: `最終総合点 = Σ(章スコア × 章文字数) ÷ 合計文字数`）
+- 作業フォルダのファイルは評価完了後も残してよい（削除はユーザー判断）。
+
+禁止:
+
+- `_reader/_work/` 内のファイルを最終成果物として参照しない。最終点数・判定は `_reader/` 直下のファイルを根拠にする。
+- `_reader/` 直下に `ch01_eval.md` 等の章別ノートを直接置かない。
+
+参照:
+
+- 最終成果物の命名: 本ファイル「評価ファイル命名と役割（全モード一覧）」
+- 長文多段パイプライン手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`「長文多段パイプライン」
 
 ## プロジェクト・インテリジェンス
 

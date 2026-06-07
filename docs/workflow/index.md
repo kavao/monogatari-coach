@@ -25,7 +25,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
-- **評価結果の保存**: [Reader Output](reader-output.md)
+- **評価（足切り・Editor Score・一貫性監査）**: [Reader Output](reader-output.md) — 下読み・足切り・Editor Score・Consistency Audit・Synopsis の保存先・操作ツール一覧
 - **運用の骨格**: [自己発展型ルールガバナンス](self-evolving-governance.md)
 
 運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
@@ -44,7 +44,10 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - 画像タグ（Tag Mode）や漫画（Manga Tag Mode）を「必要になったタイミングで」指示する
    - Tag Mode で汎用 ID を省略させたくないときは **「Tag Mode（テンプレート一式）」**（正本: [concepts.md Tag Mode テンプレート一式](../../.rulesync/rules/concepts.md)）。作品固有の追加 ID は `_meta.md` の**キャラタグ方針・カスタム要素**に書く（指示例: [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）
 6. **品質を上げる**
-   - 清書（文章校正）や下読み（書評）を、保存先ファイルを指定して指示する
+   - 清書（文章校正）: `_novel_text_backup/` に旧版を退避してから `_novel_text/` を更新して、と指示する
+   - 足切り（First Reader）: G1→G2→G3 の順で「第○章を足切り判定してください」と指示する
+   - 完稿後の深掘り（Editor Score）: 足切り通過後に「Editor Score で採点してください」と指示する
+   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint） — 詳細は [Reader Output](reader-output.md)
 
 ## Monogatari Coach の約束（ユーザー視点）
 

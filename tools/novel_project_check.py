@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,59 @@ def _dir_status(path: Path) -> dict[str, Any]:
     return {"path": str(path), "ok": True}
 
 
+_RE_SLUSH_SCORE = re.compile(r"(?<!\d)(\d{1,3})\s*/\s*100(?!\d)")
+_RE_SLUSH_G3_STATUS = re.compile(r"足切りステータス[:：]\s*G3合格")
+_RE_SLUSH_PASS = re.compile(r"読むべき")
+_NEW_READER_PAT = re.compile(r"^\d{8}_\d{4}\.md$")
+
+
+def _check_slush_g3(work: Path) -> dict[str, Any]:
+    """G3 足切り通過確認。_meta.md または最新 _reader/*.md を参照する。"""
+    # 1. _meta.md の 足切りステータス: G3合格 を確認
+    meta = work / "_meta.md"
+    if meta.is_file():
+        try:
+            text = meta.read_text(encoding="utf-8", errors="replace")
+            if _RE_SLUSH_G3_STATUS.search(text):
+                return {"ok": True, "source": "_meta.md", "detail": "足切りステータス: G3合格"}
+        except OSError:
+            pass
+
+    # 2. _reader/ の最新 YYYYMMDD_HHMM.md を確認
+    reader_dir = work / "_reader"
+    if not reader_dir.is_dir():
+        return {"ok": False, "source": None, "detail": "_reader/ が存在しない"}
+
+    candidates = sorted(
+        [f for f in reader_dir.glob("*.md") if _NEW_READER_PAT.match(f.name)],
+        reverse=True,
+    )
+    if not candidates:
+        return {"ok": False, "source": None, "detail": "_reader/YYYYMMDD_HHMM.md が存在しない"}
+
+    for f in candidates[:3]:  # 最新3件を確認
+        try:
+            text = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        scores = [int(m.group(1)) for m in _RE_SLUSH_SCORE.finditer(text) if int(m.group(1)) <= 100]
+        score = max(scores) if scores else None
+        passed = bool(_RE_SLUSH_PASS.search(text))
+        if score is not None and score >= 55 and passed:
+            return {
+                "ok": True,
+                "source": f.name,
+                "detail": f"判定: 読むべき / スコア: {score} / 100",
+            }
+
+    latest = candidates[0].name
+    return {
+        "ok": False,
+        "source": latest,
+        "detail": "G3 足切り通過の記録なし（スコア ≥ 55 かつ「読むべき」の _reader/*.md が見つからない）",
+    }
+
+
 def check_novel_project(
     work: Path,
     *,
@@ -78,6 +132,7 @@ def check_novel_project(
     character_suggest: bool = False,
     require_text_lint: bool = False,
     text_lint_profile: str = "default",
+    require_slush_g3: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -184,6 +239,13 @@ def check_novel_project(
         out["ok"] = False
         out["issues"].append("manga/ がありません（--require-manga-dir 指定）")
 
+    if require_slush_g3:
+        g3_result = _check_slush_g3(work)
+        out["optional"]["slush_g3"] = g3_result
+        if not g3_result["ok"]:
+            out["ok"] = False
+            out["issues"].append(f"足切り G3: {g3_result['detail']}（--require-slush-g3 指定）")
+
     if require_text_lint:
         try:
             lint_result = ntrl.run_lint(
@@ -287,6 +349,15 @@ def main(argv: list[str] | None = None) -> int:
         help="本文 lint のプロファイル（既定: default）",
     )
     p.add_argument(
+        "--require-slush-g3",
+        action="store_true",
+        help=(
+            "G3 足切り通過を必須チェックにする。"
+            "_meta.md の「足切りステータス: G3合格」または最新 _reader/YYYYMMDD_HHMM.md の"
+            "スコア ≥ 55 かつ「読むべき」判定を確認する。"
+        ),
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -321,6 +392,7 @@ def main(argv: list[str] | None = None) -> int:
         character_suggest=args.character_suggest,
         require_text_lint=args.require_text_lint,
         text_lint_profile=args.text_lint_profile,
+        require_slush_g3=args.require_slush_g3,
     )
 
     if args.check_image_layout:
@@ -394,6 +466,15 @@ def main(argv: list[str] | None = None) -> int:
             f"    本文 lint（profile: {args.text_lint_profile} --strict）: "
             + ("OK" if lint_ok else f"NG — {cnt} 件")
             + f"  {files} ファイル確認"
+        )
+
+    if args.require_slush_g3:
+        g3 = opt.get("slush_g3") or {}
+        g3_ok = g3.get("ok", False)
+        detail = g3.get("detail", "—")
+        src = g3.get("source") or "—"
+        print(
+            f"    足切り G3: {'OK' if g3_ok else 'NG'} — {detail}  [{src}]"
         )
 
     if result["ok"] and not result.get("issues"):

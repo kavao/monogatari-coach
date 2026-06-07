@@ -537,10 +537,14 @@ flowchart TD
 #### 手動手順（明確化）
 詳細な実行手順はスキル **`novel-refinement-output`** を正とする。入口ルールとしては、対象ファイルと修正方針を確認し、`_how_to/rewrite.md` を適用し、旧版退避後に `_novel_text/` を同一ファイル名で更新し、`tools/novel_char_count.py` または再読込で確認することだけを固定する。
 
-### 2.6 First Reader Mode（下読み・足きり判定）
+### 2.6 First Reader Mode（下読み・足切り判定）
 横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。書評本文はチャットではなく **`novels/<作品>/_reader/YYYYMMDD_HHMM.md`** に保存し、チャットには判定と要約だけを返す。評価観点は `_how_to/reader.md`、保存手順はスキル **`novel-reader-output`** を参照する。
 
-下読みにおける「足きり（一次選考落ち）」を防止する観点で、商業的な最低基準をクリアしているかを厳格に判定する。
+下読みにおける「足切り（一次選考落ち）」を防止する観点で、商業的な最低基準をクリアしているかを厳格に判定する。
+
+**採点形式**: 6項目100点満点（冒頭の牽引力20・キャラクター20・プロット期待値20・文章力15・わかりやすさ10・独創性15）。閾値は 70点以上: 読むべき / 55〜69点: 強い美点1つ以上なら読むべき / 54点以下: 読まなくていい。配点と閾値の定義は `_how_to/reader.md` を参照する。
+
+**段階ゲート（G1/G2/G3）**: First Reader は3段階で実施できる。G1（冒頭〜3,000字） → G2（1章完）→ G3（全文）の順で足切り判定する。各段階の入力範囲と加重重点は `_how_to/reader.md` の「ゲート段階」節を参照する。段階ごとにファイル名は変えず、ファイル内ヘッダにゲート段階を明記する。
 
 ### 2.7 Interest Check Mode（一般読者・興味判定）
 横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。一般読者が、作品の冒頭やタイトル、概要を見て「興味を持つか」「読み飛ばすか」を判定する。評価観点は `_how_to/standard_reader.md`、保存先は **`novels/<作品>/_reader/interest_YYYYMMDD.md`**、保存手順はスキル **`novel-reader-output`** を参照する。
@@ -555,6 +559,18 @@ flowchart TD
     UseStandard --> InterestCheck[Standard Reader: Interest Check]
     InterestCheck --> SaveReview[Write review to _reader/...]
 ```
+
+### 2.8 Editor Score Mode（完稿・推敲後の深掘り採点）
+横断正本は **`.rulesync/rules/concepts.md`** の「足切りと深掘り評価の住み分け」。足切り（First Reader）通過後の作品について、**どこを直すと何点上がるか**を5項目100点で採点する。
+
+評価前に `character.md` / `world.md` / `design_specification.md` を参照する。採点結果は **`novels/<作品>/_reader/score_YYYYMMDD_HHMM.md`** に保存し、チャットには総合点・致命的弱点件数・保存先パスだけを返す。
+
+**足切り（reader.md 6項目）と Editor Score（editor_score.md 5項目）は配点・目的が異なる別モード**。足切り未実施の作品に Editor Score を使わない。評価観点は `_how_to/editor_score.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
+
+### 2.9 Consistency Audit Mode（設定・口調の一貫性監査）
+横断正本は **`.rulesync/rules/concepts.md`** の「評価ファイル命名と役割」。複数章が完成した作品について、**設定・口調・時系列・固有名詞の表記揺れ**を章横断で監査する。
+
+評価前に `character.md` / `world.md` / `design_specification.md` を参照する。監査結果は **`novels/<作品>/_reader/consistency_YYYYMMDD.md`** に保存し、チャットには矛盾件数の内訳と保存先パスだけを返す。評価観点は `_how_to/consistency_audit.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
 
 ---
 

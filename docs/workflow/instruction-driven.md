@@ -24,6 +24,8 @@
 [B. 執筆](#b-執筆する) /
 [C. 清書・校正](#c-清書文章校正する) /
 [D. 下読み](#d-下読き足きり判定する) /
+[D2. Editor Score](#d2-完稿推敲後に深掘り採点するeditor-score) /
+[D3. Consistency Audit](#d3-設定口調の一貫性を監査するconsistency-audit) /
 [E. 興味判定](#e-一般読者視点で興味を判定する) /
 [F. メタ情報更新](#f-メタ情報を更新する)
 
@@ -235,21 +237,95 @@ python tools/novel_char_count.py novels/NNN_作品名
 
 ---
 
-### D. 下読み（足きり判定）する
+### D. 下読み（足切り判定）する
+
+最小のトリガー文1行で動きます。
 
 ```text
-第1章を下読みして書評を出してください。
+第1章を足切り判定してください。
+```
+
+段階を指定したい場合は、以下のように書き分けます。
+
+```text
+# G1: 冒頭（〜3,000字）だけで速断する
+第1章をG1足切りしてください。
+
+# G2: 1章完で判定する
+第2章をG2章完足切りで判定してください。
+
+# G3: 全文で判定する
+全章をG3全文足切りで判定してください。
+
+# Interest Check と組み合わせる
+Interest Check のあと、第1章をG1足切りしてください。
 ```
 
 **このように動きます:**
-1. `_how_to/reader.md` の評価観点（キャラ・プロット・文章力・独創性など）を参照する
-2. 商業的な最低基準をクリアしているかを編集者の視点で判定する
-3. 結果を `novels/<作品>/_reader/YYYYMMDD_HHMM.md` に保存する
-4. チャットには判定（合格／不合格・5段階評価）と改善ポイントの要約だけを返す
+1. `config.md`・対象 `_novel_text/*.md`・文字数（`novel_char_count.py`）を確認する
+2. `_how_to/reader.md` の6項目100点採点（冒頭の牽引力/キャラクター/プロット期待値/文章力/わかりやすさ/独創性）で評価する
+3. 70点以上: 読むべき / 55〜69点: 強い美点1つ以上なら読むべき / 54点以下: 読まなくていい — の閾値で足切りを判定する
+4. 結果を `novels/<作品>/_reader/YYYYMMDD_HHMM.md` に保存する
+5. チャットには判定・総合点・改善ポイント要約・保存先パスだけを返す
 
-詳しい保存先と手順は [Reader Output](reader-output.md) を参照してください。
+詳しい保存先・閾値・ゲート段階の説明は [Reader Output](reader-output.md) を参照してください。
 
-*（このモードは LLM が直接処理するため、CLI ツールは使いません）*
+評価を始める前に章別文字数と既存評価を確認したい場合は、以下のコマンドが使えます。
+
+```bash
+# 評価準備情報・frontmatter テンプレを表示する
+python tools/novel_evaluation_prepare.py novels/NNN_作品名 --gate G2
+
+# 過去の評価スコア推移を確認する
+python tools/novel_evaluation_diff.py novels/NNN_作品名
+```
+
+*（評価の採点自体は LLM が直���処理します。CLI ツールは準備・確認用です）*
+
+---
+
+### D2. 完稿・推敲後に深掘り採点する（Editor Score）
+
+足切り通過後の作品を、「どこを直すと何点上がるか」の観点で採点します。
+
+```text
+全文をEditor Scoreで採点してください。
+```
+
+長文の場合はあらすじを先行させます。
+
+```text
+あらすじを作成してから、Editor Scoreで採点してください。
+```
+
+**このように動きます:**
+1. 足切り済みであることを確認する（`_reader/YYYYMMDD_HHMM.md` の判定が「読むべき」）
+2. `config.md`・`character.md`・`world.md`・`design_specification.md` を参照する
+3. `_how_to/editor_score.md` の5項目100点（構造/キャラ/文体/世界観/完成度）で採点する
+4. 結果を `novels/<作品>/_reader/score_YYYYMMDD_HHMM.md` に保存する
+5. チャットには総合点・致命的弱点件数・保存先パスだけを返す
+
+詳しい手順は [Reader Output](reader-output.md) を参照してください。
+
+*（足切り用の reader.md とは別ファイル・別配点です。混同しないでください）*
+
+---
+
+### D3. 設定・口調の一貫性を監査する（Consistency Audit）
+
+複数章完成後に、設定矛盾・口調のブレ・未回収伏線を洗い出します。
+
+```text
+第1〜3章の設定・口調の一貫性を監査してください。
+```
+
+**このように動きます:**
+1. `_novel_text/*.md`・`character.md`・`world.md`・`design_specification.md` を参照する
+2. `_how_to/consistency_audit.md` の観点で章横断の矛盾・揺れを洗い出す
+3. 結果を `novels/<作品>/_reader/consistency_YYYYMMDD.md` に表形式で保存する
+4. チャットには矛盾件数の内訳（矛盾/要確認/軽微）と保存先パスだけを返す
+
+詳しい手順は [Reader Output](reader-output.md) を参照してください。
 
 ---
 

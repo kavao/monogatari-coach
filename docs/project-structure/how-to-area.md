@@ -17,9 +17,12 @@
 | `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |
 | `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)（Tag Mode 各節）が正本 |
 | `rewrite.md` | 文章校正・清書の作法 |
-| `reader.md` | 下読み・書評の評価観点 |
+| `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |
+| `editor_score.md` | 足切り通過後の深掘り採点（5項目×20点・致命的弱点の優先順位付け。スキル: `novel-evaluation-output`） |
+| `novel_synopsis_for_review.md` | 長文評価前処理用の客観的あらすじ（400字・ネタバレ可。30,000字超作品で推奨） |
+| `consistency_audit.md` | 複数章の設定・口調・時系列の一貫性監査（表形式。スキル: `novel-evaluation-output`） |
 | `standard_reader.md` | 一般読者視点の興味判定軸 |
-| `meta.md` | メタデータ管理のフォーマット |
+| `meta.md` | メタデータ管理のフォーマット（§II 評価・足切り履歴を含む） |
 
 **入れないもの**: ツールのコマンド・プロバイダ設定・環境変数などの運用情報（→ `docs/` へ）
 
