@@ -144,6 +144,59 @@
 
 モデルやプロバイダによって効き方が異なるため、断片の語は生成結果を見ながら調整する。
 
+## NovelAI source#/target# 構文（人物間インタラクション）
+
+NovelAI では `source#` / `target#` 構文は、日常的な人物間のインタラクション（抱擁、キス、手をつなぐなど）においても、**動作の主体と対象**を明確に制御する際に有効です。NSFW シーン（乳首への口式、ディスエンボディ等）でも同構文を併用します。NSFW の具体例は本ファイルの「前戯」節、および **`_how_to/manga_tag.md`** の同節・「disembodied penis」節を参照してください。
+
+### 構文の意味
+
+| トークン | 意味 |
+|:---|:---|
+| `source#1boy` | 男性が能動側（動作の発信者） |
+| `target#1girl` | 女性が受動側（動作の対象） |
+| `mutual#hugging` | 相互動作（双方が同じ動作に関与） |
+
+### 基本的な一般向け例（抱き合うシーン）
+
+```
+masterpiece, best quality, 1boy, 1girl, source#1boy, target#1girl, hugging, embrace, arms_around_each_other, standing, smile, detailed background, soft lighting, outdoor
+```
+
+- **`source#1boy`** … 男性が能動的に抱きつく側を指定する。
+- **`target#1girl`** … 女性が抱きつかれる対象として指定する。
+
+これにより、**男性から女性への一方的な抱擁**が安定しやすくなります。
+
+### 別の一般向け例（キスシーン）
+
+```
+masterpiece, best quality, 1boy, 1girl, source#1boy, target#1girl, kissing, kiss_on_lips, closed_eyes, gentle_kiss, standing, face_to_face, romantic, detailed faces, soft lighting, indoors
+```
+
+### 自然言語を織り交ぜた拡張例
+
+```
+masterpiece, best quality, 1boy, 1girl, source#1boy, target#1girl, hugging, the boy gently hugs the girl from behind, spooning_hug, back_hug, smile, happy, detailed clothing, warm atmosphere, park
+```
+
+### 活用のポイント（一般シーン共通）
+
+1. **動作タグと同列** … `hugging`、`kissing`、`holding_hands` などの動作タグと**同じプロンプト内**に `source#` / `target#` を置く（`1boy` / `1girl` の直後が分かりやすい）。
+2. **相互動作** … 双方が同程度に関与する場合は `mutual#hugging` 等も使用可能。
+3. **YAML IR への反映** … コマ生成時は `panels[].prompt_tags` に `source#1boy` 形式のトークンをそのまま列挙する（英語タグ列として扱う）。
+
+### ネガティブプロンプト例（方向の逆転を抑制）
+
+`panels[].negative_tags` やバッチの `--negative-prompt` に、必要に応じて以下を追加する。
+
+```
+wrong direction, reverse hug, 1girl source#hugging
+```
+
+モデルやプロバイダによって効き方が異なるため、生成結果を見ながら調整する。
+
+この構文を日常的なシーンに用いることで、人物間の関係性や動作の方向性をより意図通りに表現しやすくなります。手をつなぐ・頭をなでる等、追加のシチュエーション例が必要な場合は作品・コマの文脈に合わせて同形式で追記してください。
+
 # 基本的な指示出し
 コマごとに場所 (Location),人の状態 (Characters' States),行っているアクション (Actions)などを明確にしてください
 登場キャラがいる場合は、**`character.md` と `tag/<romaji>.md` を正として、髪・目・肌・種族・体格・固定小物などの固定特徴を各コマのタグへ継承してください**。
