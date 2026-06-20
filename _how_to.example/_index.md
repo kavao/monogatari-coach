@@ -18,6 +18,8 @@
 6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する
+6.5. naming.md
+   - 小説のタイトル命名、コンセプトに沿った名前の付け方などの技法まとめ
 7. world_wear.md
    - 世界の色彩や、人物デザインを考えるときの参考にする
 8. reader.md

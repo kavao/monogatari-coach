@@ -472,7 +472,7 @@ First Reader（足切り）と Editor Score（深掘り）は配点・目的が�
 参照:
 
 - 長文パイプライン手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`「長文多段パイプライン」
-- 設計根拠: `_workingspace/plans/novel-evaluation-enhancement.md` Phase 2
+- 設計根拠: `_workingspace/plans/20260608_novel-evaluation-enhancement.md` Phase 2
 
 ## 評価作業一時領域（`_reader/_work/`）
 
@@ -520,6 +520,7 @@ First Reader（足切り）と Editor Score（深掘り）は配点・目的が�
 - 作業計画のチェックだけで完了事実の記録を済ませない。
 - 査証ログ・日記は既存行を削除、上書き、並べ替えず、追記で更新する。
 - **計画ファイル（`_workingspace/plans/*.md`）には必ず成果物チェックリスト（`- [ ]` / `- [x]` 形式）を含める。** 完了済みのタスクは `- [x]` にし、進捗が一目でわかるようにする。計画ファイルを作成したあとも、完了のたびにチェックを入れて最新状態を保つ。
+- **トピック計画のファイル名**は **`YYYYMMDD_<slug>.md`**（作成日8桁＋アンダースコア＋slug）。月次集約 `YYYYMM.md`・`backlog.md`・`README.md` は例外。詳細は **`_workingspace/plans/README.md`**「ファイル命名」を正とする。
 
 参照:
 

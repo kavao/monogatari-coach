@@ -33,6 +33,7 @@ progress.md
 .github/*
 .kilocode/*
 .kilo/
+.agents/
 .kiloignore
 kilo.jsonc
 .cursorignore
