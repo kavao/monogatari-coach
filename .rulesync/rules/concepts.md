@@ -36,6 +36,7 @@ globs: ["**/*"]
 | 書評・興味判定 | `novels/<作品>/_reader/*.md` | チャット上の要約 |
 | キャラクタータグ | `novels/<作品>/tag/characters/*.yaml` | `tag/<romaji>.md` |
 | 漫画ページ | `novels/<作品>/manga/pages/*.yaml` | `manga/manga_XX.md` |
+| 挿絵計画 | `novels/<作品>/illustrations/plans/*.md` | `_meta.md` §3.2 章別割当表 |
 | 挿絵ページ | `novels/<作品>/illustrations/pages/*.yaml` | `illustrations/illustration_XX.md` |
 
 ## NovelAI 向けタグ分離（パイプ区切り）
@@ -272,32 +273,78 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 - 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`
 
+## 挿絵計画（Illustration Plan Mode）
+
+定義:
+挿絵計画は、本文執筆後・YAML IR 作成前に行う **Step 1**。章ごとに 0枚／1枚／複数枚を決め、候補3点・採用・本文アンカー・衣装 variant を計画 MD に記録する。表紙（`illustration_00` 帯）は章挿絵とは**別枠**として管理する。
+
+必須:
+
+- 挿絵計画の正本は `novels/<作品>/illustrations/plans/` 配下の Markdown とする（表紙: `cover_plan.md`、章: `chapter_plan.md`）。
+- **`_meta.md` §3.2 章別割当表**が章ごとの枚数・位置の正本。YAML より先に §3.2 を更新する。
+- 計画 MD を経由せず YAML だけを作成して Illustration Tag Mode を完了扱いにしない。
+- 章が 0枚のとき: YAML を作らない。計画 MD に「0枚＋理由」を書いた状態が Step 1 の完了条件。
+- 表紙は §3.2 章別割当表に載せない（§3.1 と `cover_plan.md` で独立管理）。
+
+参照:
+
+- 創作技法雛形: `_how_to.example/illustration_plan.md`
+- Illustration Plan スキル: `.rulesync/skills/illustration-plan/SKILL.md`
+
 ## 挿絵IR
 
 定義:
-挿絵IRは、小説本文から漫画ではない一枚絵・章扉・表紙などを作るための YAML IR である。型は漫画ページIRと同じ `MangaPagePrompt` を使い、`meta.intent: illustration` で用途を区別する。
+挿絵IRは、小説本文から漫画ではない一枚絵・章扉・表紙などを作るための YAML IR である（**Step 2**）。型は漫画ページIRと同じ `MangaPagePrompt` を使い、`meta.intent: illustration` で用途を区別する。**計画 MD（Step 1）で採用が確定した IR だけ**作成する。
 
 必須:
 
 - 挿絵ページの正本は `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` とする。
+- Illustration Tag Mode 開始前に必ず `_meta.md` §3.2 と `illustrations/plans/chapter_plan.md`（または `cover_plan.md`）を読む。
 - `panels[]` は漫画のコマではなく、構図を分解する構成セルとして扱う。単体挿絵は1セル、群像・複合構図は複数セルを許容する（複合構図の判断・生成方針は **`.rulesync/rules/overview.md`** の Illustration Tag Mode）。
 - 既定は枠線なし・パネル境界なしの一枚絵とし、枠を使う場合は `manga.panel_layout` または `render_instruction.user_directives.page_notes` に意図を明記する。
 - セリフ・効果音などの `text` は原則空にする。画像内文字が必要な場合だけ理由と配置を明記する。
 - 画像保存先は `novels/<作品>/illustrations/_assets/illustration_XX/` とする。
 - 検証は `tools/novel_prompt_ir_validate.py` で行い、画像生成は dry-run から本番までの手順に従う。
 
+禁止:
+
+- 計画 MD（Step 1）を経由せず YAML だけを新規作成して Illustration Tag Mode を完了扱いにしない。
+- 章が 0枚と決まっている場合に YAML を作成しない。
+
 役割:
 
 | ファイル | 役割 |
 |----------|------|
-| `illustrations/pages/*.yaml` | 挿絵・表紙の編集正本 |
+| `_meta.md` §3〜§3.2 | 方針・表紙・章別割当の正本 |
+| `illustrations/plans/cover_plan.md` | 表紙計画の正本（Step 1） |
+| `illustrations/plans/chapter_plan.md` | 章挿絵計画の正本（Step 1） |
+| `illustrations/pages/*.yaml` | 挿絵・表紙の実行正本（Step 2） |
 | `illustrations/_assets/<illustration_XX>/` | 挿絵・表紙画像の保存先 |
 | `illustrations/illustration_XX.md` | 任意の可読副本・外部連携用 |
 
 参照:
 
+- Illustration Plan スキル: `.rulesync/skills/illustration-plan/SKILL.md`
 - Illustration Prompt IR: `.rulesync/skills/illustration-prompt-ir/SKILL.md`
 - 操作説明: `docs/image-generation/illustration-prompt-ir.md`
+
+## Illustration Tag Mode 作品メタ（挿絵・表紙）
+
+定義:
+作品 `novels/<作品>/_meta.md` の **「III. 画像・漫画生成設定」§3〜§3.2** に置く、挿絵専用の方針メモ。漫画の §4 variant 表・§5 タグ層と同型の責務分離で管理する。
+
+| 節 | 内容 |
+|----|------|
+| **§3 方針** | 挿絵密度方針・章あたり既定枚数・1枚時の既定位置・候補数・優先場面・除外条件・計画正本パス・IR 番号設計 |
+| **§3.1 表紙** | 表紙の有無・比率・計画正本・採用IR・計画状態（別枠・§3.2 に混在させない） |
+| **§3.2 章別割当表** | 章ごとの 0/1/multiple・位置・優先シーン・計画／YAML／生成の進捗状態 |
+
+必須:
+
+- Illustration Plan Mode 開始時に必ず `_meta.md` §3〜§3.2 を読む。
+- §3.2 の「枚数」列が章ごとの 0/1/multiple の正本。計画 MD と矛盾するときは、**直近のユーザー指示 → §3.2 表 → §3 方針フィールド** の順で優先する。
+- 表紙は §3.1 と `cover_plan.md` で管理し、§3.2 の表には載せない。
+- フィールド定義の詳細は `_how_to.example/meta.md` §3〜§3.2 を参照する。
 
 ## 画像保存先
 

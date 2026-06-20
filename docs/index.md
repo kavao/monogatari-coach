@@ -16,8 +16,8 @@
   漫画ページ YAML 正本・検証・export・コマネガの合成
 - [Manga tag generation（互換 Step1/Step2）](image-generation/manga-tag-generation.md)
   タグ作業用テンプレ・実例・生成モード別の運用メモ
-- [挿絵・表紙 IR](image-generation/illustration-prompt-ir.md)
-  挿絵・章扉・表紙の YAML IR 作成・検証・生成バッチ
+- [挿絵・表紙（計画 → IR → 生成）](image-generation/illustration-prompt-ir.md)
+  挿絵計画 MD（Step 1）→ YAML IR（Step 2）→ 画像生成の二段パイプライン
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
 - [ユーザスキル（プラグイン相当）](workflow/user-skills.md)

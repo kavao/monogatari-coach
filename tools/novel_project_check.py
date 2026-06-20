@@ -119,6 +119,20 @@ def _check_slush_g3(work: Path) -> dict[str, Any]:
     }
 
 
+def _illustration_page_yaml_paths(work: Path) -> list[Path]:
+    pages = work / "illustrations" / "pages"
+    if not pages.is_dir():
+        return []
+    return sorted(pages.glob("illustration_*.yaml"))
+
+
+def _needs_cover_plan(work: Path) -> bool:
+    for path in _illustration_page_yaml_paths(work):
+        if path.stem.startswith("illustration_00"):
+            return True
+    return False
+
+
 def check_novel_project(
     work: Path,
     *,
@@ -126,6 +140,7 @@ def check_novel_project(
     require_tag_md: bool,
     require_manga_dir: bool,
     require_meta_yaml: bool = False,
+    require_illustration_plan: bool = False,
     require_character_structure: bool = False,
     character_profile: str = "plan",
     character_strict: bool = False,
@@ -239,6 +254,36 @@ def check_novel_project(
         out["ok"] = False
         out["issues"].append("manga/ がありません（--require-manga-dir 指定）")
 
+    ill_pages = _illustration_page_yaml_paths(work)
+    out["optional"]["illustration_page_yaml_count"] = len(ill_pages)
+    if require_illustration_plan:
+        plans_dir = work / "illustrations" / "plans"
+        chapter_plan = plans_dir / "chapter_plan.md"
+        cover_plan = plans_dir / "cover_plan.md"
+        cover_required = _needs_cover_plan(work)
+        chapter_st = _file_status(chapter_plan, min_file_bytes)
+        cover_st = _file_status(cover_plan, min_file_bytes) if cover_required else {"ok": True}
+        out["optional"]["illustration_plan"] = {
+            "chapter_plan_ok": chapter_st["ok"],
+            "cover_plan_required": cover_required,
+            "cover_plan_ok": cover_st["ok"],
+        }
+        out["required_files"].append({"name": "illustrations/plans/chapter_plan.md", **chapter_st})
+        if not chapter_st["ok"]:
+            out["ok"] = False
+            out["issues"].append(
+                f"必須ファイル: illustrations/plans/chapter_plan.md — "
+                f"{chapter_st.get('reason', 'bad')}（--require-illustration-plan 指定）"
+            )
+        if cover_required:
+            out["required_files"].append({"name": "illustrations/plans/cover_plan.md", **cover_st})
+            if not cover_st["ok"]:
+                out["ok"] = False
+                out["issues"].append(
+                    f"必須ファイル: illustrations/plans/cover_plan.md — "
+                    f"{cover_st.get('reason', 'bad')}（表紙 YAML あり・--require-illustration-plan 指定）"
+                )
+
     if require_slush_g3:
         g3_result = _check_slush_g3(work)
         out["optional"]["slush_g3"] = g3_result
@@ -314,6 +359,14 @@ def main(argv: list[str] | None = None) -> int:
         help="novel_image_layout.py と連携して tag/<romaji>/ と manga/_assets/ の完全性を検証",
     )
     p.add_argument(
+        "--require-illustration-plan",
+        action="store_true",
+        help=(
+            "illustrations/plans/chapter_plan.md を必須にする。"
+            "illustration_00*.yaml がある場合は cover_plan.md も必須"
+        ),
+    )
+    p.add_argument(
         "--require-meta-yaml",
         action="store_true",
         help="_meta.yaml を必須チェック対象にする（画像生成・ポーション運用時に指定）",
@@ -386,6 +439,7 @@ def main(argv: list[str] | None = None) -> int:
         require_tag_md=args.require_tag,
         require_manga_dir=args.require_manga_dir,
         require_meta_yaml=args.require_meta_yaml,
+        require_illustration_plan=args.require_illustration_plan,
         require_character_structure=args.require_character_structure,
         character_profile=args.character_profile,
         character_strict=args.character_strict,
@@ -400,7 +454,12 @@ def main(argv: list[str] | None = None) -> int:
         try:
             # scaffold で作成すべきパスを列挙（実際には作成しない）
             nil_args = type("Args", (), {"novel": args.work_dir, "panels": 4, "verbose": False})()
-            created = nil.scaffold_tag_dirs(Path(args.work_dir)) + nil.scaffold_manga_dirs(Path(args.work_dir), 4)
+            created = (
+                nil.scaffold_tag_dirs(Path(args.work_dir))
+                + nil.scaffold_manga_dirs(Path(args.work_dir), 4)
+                + nil.scaffold_illustration_plans(Path(args.work_dir))
+                + nil.scaffold_illustration_dirs(Path(args.work_dir))
+            )
             result["optional"]["image_layout_checked"] = True
             result["optional"]["image_dirs_created_count"] = len(created)
         except Exception as e:
@@ -446,6 +505,22 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"    manga/: {'あり' if opt.get('manga_dir_exists') else 'なし'}"
     )
+    ill_count = opt.get("illustration_page_yaml_count", 0)
+    if ill_count:
+        print(f"    illustrations/pages/*.yaml: {ill_count} 件")
+    if args.require_illustration_plan:
+        ip = opt.get("illustration_plan") or {}
+        ch_ok = ip.get("chapter_plan_ok", False)
+        print(
+            "    挿絵計画 chapter_plan.md: "
+            + ("OK" if ch_ok else "NG")
+        )
+        if ip.get("cover_plan_required"):
+            cv_ok = ip.get("cover_plan_ok", False)
+            print(
+                "    挿絵計画 cover_plan.md: "
+                + ("OK" if cv_ok else "NG")
+            )
     if args.require_character_structure:
         ch = opt.get("character_structure") or {}
         print(

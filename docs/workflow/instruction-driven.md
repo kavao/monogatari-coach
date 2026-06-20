@@ -34,7 +34,8 @@
 [H. キャラ画像生成](#h-キャラクター画像を生成する) /
 [I. 漫画タグ作成](#i-漫画ページタグを作るmanga-tag-mode) /
 [J. 漫画画像生成](#j-漫画画像を生成する) /
-[K. 挿絵IR作成](#k-挿絵表紙の-ir-を作るillustration-tag-mode) /
+[K-1. 挿絵計画](#k-1-挿絵計画を作るillustration-plan-mode) /
+[K-2. 挿絵IR作成](#k-2-挿絵表紙の-ir-を作るillustration-tag-mode) /
 [L. 挿絵生成](#l-挿絵表紙を生成する) /
 [M. 背景資料生成](#m-背景画像背景資料を生成する)
 
@@ -568,7 +569,38 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 ---
 
-### K. 挿絵・表紙の IR を作る（Illustration Tag Mode）
+### K-1. 挿絵計画を作る（Illustration Plan Mode）
+
+```text
+挿絵計画を作成してください。
+```
+
+表紙計画を作りたい場合:
+
+```text
+表紙計画を作成してください。
+```
+
+**このように動きます:**
+1. `_meta.md` §3〜§3.2 を読み、章ごとの枚数・位置・優先シーンを確認する
+2. 章ごとに候補場面3点を挙げ、採用・本文アンカー・衣装 variant を決める
+3. `illustrations/plans/chapter_plan.md`（または `cover_plan.md`）に記録する
+4. `_meta.md` §3.2 の「計画」列を `済` にする
+
+詳細は [挿絵 IR](../image-generation/illustration-prompt-ir.md) の「二段パイプラインの概要」を参照。
+
+**使われるツール:**
+
+```bash
+# 計画フォルダの作成（自動呼び出し）
+python tools/novel_image_layout.py scaffold novels/NNN_作品名
+```
+
+---
+
+### K-2. 挿絵・表紙の IR を作る（Illustration Tag Mode）
+
+Step 1（K-1）の計画 MD で採用が確定した章のみ実行します。
 
 ```text
 本文から挿絵タグを作成してください。
@@ -581,9 +613,9 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 ```
 
 **このように動きます:**
-1. `_meta.md` で挿絵密度・優先場面・表紙方針を確認する
+1. `_meta.md` §3.2 と `illustrations/plans/chapter_plan.md` を読み、採用済みの IR を確認する
 2. 本文と `tag/characters/*.yaml` の固定特徴を参照する
-3. `illustrations/pages/illustration_XX_pYY.yaml` に挿絵・表紙の YAML IR を作成する
+3. 採用分のみ `illustrations/pages/illustration_XX_pYY.yaml` に YAML IR を作成する
 4. `meta.intent: illustration` として、漫画ではない一枚絵の作画依頼にする
 5. `tools/novel_prompt_ir_validate.py` で型・品質を検証する
 

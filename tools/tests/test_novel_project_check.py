@@ -90,3 +90,68 @@ def test_require_meta_yaml_passes_when_present(tmp_path: Path) -> None:
     meta_yaml_issues = [i for i in result["issues"] if "_meta.yaml" in i]
     assert meta_yaml_issues == [], f"_meta.yaml 由来のエラーが残っている: {meta_yaml_issues}"
     assert result["optional"]["meta_yaml_exists"] is True
+
+
+def test_require_illustration_plan_fails_without_chapter_plan(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_illustration_plan=True,
+    )
+    assert result["ok"] is False
+    assert any("chapter_plan.md" in i for i in result["issues"])
+
+
+def _illustration_plan_issues(issues: list[str]) -> list[str]:
+    return [i for i in issues if "illustrations/plans/" in i]
+
+
+def test_require_illustration_plan_passes_with_chapter_plan(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    plans = work / "illustrations" / "plans"
+    plans.mkdir(parents=True)
+    (plans / "chapter_plan.md").write_text(_DUMMY_CONTENT, encoding="utf-8")
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_illustration_plan=True,
+    )
+    assert _illustration_plan_issues(result["issues"]) == []
+    assert result["optional"]["illustration_plan"]["chapter_plan_ok"] is True
+
+
+def test_require_illustration_plan_requires_cover_when_illustration_00_yaml(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    plans = work / "illustrations" / "plans"
+    pages = work / "illustrations" / "pages"
+    plans.mkdir(parents=True)
+    pages.mkdir(parents=True)
+    (plans / "chapter_plan.md").write_text(_DUMMY_CONTENT, encoding="utf-8")
+    (pages / "illustration_00_p01.yaml").write_text("meta:\n  intent: illustration\n", encoding="utf-8")
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_illustration_plan=True,
+    )
+    assert result["ok"] is False
+    assert any("cover_plan.md" in i for i in result["issues"])
+
+    (plans / "cover_plan.md").write_text(_DUMMY_CONTENT, encoding="utf-8")
+    result2 = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_illustration_plan=True,
+    )
+    assert _illustration_plan_issues(result2["issues"]) == []
+    assert result2["optional"]["illustration_plan"]["cover_plan_ok"] is True

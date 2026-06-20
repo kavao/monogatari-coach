@@ -5,6 +5,9 @@
 
 保存先: illustrations/_assets/<illustration_stem>/ （file_prefix は <stem>_p<page>）。
 前提: config/image_generation.json・各 provider の準備完了（tools/image_provider_generate.py と同じ）。
+
+NovelAI Vibe / ポーション: 漫画・キャラタグと同型。
+  優先 CLI > 作品 _meta.yaml > .env MONOCRI_MANGA_NOVELAI_REFERENCE_*
 """
 
 from __future__ import annotations
@@ -33,7 +36,9 @@ from image_provider_novel_manga_batch import (  # noqa: E402
     load_dotenv,
     load_yaml,
     merge_panel_negative_prompt,
+    novelai_reference_job_fields,
     repo_root,
+    resolve_novelai_reference,
     validate_provider,
     yaml_panel_tags,
 )
@@ -49,6 +54,7 @@ ILLUSTRATION_PROVIDER_ENV = "MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT"
 ILLUSTRATION_MODEL_ENV = "MONOCRI_ILLUSTRATION_MODEL_DEFAULT"
 ILLUSTRATION_ASPECT_RATIO_ENV = "MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT"
 ILLUSTRATION_RESOLUTION_ENV = "MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT"
+_GROK_FAMILY = frozenset({"grok", "grok_pro"})
 
 
 def safe_print(text: str, *, stderr: bool = False) -> None:
@@ -187,17 +193,15 @@ def resolve_illustration_option(
     return default
 
 
-def run_provider_job(
-    root: Path,
-    provider_cli: Path,
+def build_job_payload(
     provider: str,
     job: dict[str, str],
     *,
     aspect_ratio: str | None,
     model: str | None,
     resolution: str | None,
-    dry_run: bool,
-) -> int:
+    novelai_ref_fields: dict[str, Any],
+) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "provider": provider,
         "prompt": job["prompt"],
@@ -213,13 +217,97 @@ def run_provider_job(
         payload["model"] = model
     if aspect_ratio is not None:
         payload["aspect_ratio_preset"] = aspect_ratio
-    if resolution is not None:
+    if resolution is not None and provider in _GROK_FAMILY:
         payload["resolution"] = resolution
+    if provider == "novelai" and novelai_ref_fields:
+        payload.update(novelai_ref_fields)
+    return payload
+
+
+def preview_merged_params(
+    root: Path,
+    provider: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    from image_provider_generate import (  # noqa: E402
+        get_provider_cfg,
+        load_root_config,
+        merge_provider_defaults,
+    )
+
+    root_cfg = load_root_config(root / "config" / "image_generation.json")
+    dotenv_map = load_dotenv(root / ".env")
+    provider_cfg = get_provider_cfg(root_cfg, provider, dotenv_map=dotenv_map)
+    return merge_provider_defaults(provider, provider_cfg, payload, root=root)
+
+
+def print_provider_param_notes(
+    provider: str,
+    *,
+    aspect_ratio: str | None,
+    resolution: str | None,
+) -> None:
+    if provider == "novelai":
+        if resolution is not None:
+            print(
+                f"warning: resolution={resolution!r} は NovelAI では未使用です"
+                "（Grok 系 provider のみ）",
+                file=sys.stderr,
+            )
+        if aspect_ratio is not None:
+            print(
+                f"note: NovelAI は aspect_ratio_preset={aspect_ratio!r} を"
+                " width/height に変換します（config novelai.aspect_ratio_presets）",
+                file=sys.stderr,
+            )
+    elif provider in _GROK_FAMILY and aspect_ratio is None:
+        print(
+            "warning: aspect_ratio 未指定 — .env MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT"
+            " または --aspect-ratio を確認してください",
+            file=sys.stderr,
+        )
+
+
+def run_provider_job(
+    root: Path,
+    provider_cli: Path,
+    provider: str,
+    job: dict[str, str],
+    *,
+    aspect_ratio: str | None,
+    model: str | None,
+    resolution: str | None,
+    novelai_ref_fields: dict[str, Any],
+    dry_run: bool,
+) -> int:
+    payload = build_job_payload(
+        provider,
+        job,
+        aspect_ratio=aspect_ratio,
+        model=model,
+        resolution=resolution,
+        novelai_ref_fields=novelai_ref_fields,
+    )
 
     if dry_run:
         print(f"  [{job['prefix']}] -> {job['output_dir']}")
         print(f"    prompt_formatter: {job['prompt_formatter']}")
         print(f"    negative_mode: {job['negative_mode']}")
+        try:
+            merged = preview_merged_params(root, provider, payload)
+            print(f"    width×height: {merged.get('width')}×{merged.get('height')}")
+            ref_count = len(merged.get("reference_image_multiple") or [])
+            if provider == "novelai":
+                print(f"    novelai_reference_images: {ref_count}")
+                if ref_count:
+                    rs = merged.get("reference_strength_multiple") or []
+                    ri = merged.get("reference_information_extracted_multiple") or []
+                    if rs:
+                        print(f"    reference_strength_multiple={rs}")
+                    if ri:
+                        print(f"    reference_information_extracted_multiple={ri}")
+        except (ValueError, KeyError, FileNotFoundError) as exc:
+            print(f"    warning: merge preview failed: {exc}", file=sys.stderr)
         print(f"    prompt[:100]: {payload['prompt'][:100]}...")
         neg_show = str(payload["negative_prompt"])
         if len(neg_show) > 160:
@@ -277,10 +365,38 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--provider", choices=PROVIDER_CHOICES, default=None, help="生成プロバイダ")
     parser.add_argument("--prompt-formatter", default=None, help="provider 別プロンプト整形を上書き")
     parser.add_argument("--model", default=None, help="provider に渡すモデル名または alias（例: quality）")
-    parser.add_argument("--aspect-ratio", default=None, help="Forge/Grok 用の比率 preset 名または比率文字列")
+    parser.add_argument("--aspect-ratio", default=None, help="比率 preset 名（book_cover 等）または比率文字列")
     parser.add_argument("--resolution", default=None, help="Grok 用の解像度（例: 1k, 2k）")
     parser.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
     parser.add_argument("--max-page", type=int, default=None, help="処理する Page 番号の上限（含む）")
+    parser.add_argument(
+        "--novelai-reference-image-path",
+        action="append",
+        default=None,
+        dest="novelai_reference_image_paths",
+        metavar="PATH",
+        help="NovelAI Vibe bundle / 参照画像（複数可）。未指定時は _meta.yaml > .env MONOCRI_MANGA_NOVELAI_*",
+    )
+    parser.add_argument(
+        "--novelai-portion-id",
+        default=None,
+        metavar="ID",
+        help="NovelAI ポーション ID（_meta.yaml の novelai.portions）。none で参照なし",
+    )
+    parser.add_argument(
+        "--novelai-reference-strength",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="NovelAI Vibe strength 乗数（例: 0.5）",
+    )
+    parser.add_argument(
+        "--novelai-reference-information-extracted",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="NovelAI information_extracted 乗数",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -339,6 +455,35 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {provider_cli} がありません", file=sys.stderr)
         return 2
 
+    novelai_ref_fields: dict[str, Any] = {}
+    novelai_ref_source = ""
+    try:
+        novelai_ref = resolve_novelai_reference(
+            list(args.novelai_reference_image_paths or []),
+            root,
+            novel_dir=novel,
+            portion_id=args.novelai_portion_id,
+            cli_strength=args.novelai_reference_strength,
+            cli_information_extracted=args.novelai_reference_information_extracted,
+        )
+    except FileNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if provider == "novelai":
+        novelai_ref_fields = novelai_reference_job_fields(
+            novelai_ref.paths,
+            strength=novelai_ref.strength,
+            information_extracted=novelai_ref.information_extracted,
+            root=root,
+        )
+        novelai_ref_source = novelai_ref.source
+    elif novelai_ref.paths:
+        print(
+            f"warning: NovelAI reference は provider={provider} では無視します",
+            file=sys.stderr,
+        )
+
     print(f"novel: {novel}")
     print("input: yaml")
     print(f"provider: {provider}")
@@ -347,8 +492,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"model: {model}")
     if aspect_ratio is not None:
         print(f"aspect_ratio: {aspect_ratio}")
-    if resolution is not None:
+    if resolution is not None and provider in _GROK_FAMILY:
         print(f"resolution: {resolution}")
+    print_provider_param_notes(provider, aspect_ratio=aspect_ratio, resolution=resolution)
+    if provider == "novelai":
+        ref_n = len(novelai_ref.paths)
+        print(f"novelai_reference: {ref_n} file(s) (source={novelai_ref_source})")
+        if ref_n:
+            print(
+                f"  strength_multiplier={novelai_ref.strength} "
+                f"ie_multiplier={novelai_ref.information_extracted}"
+            )
     print(f"jobs: {len(jobs)}")
 
     for job in jobs:
@@ -360,6 +514,7 @@ def main(argv: list[str] | None = None) -> int:
             aspect_ratio=aspect_ratio,
             model=model,
             resolution=resolution,
+            novelai_ref_fields=novelai_ref_fields,
             dry_run=args.dry_run,
         )
         if code != 0:

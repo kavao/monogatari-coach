@@ -48,3 +48,6 @@ logs/
 # LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
 tools_temp/*
 !tools_temp/README.md
+
+# MCP サーバー接続時に自動生成されるツールスキーマキャッシュ
+mcps/

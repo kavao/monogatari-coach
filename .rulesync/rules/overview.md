@@ -386,18 +386,43 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 #### 画像生成の指示文テンプレ（チャットで使う）
 生成モードの判定語は上記「生成モードの用語統一」を正とする。実行コマンド例は `docs/image-generation/index.md` の「よく使うコマンド」を参照する。
 
-### 2.2.3 Illustration Tag Mode（挿絵・表紙タグ出力：本文参照後／挿絵生成前）
-小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照し、挿絵・章扉・表紙用の YAML IR を作成する。漫画とは **運用パスだけ分離**し、スキーマは漫画ページ IR と同型（`meta.intent: illustration`）とする。
-原則として、**本文または構成案が確定した後**、挿絵の画像生成の前に行う。**表紙は作品ごとに計画に含める**（有無・単行本想定は `_meta.md` の「挿絵・表紙」に書く）。
+### 2.2.3 Illustration Tag Mode（挿絵・表紙：計画→YAML IR の二段パイプライン）
+
+挿絵・表紙の生成は **Step 1（計画 MD）→ Step 2（YAML IR）** の二段で進める。本文または構成案が確定した後、挿絵の画像生成の前に行う。漫画とは **運用パスだけ分離**し、スキーマは漫画ページ IR と同型（`meta.intent: illustration`）とする。
+
+#### Illustration Plan Mode（Step 1 — 計画 MD）
+
+章ごとに 0枚／1枚／複数枚を決め、候補3点・採用・本文アンカー・衣装 variant を計画 MD に記録する。**表紙は作品ごとに計画に含める**（`_meta.md` §3.1 と `cover_plan.md` で別枠管理）。
+
+**禁止**: 計画 MD を経由せず YAML だけを新規作成して Illustration Tag Mode を完了扱いにしない。
+
+##### 参照ルール（必須）
+- 作業開始前に `_meta.md` §3〜§3.2 を読む（方針・表紙・章別割当表の正本）。
+- §3.2 の「枚数」列が章ごとの 0/1/multiple の正本。矛盾時は **直近のユーザー指示 → §3.2 表 → §3 方針** の順で優先する。
+- 表紙は §3.1 と `cover_plan.md` で管理し、§3.2 章別割当表には載せない。
+- 創作技法雛形は `_how_to.example/illustration_plan.md`（候補3点・0枚理由・採用節の形式）を参照する。
+
+##### 出力先（必須）
+- 表紙計画: `novels/[novel_code]_[novel_title]/illustrations/plans/cover_plan.md`
+- 章挿絵計画: `novels/[novel_code]_[novel_title]/illustrations/plans/chapter_plan.md`
+
+##### 手動手順（明確化）
+詳細はスキル **`illustration-plan`**（`.rulesync/skills/illustration-plan/SKILL.md`）を参照する。
+
+---
+
+#### Illustration Tag Mode（Step 2 — YAML IR）
+
+計画 MD で採用が確定した IR のみ YAML を作成する。小説本文（`_novel_text/novel_textXX.md`）とキャラクター正本を参照する。
 
 **禁止**: Illustration Tag Mode の初手として `illustrations/illustration_XX.md` だけを直接新規作成して正本にしないこと。正本は `illustrations/pages/*.yaml` とし、互換 Markdown は必要なときだけエクスポートする。
 
-#### 目的
+##### 目的
 - 本文の山場・章頭・表紙などを、漫画のコマ割り前提にしない一枚絵（または明示した複合レイアウト）として言語化し、AI 画像生成に渡せる状態にする。
 - 人物・場面・構図・光・タグ・ネガ・生成指示を YAML IR に構造化する（スキル **illustration-prompt-ir**）。
 
-#### 参照ルール（必須）
-- 作業開始前に作品 `_meta.md` の **挿絵・表紙** 節を読み、挿絵の密度・優先場面・表紙の有無を確認する。
+##### 参照ルール（必須）
+- 作業開始前に `_meta.md` §3.2 と `illustrations/plans/chapter_plan.md`（または `cover_plan.md`）を読み、採用済みの IR を確認する。
 - **`panels[].prompt_tags` の英語トークン**は `_how_to/manga_tag.md` の語彙・置き換えに合わせる（挿絵専用の別語彙表は必須にしない）。創作技法の組み立ては `_how_to/manga.md` を必要に応じて参照する。
 - **型の正本**は `tools/manga_prompt_ir/schemas/manga_page.py`（`MangaMeta.intent` に `illustration`）。**実データの正本**は `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml`。検証は **`tools/novel_prompt_ir_validate.py`**（本番前は `--strict-quality` を推奨）。
 - **キャラクター外見の継承**はスキル **`manga-tag-character-sync`** と同順（`tag/characters/*.yaml` → `character.md` → `tag/<romaji>.md`）。

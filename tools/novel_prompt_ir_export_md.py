@@ -370,6 +370,129 @@ def render_text_block(panel: dict[str, Any]) -> list[str]:
     return lines
 
 
+def illustration_asset_stem(path: Path) -> str:
+    return re.sub(r"_p\d+$", "", path.stem)
+
+
+def render_illustration_page_section(
+    page_path: Path | None,
+    page: dict[str, Any],
+    characters: dict[str, dict[str, Any]],
+    *,
+    novelai_pipe_tags: bool = False,
+    color_mode_override: str | None = None,
+) -> str:
+    meta = page.get("meta") or {}
+    manga = page.get("manga") or {}
+    scene = page.get("scene") or {}
+    render_inst = page.get("render_instruction") or {}
+    technical = page.get("technical") or {}
+    loc_s, tod_s, _wx_s = scene_prompt_location_time_weather(scene)
+    panels = as_list(page.get("panels"))
+    panel = panels[0] if panels and isinstance(panels[0], dict) else {}
+    color_label = page_color_mode_label(page, override=color_mode_override)
+    page_label = page_path.stem if page_path else "page"
+    lines = [
+        f"## {page_label}",
+        "",
+        f"- intent: {meta.get('intent', 'illustration')}",
+    ]
+    for key in ("source_anchor", "illustration_type", "aspect_ratio"):
+        value = meta.get(key)
+        if value:
+            lines.append(f"- {key}: {value}")
+    lines.extend(
+        [
+            f"- 色モード: {color_label}",
+            f"- 舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
+        ]
+    )
+    if manga.get("panel_layout"):
+        lines.append(f"- 構図方針: {manga.get('panel_layout')}")
+    for label, key in (
+        ("生成タスク", "task"),
+        ("プロンプト冒頭", "prompt_header"),
+        ("出力方針", "output_policy"),
+    ):
+        value = render_inst.get(key)
+        if value:
+            lines.extend(["", f"**{label}:**", str(value)])
+    if panel:
+        subjects = [
+            subject_text(subject, characters)
+            for subject in as_list(panel.get("subjects"))
+            if isinstance(subject, dict)
+        ]
+        comp = panel.get("composition") or {}
+        camera = panel.get("camera") or {}
+        lines.extend(
+            [
+                "",
+                f"**概要:** {panel.get('summary', '')}",
+                f"- 人物・対象: {' / '.join(subjects) if subjects else '—'}",
+                f"- 構図: {comp.get('layout', '')} / {comp.get('framing', '')} / {comp.get('focus', '')} / {camera.get('angle', '')}",
+                "",
+                "**Danbooru Tags:**",
+                f"`{panel_tag_line_for_export(page, panel, characters, novelai_pipe_tags=novelai_pipe_tags)}`",
+            ]
+        )
+        translation = panel.get("translation") or panel.get("summary", "")
+        if translation:
+            lines.append(f"（日本語訳：{translation}）")
+    neg = technical.get("negative_tags")
+    if neg:
+        lines.extend(["", "**Negative Tags:**", join_tags(as_list(neg))])
+    return "\n".join(lines) + "\n"
+
+
+def render_illustration_md(
+    pages: list[tuple[Path | None, dict[str, Any]]],
+    characters: dict[str, dict[str, Any]],
+    *,
+    title: str,
+    novelai_pipe_tags: bool = False,
+    color_mode_override: str | None = None,
+) -> str:
+    lines = [f"# {title}", ""]
+    ir_paths = [path for path, _page in pages if path is not None]
+    if ir_paths:
+        lines.extend(
+            [
+                "<!-- illustration-prompt-ir互換ヘッダ: この illustration_XX.md は既存バッチ向けMarkdown互換出力です。構造化IR正本は illustrations/pages/*.yaml を参照してください。 -->",
+                "",
+                "## IR正本",
+                "",
+            ]
+        )
+        for path in ir_paths:
+            lines.append(f"- `{path.as_posix()}`")
+        lines.append("")
+    for page_path, page in pages:
+        lines.append(
+            render_illustration_page_section(
+                page_path,
+                page,
+                characters,
+                novelai_pipe_tags=novelai_pipe_tags,
+                color_mode_override=color_mode_override,
+            ).rstrip()
+        )
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def group_illustration_pages(
+    pages: list[tuple[Path, dict[str, Any]]],
+) -> dict[str, list[tuple[Path | None, dict[str, Any]]]]:
+    groups: dict[str, list[tuple[Path | None, dict[str, Any]]]] = {}
+    for path, page in pages:
+        stem = illustration_asset_stem(path)
+        groups.setdefault(stem, []).append((path, page))
+    for stem in groups:
+        groups[stem].sort(key=lambda item: (item[0].name if item[0] else ""))
+    return groups
+
+
 def render_manga_page_section(
     page: dict[str, Any],
     characters: dict[str, dict[str, Any]],
@@ -475,9 +598,20 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export manga-prompt-ir YAML/JSON to legacy Markdown")
     parser.add_argument("--character", type=Path, action="append", default=[])
     parser.add_argument("--manga-page", type=Path, action="append", default=[])
+    parser.add_argument("--illustration-page", type=Path, action="append", default=[])
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--manga-stem", default="manga_01")
+    parser.add_argument(
+        "--illustration-stem",
+        default=None,
+        help="出力ファイル名 stem（illustration_XX）。未指定時は YAML ファイル名から自動判定",
+    )
     parser.add_argument("--title", default="IR互換漫画ページ")
+    parser.add_argument(
+        "--illustration-title",
+        default=None,
+        help="挿絵 MD の見出し（未指定時は illustration stem から生成）",
+    )
     parser.add_argument(
         "--no-character-output",
         action="store_true",
@@ -557,8 +691,40 @@ def main(argv: list[str] | None = None) -> int:
                 color_mode_override=args.color_mode,
             ),
         )
+    elif args.illustration_page:
+        ill_pages: list[tuple[Path, dict[str, Any]]] = []
+        for illustration_page_path in args.illustration_page:
+            page = load_data(illustration_page_path)
+            if "panels" not in page:
+                raise ValueError(f"invalid illustration page IR: {illustration_page_path}")
+            meta = page.get("meta") or {}
+            if meta.get("intent") not in (None, "illustration"):
+                raise ValueError(
+                    f"meta.intent must be illustration (or omitted): {illustration_page_path}"
+                )
+            ill_pages.append((illustration_page_path, page))
+        if args.illustration_stem:
+            stem = args.illustration_stem
+            grouped = {stem: [(p, pg) for p, pg in ill_pages]}
+        else:
+            grouped = group_illustration_pages(ill_pages)
+        for stem, group in sorted(grouped.items()):
+            title = args.illustration_title or f"挿絵 {stem}"
+            out_path = (
+                args.output_dir / "illustrations" / f"{stem}.md" if args.output_dir else None
+            )
+            write_or_print(
+                out_path,
+                render_illustration_md(
+                    group,
+                    characters,
+                    title=title,
+                    novelai_pipe_tags=args.novelai_pipe_tags,
+                    color_mode_override=args.color_mode,
+                ),
+            )
     elif not characters:
-        parser.error("--character or --manga-page is required")
+        parser.error("--character or --manga-page or --illustration-page is required")
     return 0
 
 

@@ -4,13 +4,40 @@
 
 ---
 
+## 二段パイプラインの概要
+
+挿絵・表紙の生成は **Step 1（計画 MD）→ Step 2（YAML IR）→ 画像生成** の順で進めます。
+
+```
+_meta.md §3.2 章別割当表
+        ↓
+Step 1: illustrations/plans/chapter_plan.md  ← 候補3点・採用・本文アンカー
+        ↓（採用分のみ）
+Step 2: illustrations/pages/illustration_XX_pYY.yaml  ← YAML IR
+        ↓
+        画像生成 → illustrations/_assets/illustration_XX/
+```
+
+- **Step 1（Illustration Plan Mode）**: チャットで「挿絵計画を作成してください」と入力します。Monogatari Coach は `_meta.md` §3.2 を読み、章ごとに候補3点・採用・本文アンカーを `illustrations/plans/chapter_plan.md` に記録します。
+- **Step 2（Illustration Tag Mode）**: チャットで「挿絵 IR を作成してください」と入力します。採用が確定した章だけ `illustrations/pages/*.yaml` を作成します。
+
+Step 1 を経ずに Step 2 だけを実行しないでください。
+
+---
+
 ## 使う場面
 
 - 本文中の一場面を、一枚絵として画像化したいとき
 - 章頭挿絵やクライマックス絵を管理したいとき
 - 表紙の構図・人物配置・余白方針を YAML として固定したいとき
 
-チャットへの最小指示:
+**Step 1（計画）の最小指示:**
+
+```text
+挿絵計画を作成してください。
+```
+
+**Step 2（YAML IR）の最小指示:**
 
 ```text
 本文から挿絵タグを作成してください。
@@ -21,6 +48,22 @@
 ```text
 novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の挿絵IRを作成してください。
 ```
+
+---
+
+## 正本と保存先（三層）
+
+| 層 | パス | 役割 |
+|---|---|---|
+| 方針・割当 | `novels/<作品>/_meta.md` §3〜§3.2 | 章別枚数・表紙有無の確定正本 |
+| 計画（Step 1） | `novels/<作品>/illustrations/plans/chapter_plan.md` | 候補3点・採用・本文アンカー |
+| 表紙計画（Step 1） | `novels/<作品>/illustrations/plans/cover_plan.md` | 表紙の計画（別枠） |
+| YAML IR（Step 2） | `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` | 画像生成用の実行正本 |
+| 画像保存先 | `novels/<作品>/illustrations/_assets/illustration_XX/` | 生成された画像 |
+| キャラ外見正本 | `novels/<作品>/tag/characters/<character_id>.yaml` | 衣装・固定外見 |
+| 互換 Markdown | `novels/<作品>/illustrations/illustration_XX.md` | 任意の可読副本 |
+
+表紙は `illustration_00_pYY.yaml`、章挿絵は `illustration_01_pYY.yaml` 以降を使います。番号設計は `_meta.md` §3 に書きます。
 
 ---
 
@@ -35,6 +78,25 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の挿
 | 互換 Markdown | `novels/<作品>/illustrations/illustration_XX.md`（任意） |
 
 表紙は `illustration_00_p01.yaml`、章挿絵は `illustration_01_p01.yaml` 以降にする運用が扱いやすいです。厳密な番号設計は作品の `_meta.md` に書きます。
+
+### ディレクトリ scaffold・計画チェック・MD export
+
+```bash
+# illustrations/plans/ と pages/、_assets/<stem>/ を用意
+python tools/novel_image_layout.py scaffold novels/NNN_作品名
+
+# 挿絵計画 MD を必須にする（chapter_plan.md。表紙 YAML があるとき cover_plan.md も）
+python tools/novel_project_check.py novels/NNN_作品名 --require-illustration-plan
+
+# YAML IR から互換 Markdown（illustrations/illustration_XX.md）へ export
+python tools/novel_prompt_ir_export_md.py \
+  --output-dir novels/NNN_作品名 \
+  --character novels/NNN_作品名/tag/characters/koharu.yaml \
+  --illustration-page novels/NNN_作品名/illustrations/pages/illustration_01_p01.yaml \
+  --novelai-pipe-tags
+```
+
+複数 `--illustration-page` を渡すと stem（`illustration_01` 等）ごとに MD を分割出力します。キャラ MD を上書きしたくないときは `--no-character-output` を付けます。
 
 ---
 
@@ -156,6 +218,29 @@ MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 ```
 
 優先順位は CLI `--provider` / `--model` / `--aspect-ratio` / `--resolution` > `.env` の `MONOCRI_ILLUSTRATION_*` > ツール既定です。`MONOCRI_ILLUSTRATION_MODEL_DEFAULT` が空なら provider 側の `default_model` を使います。
+
+### provider 別 — どの env が効くか
+
+| 環境変数 | Grok / OpenAI 系 | Forge | NovelAI |
+|----------|------------------|-------|---------|
+| `MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT` | ✅ | ✅ | ✅ |
+| `MONOCRI_ILLUSTRATION_MODEL_DEFAULT` | ✅ | ✅ | ✅ |
+| `MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT` | ✅（比率文字列） | ✅（preset → width/height） | ✅（preset → width/height。`config` の `novelai.aspect_ratio_presets`） |
+| `MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT` | ✅ | — | **未使用** |
+| `MONOCRI_MANGA_NOVELAI_REFERENCE_*` | — | — | ✅ **挿絵も漫画・タグと共用** |
+
+NovelAI Vibe / ポーションの解決優先順位（挿絵・漫画・タグ共通）: **CLI** > 作品 `_meta.yaml` の `novelai.portions` > `.env` の `MONOCRI_MANGA_NOVELAI_REFERENCE_IMAGE_PATHS` 等。
+
+挿絵バッチ CLI 例:
+
+```bash
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --provider novelai \
+  --novelai-portion-id default \
+  --dry-run
+```
+
+`--dry-run` では `novelai_reference: N file(s) (source=…)` と、merge 後の `width×height`・`novelai_reference_images` をジョブごとに表示します。`provider=novelai` なのに `resolution` を指定した場合は warning を出します。
 
 Grok / OpenAI / OpenRouter 系では、挿絵YAMLを `natural_sections` formatter で自然文セクションへ変換します。`technical.negative_tags` や CLI の negative は `Do not include:` に移し、API の `negative_prompt` には渡しません。Forge / NovelAI は従来互換の `tag_csv` を使います。
 

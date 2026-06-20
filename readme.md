@@ -109,10 +109,14 @@ git commit -m "initial: novels ディレクトリを独立リポジトリとし�
 | 除外対象 | パターン |
 |----------|----------|
 | 漫画コマ/ページ画像 + 隣接 JSON | `**/manga/_assets/` |
-| 挿絵・表紙画像 | `**/illustrations/_assets/` |
+| 漫画の画像 zip | `**/manga/**/*.zip` |
+| 挿絵・表紙画像 + 隣接 JSON | `**/illustrations/_assets/` |
+| 挿絵の画像 zip | `**/illustrations/**/*.zip` |
 | キャラクター生成画像 | `**/tag/**/*.png` 等 |
+| キャラの画像 zip | `**/tag/**/*.zip` |
+| その他 zip | `**/*.zip` |
 
-`tag/*.md`・`tag/characters/*.yaml`・`manga/pages/*.yaml` などのテキスト資料は追跡対象です。
+`tag/*.md`・`tag/characters/*.yaml`・`manga/pages/*.yaml`・`illustrations/pages/*.yaml`・`illustrations/plans/*.md` などのテキスト資料は追跡対象です。
 
 ## 日常運用でよく使うコマンド
 

@@ -15,9 +15,21 @@ targets: ["*"]
 小説本文から「漫画ではない一枚絵」を作るための中間表現を、YAML IR として保持する。
 章頭挿絵、本文中の山場、情景カット、表紙のような画像を、人物・場面・構図・光・タグ・ネガ・生成指示に分けて管理する。
 
+## 前提：計画 MD の確認（必須）
+
+Illustration Tag Mode（YAML IR 作成）は **Step 2** である。開始前に必ず以下を確認する:
+
+1. `_meta.md` §3.2 章別割当表を読み、対象章の「枚数」が 1 または multiple であることを確認する。
+2. `illustrations/plans/chapter_plan.md`（または `cover_plan.md`）に採用節が記入済みであることを確認する。
+3. 計画 MD が未作成の場合は、先に **`illustration-plan` スキル（Step 1）** を実行する。
+4. 章が 0枚と確定している場合は YAML を作成しない。
+
+**禁止**: 計画 MD（Step 1）を経由せず YAML だけを新規作成して Illustration Tag Mode を完了扱いにしない。
+
 ## 正本
 
-- **YAML IR**: `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml`
+- **計画 MD（Step 1）**: `novels/<作品>/illustrations/plans/cover_plan.md`（表紙）/ `chapter_plan.md`（章）
+- **YAML IR（Step 2）**: `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml`
 - **画像保存先**: `novels/<作品>/illustrations/_assets/illustration_XX/`
 - **キャラクター外見**: `novels/<作品>/tag/characters/<character_id>.yaml`
 - **互換 Markdown**: `novels/<作品>/illustrations/illustration_XX.md`（任意。初期運用では必須にしない）

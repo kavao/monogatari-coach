@@ -123,6 +123,40 @@
       "default_legacy_uc": false,
       "default_legacy_v3_extend": false,
       "default_deliberate_euler_ancestral_bug": false,
+      "aspect_ratio_presets": {
+        "square": {
+          "width": 1024,
+          "height": 1024
+        },
+        "portrait": {
+          "width": 896,
+          "height": 1152
+        },
+        "manga_b5_portrait": {
+          "width": 832,
+          "height": 1216
+        },
+        "book_cover": {
+          "width": 832,
+          "height": 1216
+        },
+        "cover_portrait": {
+          "width": 832,
+          "height": 1216
+        },
+        "story_vertical": {
+          "width": 768,
+          "height": 1344
+        },
+        "landscape": {
+          "width": 1216,
+          "height": 832
+        },
+        "wide": {
+          "width": 1344,
+          "height": 768
+        }
+      },
       "prompt_formatter": {
         "default": "tag_csv",
         "step1-panels": "novelai_pipe",

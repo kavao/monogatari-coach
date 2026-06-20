@@ -700,6 +700,35 @@ def resolve_forge_dimensions(
     )
 
 
+def resolve_novelai_dimensions(
+    provider_cfg: dict[str, Any],
+    params: dict[str, Any],
+) -> tuple[int, int]:
+    """NovelAI: aspect_ratio_preset → width/height（Forge sdxl と同型の flat preset 表）。"""
+    if "width" in params or "height" in params:
+        return (
+            int(params.get("width", provider_cfg["default_width"])),
+            int(params.get("height", provider_cfg["default_height"])),
+        )
+
+    raw_preset = params.get("aspect_ratio_preset", params.get("aspect_ratio"))
+    if raw_preset is None:
+        return int(provider_cfg["default_width"]), int(provider_cfg["default_height"])
+    if str(raw_preset) == "auto":
+        return int(provider_cfg["default_width"]), int(provider_cfg["default_height"])
+
+    presets = provider_cfg.get("aspect_ratio_presets")
+    if not isinstance(presets, dict):
+        return int(provider_cfg["default_width"]), int(provider_cfg["default_height"])
+    resolved = resolve_named_value(raw_preset, presets)
+    if isinstance(resolved, dict) and "width" in resolved and "height" in resolved:
+        return int(resolved["width"]), int(resolved["height"])
+    raise ValueError(
+        f"NovelAI の aspect_ratio_preset が不明です: {raw_preset!r}。"
+        f"available: {sorted(presets.keys())}"
+    )
+
+
 def check_a1111_api_ready(base_url: str, timeout: float) -> None:
     url = base_url.rstrip("/") + "/sdapi/v1/samplers"
     try:
@@ -832,6 +861,8 @@ def merge_provider_defaults(
     height_default = provider_cfg["default_height"]
     if provider == "forge":
         width_default, height_default = resolve_forge_dimensions(provider_cfg, params)
+    elif provider == "novelai":
+        width_default, height_default = resolve_novelai_dimensions(provider_cfg, params)
     out = {
         "provider": provider,
         "prompt": params.get("prompt", ""),
