@@ -109,12 +109,9 @@ def bootstrap_novel(
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
 
     p = argparse.ArgumentParser(
         description="作品フォルダに _meta.yaml・references/novelai/・必須ディレクトリを雛形から作成"

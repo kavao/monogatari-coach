@@ -167,7 +167,7 @@ Editor Score 実施後は、作品 `_meta.md` の「評価・足切り履歴」�
 運用ルール:
 - 旧版の `score_*.md` は削除しない（改訂前スコアとして参照可能にする）。
 - 作品 `_meta.md` の「評価履歴表」に清書前後を別行として記録する（どちらが清書前・後かを「備考」列に記載）。
-- 両スコアの差分比較は Phase 3 の `novel_evaluation_diff.py` で行う（現在未実装）。
+- 両スコアの差分比較は `tools/novel_evaluation_diff.py` で行う（清書前後の `score_*.md` を時系列表示し、ポイント差分を `[+N]` / `[-N]` で示す）。
 
 ## 査証ログとの関係
 
@@ -178,5 +178,5 @@ Editor Score 実施後は、作品 `_meta.md` の「評価・足切り履歴」�
 
 - 横断正本: `.rulesync/rules/concepts.md`（評価ファイル命名と役割・住み分け・長文閾値）
 - 足切りスキル: `.rulesync/skills/novel-reader-output/SKILL.md`
-- 入口ルール: `.rulesync/rules/overview.md` §2.8（Editor Score）、§2.9（Consistency Audit）（予定）
+- 入口ルール: `.rulesync/rules/overview.md` §2.8（Editor Score）、§2.9（Consistency Audit）
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

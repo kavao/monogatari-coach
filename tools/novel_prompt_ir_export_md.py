@@ -8,6 +8,7 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -446,7 +447,7 @@ def render_illustration_page_section(
 
 
 def render_illustration_md(
-    pages: list[tuple[Path | None, dict[str, Any]]],
+    pages: Sequence[tuple[Path | None, dict[str, Any]]],
     characters: dict[str, dict[str, Any]],
     *,
     title: str,
@@ -482,7 +483,7 @@ def render_illustration_md(
 
 
 def group_illustration_pages(
-    pages: list[tuple[Path, dict[str, Any]]],
+    pages: Sequence[tuple[Path, dict[str, Any]]],
 ) -> dict[str, list[tuple[Path | None, dict[str, Any]]]]:
     groups: dict[str, list[tuple[Path | None, dict[str, Any]]]] = {}
     for path, page in pages:

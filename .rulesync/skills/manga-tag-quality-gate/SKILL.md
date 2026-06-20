@@ -55,7 +55,7 @@ targets: ["*"]
 
 | モード | 何のためか（要約） | `manga.md` で読む節 |
 |--------|-------------------|---------------------|
-| **Step1 相当** | コマ単位の**具体的な作画・タグ**（コマ生成・精密ページ生成の入力） | **互換出力: step1**、および [`docs/image-generation/manga-prompt-ir.md` のページ YAML 最小例節](../../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)・**POV・接写**・**variant** |
+| **Step1 相当** | コマ単位の**具体的な作画・タグ**（コマ生成・精密ページ生成の入力） | **互換出力: step1**、および [`docs/image-generation/manga-prompt-ir.md` のページ YAML 最小例節](../../../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)・**POV・接写**・**variant** |
 | **Step2 相当** | **ページ丸ごと生成**向け。抽象度を上げつつ、**誰がどこにいるか・段・大小・読み順**が追える**配置語**で書く。強い行為名は**構図・視線・距離**へ言い換え（モデレーション配慮） | **互換出力: step2**（「行為を構図に言い換える」「抽象名詞だけで終えない」等） |
 
 ### YAML IR への写像（点検するときの着手場所）

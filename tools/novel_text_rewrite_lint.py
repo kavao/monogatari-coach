@@ -718,12 +718,9 @@ def run_fix(
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
 
     root = repo_root()
     parser = argparse.ArgumentParser(

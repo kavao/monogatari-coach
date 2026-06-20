@@ -4,7 +4,7 @@
 
 | どこに何を置くか | 内容 |
 |------------------|------|
-| ルート [`readme.md`](../../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
+| ルート [`readme.md`](../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
 | [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) | **ツール・パイプライン**に加え、**ページ YAML の型・旧差分表・最小例**（互換 Step1 の元データの説明。アンカー [`#yaml-minimal-step1`](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)）。 |
 | [`docs/image-generation/manga-tag-generation.md`](../docs/image-generation/manga-tag-generation.md) | **漫画タグ生成用**：互換 Step1/Step2 の長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。 |
 | [`manga_tag.md`](manga_tag.md)（本フォルダ） | **英語タグの語彙・置換・追加ルール**（Step1／`prompt_tags` 中心）。 |

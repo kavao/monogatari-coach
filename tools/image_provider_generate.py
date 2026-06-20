@@ -1001,9 +1001,11 @@ def merge_provider_defaults(
             )
             explicit_ie = isinstance(raw_ie, list) and len(raw_ie) == len(refs)
             if explicit_strength and explicit_ie:
-                out["reference_strength_multiple"] = [float(v) for v in raw_strength]
+                strength_list = raw_strength if isinstance(raw_strength, list) else []
+                ie_list = raw_ie if isinstance(raw_ie, list) else []
+                out["reference_strength_multiple"] = [float(v) for v in strength_list]
                 out["reference_information_extracted_multiple"] = [
-                    float(v) for v in raw_ie
+                    float(v) for v in ie_list
                 ]
                 out["normalize_reference_strength_multiple"] = bool(
                     params.get(

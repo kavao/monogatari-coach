@@ -169,12 +169,9 @@ def run(novel_dir: Path, *, show_all: bool = False) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
 
     p = argparse.ArgumentParser(
         description="_reader/ の評価スコア推移を時系列で表示する。"

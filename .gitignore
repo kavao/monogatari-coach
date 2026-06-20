@@ -31,6 +31,9 @@ progress.md
 .cursor/*
 .codex/*
 .github/*
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 .kilocode/*
 .kilo/
 .agents/

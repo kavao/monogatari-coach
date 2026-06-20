@@ -15,7 +15,7 @@ description: >-
 
 ## このスキルが指す運用
 
-1. **（任意）ミラー**: `novels/<作品>/_novel_text/*.md` を `novels/<作品>/_novel_text_re/` にコピーする。  
+1. **（任意）ミラー**: `novels/<作品>/_novel_text/*.md` を `novels/<作品>/_novel_text_re/` にコピーする。
    ― スクリプトが **`--input-subdir _novel_text` → `--output-subdir _novel_text_re`** のとき、入力が `_novel_text` なら**ワンステップでルビ付き稿を `_novel_text_re` に書ける**ため、ミラーは必須ではない。
 2. **CSV 整備**: 同じ作品フォルダに **`kakuyomu.csv`** を置く（列定義は下記）。
 3. **実行**: `_how_to/tools/kakuyomu_ruby_apply.py` を実行する。

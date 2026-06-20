@@ -87,6 +87,23 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 
 ---
 
+### `novel_character_md_check.py` — character.md 構造 lint
+
+`character.md` の見出し・必須フィールド・表形式を、`_how_to` のチェックリスト YAML（既定: `_how_to.example/character_checklist.yaml`）に基づいて検証します。Tag Mode 前の Plan 段階で書き漏れを検出する用途です（外見の機械正本は `tag/characters/*.yaml`）。
+
+```bash
+# 作品フォルダ全体の character.md を検証
+python tools/novel_character_md_check.py novels/NNN_作品名
+
+# 厳格モード（移行猶予の WARN も ERROR）
+python tools/novel_character_md_check.py novels/NNN_作品名 --strict
+
+# 不足項目の追記案を表示
+python tools/novel_character_md_check.py novels/NNN_作品名 --suggest
+```
+
+---
+
 ### `novel_scaffold.py` — 新規作品の `_meta.yaml` 雛形
 
 Plan Mode で作品フォルダを作った直後に実行します。`_meta.yaml`（雛形: `_how_to.example/_meta.yaml.example`）、`references/novelai/README.md`、`_novel_text/`、`_reader/` を作成します。既存の `_meta.yml` は `_meta.yaml` にリネームします。
@@ -325,6 +342,44 @@ python tools/novel_prompt_ir_export_md.py \
 # ヘルプを見る
 python tools/novel_prompt_ir_export_md.py --help
 ```
+
+---
+
+### `novel_prompt_ir_migrate_character_tags.py` — レガシー `character_tags` の移行
+
+旧形式のルート `character_tags` を `000_base.danbooru_tags` へ移し、レガシーキーを削除します。YAML IR 刷新時の一括移行向けです。
+
+```bash
+# 1作品を dry-run で確認
+python tools/novel_prompt_ir_migrate_character_tags.py novels/NNN_作品名 --dry-run
+
+# 本番移行
+python tools/novel_prompt_ir_migrate_character_tags.py novels/NNN_作品名
+
+# novels/ 配下を一括（露出タグ検出時は --strict で停止）
+python tools/novel_prompt_ir_migrate_character_tags.py --all-novels --dry-run
+```
+
+---
+
+### `novel_manga_panel_summary_en.py` — コマ要約の英訳（`summary_en`）
+
+`manga/pages/*.yaml` の `panels[].summary` を LLM で英訳し、`summary_en` を書き込みます。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
+
+```bash
+# 作品フォルダ内の全ページを処理
+python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
+
+# 単一ページのみ（dry-run で対象確認）
+python tools/novel_manga_panel_summary_en.py novels/NNN_作品名 \
+  --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml --dry-run
+```
+
+---
+
+### `novel_meta_yaml.py` — `_meta.yaml` 読み込み（内部モジュール）
+
+作品 `_meta.yaml` の読み込み・`novelai.portions` 解決・`character_tag_batch` 参照を提供する Python モジュールです。**単独の公開 CLI ではありません。** `image_provider_novel_*_batch.py`・`novel_status.py` などから import されます。雛形は `_how_to.example/_meta.yaml.example`、運用説明は [Image Generation — 名前付きレシピ](../image-generation/index.md#名前付きレシピworkflows) を参照してください。
 
 ---
 

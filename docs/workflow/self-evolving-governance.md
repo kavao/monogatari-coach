@@ -63,4 +63,3 @@
 - 機械検証の結果（例）:
   - `python tools/novel_project_check.py novels/NNN_作品名`
   - `python tools/novel_prompt_ir_validate.py novels/NNN_作品名`
-

@@ -227,9 +227,9 @@ def determine_next_step(work_dir: Path) -> tuple[str, str]:
 
 
 def main() -> int:
-    # Windows CP932 でのエンコードエラーを回避
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
 
     parser = argparse.ArgumentParser(
         description="作品ダッシュボード（読み取り専用）"

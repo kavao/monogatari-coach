@@ -40,6 +40,7 @@ negative は DEFAULT_NEGATIVE + prepend_negative + YAML negative_tags + append_n
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterable
 import json
 import re
 import subprocess
@@ -140,7 +141,7 @@ def resolve_batch_provider(root: Path, args_provider: str | None) -> str:
 # YAML 読み込み・プロンプト構築
 # ---------------------------------------------------------------------------
 
-def dedupe_tags(tags: list[str]) -> list[str]:
+def dedupe_tags(tags: Iterable[str]) -> list[str]:
     """順序を保ちつつ重複・空白を除去する。"""
     return list(dict.fromkeys(t.strip() for t in tags if t and t.strip()))
 
