@@ -10,9 +10,24 @@
 
 ---
 
-## バリアント2階層（000番台・100番台）
+## バリアント2階層（000番台・100番台）と身体的正本（3階層継承）
 
 キャラクタータグは **服装スロット（000番台）** と **資料・ポーズスロット（100番台）** に分ける。100番台は000番台の衣装状態と**合成**し、三面図・紹介シート・決めポーズなど**参照画像**を作る（漫画の `variant_id` には使わない）。
+
+**露出事故防止**のため、タグの注入経路は **concepts.md「Tag Mode 身体的正本（3階層継承）」** に従い、次も守る。
+
+| 階層 | スロット | 代表 `variant_id` | 用途 |
+|------|----------|-------------------|------|
+| Level 1 | 固定外見（SFW） | `000_base` | 髪・目・肌・種族・固定小物。**露出・性器タグ禁止**。 |
+| Level 2 | 身体的正本（NSFW） | **`006_nude`** | `nude`, `uncensored`, 性器・秘部詳細の**唯一の正本**（NSFW 作品のみ） |
+| Level 3 | 状況 | `007_arousal` 等 | **`combines_with: 006_nude` 必須**。表情・体液・行為タグのみを載せ、身体詳細は継承 |
+
+**固定合成経路**（`appearance.distinctive_features`, `manga_rules.consistency_tags`）にも **裸限定タグを置かない**。
+
+- **漫画 batch の主経路**（`subjects[].variant_id` 指定時）: `tools/image_provider_novel_manga_batch.character_ir_tags()` は **`000_base` + 当該バリアント + `combines_with` のみ**を合成する（**`distinctive_features` / `consistency_tags` は混ぜない**）。
+- **副経路**（variant 未指定、`novel_prompt_ir_embed_snapshots` の `fixed_tags`、`prompt_renderer` 等）: 上記フィールドを**状況に関係なく合成し得る**。裸限定タグが残っていると**着衣コマにも漏れる**。
+
+身体詳細の Danbooru 正本は **`006_nude` のみ**。Level 1 から裸限定タグを除外する（`novel_prompt_ir_validate.py` で検出可）。
 
 | 帯 | `variant_id` 先頭 | 用途 | 漫画 `subjects[].variant_id` |
 |----|-------------------|------|------------------------------|
@@ -32,8 +47,8 @@
 | 項目 | 内容 |
 |------|------|
 | 代表例 | `001_normal` ＝ **平服**（作品の通常時衣装） |
-| `danbooru_tags` に入れる | 衣装・アクセ・状況に応じた裸露タグ、固定特徴の**再掲は可** |
-| **入れない** | **`standing` および一切の姿勢タグ**、シーン背景、三面図タグ、資料向け劇的ポーズ |
+| `danbooru_tags` に入れる | **衣装・アクセ・半脱衣装**（例: `bra_visible`, `clothing_aside`）、固定特徴の**再掲は可** |
+| **入れない** | **`standing` および一切の姿勢タグ**、シーン背景、三面図タグ、資料向け劇的ポーズ、**`nude` / 性器・秘部タグ**（→ **`006_nude` へ**） |
 | 背景 | **原則なし**（単色背景が要る場合は100番台へ） |
 
 - **漫画**: `subjects[].variant_id` は **000番台のみ**。構図・表情・ポーズ・場所は `panels[].prompt_tags` で上乗せする。
@@ -62,6 +77,18 @@
 - **`|` の右**: `combines_with` の000番台 `danbooru_tags` を**そのまま複写**（`(character)` プレースホルダ不可）。
 - エクスポート: `novel_prompt_ir_export_md.py --novelai-pipe-tags`（ツール未対応時は MD 上で `|` まで手書き）。
 
+### 006・身体的正本（`006_nude`）
+
+| 項目 | 内容 |
+|------|------|
+| 見出し | `## 006. 服を外したとき` 等 |
+| `variant_id` | **`006_nude`**（作品で別 ID にしてもよいが、Level 3 の `combines_with` と揃える） |
+| 入れる | `nude`, `uncensored`, 性器・秘部・裸で初めて見える身体的詳細 |
+| 入れない | 衣装、資料向けポーズ、シーン背景 |
+| 必須条件 | **NSFW を扱う作品**で Tag Mode 時に作成。全年齢作品は省略可（理由を残す） |
+
+- **Level 3**（`007_arousal`, `008_relax`, `103_*`, `104_*` 等）は **`combines_with: 006_nude`** を付け、身体詳細を再掲しない。
+
 ### 000・固定基礎（`000_base`）
 
 衣装・姿勢・背景・表情・行為は書かない（下記チェックリスト参照）。
@@ -75,7 +102,8 @@
 ### 1) 固定特徴（全バリアント共通）
 
 - **固定特徴の正本**は **`000_base`** の `danbooru_tags`。000番台には再掲可（**姿勢は100番台**）。
-- **固定に入れない**: 状況で変わる衣装、`standing` 等の姿勢、背景。
+- **固定に入れない**: 状況で変わる衣装、`standing` 等の姿勢、背景、**露出・性器・裸限定タグ**。
+- **`appearance.distinctive_features` / `manga_rules.consistency_tags`** にも **裸限定タグを置かない**（主経路は `000_base` 優先だが、副経路で合成され得る。上記「固定合成経路」参照）。
 
 #### YAML IR の `costume.outfit_tags`
 
@@ -84,7 +112,7 @@
 
 ### 2) 状況バリアント（最低限）
 
-- **先頭 `000_base`** → **000番台（服装）** → **100番台（資料）** の順。
+- **先頭 `000_base`** → **000番台（着衣・半脱衣装）** → **`006_nude`（NSFW 作品）** → **100番台（資料）** の順。
 - **000番台**の例: `001_normal`（平服）、戦闘時、水着… 作品に応じて追加。
 - **100番台（汎用）**: `100_intro` / `101_turnaround` / `102_signature_pose`。
 - **カスタム要素**（治療・接触資料等）は **`_meta.md` §6** で列挙したときのみ（付録「カスタム要素」参照）。
@@ -94,15 +122,14 @@
 
 **トリガー**: 「テンプレート分はすべて作成」「標準テンプレート一式」「tag テンプレ完備」、または作品 `_meta.md` §6 が **`テンプレート一式`**。
 
-**意味**: `_how_to/tag.md` に**標準IDとして表があるもの**は、エージェントが「不要」と判断して省略しない。除外するときはユーザーが ID を列挙する。
+**意味**: 本ファイルおよび **concepts.md**「Tag Mode テンプレート一式」の汎用 ID は、エージェントが「不要」と判断して省略しない。ジャンル固有 ID は **`_meta.md` §6** または **`_how_to/tag.md`** の拡張テンプレを §6 に展開してから作る。
 
 | 帯 | テンプレート一式で必ず作る ID | 追加条件 |
 |----|------------------------------|----------|
 | 固定 | `000_base` | 常に |
 | 100番 | `100_intro`, `101_turnaround`, `102_signature_pose` | 常に（`combines_with`: 平服資料は `001_normal`） |
 | 000番 | `_meta.md` §4（漫画 variant 表）に載る **すべての `variant_id`** | キャラごとに YAML に存在させる |
-| 000番（追加分） | 汎用チェックリストの衣装（水着・戦闘服等） | 劇に登場するが §4 に無いときは推奨 ID で追加 |
-| **カスタム** | `_meta.md` §6「カスタム要素」に列挙した ID | §6 に書いた分はすべて作る |
+| **拡張** | `_meta.md` §6「カスタム要素」に列挙した ID | §6 に書いた分はすべて作る（詳細例は `_how_to/tag.md`） |
 
 **完了前チェック（主要キャラ）**: 上表の ID が `prompt_variants` に揃っているか。100番は `description`・`combines_with`・（互換 MD では）`| ` 右の000番タグ列まで。
 
@@ -119,7 +146,7 @@
 | 見出し | `## 000. 固定基礎` |
 | `variant_id` | **`000_base`** |
 | 入れる | 性別・体格・髪・目・肌・種族・固定小物・キャラ名トークン |
-| 入れない | 衣装、姿勢、背景、表情、nsfw、局部・行為 |
+| 入れない | 衣装、姿勢、背景、表情、nsfw、局部・行為、**`distinctive_features` への裸限定タグ** |
 
 - **漫画**: `variant_id` は000番台。TPO 表は **`_how_to.example/manga.md`**（ユーザー領域は `_how_to/manga.md`）。
 
@@ -176,94 +203,152 @@ python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/charac
 
 ---
 
-## 出力例（フィオナ・ストームブレイド／3桁・2階層）
+## 出力例（フィオナ・ストームブレイド／3階層 IR・全年齢）
 
-一般向けサンプルキャラ。レガシー2桁例は `_how_to/tag.md` 末尾の旧例を参照。
+一般向けサンプルキャラ（NSFW なし）。**正本は YAML IR**、下記 MD はエクスポート体裁の抜粋。NSFW 作品の具体例（`006_nude` / `combines_with`）は **`_how_to/tag.md`** の藤堂優奈サンプルを参照。
+
+### YAML IR 抜粋（`tag/characters/fiona.yaml`）
+
+```yaml
+schema_version: "1.0"
+character_id: fiona
+name: フィオナ・ストームブレイド
+name_en: Fiona Stormblade
+role: 主人公、熱血戦士
+appearance:
+  age_range: mid teens (15)
+  body_type: athletic, sporty
+  hair_style: short hair
+  hair_color: orange hair
+  eye_color: amber eyes
+  skin_tone: fair skin
+  distinctive_features: ["wolf tattoo on arm"]
+prompt_variants:
+  - variant_id: "000_base"
+    title: "固定基礎"
+    description: "固定外見のみ。狼タトゥーは常時。"
+    danbooru_tags: ["1girl", "female", "young_woman", "athletic_build", "sporty", "orange_short_hair", "amber_eyes", "fair_skin", "wolf_tattoo_on_arm", "fiona_stormblade"]
+  - variant_id: "001_normal"
+    title: "平服（通常時）"
+    danbooru_tags: ["cheerful_expression", "bright_smile", "tank_top", "shorts"]
+  - variant_id: "002_combat"
+    title: "戦闘時"
+    danbooru_tags: ["determined_expression", "greatsword", "leather_armor", "boots"]
+  - variant_id: "003_swimsuit"
+    title: "水着"
+    danbooru_tags: ["energetic_expression", "wet_hair", "water_droplets", "bikini"]
+  - variant_id: "100_intro"
+    title: "キャラクター紹介"
+    combines_with: "001_normal"
+    danbooru_tags: ["character_sheet", "reference_sheet", "character_profile", "clean_white_background", "simple_background", "text", "english_text", "high_detail"]
+  - variant_id: "101_turnaround"
+    title: "三面図"
+    combines_with: "001_normal"
+    danbooru_tags: ["three_views", "front_view", "side_view", "back_view", "character_sheet", "reference_sheet", "clean_white_background", "simple_background"]
+  - variant_id: "102_signature_pose"
+    title: "決めポーズ"
+    combines_with: "001_normal"
+    danbooru_tags: ["decisive_pose", "signature_pose", "hands_on_hips", "confident_smile", "looking_at_viewer", "standing", "full_body", "clean_white_background"]
+```
+
+### 互換 MD 出力例（エクスポート後）
 
 ```
-フィオナ・ストームブレイド（Fiona Stormblade）
+# フィオナ・ストームブレイド（Fiona Stormblade）
 
-000. 固定基礎
-**説明**: フィオナの固定外見のみ。15歳の熱血戦士体型。母似の顔立ち。燃えるようなオレンジ色のショートヘア、琥珀色の瞳、色白の肌。母の落書き風の狼タトゥー（腕・取り外さない）。衣装・場所・表情・ポーズは指定しない。
+## 構造化IR由来メモ
+- character_id: `fiona`
+- 固定特徴（000_base 正本）: 1girl, female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade
+- バッチ合成: 000〜099 は 000_base + 状況タグ。100番台は 資料タグ | combines_with（000_base+結合先）
 
-Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade
+## 0. 固定基礎
+**説明**: 固定外見のみ。15歳の熱血戦士体型。狼タトゥー（腕・取り外さない）。衣装・姿勢・背景は載せない。
 
-Caption:
+**Danbooru Tags:**
+1girl, female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade
+
+**Caption:**
 Fiona Stormblade, a sporty young woman with orange short hair, amber eyes, fair skin, and a wolf tattoo on her arm.
 
-和訳: オレンジのショートヘアと琥珀色の瞳、色白の肌を持つスポーティな若い女性フィオナ・ストームブレイド。腕に狼のタトゥーがある。
+**和訳:**
+オレンジのショートヘアと琥珀色の瞳、色白の肌を持つスポーティな若い女性フィオナ・ストームブレイド。腕に狼のタトゥーがある。
 
-001. 平服（通常時）
-**説明**: 普段の訓練着。タンクトップとショーツ。快活な笑顔は Caption で示すが、姿勢・訓練場の背景タグは載せない（資料が要れば100番台）。
+## 1. 平服（通常時）
+**説明**: 訓練着（タンクトップ・ショーツ）。姿勢・訓練場背景は100番台または漫画コマ側へ。
 
-Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+**Danbooru Tags:**
+cheerful_expression, bright_smile, tank_top, shorts
 
-Caption:
-Fiona Stormblade in her usual tank top and shorts, cheerful bright smile, sporty build and wolf tattoo on her arm.
+**Caption:**
+Fiona Stormblade in her usual tank top and shorts, cheerful bright smile.
 
-和訳: いつものタンクトップとショーツに、明るい笑顔のフィオナ。スポーティな体型と腕の狼タトゥー。
+**和訳:**
+いつものタンクトップとショーツに、明るい笑顔のフィオナ。
 
-002. 戦闘時
-**説明**: 革の鎧と大剣の戦闘服。決意の表情はタグに含めるが、ダイナミックポーズ・戦場・立ち姿は100番台へ分離する。
+## 2. 戦闘時
+**説明**: 革鎧と大剣。ダイナミックポーズ・戦場は100番台へ。
 
-Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, determined_expression, greatsword, leather_armor, boots, fiona_stormblade
+**Danbooru Tags:**
+determined_expression, greatsword, leather_armor, boots
 
-Caption:
-Fiona Stormblade in leather armor with a greatsword, determined expression, wolf tattoo visible on her arm.
+**Caption:**
+Fiona Stormblade in leather armor with a greatsword, determined expression.
 
-和訳: 革の鎧と大剣を携えたフィオナ。決意に満ちた表情と腕の狼タトゥー。
+**和訳:**
+革の鎧と大剣を携えたフィオナ。決意に満ちた表情。
 
-003. 水着
-**説明**: ビキニの水着衣装のみ。ビーチ・立ち・日光は載せない。
+## 3. 水着
+**説明**: ビキニ衣装のみ。ビーチ・立ちは載せない。
 
-Danbooru Tags:
-female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, energetic_expression, wet_hair, water_droplets, bikini, fiona_stormblade
+**Danbooru Tags:**
+energetic_expression, wet_hair, water_droplets, bikini
 
-Caption:
-Fiona Stormblade in a bikini, wet orange hair and energetic expression, wolf tattoo on her arm.
+**Caption:**
+Fiona Stormblade in a bikini, wet orange hair and energetic expression.
 
-和訳: ビキニ姿のフィオナ。濡れたオレンジの髪と活気ある表情、狼のタトゥー。
+**和訳:**
+ビキニ姿のフィオナ。濡れたオレンジの髪と活気ある表情。
 
---- 100番台（資料）。`|` 右は **組み合わせ** の000番台タグ列を複写 ---
+--- 100番台（資料）。`|` 右は **`000_base` + `combines_with` 先（000番台）** ---
 
-100. キャラクター紹介
-**組み合わせ**: 001_normal
-**説明**: 作品紹介用のキャラクターシート。平服で白背景。プロフィール用の文字レイアウトを許容する。
+## 100. キャラクター紹介
+**組み合わせ**: `001_normal`
+**説明**: 平服の紹介シート。白背景。文字要素あり可。
 
-Danbooru Tags:
-character sheet, reference sheet, character profile, clean white background, simple background, text, english text, high detail, masterpiece | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+**Danbooru Tags:**
+character_sheet, reference_sheet, character_profile, clean_white_background, simple_background, text, english_text, high_detail | 1girl, female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade, cheerful_expression, bright_smile, tank_top, shorts
 
-Caption:
-Fiona Stormblade, character introduction sheet on white background, tank top and shorts, cheerful expression, reference layout with text elements.
+**Caption:**
+Fiona Stormblade, character introduction sheet on white background, tank top and shorts, cheerful expression.
 
-和訳: 白背景の紹介シート。タンクトップとショーツの平服で、快活な表情のフィオナ。
+**和訳:**
+白背景の紹介シート。平服のフィオナ。
 
-101. 三面図
-**組み合わせ**: 001_normal
-**説明**: 正面・側面・背面の三面図資料。同一平服・同一プロポーションで白背景に揃える。
+## 101. 三面図
+**組み合わせ**: `001_normal`
+**説明**: 正面・側面・背面の三面図（平服）。
 
-Danbooru Tags:
-three views, front view, side view, back view, character sheet, reference sheet, same girl, clean white background, simple background, high detail, masterpiece | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+**Danbooru Tags:**
+three_views, front_view, side_view, back_view, character_sheet, reference_sheet, clean_white_background, simple_background | 1girl, female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade, cheerful_expression, bright_smile, tank_top, shorts
 
-Caption:
-Fiona Stormblade, turnaround reference, front side and back views, white background, consistent tank top and shorts outfit.
+**Caption:**
+Fiona Stormblade turnaround reference, front side and back views, same tank top and shorts outfit.
 
-和訳: フィオナの三面図。白背景で正・側・後を同一の訓練着で統一した参照資料。
+**和訳:**
+平服の三面図参照。
 
-102. 決めポーズ
-**組み合わせ**: 001_normal
-**説明**: 作品の決めポーズ資料。両手を腰に、視線はこちら。背景は白のみ。
+## 102. 決めポーズ
+**組み合わせ**: `001_normal`
+**説明**: 決めポーズ資料。姿勢タグは100番台側に置く。
 
-Danbooru Tags:
-decisive pose, signature pose, powerful pose, hands on hips, confident smile, looking at viewer, standing, full body, clean white background, masterpiece, best quality | female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, cheerful_expression, bright_smile, tank_top, shorts, fiona_stormblade
+**Danbooru Tags:**
+decisive_pose, signature_pose, hands_on_hips, confident_smile, looking_at_viewer, standing, full_body, clean_white_background | 1girl, female, young_woman, athletic_build, sporty, orange_short_hair, amber_eyes, fair_skin, wolf_tattoo_on_arm, fiona_stormblade, cheerful_expression, bright_smile, tank_top, shorts
 
-Caption:
-Fiona Stormblade, signature pose with hands on hips, confident smile, looking at viewer, full body on white background, tank top and shorts.
+**Caption:**
+Fiona Stormblade, signature pose with hands on hips, confident smile, full body on white background.
 
-和訳: 決めポーズのフィオナ。腰に手を当て、こちらを見る自信ある笑み。全身・白背景。
+**和訳:**
+腰に手を当て、自信ある笑みの決めポーズ。全身・白背景。
 
 ```
 
@@ -281,6 +366,6 @@ Fiona Stormblade, signature pose with hands on hips, confident smile, looking at
 
 ## `_how_to/tag.md` との関係
 
-- **正本（雛形）**: 本ファイル **`_how_to.example/tag.md`**
-- **ユーザー調整**: **`_how_to/tag.md`** — 作品固有の特殊ルール・長い出力例・ジャンル固有の列挙を足す
+- **正本（雛形）**: 本ファイル **`_how_to.example/tag.md`** — 全年齢のフィオナ例（YAML IR + 互換 MD）
+- **ユーザー調整**: **`_how_to/tag.md`** — ジャンル固有の拡張テンプレ（ボディー治療例・藤堂優奈 IR サンプル等）を足す
 - 恒久ルールを変えるときは **本ファイルを先に更新**し、必要なら `_how_to/tag.md` に反映する

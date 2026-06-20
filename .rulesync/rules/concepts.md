@@ -72,13 +72,50 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 
 - 000番台のみ作成して Tag Mode 完了扱いにしない（汎用100番を省略するときは理由を明示する）。
 - 漫画 `variant_id` に `100_*` を指定しない。
+- **`000_base`** および **固定合成経路**（次節「身体的正本」§3.1）へ **露出・性器・裸限定**の Danbooru タグを置かない。
 
 参照:
 
+- 身体的正本（3階層）: 本ファイル「Tag Mode 身体的正本（3階層継承）」
 - 汎用／カスタムの正本: 本ファイル「Tag Mode 汎用テンプレートとカスタム要素」
 - 入口ルール: `.rulesync/rules/overview.md` §2.2.1
 - 型・手順: `.rulesync/skills/manga-prompt-ir/SKILL.md`
 - 人間向け操作: `docs/workflow/instruction-driven.md`「G. キャラクター画像タグ」
+
+## Tag Mode 身体的正本（3階層継承）
+
+定義:
+露出誘発タグを着衣バリアントから物理的に隔離する **SFW 固定 → 身体的正本（NSFW）→ 状況継承** の標準構造。000番台・100番台の帯分け（前節）に加え、**タグの注入経路**を次の3階層で固定する。
+
+| 階層 | 定義名 | 必須条件 |
+|------|--------|----------|
+| **Level 1** | **固定外見（SFW）** | `000_base` は髪・目・肌・種族・固定小物など**服の上から不変**の特徴のみ。**露出・性器タグは原則禁止**。 |
+| **Level 2** | **身体的正本（NSFW）** | **`006_nude`**（代表 ID）を裸の標準とし、`nude` および性器・秘部の詳細タグを**ここに集約**。NSFW を扱う作品でのみ必須（全年齢作品は省略可。省略理由を `description` または `_meta.md` に残す）。 |
+| **Level 3** | **状況バリアント** | 裸を伴う状況は **`combines_with: 006_nude`**（または当該作品の身体的正本 ID）を必須とし、Level 2 を継承する。000番台 ID のまま付けてよい（漫画 `variant_id` 互換）。 |
+
+### 固定合成経路の禁止事項（Level 1 と同格）
+
+`appearance.distinctive_features` および `manga_rules.consistency_tags` は、漫画 batch の**主経路**（`character_ir_tags()`・`subjects[].variant_id` 指定時）では **`000_base` 優先のため合成されない**。一方 **副経路**（variant 未指定、`novel_prompt_ir_embed_snapshots`、`prompt_renderer` 等）では**状況に関係なく注入され得る**。いずれにせよ `000_base` と同様、次を **原則禁止**する。
+
+- 性器・秘部の形状・状態タグ（裸／局部でないと意味が出ない Danbooru トークン）
+- `nude` および局部を直接示すタグ
+
+入れてよい例: 大きな手、敏感肌、翅なしなど**着衣時も成立する**特徴。身体的詳細のタグ列正本は **`006_nude` の `danbooru_tags`**（Level 2）。`character.md` に記述があっても、**生成タグとしては Level 2 にのみ**載せる。
+
+必須:
+
+- Tag Mode（NSFW 作品）では **`000_base` → 000番台（着衣）→ `006_nude`（該当時）→ 100番台** の順で `prompt_variants` を組み立てる。
+- Level 3 の `combines_with` は、キャラ画像バッチと漫画バッチの両方で解決される（`tools/image_provider_novel_manga_batch.character_ir_tags` は `000_base` 優先＋`combines_with` 解決に揃える）。
+
+禁止:
+
+- 000番台（`001_normal` 等）の `danbooru_tags` に **裸露・性器タグを直接書く**（半脱衣装タグのみの `005_half_dressed` 等は除く）。裸露本体は **`006_nude` 経由**。
+- `distinctive_features` / `consistency_tags` に **裸限定タグ**を置き、着衣コマへの漏洩経路を残す。
+
+参照:
+
+- 創作技法: `_how_to.example/tag.md`「身体的正本（3階層）」
+- 検証: `tools/novel_prompt_ir_validate.py`（身体的正本ルールの WARNING / `--strict-quality`）
 
 ## Tag Mode 汎用テンプレートとカスタム要素
 
@@ -101,7 +138,7 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 | 000番台 | `001_normal` ほか | 衣装状態。漫画 `variant_id` に使う。**作品 `_meta.md` §4（漫画 variant 表）に載る ID はすべて YAML に存在させる** |
 | 100番台 | `100_intro`, `101_turnaround`, `102_signature_pose` | 紹介・三面図・決めポーズの資料。`combines_with` 必須（平服資料は多くの作品で `001_normal`） |
 
-000番台の追加は、**§4 の表・`character.md`・プロット**に登場する衣装に合わせる。水着・戦闘服・半脱・nude 等は作品ごとに ID を振る（`006_nude` 等）。
+000番台の追加は、**§4 の表・`character.md`・プロット**に登場する衣装に合わせる。水着・戦闘服・半脱等は作品ごとに ID を振る。**身体的正本**は多くの NSFW 作品で **`006_nude`**（前節 Level 2）。裸露タグは 000番台の着衣スロットではなく **`006_nude` に集約**する。
 
 ### カスタム要素（作品ごと）
 

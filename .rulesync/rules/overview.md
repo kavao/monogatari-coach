@@ -235,7 +235,7 @@ flowchart TD
 
 #### 参照ルール（必須）
 - **汎用テンプレート／カスタム要素／テンプレート一式**の正本は **`.rulesync/rules/concepts.md`**（「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」）。`_how_to/` の節構造にルールを依存させない。
-- **バリアント階層・完了条件**は同ファイル「Tag Mode バリアント階層（000番台・100番台）」を正とする。
+- **バリアント階層・身体的正本・完了条件**は同ファイル「Tag Mode バリアント階層（000番台・100番台）」および **「Tag Mode 身体的正本（3階層継承）」** を正とする。
 - 構造化タグの型・手順はスキル **`manga-prompt-ir`** の `schemas/character.py` と `examples/character.yaml` を正とする。
 - `_how_to/tag.md` はユーザー調整の創作技法（Danbooru 語彙・`outfit_tags` 混入ルール等）の**任意参照**。必須の `variant_id` 一覧は concepts にある。
 
@@ -243,10 +243,13 @@ flowchart TD
 
 | 帯 | `variant_id` 例 | 用途 | 漫画 `variant_id` |
 |----|-------------------|------|-------------------|
-| 固定基礎 | `000_base` | 髪・目・肌・種族・固定小物（衣装・姿勢なし） | 使わない |
-| **000番台** | `001_normal` 等 | 平服・治療服・水着・nude 等の**衣装状態** | **使う** |
+| 固定基礎 | `000_base` | 髪・目・肌・種族・固定小物（衣装・姿勢なし。**露出・性器タグ禁止**） | 使わない |
+| **000番台** | `001_normal` 等 | 平服・治療服・水着・半脱等の**衣装状態**（裸露本体は載せない） | **使う** |
+| **身体的正本** | **`006_nude`** | 裸の標準。`nude`・性器詳細の正本（NSFW 作品のみ） | **使う** |
 | **100番台** | `100_intro` / `101_turnaround` / `102_signature_pose` 等 | 紹介・三面図・決めポーズ**資料**（`combines_with` で000番台と合成） | **使わない** |
 
+- **`appearance.distinctive_features` / `consistency_tags` に裸限定タグを置かない**（漫画 batch 主経路は `000_base` 優先だが embed 等の副経路で漏洩し得る。詳細は concepts「身体的正本」）。
+- **裸を伴う状況**（`007_arousal`, `008_relax`, `103_*` 等）は **`combines_with: 006_nude` 必須**。
 - **000番台だけ**で Tag Mode を完了扱いにしない。100番台を省略するときは **省略理由**を `description` または `_meta.md` に残す。
 - 100番台の互換 Markdown は **`資料タグ | 000番台タグ列`**（`combines_with` の複写）。エクスポートは **`--novelai-pipe-tags`** を付ける。
 
@@ -267,8 +270,8 @@ flowchart TD
    - 主要人物は全員。必要があれば脇役も追加。
 3. **YAML IR の作成**
    - スキル **`manga-prompt-ir`** に従い、`tag/characters/` 配下に各キャラの YAML ファイルを作成する。
-   - **`prompt_variants` の順**: `000_base` → **000番台**（`001_normal` 平服、作品 `_meta.md` §4・劇に必要な衣装）→ **100番台（汎用）**（concepts の一覧: `100_intro` / `101_turnaround` / `102_signature_pose`）→ **カスタム**（作品 `_meta.md` の**キャラタグ方針・カスタム要素**に列挙した分のみ）。
-   - 100番台には **`combines_with`**（例: 平服資料は `001_normal` 等）を付ける。固定特徴・禁止事項は `character.md` と YAML。`outfit_tags` 混入等の技法は `_how_to/tag.md` を参照してよい（任意）。
+   - **`prompt_variants` の順**: `000_base` → **000番台**（`001_normal` 平服、作品 `_meta.md` §4・劇に必要な衣装）→ **`006_nude`（NSFW 作品の身体的正本）** → **100番台（汎用）**（concepts の一覧: `100_intro` / `101_turnaround` / `102_signature_pose`）→ **カスタム**（作品 `_meta.md` の**キャラタグ方針・カスタム要素**に列挙した分のみ）。
+   - 100番台には **`combines_with`**（例: 平服資料は `001_normal`、裸資料・官能状況は `006_nude`）を付ける。Level 3（`007_arousal` 等）も **`combines_with: 006_nude` 必須**。
 4. **Markdown へのエクスポート**
    - **`python tools/novel_prompt_ir_export_md.py --novelai-pipe-tags`** を使用し、YAML IR から互換 Markdown（`tag/<romaji>.md`）を出力する。
 5. **分割運用**

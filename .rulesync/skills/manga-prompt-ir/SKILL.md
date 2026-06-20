@@ -218,7 +218,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。
 
 - **Pydantic 上の型**: `variant_id` は **任意の文字列**。推奨形式 **`NNN_short_slug`（3桁ゼロ埋め）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
-- **命名・階層の正本**: **`.rulesync/rules/concepts.md`**（「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（衣装）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
+- **命名・階層の正本**: **`.rulesync/rules/concepts.md`**（「Tag Mode バリアント階層」「Tag Mode 身体的正本（3階層継承）」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（着衣）→ `006_nude`（NSFW 作品）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
 - **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **concepts.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
 - **互換 Markdown の `## 1.` など**: `tools/novel_prompt_ir_export_md.py` は、`prompt_variants` の **配列の並び順**に従い、状況ブロック見出しを `## 1.` `## 2.` … と付ける。**見出しの連番は `variant_id` の先頭数字から自動算出されない**（先頭要素が必ず `## 1.` に対応する）。
 - **検証ツール**: `tools/novel_prompt_ir_validate.py` は、漫画ページなどとの **参照整合**（存在しない `variant_id` を指していないか等）は確認するが、**`NN_short_slug` 形式かどうかは検証しない**。
@@ -251,6 +251,21 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
   - 通常服／水着／鎧など、**状況で切り替わる衣装タグ**
   - standing / sitting のような姿勢タグ（状況で変わる）
   - 屋外・屋内・背景（作品側/コマ側で管理）
+  - **露出・性器・裸限定タグ**（→ **`006_nude`（身体的正本）** および **`combines_with: 006_nude` の Level 3**）
+
+### 身体的正本（3階層継承・Tag Mode 作成順）
+
+NSFW を扱う作品では、新規 YAML 作成時の思考順を固定する。
+
+1. **Level 1（SFW）**: `000_base` — 髪・目・肌・種族のみ。`appearance.distinctive_features` / `consistency_tags` にも **裸限定タグを置かない**。
+2. **Level 2（NSFW）**: `006_nude` — `nude`, `uncensored`, 性器・秘部詳細の**唯一のタグ正本**。
+3. **000番台（着衣）**: `001_normal` 等 — 衣装・半脱衣装のみ。裸露本体は載せない。
+4. **Level 3（状況）**: `007_arousal`, `008_relax`, `103_*` 等 — **`combines_with: 006_nude` 必須**。表情・体液・行為タグのみ。
+5. **100番台（資料）**: `100_intro` 等 — 平服資料は `combines_with: 001_normal`、裸資料は `combines_with: 006_nude`。
+
+Level 1 禁止事項（着衣漏洩防止）: 主経路の character_ir_tags() は 000_base 優先に改修済み。それでも distinctive_features / consistency_tags に裸限定タグがあると、embed・renderer 等の副経路で着衣コマに漏れうる。Tag Mode では Level 1 から裸限定タグを除外すること。
+
+検証: `python tools/novel_prompt_ir_validate.py novels/<作品>`（身体的正本 WARNING、`--strict-quality` で ERROR 化可）。
 
 ### 実装メモ（確認ポイント）
 

@@ -586,15 +586,22 @@ def find_character_variant(character: dict, variant_id: str | None) -> dict | No
 
 
 def character_ir_tags(character: dict, variant_id: str | None = None) -> list[str]:
+    """Resolve character tags for manga batch (000_base + variant + combines_with)."""
     variant = find_character_variant(character, variant_id)
+    variants = [v for v in as_list(character.get("prompt_variants")) if isinstance(v, dict)]
     if variant:
-        appearance = character.get("appearance") or {}
-        variant_tags: list[str] = []
-        variant_tags.extend(str(v) for v in as_list(character.get("character_tags")))
-        variant_tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-        variant_tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-        variant_tags.extend(str(v) for v in as_list(variant.get("danbooru_tags")))
-        return unique(variant_tags)
+        from image_provider_novel_tag_batch import (  # noqa: PLC0415
+            base_fixed_tags_from,
+            danbooru_for_combines_with,
+        )
+
+        combines = str(variant.get("combines_with") or "").strip()
+        variant_tags = [str(v) for v in as_list(variant.get("danbooru_tags"))]
+        if combines:
+            inherited = danbooru_for_combines_with(variants, combines, character)
+            return unique([*inherited, *variant_tags])
+        base = base_fixed_tags_from(character, variants)
+        return unique([*base, *variant_tags])
 
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
