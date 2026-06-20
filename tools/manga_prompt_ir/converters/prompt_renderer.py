@@ -153,17 +153,7 @@ def _subject_variant_id(subject) -> str | None:
 
 def _subject_character_tags(character: CharacterPrompt, subject) -> list[str]:
     variant_id = _subject_variant_id(subject)
-    if not variant_id:
-        return character.fixed_prompt_tags()
-    for variant in character.prompt_variants:
-        if variant.variant_id == variant_id:
-            tags: list[str] = []
-            tags.extend(character.character_tags)
-            tags.extend(character.appearance.species_features)
-            tags.extend(character.appearance.distinctive_features)
-            tags.extend(variant.danbooru_tags)
-            return _unique(tags)
-    return character.fixed_prompt_tags()
+    return character.variant_danbooru_tags(variant_id)
 
 
 def _unique(values: list[str]) -> list[str]:

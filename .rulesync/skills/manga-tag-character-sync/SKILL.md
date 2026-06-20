@@ -33,7 +33,7 @@ targets: ["*"]
 
 1. **固定特徴**は、構造化定義がある場合は `tag/characters/<character_id>.yaml` を最上位の正とする。
 2. 構造化定義がない作品では `character.md` を正とする。
-3. **英語タグへの落とし方**は `character.yaml` の `character_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を参考にする。
+3. **英語タグへの落とし方**は `000_base.danbooru_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を参考にする。
 4. コマごとの状況・構図・アクションは、本文と `manga/pages/*.yaml` の内容に従う。
 5. 既存 `manga/manga_XX.md` は、YAML が無い場合の移行元または互換出力の確認先に限って参照する。
 6. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。
@@ -61,7 +61,7 @@ targets: ["*"]
 
 ### 3. 継承タグを作る
 
-- `tag/characters/<character_id>.yaml` の `character_tags` / `manga_rules.consistency_tags` から、**状況が変わっても残すべきタグ**を拾う。
+- `tag/characters/<character_id>.yaml` の `000_base.danbooru_tags` / `manga_rules.consistency_tags` から、**状況が変わっても残すべきタグ**を拾う。
 - 服装・状態差分がある場合は、`manga/pages/*.yaml` の `panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかを入れ、`tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。
 - ページYAMLを単体で読める原盤にする場合は、`tools/novel_prompt_ir_embed_snapshots.py novels/<作品>` を実行し、`character_snapshots` にそのページで使う固定特徴・衣装・バリアントタグを埋め込む。
 - 互換タグが必要な場合は `tag/<romaji>.md` の Danbooru Tags 行も確認する。

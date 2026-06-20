@@ -95,39 +95,15 @@ def find_character_variant(character: dict[str, Any], variant_id: str | None) ->
 
 def base_danbooru_tags(character: dict[str, Any]) -> list[str]:
     """固定外見の正本は ``000_base``（_how_to.example/tag.md）。"""
-    base_variant = find_character_variant(character, "000_base")
-    if base_variant:
-        tags = as_list(base_variant.get("danbooru_tags"))
-        if tags:
-            return unique([normalize_tag(t) for t in tags])
-    appearance = character.get("appearance") or {}
-    costume = character.get("costume") or {}
-    rules = character.get("manga_rules") or {}
-    fallback: list[str] = []
-    fallback.extend(str(v) for v in as_list(character.get("character_tags")))
-    fallback.extend(str(v) for v in as_list(costume.get("outfit_tags")))
-    fallback.extend(str(v) for v in as_list(rules.get("consistency_tags")))
-    fallback.extend(str(v) for v in as_list(appearance.get("species_features")))
-    fallback.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-    return unique(fallback)
+    from manga_prompt_ir.character_fixed_tags import base_fixed_tags_from
+
+    return unique([normalize_tag(t) for t in base_fixed_tags_from(character)])
 
 
-def character_tags(character: dict[str, Any], variant_id: str | None = None) -> list[str]:
-    if variant_id is None:
-        return base_danbooru_tags(character)
-    variant = find_character_variant(character, variant_id)
-    if variant:
-        return unique(
-            [
-                normalize_tag(t)
-                for t in (
-                    *base_danbooru_tags(character),
-                    *as_list(variant.get("danbooru_tags")),
-                )
-            ]
-        )
+def resolve_variant_danbooru_tags(character: dict[str, Any], variant_id: str | None = None) -> list[str]:
+    from manga_prompt_ir.character_fixed_tags import resolve_variant_danbooru_tags as _resolve
 
-    return base_danbooru_tags(character)
+    return unique([normalize_tag(t) for t in _resolve(character, variant_id)])
 
 
 def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
@@ -280,7 +256,7 @@ def render_character_md(
     lines.extend(
         [
             "## 1. 通常時",
-            "説明: 構造化IRの character_tags / appearance / costume / manga_rules を統合した通常立ち絵。",
+            "説明: 構造化IRの 000_base / variant を統合した通常立ち絵。",
             "",
             "**Danbooru Tags:**",
             normal_tags,
@@ -354,7 +330,7 @@ def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str
             tags.extend(snapshot_tags(snapshot))
         elif cid and cid in characters:
             tags.append(str(characters[cid].get("name_en") or cid))
-            tags.extend(character_tags(characters[cid], selected_subject_variant_id(subject)))
+            tags.extend(resolve_variant_danbooru_tags(characters[cid], selected_subject_variant_id(subject)))
         else:
             tags.append(subject_tag_line_token(subject))
         tags.extend(subject_situational_tag_tokens(subject))

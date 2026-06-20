@@ -47,7 +47,7 @@ targets: ["*"]
 
 `tag/characters/<character_id>.yaml` が存在するキャラクターは、まずこちらを照合する。
 
-- `character_tags.fixed`（または `manga_rules.consistency_tags`）に定義された固定特徴が、すべての状況バリアントの `prompt_tags` に反映されているか確認する。
+- `000_base.danbooru_tags`（および `manga_rules.consistency_tags`）に定義された固定特徴が、すべての状況バリアントの `prompt_tags` に反映されているか確認する。
 - `manga_rules.do_not_change` に列挙された外見タグが、いずれのバリアントでも上書き・削除されていないか確認する。
 - **服装・ポーズ・表情・背景**はバリアントごとに変わってよい。
 - **髪・目・肌・種族・顔の固定飾り**は、すべてのバリアントで欠落なく反映されているか確認する。

@@ -382,8 +382,14 @@ def main(argv: list[str] | None = None) -> int:
             character_variants[character.character_id] = {
                 variant.variant_id for variant in character.prompt_variants
             }
-            from manga_prompt_ir.character_tag_quality import character_nude_base_warnings
+            from manga_prompt_ir.character_tag_quality import (
+                character_base_required_errors,
+                character_nude_base_warnings,
+            )
 
+            base_errors = character_base_required_errors(character, str(path))
+            if base_errors:
+                errors.extend(base_errors)
             nude_warnings = character_nude_base_warnings(character, str(path))
             warnings.extend(nude_warnings)
             if args.strict_quality:

@@ -63,6 +63,8 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 必須:
 
 - Tag Mode 完了時は、主要キャラごとに **`000_base`**（固定外見）と **000番台**（作品に必要な衣装状態）を `tag/characters/*.yaml` に書く。
+- **`000_base.danbooru_tags` に性別・人数（`1boy` / `1girl` / `solo` 等）を含める**。ルートの **`character_tags` フィールドは 2026-06 以降廃止**（移行: `tools/novel_prompt_ir_migrate_character_tags.py`）。
+- **`000_base` は必須**（`novel_prompt_ir_validate.py` で欠落・空は ERROR）。
 - **汎用100番台**（次節「汎用テンプレート」）は Tag Mode の標準成果物とする。
 - **カスタム要素**（次節）は作品メタまたはユーザー指示に列挙したときだけ追加する。
 - 100番を省略するときは当該バリアントの `description` または作品 `_meta.md` のキャラタグ方針に **省略理由**を残す。

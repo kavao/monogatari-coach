@@ -272,12 +272,9 @@ def variants_by_id(variants: list[dict]) -> dict[str, dict]:
 
 def base_fixed_tags_from(char: dict, variants: list[dict]) -> list[str]:
     """固定外見の正本は ``000_base`` の danbooru_tags（_how_to.example/tag.md）。"""
-    ref = variants_by_id(variants).get("000_base")
-    if ref:
-        base = list(ref.get("danbooru_tags") or [])
-        if base:
-            return base
-    return fixed_tags_from(char)
+    from manga_prompt_ir.character_fixed_tags import base_fixed_tags_from as _base_fixed
+
+    return _base_fixed(char, variants)
 
 
 def danbooru_for_combines_with(
@@ -332,24 +329,6 @@ def compose_job_prompt(
 
     all_tags = compose_positive_tags(base_fixed, danbooru, job_layers)
     return STYLE_PREFIX + ", ".join(all_tags)
-
-
-def fixed_tags_from(char: dict) -> list[str]:
-    """
-    character_tags + costume.outfit_tags + manga_rules.consistency_tags
-    + appearance.species_features + appearance.distinctive_features を結合して返す。
-    schemas/character.py の fixed_prompt_tags() 相当。
-    """
-    tags: list[str] = []
-    tags.extend(char.get("character_tags") or [])
-    costume = char.get("costume") or {}
-    tags.extend(costume.get("outfit_tags") or [])
-    manga_rules = char.get("manga_rules") or {}
-    tags.extend(manga_rules.get("consistency_tags") or [])
-    appearance = char.get("appearance") or {}
-    tags.extend(appearance.get("species_features") or [])
-    tags.extend(appearance.get("distinctive_features") or [])
-    return tags
 
 
 def iter_tag_jobs(

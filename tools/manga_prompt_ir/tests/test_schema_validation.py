@@ -27,6 +27,7 @@ def test_character_yaml_validates() -> None:
     character = load_model(_EXAMPLES / "character.yaml", CharacterPrompt)
     assert character.character_id == "kazuki"
     assert "black_hair" in character.fixed_prompt_tags()
+    assert "1boy" in character.fixed_prompt_tags()
 
 
 def test_manga_page_yaml_validates_and_renders() -> None:

@@ -338,7 +338,7 @@ type params.json | python tools/image_provider_generate.py --json
 一括生成 **`tools/image_provider_novel_tag_batch.py`** は、`tag/characters/*.yaml`（YAML IR）を直接読む。`tag/<romaji>.md` は参照しない。
 
 - **正本**: `tag/characters/<character_id>.yaml`（スキル **`manga-prompt-ir`** の `schemas/character.py` / `examples/character.yaml`）
-- **固定タグ**: `character_tags`・`costume.outfit_tags`・`manga_rules.consistency_tags`・`appearance.species_features`・`appearance.distinctive_features` を結合
+- **固定タグ**: `000_base.danbooru_tags`（必須。性別・人数タグもここに含める）
 - **バリアント**: `prompt_variants[].danbooru_tags`（`variant_id` ごと）
 - **YAML 構造の検証**: スキル **`novel-tag-character-consistency`** および `python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`
 - 実行前は必ず **`--dry-run`** でジョブ数・プロバイダ・プロンプト先頭を確認する。

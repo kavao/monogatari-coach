@@ -3,11 +3,6 @@ character_id: kazuki
 name: 和紀
 name_en: Kazuki
 role: 主人公
-character_tags:
-  - 1boy
-  - young_man
-  - black_hair
-  - brown_eyes
 appearance:
   age_range: late teens
   gender_presentation: masculine
@@ -49,14 +44,22 @@ manga_rules:
     - スマホを別の固定小物に置き換えない
   closeup_rules: 目元アップでは疲労感と観察眼を残す
 prompt_variants:
-  - variant_id: normal
+  - variant_id: "000_base"
+    title: 基本外見
+    description: 固定特徴（髪・目・肌・性別）。衣装・姿勢なし。
+    danbooru_tags:
+      - 1boy
+      - young_man
+      - black_hair
+      - brown_eyes
+      - fair_skin
+  - variant_id: "001_normal"
     title: 通常時
     description: 通常立ち絵。固定特徴と衣装を確認する。
     danbooru_tags:
       - Kazuki
-      - 1boy
-      - black_hair
-      - brown_eyes
+      - casual_jacket
+      - dark_pants
     caption: Kazuki, stable character reference.
     translation: 和紀の通常時。
 negative_tags:

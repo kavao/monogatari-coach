@@ -603,16 +603,9 @@ def character_ir_tags(character: dict, variant_id: str | None = None) -> list[st
         base = base_fixed_tags_from(character, variants)
         return unique([*base, *variant_tags])
 
-    appearance = character.get("appearance") or {}
-    costume = character.get("costume") or {}
-    rules = character.get("manga_rules") or {}
-    tags: list[str] = []
-    tags.extend(str(v) for v in as_list(character.get("character_tags")))
-    tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
-    tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))
-    tags.extend(str(v) for v in as_list(appearance.get("species_features")))
-    tags.extend(str(v) for v in as_list(appearance.get("distinctive_features")))
-    return unique(tags)
+    from manga_prompt_ir.character_fixed_tags import base_fixed_tags_from
+
+    return unique(base_fixed_tags_from(character))
 
 
 def snapshot_key(character_id: str | None, variant_id: str | None) -> tuple[str, str]:
@@ -675,9 +668,11 @@ def character_visual_summary_for_step2(character: dict, variant_id: str | None =
         segments.append(str(d))
     if segments:
         return f"{name}・" + "、".join(segments)
-    ct = [str(x) for x in as_list(character.get("character_tags")) if x][:8]
-    if ct:
-        return f"{name}・" + "、".join(ct)
+    from manga_prompt_ir.character_fixed_tags import base_fixed_tags_from
+
+    base = base_fixed_tags_from(character)[:8]
+    if base:
+        return f"{name}・" + "、".join(base)
     return name
 
 

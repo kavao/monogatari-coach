@@ -80,7 +80,6 @@ class CharacterPrompt(BaseModel):
     name: str
     name_en: str | None = None
     role: str | None = None
-    character_tags: list[str] = Field(default_factory=list)
     appearance: CharacterAppearance = Field(default_factory=CharacterAppearance)
     costume: CharacterCostume = Field(default_factory=CharacterCostume)
     personality: CharacterPersonality = Field(default_factory=CharacterPersonality)
@@ -91,12 +90,11 @@ class CharacterPrompt(BaseModel):
 
     def fixed_prompt_tags(self) -> list[str]:
         for variant in self.prompt_variants:
-            if variant.variant_id == "000_base" and variant.danbooru_tags:
-                return list(dict.fromkeys(variant.danbooru_tags))
-        tags: list[str] = []
-        tags.extend(self.character_tags)
-        tags.extend(self.costume.outfit_tags)
-        tags.extend(self.manga_rules.consistency_tags)
-        tags.extend(self.appearance.species_features)
-        tags.extend(self.appearance.distinctive_features)
-        return list(dict.fromkeys(tag for tag in tags if tag))
+            if variant.variant_id == "000_base":
+                return list(dict.fromkeys(tag for tag in variant.danbooru_tags if tag))
+        return []
+
+    def variant_danbooru_tags(self, variant_id: str | None = None) -> list[str]:
+        from ..character_fixed_tags import resolve_variant_danbooru_tags
+
+        return resolve_variant_danbooru_tags(self.model_dump(), variant_id)

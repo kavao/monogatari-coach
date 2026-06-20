@@ -90,11 +90,18 @@ def appearance_summary(character: dict[str, Any]) -> str:
 
 
 def fixed_tags(character: dict[str, Any], *, include_default_costume: bool) -> list[str]:
+    tools_dir = Path(__file__).resolve().parent
+    import sys
+
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    from manga_prompt_ir.character_fixed_tags import base_fixed_tags_from
+
     appearance = character.get("appearance") or {}
     costume = character.get("costume") or {}
     rules = character.get("manga_rules") or {}
     tags: list[str] = []
-    tags.extend(str(v) for v in as_list(character.get("character_tags")))
+    tags.extend(str(v) for v in base_fixed_tags_from(character))
     if include_default_costume:
         tags.extend(str(v) for v in as_list(costume.get("outfit_tags")))
     tags.extend(str(v) for v in as_list(rules.get("consistency_tags")))

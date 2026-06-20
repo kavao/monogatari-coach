@@ -109,3 +109,18 @@ def _base_tags(character: Any) -> list[str]:
         if variant.variant_id == "000_base":
             return [str(t) for t in variant.danbooru_tags]
     return []
+
+
+def character_base_required_errors(character: Any, label: str) -> list[str]:
+    """Return errors when ``000_base`` is missing or empty."""
+    errors: list[str] = []
+    base_variant = None
+    for variant in character.prompt_variants:
+        if variant.variant_id == "000_base":
+            base_variant = variant
+            break
+    if base_variant is None:
+        errors.append(f"{label}: 000_base が prompt_variants にありません（Tag Mode 必須）")
+    elif not base_variant.danbooru_tags:
+        errors.append(f"{label}: 000_base.danbooru_tags が空です")
+    return errors

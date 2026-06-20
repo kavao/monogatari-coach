@@ -227,16 +227,12 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 ## 重要: キャラクターの「固定タグ」と「バリアントタグ」の分離（混入事故防止）
 
-`CharacterPrompt` の固定タグは、レンダリング時に **常に全バリアントへ注入される**前提で運用する。
-具体的には、`tools/manga_prompt_ir/schemas/character.py` の `CharacterPrompt.fixed_prompt_tags()` が返す次が、毎回（=水着でも治療服でも）混ざり得る。
+`CharacterPrompt` の固定タグは **`000_base.danbooru_tags` のみ**を正本とする（`CharacterPrompt.fixed_prompt_tags()` / `tools/manga_prompt_ir/character_fixed_tags.py`）。
+漫画 batch の主経路（`character_ir_tags()`）も **`000_base` + `variant_id` + `combines_with`** で解決する。ルートの **`character_tags` は 2026-06 以降廃止**。
 
-- `character_tags`
-- `costume.outfit_tags`
-- `manga_rules.consistency_tags`
-- `appearance.species_features`
-- `appearance.distinctive_features`
+具体的には、`fixed_prompt_tags()` が返す **`000_base.danbooru_tags`** が、各バリアント合成の土台として毎回混ざる。
 
-そのため、`costume.outfit_tags`（固定側）に **通常服（平服）** を入れると、**水着バリアントにも通常服タグが混ざる**などの矛盾が発生し得る。
+**副経路**（`novel_prompt_ir_embed_snapshots`、`prompt_renderer` の snapshot 未使用時等）では、従来どおり `manga_rules.consistency_tags` や `appearance.distinctive_features` が **追加注入され得る**（concepts「身体的正本」§3.1 参照）。
 
 ### ルール（推奨）
 

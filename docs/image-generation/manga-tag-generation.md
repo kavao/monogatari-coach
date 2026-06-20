@@ -141,7 +141,7 @@ nanobanana, GptImage1のようなツールで、コマ割りと抽象度をの�
 
 1. **ページの `character_snapshots[]`** に `appearance_summary` がある場合 → その **自然文**を最優先（`名前: appearance_summary`）。**`costume_summary` は Step2 の【固定見た目】には含めない**（衣装・状況の長文が付きやすいため。IR 正本としては引き続き保持してよい）。
 2. 上記がなく **`fixed_tags` / `variant_tags` がある場合** → 英語タグ列を短く連結（長い場合は先頭16個まで）。
-3. いずれも弱い、または補完として **`tag/characters/<id>.yaml`** の `appearance`（髪色・髪型・目色・肌・`species_features`）と `costume.accessories`（固定小物）、`distinctive_features`（先頭3件）を **日本語ラベル付き**で連結。それでも空に近い場合は **`character_tags` の先頭数件**にフォールバック。
+3. いずれも弱い、または補完として **`tag/characters/<id>.yaml`** の `appearance`（髪色・髪型・目色・肌・`species_features`）と `costume.accessories`（固定小物）、`distinctive_features`（先頭3件）を **日本語ラベル付き**で連結。それでも空に近い場合は **`000_base.danbooru_tags` の先頭数件**にフォールバック。
 
 同一コマに同じ `character_id` が複数あっても **1回だけ**出ます。`character_id` のない subject（小物だけのコマ等）は **固定見た目節を出しません**。
 
