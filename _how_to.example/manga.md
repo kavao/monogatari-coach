@@ -1,68 +1,202 @@
-## step1 
-stable diffusion,novelaiで漫画1ページを描画してもらうような、タグを作成してください、カラーのページにしたいです。
-nanobanana, GptImage1のようなツールでもそのまま使えることを考えています。
-タグ生成の際にはmanga_tag.mdも確認し参考にしてください
-タグを付けるとき、誰が、どのような体勢で、誰に、背景はこう、のようなことを各コマで明確にしてください。
-メッセージは日本語で応対してください
-あと、内容については、3-7コマで、済むような形で。使った場所を教えてください
-英語のタグに日本語の翻訳を後に追加してください。喋るコマの場合は吹き出しだけ日本語を入れるようにしてください。
-各コマのタグを個別に出すようにして､最後にそれを束ねて全ページを一気に出す形にしてください。
-1コマコマごとに場所 (Location),人の状態 (Characters' States),行っているアクション (Actions)などを明確にしてください。
-誰の何にどうしたといったことは、文章で表記してください。
+## このファイルの役割（仕分け）
 
-構図の工夫、アオリとフカン、アップとヒキなども適切にコマのメリハリを付けるのに入れてください。
-ここではimagineで決して画像を生成しないでください。
-日本の漫画のコマ割りについては必ず指定してください
+**創作技法の正本**として、ページ YAML をどう設計するか（誰が・どこで・POV・variant・タグ注入の優先）を扱います。
 
-「自然言語で状況説明＋箇条書きでコマを並べる」スタイル
+| どこに何を置くか | 内容 |
+|------------------|------|
+| ルート [`readme.md`](../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
+| [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) | **ツール・パイプライン**に加え、**ページ YAML の型・旧差分表・最小例**（互換 Step1 の元データの説明。アンカー [`#yaml-minimal-step1`](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)）。 |
+| [`docs/image-generation/manga-tag-generation.md`](../docs/image-generation/manga-tag-generation.md) | **漫画タグ生成用**：互換 Step1/Step2 の長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。 |
+| [`manga_tag.md`](manga_tag.md)（本フォルダ） | **英語タグの語彙・置換・追加ルール**（Step1／`prompt_tags` 中心）。 |
+| [`manga_tag_step2.md`](manga_tag_step2.md)（本フォルダ） | **Step2**（`step2_summary`・ページ生成・抽象レイアウト）の**言い換え表・チェックリスト**。※過去に **`manga.md` にあったのではなく** `docs` 側にあった Step2 作法をここへ集約した。 |
+
+---
+
+## 構造化IR優先（manga-prompt-ir）
+
+新規の漫画ページ・漫画コマは、まず **`manga-prompt-ir`** の `MangaPagePrompt` 構造へ落とす。
+
+- 人間編集用の正本: `novels/<作品>/manga/pages/manga_XX_pYY.yaml`
+- 画像生成バッチ入力: `tools/image_provider_novel_manga_batch.py --input yaml`（既定。`manga/pages/*.yaml` を必須入力として読む）
+- 人間向けの副本・既存Markdown互換: `novels/<作品>/manga/manga_XX.md`
+- `manga_XX.md` は YAML からエクスポートする**可読形**（手作業での Step1/Step2 推敲・外部確認・`image_provider_novel_manga_batch --input markdown` 等）として扱う
+- 中間データは作り直し可能だが、**誰が・どこで・何をし・誰に話し・どのコマがどんな役割か**は失わない
+
+**Manga Tag Mode の初手は YAML IR 作成です。**
+`manga/manga_XX.md` を直接新規作成して正本にしないでください。Markdown が必要な場合は、YAML 検証後に「互換出力」「Markdown出力」「画像生成バッチ準備」として生成します。
+
+YAML IR では、少なくとも次を分離して持つ。
+
+- `meta`: ページ/コマ用途、読み順、比率
+- `manga`: 画風、ページレイアウト、文字描画方針
+- `scene`: 場所、時間、背景
+- `character_ids`: 登場人物の `character_id`
+- `panels[]`: コマごとの `summary` / `subjects` / `composition` / `text` / `prompt_tags` / `translation`（任意で `negative_tags` / `omit_negative_tags`。**コマ単位ネガ**の書き方は `manga_tag.md` の「コマ別ネガ」）
+- `technical.negative_tags`: ページ共通のネガ断片（**コマ生成** `--source step1-panels` では、各コマの合成 `negative_prompt` に含める）
+
+### `manga.genre_tags` / `manga.visual_tags`（Step1 の `tag` 行に直結する）
+
+`tools/novel_prompt_ir_export_md.py` の `panel_tags()` は、互換 `manga/manga_XX.md` の **各コマ `### Step1` の `tag` 行**に、コマ用のスタイル断片のあと **`manga.genre_tags` と `manga.visual_tags` をそのまま連結**する。`tools/image_provider_novel_manga_batch.py`（YAML 入力）のタグ合成も同様にページの `manga` 節を読む。
+
+- **原則（フルカラー運用）**: **`monochrome` と `screentone` を `genre_tags` および `visual_tags` に入れない。** 雛形 `tools/manga_prompt_ir/examples/manga_page.yaml` など**古い例**に従うと、白黒・トーン紙風のトークンが混ざり、**互換 Markdown の「カラー」表記や、カラー指向モデル（NovelAI 等）の意図と矛盾**しやすい。
+- **例外**: 作品またはページを**意図的にモノクロ漫画・スクリーントーン仕上げ**にするときだけ、`monochrome` / `screentone` を置く。その場合は **`color_palette.mode`**（または `render_instruction` 等）と説明文をモノクロ前提で揃える。
+- **カラーで画風を足すなら**（例）: `full_color`・`anime_coloring`・`cel_shading`・`clean_lineart` など、プロバイダと合わせた語を **`visual_tags`** や **`panels[].prompt_tags`** に載せる。
+
+**`scene` の英語フィールド（タグ行・txt2img）**
+`location_en` は**必須（非空）**。`time_of_day` / `weather` / `background_notes` を書いたら、対応する `time_of_day_en` / `weather_en` / `background_notes_en` も**必須**（`tools/manga_prompt_ir/schemas/manga_page.py` の `Scene` で検証）。`tools/manga_prompt_ir/scene_prompt.py` は **`*_en` のみ**参照し、日本語の `location` 等にはフォールバックしません。欠けは LLM 側で英語行を補ってから保存する。
+
+`Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
+
+キャラクターの服装・状態差分は、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかで明示する。値は `tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。指定がある場合、画像生成バッチは基本衣装ではなく該当バリアントの `danbooru_tags` を優先して注入する。
+
+### POV・部分アップと `subjects[]`（タグ注入の主役を誰に合わせるか）
+
+`image_provider_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
+
+- **原則**: フレームで**面積・意味の中心になっている身体**の持ち主を、`subjects[]` の**先頭に近いほど主**として書く。複数人物がいるときは「誰の体型・肌・衣装タグが結果を決めるか」がその人物側になるように並べる。
+- **一人称・POV**（`prompt_tags` に `pov`・`first_person_view`・`male perspective` 等がある、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。
+- **よくある誤り**: 行為の主体だけを `character_id` にし、**画面上は相手の裸体・腰などが主**なのに視点人物だけを載せる——注入タグが視点人物側に寄り、**見えている身体とずれる**。その場合は**見えている側を主 subject** にする。
+- **話者と画の主役**: モノローグの話者が視点人物でも、画が相手の部位中心なら **`text` は話者、`subjects` の先頭は相手**と分けて書くと混線しない。
+
+### クローズアップ・接写と `prompt_tags`（見えている部分の特徴を書く）
+
+全身が画面に入らないコマでは、**「どの人物か」だけを英語タグで粗く示すのではなく、フレームに入っている部位・肌・形状・状態**を `prompt_tags` に厚く載せる運用を推奨する。
+
+- **`subjects[]`**: 引き続き**誰の身体か**（タグ注入の帰属）を示す。腰だけ・手元だけでも、`character_id` と `description` で「誰の・画面に映っている範囲はどこまでか」を明記する。
+- **`prompt_tags`**: **画に実際に写っている見え方**を優先する。部位・画角・質感の例: `slim waist` `midriff` `thighs` `trembling hands` `extreme close-up` `face focus` `parted lips` `sweat` `flushed` など。**フレーム外の要素**（全身コーデ・画面に入っていない髪型の明示など）は無理に足さず、全身向けの人物ラベルだけで埋めない。キャラの固定特徴の注入は **`subjects` とキャラ YAML／スナップショット**が担うので、`prompt_tags` は**そのコマで絵を決める局所的な記述**に寄せる。
+- **`summary` / `description`（日本語）**: 「誰の・どの部位が・どんな状態で」写っているかを部位レベルで書き、`prompt_tags` の英語と矛盾させない。
+
+語彙の引き出しは `_how_to/manga_tag.md` の部位・体勢の例と併用する。
+
+### 手元・手と手など「キャラID注入を載せない」コマ
+
+**可能。** `image_provider_novel_manga_batch.py` のタグ組み立て（`yaml_panel_tags`）では、**`subjects[].character_id` が無い**とき **`tag/characters/<id>.yaml` 由来の固長タグ列は付かない**（`subject_snapshot` もヒットしない）。代わりに `subject_tag_line_token()` が **`tag_token` → `description_en` → `description`** の順で短いトークンを1つ足す（実装は `tools/manga_prompt_ir/scene_prompt.py`）。**手と手をつなぐ接写だけ**にしたいときは次のとおり。
+
+- **`character_id` を付けない** `subjects` を、写る手の数だけ並べる（例: 2エントリ）。英語の見え方は **`tag_token`** または **`description_en`** にまとめる（例: `slender female hand`, `larger male hand`, `interlocked fingers`, `holding hands`）。日本語の `description` は編集用メモとして残してよい。
+- **`prompt_tags`** に画角・肌の質感・握り方などを足す。**キャラYAMLが載らないぶん、肌の明暗・手の大きさ差などは英語で明示**する。
+- **検証**: 既定の `type: human` のまま `character_id` 無しだと `novel_prompt_ir_validate.py` が「人物subjectに character_id がありません」と**警告**する。部位・手だけのブロックとして書くなら **`type` を `hands` / `detail` / `object` 等**（`human` `person` `character` 以外）にすると、当該警告を避けられる。
+- **ページの `character_ids`**: そのページの別コマで同じ二人を `character_id` 付きで使っていれば宣言との整合は取れる。手だけのコマだけでは二人が未宣言に見える場合は**警告が出る**ので、`--strict-quality` 運用では当該ページの構成を確認する。
+- **トレードオフ**: 注入を外すと**髪・目・肌の自動一貫性は効かない**。必要な差は `tag_token` / `prompt_tags` で足す。
+
+例（概念スケッチ）:
+
+```yaml
+# subjects のみ抜粋。character_id なし。
+- description: 左側から差し出される細い手（編集メモ）
+  description_en: slender hand, fair skin, reaching from left
+  type: hands
+  pose_action: fingers loosely curled
+- description: 右側から包み込む大きめの手（編集メモ）
+  description_en: larger hand, interlocked fingers, holding hands
+  type: hands
+  pose_action: gentle grip
 ```
-## step1 
-縦長マンガ、1ページ6〜8コマ、少年ジャンプ風の迫力あるバトルシーン、日本の漫画のコマ割り
-登場人物：黒髪の剣士「零」（傷だらけ、目が鋭い）、金髪の魔法使い少女「ルナ」
 
-コマ1: 見開き大ゴマ気味、零が剣を構えて敵の群れを睨む、背景に炎、迫力重視
-セリフ：「来い…全部まとめて斬ってやる」
-tag:  
-dynamic wide angle manga panel, shonen jump style, dramatic low angle shot, black-haired scarred swordsman Rei gripping sword tightly, sharp intense eyes glaring forward, surrounded by shadowy enemy horde, blazing fire background, intense atmosphere, action manga, detailed lineart, speed lines, high contrast, epic battle opening scene
+品質の見方は `.rulesync/skills/manga-tag-quality-gate`（誰が写っているか・セリフ帰属）。POV では「視線の先の人物が `subjects` とタグで説明されているか」を確認する。
 
-コマ2: ルナが後ろで魔法陣を展開、青い光エフェクト
-セリフ：「零！援護するよ！」
-tag:  
-shonen manga style, beautiful blonde magical girl Luna standing behind, casting large glowing blue magic circle, intricate rune patterns, cyan light particles and sparkles, determined expression, wind blowing hair, support magic scene, dramatic backlighting, detailed magical effects, anime screentone
+ページYAMLを単体で読める原盤にするため、`character_snapshots` にそのページで使う登場人物の外見・衣装・バリアントタグを埋め込む。作成・更新は次で行う。
 
-コマ3〜5: 連続アクション（斬撃→爆発→敵の悲鳴）
-tag:  
-fast-paced action sequence, 3 consecutive manga panels in one image, dynamic speed lines,  
-panel1: Rei performing powerful diagonal sword slash, motion blur, impact frame, black hair flowing,  
-panel2: massive explosion of fire and smoke after slash connects, debris flying,  
-panel3: enemies screaming in pain, distorted faces, being blown away, dramatic shading, shonen jump battle intensity, monochrome + selective color, kinetic energy
-
-コマ6: 零が血まみれで立っている、ルナが駆け寄る、決めポーズ
-tag:  
-final victory pose manga panel, shonen jump climax scene, bloodied black-haired swordsman Rei standing tall breathing heavily, sword planted in ground, sharp eyes looking forward, wounds and torn clothes, blonde magical girl Luna running towards him worriedly, reaching out, dramatic back view of enemies defeated in background, dust and smoke, powerful atmosphere, detailed shading, heroic moment, intense emotion
-
+```bash
+python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 ```
 
-## step2 
-nanobanana, GptImage1のようなツールで、コマ割りと抽象度をのみ出す形
-抽象度を上げる、「何をしている」という具体的な行動や接触描写を排除し、純粋に構図・位置関係・アングル・表情の配置だけに絞る
-日本の漫画のコマ割りについては必ず指定してください
+生成バッチは `character_snapshots` があればこれを最優先し、無い場合だけ `tag/characters/*.yaml` を参照する。
 
-以下のような出力でお願いします
+### バリアントとタグ注入の優先（曖昧にしないための正本）
 
+**小説→ページYAML起こしの手順の説明は本ファイル（`manga.md`）を正とする。** 次の表は、**実装** `tools/image_provider_novel_manga_batch.py`（`subject_snapshot` / `selected_subject_variant_id` / `character_ir_tags`）と揃えたものである。`manga_tag.md` は**シーン用の英語タグ例・語彙**の参照であり、ここに無い「variant の機械的な優先」は定義しない。
+
+| 優先度 | 何が起きるか |
+|--------|----------------|
+| 1. `character_snapshots` | ページにスナップショットがあり、`subjects` の variant に対応するエントリがあれば **その `fixed_tags` + `variant_tags` を最優先**（コマに寄らずページ単位の埋め込み） |
+| 2. キャラ YAML の `prompt_variants` | スナップショットが無い／当たらないとき、各 `subjects[]` について次の**3キーは先に書かれた方が採用**（実装と同一）: **`prompt_variant_id` → `costume_variant` → `variant_id`**。値は `tag/characters/<id>.yaml` の `prompt_variants[].variant_id` と**文字列一致**で探す。 |
+| 3. ベース衣装・固定特徴 | variant が空、または ID が YAML に存在しないとき **`costume.outfit_tags` / `manga_rules.consistency_tags` 等**へフォールバック（**意図と違う絵になりうる**）。`novel_prompt_ir_validate.py` が警告しうる。 |
+
+- **検証の正本**: `python tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality` 推奨）。スキーマ違反は exit 1、品質は警告（`--strict-quality` で失敗扱い）。
+- **英語タグの引き出し**（行動 等）: `_how_to/manga_tag.md` を参照。合格条件の定義ではない。
+
+### TPO → variant 対応表（ページ YAML より先に固定する）
+
+**漫画タグ（Manga Tag）では、いきなり `manga/pages/*.yaml` を書かない。** 先に作品メモで **時・場・身体状態（TPO）ごとの状況バリアント** を決め、チャット上で合意してから YAML に落とす。コマの `prompt_tags` だけで衣装・裸露を表そうとすると、variant が選ばれず物語の一貫性が崩れやすい。
+
+#### 正本の置き場所
+
+| 内容 | 正本 |
+|------|------|
+| **TPO → variant の表** | 各作品の **`_meta.md`** 内「**漫画 variant 対応（TPO 正本）**」節（無ければ新設） |
+| **区間の常時タグ（required / omit）** | 各作品の **`_meta.md`** 内「**漫画タグ層（区間・常時上乗せ）**」節（`_how_to.example/meta.md` §5）。実行は区間内各ページの `user_directives.defaults` |
+| ページ・コマの詳細 | `manga/pages/manga_XX_pYY.yaml` |
+| キャラの状況別タグ定義 | `tag/characters/<character_id>.yaml` の `prompt_variants` |
+| 固定外見の一覧（0 番） | 同上の **`00_base`**（**漫画の主 variant にはしない**。詳細は `_how_to.example/tag.md`） |
+
+#### 表の書き方（最小）
+
+```markdown
+### 漫画 variant 対応（TPO 正本・YAML より先に更新）
+
+| 区間（ページ／本文） | 本文参照 | キャラA variant | キャラB variant | メモ |
+|----------------------|----------|-----------------|-----------------|------|
+| manga_01_p01–p04 | novel_text01 浴室 | yuma: `06_nude` | miu: `06_nude` | 連続場面・着替えなし |
 ```
-## step2 
-縦長カラーマンガ、1ページ5コマ、日本の漫画のコマ割り
 
-コマ1: フカンlong shot、1人の男性に３人(A,B,C)女性が集まる
+**variant 表の列に「常時足すタグ」は書かない。** 区間で全コマに同じ英語タグを載せたい／外したい場合は、`_meta.md` の **「漫画タグ層（区間・常時上乗せ）」**（`_how_to.example/meta.md` §5）に **別表**で書き、YAML では `render_instruction.user_directives.defaults.required_prompt_tags` / `omit_prompt_tags` へ写す。バッチは `_meta` ではなく **ページ YAML の `defaults`** を読む。
 
-コマ2: アオリclose up、Aが中心の人物に近づく
+#### タグ層（variant とは別の区間表）
 
-コマ3: 横アングルmedium shot、Bが背後から中心の人物に近づく
+| 層 | 例 | `_meta` | ページ YAML |
+|----|-----|---------|-------------|
+| キャラ身体・衣装 | `06_nude` | §4 variant 表 | `subjects[].variant_id` |
+| 区間の常時タグ | `steam`, `bathroom` | §5 タグ層表 | 区間内**各ページ**の `user_directives.defaults` |
+| コマ固有 | 画角・接触 | — | `panels[].prompt_tags` |
 
-コマ4: eye level dynamic、Cが右側から中心の人物に近づく
+```markdown
+### 漫画タグ層（区間・常時上乗せ）
 
-コマ5: Dutch angle bust up大コマ、ABCに囲まれた、真ん中の人物が笑顔になる
+| 区間 | required（全コマに足す） | omit（全コマから外す） | メモ |
+|------|--------------------------|-------------------------|------|
+| manga_01_p01–p04 | steam, bathroom | outdoor, classroom | §4 と併用 |
 ```
 
+- **区間**はページ連番または項名でよい。**連続する同一 TPO では variant を一定**にする（次節「タイムライン」）。
+- 列の値は **`01_normal` `06_nude` など状況バリアント（`01_` 以降）** を書く。`00_base` は表に載せない（載せる場合は「例外」列に理由を1行）。
+- キャラ YAML に無い `variant_id` は書かない（先に Tag Mode で `prompt_variants` を用意する）。
 
+#### 推奨のやりとり順
+
+1. `_novel_text`・`character.md`・`tag/characters/*.yaml` を読む。
+2. **`_meta.md` に §4 variant 表の草案**を書き、チャットで「この区間はこの variant」で合意する（修正は表だけ直す）。
+3. **同じく `_meta.md` に §5 タグ層表**を書き、「このページのあいだは常にこれを足す／外す」で合意する。
+4. 合意後に **`manga/pages/*.yaml`** を作成する。各 `subjects[]` の `variant_id` は **§4 どおり**。区間内の各ページに **§5 どおりの `user_directives.defaults`** を複写する。
+5. **`panels[].prompt_tags`** は構図・場の演出・姿勢・局部・行為など **コマ固有**を書く。衣装・裸露レベルは **variant に任せ、コマに重ね書きしない**（合成時の二重載せ防止。将来の subtract 実装とも整合）。区間共通の湯気・禁止屋外タグなどは **§5 → `defaults` に任せ、全コマの `prompt_tags` に二重記載しない**。
+6. `python tools/novel_prompt_ir_embed_snapshots.py` → `novel_prompt_ir_validate.py`（`--strict-quality`）→ 必要なら `novel_prompt_ir_export_md.py`。
+
+#### `00_base` との役割分担（漫画）
+
+| 用途 | `00_base` | 状況バリアント（`01_` 以降） |
+|------|-----------|------------------------------|
+| キャラ Tag・固定一覧 | ○ 正本 | 各状況の立ち絵 |
+| 漫画 `subjects[].variant_id` | **原則×**（消極的・例外のみ） | **○ 主役** |
+| コマ `prompt_tags` | 身份・髪目など書かない | 湯気・画角・行為など足す |
+
+やむを得ず漫画で `00_base` を使うときは、`render_instruction.user_directives.page_notes` に **理由を1行**残す。
+
+### variant はコマ単位ではなくタイムラインで決める
+
+小説本文からページYAMLへ落とすとき、`variant_id`（および `prompt_variant_id` / `costume_variant`）は **その場その場のコマだけを見て付け替えない**。まず **`_meta.md` の TPO → variant 表**（前節）と `_novel_text` の **時系列と場の連続性** を踏まえ、**どの区間で衣装・身体的状態が同じか／どの節目で変わるか** を決める。
+
+- **連続した同一場面**（同じ時間帯・同じ空間で、着替えやフェーズ移行がまだ起きていない）では、登場キャラの variant は **原則として一定**とする。コマが進んで調整するのはポーズ・アングル・接写・セリフなど **コマ固有の記述**であり、**variant をコマごとに気まぐれに変えない**（連続コマで、理由なく服装や肌の見え方だけが切り替わるのを防ぐ）。
+- variant を変えてよいのは、**本文上はっきり境目があるとき**に限る（移動、時間経過、着脱・治療段階の推移など）。迷ったら「直前のページ／コマと **まだ同じ状況か**」を問い、同じなら **同じ variant を維持**する。
+- **ページをまたいでも**、ひと続きの場面なら variant は **引き継ぐ**。場当たり的な付け替えは、絵の一貫性だけでなく、後からの **validate や `character_snapshots`** とも齟齬を生みやすい。
+
+## ページ YAML の型・Step1 互換の元データ（ドキュメントへ移設）
+
+**Monogatari Coach（`_how_to`）では参照されない**、ページ IR の形と旧フォーマット差分・最小 YAML 例は、操作マニュアル **[`docs/image-generation/manga-prompt-ir.md` の「ページ YAML の最小構造と Step1 互換出力の元」](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)** に置いてあります（互換 `manga_XX.md` の Step1 は、この YAML をエクスポートした結果です）。
+
+---
+
+## ツール・タグ出力ドキュメントへのリンク
+
+- **検証・バッチ・ネガ合成・novelai-pipe-tags**: [docs/image-generation/manga-prompt-ir.md](../docs/image-generation/manga-prompt-ir.md)
+- **互換 Step1/Step2 の全文テンプレ・実例・レイアウト・運用メモ**: [docs/image-generation/manga-tag-generation.md](../docs/image-generation/manga-tag-generation.md)
+
+ネガの語彙・運用例は引き続き manga_tag.md の「コマ別ネガ」を参照してください。

@@ -1,0 +1,67 @@
+schema_version: "1.0"
+character_id: kazuki
+name: 和紀
+name_en: Kazuki
+role: 主人公
+appearance:
+  age_range: late teens
+  gender_presentation: masculine
+  body_type: slim
+  height: average height
+  eye_color: brown
+  hair_style: short messy hair
+  hair_color: black
+  skin_tone: fair skin
+  distinctive_features:
+    - tired but alert eyes
+costume:
+  outfit_tags:
+    - casual_jacket
+    - dark_pants
+  main_outfit: 地味なジャケットと黒いパンツ
+  accessories:
+    - smartphone
+  color_palette:
+    - black
+    - gray
+    - white
+personality:
+  archetype_tags:
+    - reluctant_hero
+  personality_tags:
+    - observant
+    - cautious
+  default_expression: 控えめで警戒心のある表情
+  speech_style: 短く慎重に話す
+manga_rules:
+  consistency_tags:
+    - black_hair
+    - brown_eyes
+    - fair_skin
+    - smartphone
+  do_not_change:
+    - 髪色を黒以外にしない
+    - スマホを別の固定小物に置き換えない
+  closeup_rules: 目元アップでは疲労感と観察眼を残す
+prompt_variants:
+  - variant_id: "000_base"
+    title: 基本外見
+    description: 固定特徴（髪・目・肌・性別）。衣装・姿勢なし。
+    danbooru_tags:
+      - 1boy
+      - young_man
+      - black_hair
+      - brown_eyes
+      - fair_skin
+  - variant_id: "001_normal"
+    title: 通常時
+    description: 通常立ち絵。固定特徴と衣装を確認する。
+    danbooru_tags:
+      - Kazuki
+      - casual_jacket
+      - dark_pants
+    caption: Kazuki, stable character reference.
+    translation: 和紀の通常時。
+negative_tags:
+  - extra_fingers
+  - bad_hands

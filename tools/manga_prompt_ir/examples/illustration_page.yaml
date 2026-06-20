@@ -1,0 +1,92 @@
+schema_version: "1.0"
+meta:
+  intent: illustration
+  reading_order: right_to_left
+  aspect_ratio: "2:3"
+  page_count: 1
+  source_anchor: "novel_text01.md#opening"
+  illustration_type: "chapter_illustration"
+render_instruction:
+  task: このYAMLを、小説挿絵1枚分の作画依頼書として扱う。
+  prompt_header: 本文の一場面を、漫画のコマ枠前提にしない完成イラストとして描く。
+  panel_policy: panels[] は構成セル。単体ならセル1件を一枚絵として統合する。
+  character_policy: character_snapshots または character_id の固定外見・服装・禁止事項を反映する。
+  text_policy: 画像内文字は原則入れない。
+  output_policy: 1枚の完成挿絵として出力する。漫画のコマ読み順・段組は主眼にしない。
+  user_directives:
+    page_notes:
+      - 枠線なし。漫画ページではなく一枚絵として扱う。
+    defaults:
+      required_prompt_tags: []
+      omit_prompt_tags:
+        - comic panel
+        - panel borders
+manga:
+  genre_tags:
+    - illustration
+  visual_tags:
+    - anime illustration
+    - detailed background
+  panel_layout: 枠線なし・一枚絵・セル境界の黒枠なし
+  text_policy: No text in image
+scene:
+  location: 深夜の自室
+  location_en: small bedroom at night
+character_ids:
+  - kazuki
+character_snapshots:
+  - character_id: kazuki
+    name: 和紀
+    name_en: Kazuki
+    appearance_summary: black hair, brown eyes, fair skin, tired but alert eyes
+    costume_summary: casual jacket, dark pants, smartphone
+    fixed_tags:
+      - 1boy
+      - young_man
+      - black_hair
+      - brown_eyes
+      - fair_skin
+    variant_tags:
+      - Kazuki
+      - casual_jacket
+      - dark_pants
+    do_not_change:
+      - 髪色を黒以外にしない
+      - スマホを別の固定小物に置き換えない
+background_concepts: []
+panels:
+  - panel_id: 1
+    summary: 机に向かう主人公が、光るスマホに手を伸ばす。
+    subjects:
+      - character_id: kazuki
+        description: 机に向かう主人公
+        description_en: protagonist at desk
+        pose_action: スマホに手を伸ばす
+        pose_action_en: reaching toward phone
+        expression: 警戒している
+        expression_en: wary
+    composition:
+      framing_en: medium shot
+      focus_en: lit smartphone on desk
+    camera:
+      shot_size_en: medium shot
+    lighting:
+      quality_en: dark room lit by phone screen
+    text:
+      dialogue: []
+      narration: []
+      monologue: []
+      sfx: []
+    mood_atmosphere_en:
+      - quiet tension
+    prompt_tags:
+      - phone_screen_light
+color_palette:
+  mode: full_color
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags:
+    - bad anatomy
+    - comic panel borders
+    - split screen

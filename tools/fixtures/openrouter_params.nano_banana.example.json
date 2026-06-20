@@ -1,0 +1,9 @@
+{
+  "provider": "openrouter",
+  "model": "nano_banana",
+  "prompt": "Japanese commercial manga background concept art, quiet midnight bedroom, smartphone glow on desk, no characters",
+  "output_dir": "outputs/openrouter",
+  "file_prefix": "openrouter_nano_banana",
+  "aspect_ratio_preset": "manga_b5_portrait",
+  "image_size": "1K"
+}

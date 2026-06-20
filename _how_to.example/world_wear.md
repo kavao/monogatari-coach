@@ -1156,3 +1156,2989 @@ AIキャラ: 光る回路パターンのペンダント。
 | センター分け＋軽ウェーブ  | オムブレ（毛先ラベンダー）   | 温厚、創造性（英国ロマン）             |
 | フェード＋タイトトップ    | ルートインナー（根元メタリック） | 冷徹、未来志向（近未来SF）             |
 | 髪に装飾（鎖・金属）      | メッシュ（鎖沿いにダークレッド） | 呪われし者、退廃（ダークファンタジー） |
+
+---
+
+## 10. 髪型・タグ集（NovelAI向け）
+
+### 男性向けショートヘア
+NovelAI（Danbooruタグ）で男性キャラクターのショートヘアを詳細に指定するための基本タグ20選。
+short hair をベースに入れておくと安定します。
+
+| タグ (Danbooru) | 日本語説明 | 補足・ニュアンス |
+|:---|:---|:---|
+| `short hair` | ショートヘア | 最も標準的な短髪。 |
+| `very short hair` | ベリーショート | 耳やうなじが完全に出る非常に短い髪。 |
+| `buzz cut` | 坊主・丸刈り | バリカンで短く刈り揃えたスタイル。 |
+| `crew cut` | クルーカット | トップを少し残し、サイドを短くしたスポーツ刈り風。 |
+| `undercut` | アンダーカット | サイドやバックを刈り上げ、トップを残すツーブロック。 |
+| `side undercut` | サイド刈り上げ | 片側または両サイドのみを刈り上げたスタイル。 |
+| `fade cut` | フェードカット | 下から上に向かって髪が長くなるグラデーション刈り上げ。 |
+| `bowl cut` | マッシュヘア | 前髪から後ろまで一定の長さで揃えた丸いシルエット。 |
+| `curtain hair` | カーテンヘア | 前髪を中央で分けたセンター分けスタイル。 |
+| `side-swept bangs` | 横流し前髪 | 前髪を片側に流したスタイル。 |
+| `spiky hair` | スパイキーヘア | ツンツンと立たせた、アクティブな印象の短髪。 |
+| `messy hair` | 無造作ヘア | セットしていないような、自然で乱れた質感。 |
+| `slicked-back` | オールバック | 髪全体を後ろに撫で付けた、フォーマルなスタイル。 |
+| `pompadour` | ポンパドール | 前髪を高く盛り上げたリーゼント風のスタイル。 |
+| `parted bangs` | 分け目のある前髪 | 前髪に明確な分け目を作ったスタイル。 |
+| `shaggy hair` | シャギーヘア | 毛先を削いで軽くし、動きを出したスタイル。 |
+| `layered hair` | レイヤーヘア | 段差をつけてカットし、立体感を出したスタイル。 |
+| `flat top` | フラットトップ | トップを平らに切り揃えた、角ばったスタイル。 |
+| `faux hawk` | ソフトモヒカン | 中央を少し高くした、控えめなモヒカン。 |
+| `mohawk` | モヒカン | 中央の髪だけを残し、両サイドを剃り上げたスタイル。 |
+
+### 男性向けミディアムヘア
+NovelAI（Danbooruタグ）で男性キャラクターのミディアムヘア（セミロング）を詳細に指定するための基本タグ40選。
+medium hair をベースに入れておくと安定します。
+
+| タグ (Danbooru) | 日本語説明 | 補足・ニュアンス |
+|:---|:---|:---|
+| `medium hair` | ミディアムヘア | 肩から鎖骨あたりの標準的な長さ。 |
+| `shoulder-length hair` | 肩丈の髪 | ちょうど肩にかかるくらいの長さ。 |
+| `collarbone-length hair` | 鎖骨丈の髪 | 鎖骨のラインまで届く長さ。 |
+| `bowl cut` | マッシュヘア | 前髪から後ろまで丸いシルエットで繋げたスタイル。 |
+| `curtain hair` | カーテンヘア | 前髪を中央で分けたセンター分けスタイル。 |
+| `shaggy hair` | シャギーヘア | 毛先を削いで動きを出したミディアムヘア。 |
+| `layered hair` | レイヤーヘア | 段差をつけてカットし、立体感を出したスタイル。 |
+| `wolf cut` | ウルフカット | 襟足に長さを残し、ワイルドな動きを出したカット。 |
+| `mullet` | マレット | 襟足だけを極端に長く残したスタイル。 |
+| `straight hair` | ストレートヘア | まっすぐな質感のミディアムヘア。 |
+| `wavy hair` | ウェーブヘア | 波打つような緩やかな動きのあるスタイル。 |
+| `curly hair` | カーリーヘア | カールが強くかかったスタイル。 |
+| `perm` | パーマ | パーマでウェーブやカールをつけたスタイル。 |
+| `ponytail` | ポニーテール | 髪を後ろで一つに結んだスタイル。 |
+| `low ponytail` | 低めポニーテール | 低い位置（うなじ付近）で結んだポニーテール。 |
+| `high ponytail` | 高めポニーテール | 高い位置（頭頂部付近）で結んだポニーテール。 |
+| `side ponytail` | サイドポニーテール | 片側に寄せて結んだポニーテール。 |
+| `half updo` | ハーフアップ | 髪の上半分だけを後ろでまとめたスタイル。 |
+| `half up ponytail` | ハーフアップポニー | ハーフアップをポニーテールにしたスタイル。 |
+| `single braid` | 一本編み | 髪を一つに編み込んだスタイル。 |
+| `side braid` | サイド編み込み | 片側に寄せて編み込んだスタイル。 |
+| `bun` | お団子 | 髪を丸くまとめたスタイル。 |
+| `topknot` | トップノット | 頭頂部で小さくまとめた結び目。 |
+| `chignon` | シニヨン | うなじ付近で上品にまとめたスタイル。 |
+| `man bun` | マンバン | 男性特有のお団子スタイル。 |
+| `messy hair` | 無造作ヘア | 自然に乱れたような、セット感のない質感。 |
+| `bedhead` | 寝癖風 | 起きたてのような、より強く乱れた質感。 |
+| `hair over shoulder` | 肩越しに垂らした髪 | 髪を肩の前に持ってきたスタイル。 |
+| `hair behind ear` | 耳かけ | 両サイドまたは片方の髪を耳にかけたスタイル。 |
+| `one side up` | 片耳出し | 片方の髪を耳にかけたり、少しだけ結んだスタイル。 |
+| `side-swept hair` | 片側に寄せた髪 | 髪全体を片方の肩側に寄せたスタイル。 |
+| `asymmetrical hair` | アシンメトリー | 左右で長さや形が異なるスタイル。 |
+| `slicked-back` | オールバック | 髪全体を後ろに撫で付けたスタイル。 |
+| `pompadour` | ポンパドール | 前髪を高く盛り上げたスタイル。 |
+| `quiff` | クイフ | 前髪を立ち上げてボリュームを出したスタイル。 |
+| `bob cut` | ボブ | 髪の長さを一定に揃えた丸みのあるスタイル。 |
+| `undercut` | アンダーカット | サイドを刈り上げ、トップに長さを残したスタイル。 |
+| `braided hair` | 編み込みヘア | 髪の一部または全体を編み込んだスタイル。 |
+| `dreadlocks` | ドレッドロックス | 髪を束ねてねじり、固めたスタイル。 |
+| `wispy hair` | ほつれ髪 | 細く柔らかい毛束が散ったような質感。 |
+
+### 女性向けショートヘア
+NovelAI（Danbooruタグ）で女性キャラクターのショートヘアを詳細に指定するための基本タグ40選。
+short hair をベースに入れておくと安定します。
+
+| タグ (Danbooru) | 日本語説明 | 補足・ニュアンス |
+|:---|:---|:---|
+| `short hair` | ショートヘア | 最も標準的な短髪。 |
+| `very short hair` | ベリーショート | 耳やうなじが完全に出る非常に短い髪。 |
+| `pixie cut` | ピクシーカット | 全体的に非常に短く、タイトにまとめたスタイル。 |
+| `boyish` | ボーイッシュ | 少年のような快活な印象の短髪。 |
+| `bob cut` | ボブ | 髪の長さを一定に揃えた丸みのあるスタイル。 |
+| `short bob` | ショートボブ | 襟足付近で切り揃えた短めのボブ。 |
+| `bowl cut` | マッシュボブ | 前髪から後ろまで丸いシルエットで繋げたスタイル。 |
+| `blunt bob` | 切りっぱなしボブ | 毛先を揃えて直線的にカットしたボブ。 |
+| `chin-length bob` | あご丈ボブ | 長さがあごのラインで揃ったボブ。 |
+| `asymmetrical bob` | アシンメトリーボブ | 左右の長さが異なるボブ。 |
+| `graduated bob` | 前下がりボブ | 後ろが短く、前に向かって長くなるボブ。 |
+| `undercut` | 刈り上げショート | サイドやバックを刈り上げたクールなスタイル。 |
+| `side undercut` | サイド刈り上げ | 片側のみを刈り上げたスタイル。 |
+| `buzz cut` | 坊主・丸刈り | 非常に短く刈り込んだスタイル。 |
+| `tomboy` | トムボーイ | 活発で中性的な印象を与える短髪。 |
+| `messy hair` | 無造作ヘア | セットしていないような、自然で乱れた質感。 |
+| `shaggy hair` | シャギーショート | 毛先を削いで軽くし、動きを出したスタイル。 |
+| `layered hair` | レイヤーショート | 段差をつけてカットし、立体感を出したスタイル。 |
+| `curly hair` | くせ毛風ショート | カールがかった短い髪。 |
+| `wavy hair` | ウェーブショート | 波打つような動きのある短い髪。 |
+| `slicked-back` | オールバック | 髪全体を後ろに撫で付けたスタイル。 |
+| `side-swept bangs` | 横流し前髪 | 前髪を片側に流したスタイル。 |
+| `blunt bangs` | ぱっつん前髪 | 前髪を直線的に切り揃えたスタイル。 |
+| `see-through bangs` | シースルーバング | おでこが透けて見える薄めの前髪。 |
+| `choppy bangs` | チョッピーバング | 不揃いで短い、眉上の前髪。 |
+| `parted bangs` | 分け目のある前髪 | 前髪に明確な分け目を作ったスタイル。 |
+| `asymmetrical bangs` | アシンメトリー前髪 | 左右非対称な形の前髪。 |
+| `wolf cut` | ウルフカット | 襟足に長さを残し、トップにレイヤーを入れたスタイル。 |
+| `mullet` | マレット | 襟足だけを極端に長く残したスタイル。 |
+| `ear tuck` | 耳かけショート | 髪を耳にかけたスタイル。 |
+| `one side up` | 片耳出し | 片方の髪だけを耳にかけたり結んだりしたスタイル。 |
+| `mohawk` | モヒカン | 中央の髪だけを残し、両サイドを剃り上げたスタイル。 |
+| `spiky hair` | スパイキーヘア | ツンツンと立たせたアクティブな短髪。 |
+| `flat top` | フラットトップ | トップを平らに切り揃えたスタイル。 |
+| `pompadour` | ポンパドール | 前髪を高く盛り上げたスタイル。 |
+| `ear length hair` | 耳丈の髪 | 耳の高さで切り揃えられた長さ。 |
+| `neck length hair` | 首丈の髪 | 首のラインで切り揃えられた長さ。 |
+| `bob with bangs` | 前髪ありボブ | 前髪を作ったスタンダードなボブ。 |
+| `straight hair` | ストレートショート | まっすぐな質感の短い髪。 |
+| `perm` | パーマショート | パーマをあてて動きを出した短い髪。 |
+
+### 女性向けミディアムヘア
+NovelAI（Danbooruタグ）で女性キャラクターのミディアムヘア（セミロング）を詳細に指定するための基本タグ60選。
+medium hair をベースに入れておくと安定します。
+
+| タグ (Danbooru) | 日本語説明 | 補足・ニュアンス |
+|:---|:---|:---|
+| `medium hair` | ミディアムヘア | 肩から鎖骨あたりの標準的な長さ。 |
+| `shoulder-length hair` | 肩丈の髪 | ちょうど肩にかかるくらいの長さ。 |
+| `collarbone-length hair` | 鎖骨丈の髪 | 鎖骨のラインまで届く長さ。 |
+| `lob` | ロブ | ロングボブ。肩付近で切り揃えた長めのボブ。 |
+| `shaggy hair` | シャギーミディアム | 毛先を削いで動きを出したミディアムヘア。 |
+| `layered hair` | レイヤーミディアム | 段差をつけてカットし、立体感を出したスタイル。 |
+| `wolf cut` | ウルフカット | 襟足に長さを残し、ワイルドな動きを出したカット。 |
+| `hime cut` | 姫カット | 前髪とサイドを直線的に切り揃えた伝統的なスタイル。 |
+| `straight hair` | ストレートヘア | まっすぐな質感のミディアムヘア。 |
+| `wavy hair` | ウェーブヘア | 波打つような緩やかな動きのあるスタイル。 |
+| `curly hair` | カーリーヘア | カールが強くかかったスタイル。 |
+| `perm` | パーマ | パーマでウェーブやカールをつけたスタイル。 |
+| `ponytail` | ポニーテール | 髪を後ろで一つに結んだスタイル。 |
+| `low ponytail` | 低めポニーテール | 低い位置（うなじ付近）で結んだポニーテール。 |
+| `high ponytail` | 高めポニーテール | 高い位置（頭頂部付近）で結んだポニーテール。 |
+| `side ponytail` | サイドポニーテール | 片側に寄せて結んだポニーテール。 |
+| `twintails` | ツインテール | 髪を左右二つに分けて結んだスタイル。 |
+| `low twintails` | 低めツインテール | 低い位置で結んだ左右二つの結び目。 |
+| `high twintails` | 高めツインテール | 高い位置で結んだ左右二つの結び目。 |
+| `side twintails` | サイドツインテール | 左右の耳の横あたりで結んだツインテール。 |
+| `half updo` | ハーフアップ | 髪の上半分だけを後ろでまとめたスタイル。 |
+| `half up ponytail` | ハーフアップポニー | ハーフアップをポニーテールにしたスタイル。 |
+| `half up twintails` | ハーフアップツイン | ハーフアップを左右二つに分けたスタイル。 |
+| `single braid` | 一本編み | 髪を一つに編み込んだスタイル。 |
+| `side braid` | サイド編み込み | 片側に寄せて編み込んだスタイル。 |
+| `twin braids` | 二本編み（おさげ） | 左右二つに分けて編み込んだスタイル。 |
+| `french braid` | 編み込み | 頭頂部から毛先まで編み込んだスタイル。 |
+| `fishtail braid` | フィッシュボーン | 魚の骨のような細かい編み目のスタイル。 |
+| `crown braid` | クラウンブレイド | 編み込みを王冠のように頭に巻き付けたスタイル。 |
+| `milkmaid braids` | ミルクメイドブレイド | 左右の編み込みを頭の上で交差させたスタイル。 |
+| `bun` | お団子 | 髪を丸くまとめたスタイル。 |
+| `double bun` | 二つお団子 | 左右二つにお団子を作ったスタイル。 |
+| `low bun` | 低めお団子 | 低い位置でまとめたお団子。 |
+| `high bun` | 高めお団子 | 高い位置でまとめたお団子。 |
+| `side bun` | サイドお団子 | 片側に寄せて作ったお団子。 |
+| `braided bun` | 編み込みお団子 | 編み込んだ髪をお団子状にまとめたスタイル。 |
+| `messy hair` | 無造作ヘア | 自然に乱れたような、セット感のない質感。 |
+| `bedhead` | 寝癖風 | 起きたてのような、より強く乱れた質感。 |
+| `hair over shoulder` | 肩越しに垂らした髪 | 髪を肩の前に持ってきたスタイル。 |
+| `one side up` | 片耳出し | 片方の髪を耳にかけたり、少しだけ結んだスタイル。 |
+| `hair behind ear` | 耳かけ | 両サイドまたは片方の髪を耳にかけたスタイル。 |
+| `hair intakes` | ヘアインテーク | 髪の付け根付近が盛り上がった「触角」のような形状。 |
+| `hair loops` | ヘアループ | 髪の一部を輪っか状にしたスタイル。 |
+| `hair rings` | ヘアリング | 髪をリング状に固定したスタイル。 |
+| `topknot` | トップノット | 頭頂部で小さくまとめた結び目。 |
+| `chignon` | シニヨン | うなじ付近で上品にまとめたスタイル。 |
+| `ringlets` | 縦ロール | 螺旋状に巻かれたカール。 |
+| `twin drills` | ツインドリル | 左右二つの大きな縦ロール。 |
+| `sausage curls` | ソーセージカール | 太い筒状に巻かれたカール。 |
+| `blunt ends` | 切りっぱなし | 毛先を揃えて直線的にカットした質感。 |
+| `flipped hair` | 外ハネ | 毛先が外側に跳ねたスタイル。 |
+| `inward curls` | 内巻き | 毛先が内側に巻かれたスタイル。 |
+| `outward curls` | 外巻き | 毛先が外側に巻かれたスタイル。 |
+| `side-swept hair` | 片側に寄せた髪 | 髪全体を片方の肩側に寄せたスタイル。 |
+| `asymmetrical hair` | アシンメトリー | 左右で長さや形が異なるスタイル。 |
+| `wispy hair` | ほつれ髪 | 細く柔らかい毛束が散ったような質感。 |
+| `pointy hair` | ツンツンした髪 | 毛先が尖ったようなシャープな質感。 |
+| `braided ponytail` | 編み込みポニー | 編み込みをポニーテールに繋げたスタイル。 |
+| `braided twintails` | 編み込みツイン | 編み込みをツインテールに繋げたスタイル。 |
+| `braided bangs` | 前髪編み込み | 前髪の一部を編み込んだスタイル。 |
+
+### 女性向けロングヘア
+NovelAI（Danbooruタグ）で女性キャラクターのロングヘアを詳細に指定するための基本タグ60選。
+long hair をベースに入れておくと安定します。
+
+| タグ (Danbooru) | 日本語説明 | 補足・ニュアンス |
+|:---|:---|:---|
+| `long hair` | ロングヘア | 背中の真ん中あたりまでの標準的な長い髪。 |
+| `very long hair` | ベリーロング | 腰からお尻あたりまで届く非常に長い髪。 |
+| `floor-length hair` | 床まで届く髪 | 足元や床に届くほどの極端に長い髪。 |
+| `straight hair` | ストレートロング | まっすぐな質感の長い髪。清楚・理知的な印象。 |
+| `wavy hair` | ウェーブロング | 波打つような緩やかな動きのある長い髪。優雅な印象。 |
+| `curly hair` | カーリーロング | カールが強くかかった長い髪。華やかな印象。 |
+| `hime cut` | 姫カットロング | 前髪とサイドを直線的に切り揃えた伝統的なスタイル。 |
+| `layered hair` | レイヤーロング | 段差をつけてカットし、軽さと立体感を出したスタイル。 |
+| `shaggy hair` | シャギーロング | 毛先を削いで動きを出した、少しワイルドな質感。 |
+| `wolf cut` | ウルフカットロング | 襟足に長さを残し、トップにボリュームを持たせたスタイル。 |
+| `ponytail` | ポニーテール | 髪を後ろで一つに結んだスタイル。 |
+| `high ponytail` | 高めポニーテール | 頭頂部付近の高い位置で結んだポニーテール。 |
+| `low ponytail` | 低めポニーテール | うなじ付近の低い位置で結んだポニーテール。 |
+| `side ponytail` | サイドポニーテール | 左右どちらか片側に寄せて結んだポニーテール。 |
+| `short ponytail` | 短めポニーテール | 結んだ先の束が短いポニーテール。 |
+| `folded ponytail` | 折り返しポニーテール | 結んだ毛先を輪っか状に折り返したスタイル。 |
+| `twintails` | ツインテール | 髪を左右二つに分けて結んだスタイル。 |
+| `high twintails` | 高めツインテール | 高い位置で結んだ左右二つの結び目。 |
+| `low twintails` | 低めツインテール | 低い位置で結んだ左右二つの結び目。 |
+| `side twintails` | サイドツインテール | 左右の耳の横あたりで結んだツインテール。 |
+| `short twintails` | 短めツインテール | 結んだ先の束が短いツインテール。 |
+| `uneven twintails` | 非対称ツインテール | 左右で高さや結び方が異なるツインテール。 |
+| `split ponytail` | 二股ポニーテール | 一つの結び目から毛先が二つに分かれたスタイル。 |
+| `quad tails` | 四つテール | 髪を四つの束に分けて結んだスタイル。 |
+| `multi-tied ponytail` | 玉ねぎヘア | 一つの束を数箇所で結び、膨らみを持たせたスタイル。 |
+| `half updo` | ハーフアップ | 髪の上半分だけを後ろでまとめたスタイル。 |
+| `half up ponytail` | ハーフアップポニー | ハーフアップをポニーテールにしたスタイル。 |
+| `half up twintails` | ハーフアップツイン | ハーフアップを左右二つに分けたスタイル。 |
+| `half up bun` | ハーフアップお団子 | ハーフアップを小さなお団子にしたスタイル。 |
+| `single braid` | 一本編み | 髪を後ろで一つに編み込んだスタイル。 |
+| `side braid` | サイド編み込み | 片側に寄せて編み込んだスタイル。 |
+| `twin braids` | 二本編み（おさげ） | 左右二つに分けて編み込んだスタイル。 |
+| `triple braids` | 三本編み | 三つの束を編み込んだスタイル。 |
+| `multi-braided` | 多重編み込み | 多数の細い編み込みを作ったスタイル。 |
+| `french braid` | フレンチブレイド | 頭頂部から毛先まで編み込んだスタイル。 |
+| `dutch braid` | 裏編み込み | 編み目が浮き出るように編んだスタイル。 |
+| `fishtail braid` | フィッシュボーン | 魚の骨のような細かい編み目のスタイル。 |
+| `crown braid` | クラウンブレイド | 編み込みを王冠のように頭に巻き付けたスタイル。 |
+| `bun` | お団子 | 髪を丸くまとめたスタイル。 |
+| `double bun` | 二つお団子 | 左右二つにお団子を作ったスタイル。 |
+| `triple bun` | 三つお団子 | 三つのお団子を作ったスタイル。 |
+| `low bun` | 低めお団子 | 低い位置（うなじ付近）でまとめたお団子。 |
+| `high bun` | 高めお団子 | 高い位置（頭頂部付近）でまとめたお団子。 |
+| `side bun` | サイドお団子 | 片側に寄せて作ったお団子。 |
+| `braided bun` | 編み込みお団子 | 編み込んだ髪をお団子状にまとめたスタイル。 |
+| `chignon` | シニヨン | うなじ付近で上品にまとめたスタイル。 |
+| `odango` | お団子（特定形状） | 伝統的な丸いお団子ヘア。 |
+| `ringlets` | 縦ロール | 螺旋状に巻かれたカール。お嬢様風。 |
+| `twin drills` | ツインドリル | 左右二つの大きな縦ロール。 |
+| `quad drills` | 四重ドリル | 四つの大きな縦ロール。 |
+| `sausage curls` | ソーセージカール | 太い筒状に巻かれたカール。 |
+| `hair over shoulder` | 肩越しに垂らした髪 | 髪を両肩の前に持ってきたスタイル。 |
+| `hair over one shoulder` | 片方の肩越しに垂らした髪 | 髪全体を片方の肩の前に持ってきたスタイル。 |
+| `hair between breasts` | 胸の間に垂らした髪 | 髪が胸の谷間に沿って垂れている描写。 |
+| `hair down` | 髪を下ろした状態 | 結んでいた髪を解いて下ろした状態。 |
+| `messy hair` | 無造作ロング | 自然に乱れたような、セット感のない質感。 |
+| `bedhead` | 寝癖風ロング | 起きたてのような、より強く乱れた質感。 |
+| `side-swept hair` | 片側に寄せた髪 | 髪全体を片方の肩側に寄せたスタイル。 |
+| `asymmetrical hair` | アシンメトリーロング | 左右で長さや形が異なるスタイル。 |
+| `wispy hair` | ほつれ髪ロング | 細く柔らかい毛束が散ったような質感。 |
+
+### 髪型の決め方（3ステップ）
+
+`character.md` の設定から Tag Mode の YAML IR まで、髪型タグを迷わず組み立てる手順。
+
+**Step 1 — 長さタグ（必須・1つ）**
+
+| 長さ | ベースタグ | 備考 |
+|------|-----------|------|
+| ショート | `short_hair` | 耳〜首まわりに収まる長さ |
+| ミディアム | `medium_hair` | 肩〜鎖骨あたり |
+| ロング | `long_hair` | 胸より下 |
+
+- **1キャラに1つだけ**。`long_hair` と `short_hair` を同時に入れない。
+- §10 の各テーブルで示している「ベースに入れておくと安定します」タグと対応する。
+
+**Step 2 — 基本型タグ（1〜2つ）**
+
+§10 の各テーブルから、キャラクターの髪型に合うタグを1〜2つ選ぶ。
+例: `curtain_hair`, `half_updo`, `bob_cut`, `ponytail` など。
+
+**Step 3 — アレンジタグ（固定か状況かを決めてから追加）**
+
+§髪型アレンジ のタグを追加するとき、**固定か状況か**を先に決めて、置き場所を1か所に絞る。
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定アレンジ** | そのキャラが常に持つ特徴・識別子になる | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **状況アレンジ** | 特定シーンや衣装バリアントだけで現れる | 対象バリアントの `prompt_tags`（例: `003_treatment`）または漫画コマの `prompt_tags` |
+
+固定アレンジの例（`000_base` に入れてよい）:
+`hair_intakes`, `ahoge`, `hair_ribbon`（キャラ識別子）, `side_swept_bangs`（作品を通じて変わらない前髪癖）
+
+状況アレンジの例（**`000_base` に入れない**）:
+
+| タグ | 理由 | 代わりの置き場所 |
+|------|------|-----------------|
+| `wet_hair`, `messy_hair` | 治療・入浴等の場面限定 | `003_treatment` 等のバリアント |
+| `hair_spread_out`, `hair_in_mouth` | 特定コマの演出 | 漫画 `panels[].prompt_tags` のみ |
+| `floating_hair` | 風・感情演出コマ限定 | 漫画 `panels[].prompt_tags` のみ |
+
+矛盾チェック:
+
+- `long_hair` + `short_hair` → 長さタグの重複。1つに絞る。
+- `wet_hair` を `000_base` に混入 → 状況タグ。バリアントへ移す。
+- メッシュ系（`streaked_hair` 等）を常時にしない場合 → 状況バリアントまたは省略。
+
+---
+
+### 髪型アレンジ・タグ集（NovelAI向け）
+基本型タグ（Step 2）と長さタグ（Step 1）の後ろに付ける。長さタグは省略しない。
+NovelAIで髪型の基本タグにアレンジを加えるための便利なタグを、用途別にまとめました。
+
+#### 1. 内側・外側関連（うち・そと）
+| タグ (Danbooru) | 日本語の意味 | 使い方の例 |
+|:---|:---|:---|
+| `inner hair` | 内側の髪 | `inner hair, colored inner hair` |
+| `outer hair` | 外側の髪 | `outer hair, long outer hair` |
+| `hair between eyes` | 目と目の間の髪 | 前髪が目にかかる表現 |
+| `hair over one eye` | 片目にかかる髪 | クールな印象に |
+| `hair over shoulder` | 肩にかかる髪 | 肩に髪が落ちている状態 |
+| `hair between breasts` | 胸の間にかかる髪 | セクシーな表現に |
+
+#### 2. メッシュ・ハイライト・グラデーション関連
+| タグ (Danbooru) | 日本語の意味 | 使い方の例 |
+|:---|:---|:---|
+| `hair highlights` | ハイライト | `hair highlights, blonde highlights` |
+| `streaked hair` | メッシュ（筋状の色違い） | `streaked hair, pink streaked hair` |
+| `colored inner hair` | 内側だけ色が違う | `colored inner hair, blue inner hair` |
+| `two-tone hair` | ツートンカラー | `two-tone hair, black and white hair` |
+| `gradient hair` | グラデーション | `gradient hair, pink to blue gradient` |
+| `multicolored hair` | 多色髪 | `multicolored hair` |
+
+#### 3. その他のよく使うアレンジタグ
+| タグ (Danbooru) | 日本語の意味 | 使い方の例 |
+|:---|:---|:---|
+| `bangs` | 前髪 | 基本の前髪 |
+| `side swept bangs` | サイドスウィープ前髪 | 斜め前髪 |
+| `ahoge` | アホ毛 | 特徴的な一本毛 |
+| `hair ornament` | 髪飾り | リボン、クリップなど |
+| `hair ribbon` | リボン | 髪に結んだリボン |
+| `wet hair` | 濡れた髪 | 水に濡れた質感 |
+| `messy hair` | 乱れた髪 | ボサボサ髪 |
+| `floating hair` | 浮いている髪 | 風になびく髪 |
+| `hair spread out` | 広がった髪 | 寝ている時などに |
+| `hair in mouth` | 口に髪が入っている | エロティックな表現 |
+
+---
+
+## 11. 小物・アクセサリータグ（NovelAI向け）
+
+キャラクターが常に身に着ける固定小物（眼鏡・リボン等）は、大まかなタグだけでなく**色・形状まで `000_base` に入れる**ことで、生成ごとの外見ゆれを防ぐ。
+
+### 固定/状況/衣装付きの判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定小物** | そのキャラが常に身に着ける・識別子になる | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装付き小物** | 特定の衣装バリアントだけで現れる | 対象 000番台バリアントの `prompt_tags` |
+| **状況小物** | 特定シーン・演出でのみ現れる | 漫画コマの `prompt_tags` のみ |
+
+1小物あたり**2〜3タグ**を目安にする（増やしすぎると画風に干渉する）。
+
+### 眼鏡（Glasses）
+
+| タグ (Danbooru) | 日本語説明 | 補足 |
+|:---|:---|:---|
+| `glasses` | 眼鏡（基本） | 必ず形状・色タグとセットで使う |
+| **フレーム色** | | |
+| `black-framed_eyewear` | 黒縁眼鏡 | クール・真面目な印象 |
+| `gold-framed_eyewear` | ゴールドフレーム | 上品・大人っぽい印象 |
+| `silver-framed_eyewear` | シルバーフレーム | シャープ・知的な印象 |
+| `white-framed_eyewear` | 白縁眼鏡 | 明るい・個性的な印象 |
+| `red-framed_eyewear` | 赤縁眼鏡 | 個性的・目立つ印象 |
+| **フレーム形状** | | |
+| `rectangular_eyewear` | 四角形フレーム | 真面目・ビジネスライク |
+| `round_eyewear` | 丸型フレーム | 文学的・ノスタルジック |
+| `oval_eyewear` | 楕円形フレーム | 柔らかい印象 |
+| `half-framed_eyewear` | ハーフフレーム | スマート・現代的 |
+| `rimless_eyewear` | リムレス（縁なし） | 洗練・ナチュラル |
+| `thick-framed_eyewear` | 太縁眼鏡 | 存在感がある・レトロ |
+| `thin-framed_eyewear` | 細縁眼鏡 | 繊細・上品 |
+
+**組み合わせ例**:
+- 真面目な男性キャラ: `glasses`, `black-framed_eyewear`, `rectangular_eyewear`
+- 文学的な女性キャラ: `glasses`, `gold-framed_eyewear`, `round_eyewear`
+- スマートなキャラ: `glasses`, `silver-framed_eyewear`, `rimless_eyewear`
+
+### リボン・ボウ（Ribbon / Bow）
+
+| タグ (Danbooru) | 日本語説明 | 補足 |
+|:---|:---|:---|
+| `hair_ribbon` | 髪リボン（基本） | 必ず色タグとセットで使う |
+| `neck_ribbon` | 首元リボン | 制服・ロリータ系に多い |
+| `wrist_ribbon` | 手首リボン | 装飾的な小物 |
+| **色** | | |
+| `red_ribbon` | 赤リボン | 元気・情熱的な印象 |
+| `white_ribbon` | 白リボン | 清楚・純粋な印象 |
+| `black_ribbon` | 黒リボン | クール・大人っぽい印象 |
+| `pink_ribbon` | ピンクリボン | 可愛い・女性的な印象 |
+| `blue_ribbon` | 青リボン | 知的・落ち着いた印象 |
+| `yellow_ribbon` | 黄色リボン | 明るい・活発な印象 |
+| **形状・大きさ** | | |
+| `large_bow` | 大きなリボン | 存在感がある・可愛い系 |
+| `small_bow` | 小さなリボン | 控えめ・上品 |
+| `ribbon_bow` | リボン蝶結び | 正面から見た蝶結び形状 |
+
+**組み合わせ例**:
+- 清楚系ヒロイン: `hair_ribbon`, `white_ribbon`, `large_bow`
+- 制服の首元リボン: `neck_ribbon`, `red_ribbon`
+- クールな女性: `hair_ribbon`, `black_ribbon`, `small_bow`
+
+### ネクタイ・首元（Necktie / Collar）
+
+| タグ (Danbooru) | 日本語説明 | 補足 |
+|:---|:---|:---|
+| `necktie` | ネクタイ（基本） | 必ず色タグとセットで使う |
+| `bow_tie` | 蝶ネクタイ | フォーマル・キャラ個性 |
+| `choker` | チョーカー | 首にフィットした細いバンド |
+| **ネクタイ色** | | |
+| `red_necktie` | 赤ネクタイ | 制服・情熱的 |
+| `black_necktie` | 黒ネクタイ | フォーマル・クール |
+| `blue_necktie` | 青ネクタイ | 落ち着き・誠実 |
+| `striped_necktie` | ストライプネクタイ | ビジネス・古典的 |
+| **チョーカー** | | |
+| `black_choker` | 黒チョーカー | ゴシック・クール |
+| `white_choker` | 白チョーカー | 清楚・ロリータ系 |
+| `ribbon_choker` | リボンチョーカー | 可愛い・女性的 |
+| `cross_choker` | 十字チョーカー | ゴシック・宗教的モチーフ |
+
+### ネックレス・ピアス（Necklace / Earrings）
+
+| タグ (Danbooru) | 日本語説明 | 補足 |
+|:---|:---|:---|
+| `necklace` | ネックレス（基本） | 種類タグと組み合わせる |
+| `pearl_necklace` | パールネックレス | 上品・フォーマル |
+| `chain` | チェーン | シンプル・クール |
+| `cross_necklace` | 十字ネックレス | 宗教的・ゴシック系 |
+| `pendant` | ペンダント | 一般的なトップ付きネックレス |
+| `locket` | ロケット | アンティーク・感傷的 |
+| `earrings` | ピアス（基本） | 形状タグと組み合わせる |
+| `stud_earrings` | スタッドピアス | シンプル・普段使い |
+| `drop_earrings` | ドロップピアス | 揺れる・優雅な印象 |
+| `hoop_earrings` | フープピアス | カジュアル・ポップ |
+| `single_earring` | 片耳ピアス | 個性的・非対称 |
+
+### 指定できないもの（タグが薄い・存在しない）
+
+| 指定したいこと | タグの状況 | 代替手段 |
+|-------------|-----------|---------|
+| 素材の質感（絹・金属光沢等） | タグがほぼ存在しない | ネガティブで除外、参照画像で補完 |
+| フレームの微細な形状差 | `thick/thin-framed` で大別のみ | 参照画像や追加テキストで補完 |
+| リボンの結び方の細部 | `large/small_bow` 程度しかない | 構図コメントで方針を示す |
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 眼鏡キャラの 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - 1boy
+    - black_hair
+    - short_hair
+    - brown_eyes
+    - glasses               # 基本タグ
+    - black-framed_eyewear  # フレーム色
+    - rectangular_eyewear   # 形状
+
+# リボンキャラの 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - 1girl
+    - long_hair
+    - purple_eyes
+    - hair_ribbon           # 基本タグ
+    - white_ribbon          # 色
+    - large_bow             # 形状
+```
+
+---
+
+## 12. 目・目の形タグ（NovelAI向け）
+
+キャラクター Tag Mode で **`000_base` に載せる「目の色・形・まぶた・まつ毛」** を選ぶための辞書。
+**コマごとに変わる表情・視線・涙・ウィンク**はここに入れない（漫画 `manga/pages/*.yaml` の `panels[].prompt_tags` または `_how_to/manga_tag.md`）。
+
+`character.md` で日本語定義 → `tag/characters/<id>.yaml` の `000_base` / `manga_rules.consistency_tags` へ英語タグを写す。`appearance.eye_shape` / `eye_color` は整理用メモとして併記してよい。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（目の形・色）** | 作品を通じて変わらない識別子 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **固定（種族・幻想）** | 設定上常時（例: ヘテロクロミア） | 同上（世界観に合うときだけ） |
+| **状況（表情・視線・涙）** | シーン・感情で変わる | 漫画 `panels[].prompt_tags` のみ |
+| **状況（メイク）** | 特定衣装・化粧時だけ | 000番台バリアントまたはコマ `prompt_tags` |
+| **品質補助** | 画質向上用（形状識別にならない） | 原則 `000_base` に入れない（資料100番台で検討可） |
+
+### 目の形の決め方（3ステップ）
+
+**Step 1 — 目の色（必須・1つ）**
+
+| タグ (Danbooru) | 日本語 |
+|:---|:---|
+| `brown_eyes` | 茶色の瞳 |
+| `blue_eyes` | 青い瞳 |
+| `green_eyes` | 緑の瞳 |
+| `amber_eyes` | 琥珀色の瞳 |
+| `purple_eyes` | 紫の瞳 |
+| `grey_eyes` / `gray_eyes` | 灰色の瞳 |
+| `red_eyes` | 赤い瞳（非人間・強い印象のキャラ向け） |
+| `black_eyes` | 黒い瞳 |
+
+- **1キャラに色タグは1系統**。`brown_eyes` と `blue_eyes` を同時に入れない（ヘテロクロミアは下記 Step 3）。
+
+**Step 2 — 目の形状・輪郭（1〜2つ）**
+
+形の軸は **1〜2タグ**に絞る。似た意味のタグを重ねすぎない。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `tsurime` | つり目（シャープ・クール） | Danbooru 標準。`upturned_eyes` と併用は原則不要 |
+| `upturned_eyes` | つり目寄り | `tsurime` 未使用時の代替 |
+| `tareme` | たれ目（柔らかい） | Danbooru 標準。`droopy_eyes` と併用は原則不要 |
+| `droopy_eyes` | たれ目・下がり気味 | `tareme` 未使用時の代替 |
+| `downturned_eyes` | 目尻が下向き | `tareme` より弱い下がり |
+| `almond_eyes` | アーモンド形 | 洗練・東洋的な目 |
+| `round_eyes` | 丸い目 | 幼さ・可愛らしさ |
+| `narrow_eyes` | 細い目 | クール・ミステリアス |
+| `wide_eyes` | 目が大きく開いている（形） | 驚きの**表情**ではなく、デザイン上の大きめ目のとき |
+| `large_eyes` | 大きな目（デザイン） | 本リポジトリでよく使う。`wide_eyes` と**両方は入れない** |
+| `sanpaku` | 三白眼（下三白など） | キャラデザの固定特徴として使うときのみ |
+| `slanted_eyes` | 細め・吊り気味の目 | 実写寄りの「細い目」。`tsurime` と併用は要検討（重複しやすい） |
+
+矛盾チェック:
+
+- `tsurime` + `tareme` → 形状が正反対。1つに絞る。
+- `large_eyes` + `round_eyes` → どちらも「大きめ」なら1つで足りる。
+- `narrow_eyes` + `wide_eyes` / `large_eyes` → 長さ・開きの重複。1軸に絞る。
+
+**Step 3 — まぶた・まつ毛・特殊瞳（0〜2つ、必要なときだけ）**
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `monolid` | 一重まぶた | |
+| `double_eyelid` | 二重まぶた | `monolid` と同時に入れない |
+| `heavy_eyelids` | 厚い・重いまぶた | 眠そうな**表情**ではなく、構造としての厚み |
+| `long_eyelashes` | 長いまつ毛 | 固定の華やかさ |
+| `thick_eyelashes` | 濃いまつ毛 | 同上 |
+| `heterochromia` | 左右で瞳色が違う | 色は `red_eyes` 等と組み合わせて明記 |
+| `mismatched_pupils` | 左右で瞳の形・色が違う | ファンタジー・異形向け |
+| `glowing_eyes` | 目全体が光る | **種族・魔法設定があるキャラのみ** |
+| `glowing_pupils` | 瞳が光る | 同上 |
+
+### 本節に載せないもの（表情・視線・状態・メイク）
+
+**キャラ固定の「目の形」辞書から除外**したタグは、漫画コマ用語彙 **`manga_tag.md` の「目・視線・表情タグ（コマ用）」** を参照。`panels[].prompt_tags` に書く。
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| 半目・眠気・見開き系 | 表情 |
+| 印象・感情・虚ろ・キラキラ系 | コマごとの気分 |
+| 涙・充血・クマ | 状態 |
+| 視線・ウィンク・白目 | ポーズ |
+| ハート瞳・瞳孔開閉 | 一時演出 |
+| 品質補助・メイク | コマ／資料 |
+| `hair_over_one_eye` | **§10 髪型アレンジ** |
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 結菜型（つり目・大きめ・茶色）の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - 1girl
+    - brown_eyes          # Step 1: 色（1つ）
+    - large_eyes          # Step 2: 形（1〜2つ）
+    - tsurime
+    - long_eyelashes      # Step 3: 任意
+  manga_rules:
+    do_not_change:
+      - eye shape
+      - eye color
+```
+
+- **表情タグ**（`empty_eyes`, `moist_eyes`, `glaring` 等）は `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 13. 眉毛タグ（NovelAI向け）
+
+キャラクター Tag Mode で **`000_base` に載せる眉毛の太さ・形・手入れ・位置** の辞書。
+**眉を動かす表情**はここに入れない（漫画 `panels[].prompt_tags` または顔全体の表情タグと併用）。
+
+§12（目）と同様、`character.md` → `tag/characters/<id>.yaml` の `000_base` / `consistency_tags` へ写す。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（眉の骨格・手入れ癖）** | 作品を通じて変わらない識別子 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **状況（乱れ・剃り・描き眉）** | シーン・感情で変わる | 漫画 `panels[].prompt_tags` またはバリアント |
+| **品質補助** | 画質向上用（形状識別にならない） | 原則 `000_base` に入れない |
+
+### 眉毛の決め方（3ステップ）
+
+**Step 1 — 太さ・密度（0〜1つ）**
+
+似た意味のタグは1つに絞る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `thick_eyebrows` | 太い眉 | 力強い・野性的な印象 |
+| `thin_eyebrows` | 細い眉 | 優しい・繊細な印象 |
+| `bushy_eyebrows` | ふさふさした眉 | 自然な密度感 |
+| `sparse_eyebrows` | まばら・薄い眉 | 抜けた感じ |
+| `heavy_eyebrows` | 濃く重い眉 | `thick_eyebrows` に近い。どちらか1つに絞る |
+| `light_eyebrows` | 薄い眉 | `sparse_eyebrows` に近い。どちらか1つに絞る |
+| `dense_eyebrows` | 密な眉 | `bushy_eyebrows` に近い。どちらか1つに絞る |
+| `faint_eyebrows` | かすかな眉 | `sparse_eyebrows` より弱い |
+
+**Step 2 — 形・カーブ（1〜2つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `arched_eyebrows` | アーチ形 | 優雅・女性的。`curved_eyebrows` より山が高い |
+| `straight_eyebrows` | 直線的な眉 | 凛とした・強い意志 |
+| `curved_eyebrows` | 曲線的な眉 | 柔らかい・穏やか |
+| `angled_eyebrows` | 角ばった眉 | クール・シャープ |
+| `flat_eyebrows` | 平らな眉 | `straight_eyebrows` より抑揚がない |
+| `rounded_eyebrows` | 丸みのある眉 | 可愛い・優しい |
+| `sharp_eyebrows` | 鋭い眉端 | 強い・鋭い印象 |
+| `soft_eyebrows` | 柔らかい眉端 | 温かみ・優しい印象 |
+| `high_arch_eyebrows` | 高いアーチ | 気品・驚き顔に見えやすい |
+| `low_arch_eyebrows` | 低いアーチ | 落ち着いた・穏やか |
+
+矛盾チェック:
+
+- `arched_eyebrows` + `straight_eyebrows` → 形が正反対。1つに絞る。
+- `thick_eyebrows` + `thin_eyebrows` → 同時に入れない。
+- `flat_eyebrows` + `arched_eyebrows` / `curved_eyebrows` → 抑揚の有無が矛盾。1つに絞る。
+
+**Step 3 — 手入れ・長さ・位置・識別子（0〜2つ、必要なときだけ）**
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `groomed_eyebrows` | 手入れされた眉 | 統一タグ（`well-groomed_eyebrows` は使わない） |
+| `natural_eyebrows` | 自然な眉 | 手入れ感なし。`groomed_eyebrows` と同時に入れない |
+| `neat_eyebrows` | 整った眉 | `groomed_eyebrows` より軽い整え感 |
+| `long_eyebrows` | 長い眉 | |
+| `short_eyebrows` | 短い眉 | |
+| `low_eyebrows` | 位置が低い眉 | 目との距離が近い |
+| `high_eyebrows` | 位置が高い眉 | 目との距離が遠い |
+| `white_eyebrows` | 白い眉 | ファンタジー・高齢向け |
+| `colored_eyebrows` | 色付き眉 | 髪色と合わせるとき |
+| `eyebrow_slit` | 眉スリット | キャラの個性として |
+| `unibrow` | 一本眉 | 統一タグ（`monobrow`, `connected_eyebrows` は使わない） |
+| `eyebrow_piercing` | 眉ピアス | |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| 眉を動かした表情（上がり・ひそめ等） | 表情 → コマ `prompt_tags` |
+| `messy_eyebrows`, `unkempt_eyebrows` | 状況（乱れ）→ バリアントまたはコマ |
+| `shaved_eyebrows`, `plucked_eyebrows`, `overplucked_eyebrows`, `drawn_eyebrows` | 状況（処理・化粧）→ バリアントまたはコマ |
+| `detailed_eyebrows` | 品質補助 → `000_base` に入れない |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 一本眉は **`unibrow` のみ**（`monobrow`, `connected_eyebrows` は使わない） |
+| **統一** | 手入れは **`groomed_eyebrows`**（`well-groomed_eyebrows` は使わない） |
+
+### よく使う組み合わせ
+
+- 優しい系: `thin_eyebrows`, `arched_eyebrows`, `groomed_eyebrows`
+- クール系: `thick_eyebrows`, `straight_eyebrows`, `angled_eyebrows`
+- 野生味: `bushy_eyebrows`, `natural_eyebrows`
+- 一本眉: `unibrow`, `bushy_eyebrows`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 優しい系（細め・アーチ形）の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - thin_eyebrows       # Step 1: 太さ（0〜1つ）
+    - arched_eyebrows     # Step 2: 形（1〜2つ）
+    - groomed_eyebrows    # Step 3: 任意
+  manga_rules:
+    do_not_change:
+      - eyebrow shape
+
+# クール系（太め・直線・角）の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - thick_eyebrows      # Step 1
+    - straight_eyebrows   # Step 2
+    - angled_eyebrows     # Step 2（2つまで）
+  manga_rules:
+    do_not_change:
+      - eyebrow shape
+```
+
+- **状況タグ**（`messy_eyebrows`, `drawn_eyebrows` 等）は `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 14. 顔の輪郭タグ（NovelAI向け）
+
+キャラクターの骨格・顔型を `000_base` に固定するための辞書。
+**顔の表情・感情**はここに入れない（漫画 `panels[].prompt_tags` のフェイスタグと併用）。
+
+§12（目）§13（眉毛）と異なり、**顔型タグは省略しても生成は成立する**（未指定時はモデル既定の形状が出る）。骨格を明確に決めたいキャラにだけ使う。
+また、カテゴリ内でも **NovelAI での反映精度にばらつきがある**。`oval_face` / `round_face` / `square_face` / `heart-shaped_face` など基本顔型は比較的安定して反映されやすい。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・顔型）** | 作品を通じて変わらない顔の形状 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **状況（太り・むくみ等）** | 体重変化・シーンで変わる場合 | バリアントまたはコマ `prompt_tags` |
+| **品質補助** | 輪郭クオリティ向上用（形状識別にならない） | 原則 `000_base` に入れない |
+
+### 顔型の決め方（3ステップ）
+
+**Step 1 — 基本顔型（0〜1つ）**
+
+顔型の基本を1つだけ選ぶ。複数を同時に入れると生成が乱れやすい。省略も可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `oval_face` | 卵型 | 最もバランスがよい標準形 |
+| `round_face` | 丸顔 | 可愛らしく柔らかい印象 |
+| `square_face` | 四角顔 | 意志が強く男性的・シャープ |
+| `heart-shaped_face` | ハート型 | 額が広く顎が細い |
+| `diamond_face` | ダイヤモンド型 | 頬骨が張ったシャープ系 |
+| `long_face` | 長顔 | 縦長でモデルっぽい印象 |
+| `v-shaped_face` | Vライン | 顎が細く小顔風 |
+| `sharp_face` | シャープな顔 | 全体的に角張った印象（`angular_face` と類似→1つに絞る） |
+| `chubby_face` | ふっくら顔 | 幼く可愛らしい（固定特徴なら使う） |
+
+**Step 2 — 顎・顎ライン（0〜1つ）**
+
+顎の先端・ラインで基本顔型を補強する。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `pointed_chin` | 尖った顎 | シャープな輪郭。V顔に合う |
+| `rounded_chin` | 丸い顎 | 柔らかく優しい印象。丸顔・oval に合う |
+| `defined_jawline` | くっきりした顎ライン | 骨格が際立つ。男性的・知的 |
+| `soft_jawline` | 柔らかい顎ライン | 穏やか・優しい印象 |
+
+矛盾チェック:
+
+- `round_face` + `pointed_chin` / `defined_jawline` → 全体の柔らかさと顎の鋭さが逆方向。意図的でなければ1つを選び直す。
+- `square_face` + `rounded_chin` / `soft_jawline` → シャープな骨格と柔らかい顎が矛盾しやすい。
+- `sharp_face` + `soft_jawline` → 印象が逆。どちらかに統一する。
+
+**Step 3 — 頬骨（0〜1つ、必要なときだけ）**
+
+モデル系・彫りの深さを出したいときだけ追加する。
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `high_cheekbones` | 高い頬骨 | モデル系・彫りが深い印象 |
+| `low_cheekbones` | 低い頬骨 | 柔らかく幼い印象 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_face` | 品質補助 → `000_base` に入れない |
+| 表情関連タグ（`frown`, `pouty`, `raised_eyebrows` 等） | 表情 → コマ `prompt_tags` |
+| `fat_face`, `chubby_cheeks` 等の太り・むくみ | 体重変化・状況 → バリアントまたはコマ（固定特徴なら例外） |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | シャープ系は **`sharp_face` または `angular_face`** のどちらか1つ（両方入れない） |
+| **統一** | 縦長は **`long_face` または `rectangular_face`** のどちらか1つ（`long_face` を推奨） |
+| **表記統一** | ハート型は **`heart-shaped_face`**（`heart_face` は使わない） |
+
+### よく使う組み合わせ
+
+- 女性・柔らか系: `oval_face`, `rounded_chin`, `soft_jawline`
+- 少女・可愛い系: `round_face`, `rounded_chin`, `low_cheekbones`
+- クール・V顔: `v-shaped_face`, `pointed_chin`, `high_cheekbones`
+- 男性・骨格系: `square_face`, `defined_jawline`, `high_cheekbones`
+- 知的・長顔: `long_face`, `defined_jawline`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 可愛い・柔らか系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - oval_face          # Step 1: 基本顔型（0〜1つ）
+    - rounded_chin       # Step 2: 顎（0〜1つ）
+  manga_rules:
+    do_not_change:
+      - face shape
+
+# クール・シャープ系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - v-shaped_face      # Step 1
+    - pointed_chin       # Step 2
+    - high_cheekbones    # Step 3: 頬骨（任意）
+  manga_rules:
+    do_not_change:
+      - face shape
+```
+
+- **顔型タグは省略可**。骨格を明確に固定したいキャラにだけ使う。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 15. 鼻タグ（NovelAI向け）
+
+キャラクターの鼻の大きさ・鼻筋・形を `000_base` に固定するための辞書。
+**鼻をすする・赤くなるなどの状態・表情**はここに入れない（漫画 `panels[].prompt_tags` と併用）。
+
+§14（顔の輪郭）と同様、**鼻タグは省略しても生成は成立する**（未指定時はモデル既定の鼻が出る）。
+なお、目・眉・顔型に比べてタグ種が少なく、反映精度にもばらつきがある。`small_nose` / `high_nose_bridge` など基本タグが比較的安定して効きやすい。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・形状）** | 作品を通じて変わらない鼻の形・高さ | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **状況（赤い・すする等）** | シーン・感情で変わる状態 | 漫画 `panels[].prompt_tags` またはバリアント |
+| **品質補助** | 描画クオリティ向上用（形状識別にならない） | 原則 `000_base` に入れない |
+
+### 鼻型の決め方（3ステップ）
+
+**Step 1 — 大きさ・幅（0〜1つ）**
+
+鼻の全体的なサイズ感を1つだけ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `small_nose` | 小さい鼻 | 可愛らしく幼い印象。最も汎用的 |
+| `large_nose` | 大きい鼻 | 存在感が強い。個性的なキャラに |
+| `narrow_nose` | 細い鼻 | 華奢でシャープ。`small_nose` と組み合わせ可 |
+| `wide_nose` | 広い鼻 | 存在感が強い。`large_nose` と類似 |
+| `button_nose` | ボタン鼻 | 非常に小さく丸い。`small_nose` と重なるのでどちらか1つ |
+
+**Step 2 — 鼻筋・高さ（0〜1つ）**
+
+鼻梁の高さ・通り方を選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `high_nose_bridge` | 高い鼻筋 | すっきりした高い鼻。西洋的・知的 |
+| `low_nose_bridge` | 低い鼻筋 | 柔らかく東洋的な印象 |
+| `straight_nose` | 真っ直ぐな鼻筋 | 整ったクラシックな鼻。鼻筋が通っている |
+
+**Step 3 — 形・印象（0〜1つ、必要なときだけ）**
+
+鼻先・全体の形状でさらに個性を出したいときに追加する。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `pointed_nose` | 尖った鼻先 | シャープで洗練された印象 |
+| `aquiline_nose` | 鷲鼻 | 少し高く曲がった鼻。西洋的・威厳 |
+| `snub_nose` | 上向き鼻 | 可愛らしく幼い印象。`high_nose_bridge` と矛盾しやすい |
+| `delicate_nose` | 繊細な鼻 | 上品で細やかな印象 |
+| `prominent_nose` | 目立つ鼻 | 特徴的で個性的。`small_nose` と矛盾 |
+
+矛盾チェック:
+
+- `small_nose` + `prominent_nose` → 小さいのに目立つは意味が逆。1つに絞る。
+- `button_nose` + `aquiline_nose` → 丸くて上向きな鼻と鷲鼻は形が正反対。
+- `high_nose_bridge` + `snub_nose` → 高い鼻筋と上向き先端は方向性が矛盾しやすい。
+- `snub_nose` + `aquiline_nose` → 上向きと鷲鼻は形が正反対。
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_nose`, `realistic_nose` | 品質補助 → `000_base` に入れない（資料バリアントで任意使用は可） |
+| `runny_nose`, `bloody_nose`, `nose_blush` 等 | 状態・表情 → コマ `prompt_tags` |
+| `flared_nostrils`, `nostril_flare` 等 | 感情表現 → コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 小さく丸い鼻は **`small_nose` または `button_nose`** のどちらか1つ（両方入れない） |
+| **統一** | 大きさと幅が重なる場合は **`large_nose` または `wide_nose`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 可愛い・幼い系: `small_nose`, `snub_nose`（または `button_nose` 1つだけ）
+- 東洋的・自然: `small_nose`, `low_nose_bridge`
+- 洗練・シャープ系: `narrow_nose`, `high_nose_bridge`, `pointed_nose`
+- 西洋的・彫り深い: `high_nose_bridge`, `aquiline_nose`
+- 知的・整った系: `straight_nose`, `high_nose_bridge`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 可愛い・小鼻系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - small_nose         # Step 1: 大きさ（0〜1つ）
+    - snub_nose          # Step 3: 形（上向き）
+  manga_rules:
+    do_not_change:
+      - nose shape
+
+# 洗練・シャープ系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - narrow_nose        # Step 1
+    - high_nose_bridge   # Step 2
+    - pointed_nose       # Step 3
+  manga_rules:
+    do_not_change:
+      - nose shape
+```
+
+- **鼻タグは省略可**。`small_nose` 1つだけでも十分なことが多い。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 16. 口・唇タグ（NovelAI向け）
+
+キャラクターの口の大きさ・唇の厚み・色・質感を `000_base` に固定するための辞書。
+**表情・感情（smile, open_mouth, tongue_out 等）** はここに入れない（漫画 `panels[].prompt_tags` と併用）。
+
+口タグは **唇の厚みと質感** が生成への影響力が大きい。§12〜§15 と比べて **色・メイク系タグが多い**のが特徴で、「自然の唇の色」と「メイク由来の色・艶」を分けて管理する。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・自然の特徴）** | 大きさ・厚み・自然の唇の色・固定の特徴（ほくろ等） | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動（メイク）** | 衣装・シーンで変わる口紅・リップグロスの色・艶 | 000番台バリアント（例: `001_normal` 等） |
+| **状況（表情・開閉）** | 感情・シーンで変わる口の開閉・表情 | 漫画 `panels[].prompt_tags` またはバリアント |
+| **品質補助** | 描画クオリティ向上用（形状識別にならない） | 原則 `000_base` に入れない |
+
+### 口型の決め方（3ステップ）
+
+**Step 1 — 口の大きさ（0〜1つ）**
+
+口全体のサイズ感を1つだけ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `small_mouth` | 小さい口 | 可愛らしく控えめな印象 |
+| `large_mouth` | 大きい口 | 印象的・大人っぽい |
+| `wide_mouth` | 横幅の広い口 | 表情豊かに見える |
+
+**Step 2 — 唇の厚み・形（0〜1つ）**
+
+唇のボリューム・ラインを選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `thin_lips` | 薄い唇 | シャープ・クールな印象 |
+| `full_lips` | ふっくらした唇 | セクシー・ボリューム感 |
+| `plump_lips` | ぷっくり唇 | より丸みが強い。`full_lips` と類似 → 1つに絞る |
+| `thick_lips` | 厚い唇 | ボリューム重視。`full_lips` と類似 → 1つに絞る |
+| `defined_lips` | くっきりした唇 | 輪郭がはっきり。薄さ・厚さに関係なく使える |
+
+矛盾チェック:
+
+- `thin_lips` + `full_lips` / `plump_lips` / `thick_lips` → 厚さが正反対。1つに絞る。
+- `small_mouth` + `wide_mouth` → サイズの方向性が逆。1つに絞る。
+- `full_lips` + `plump_lips` + `thick_lips` → 類似タグの重複。どれか1つでよい。
+
+**Step 3 — 唇の色・質感・特徴（0〜2つ）**
+
+自然の特徴（色・ほくろ等）だけを入れる。**メイク由来の色・艶は 000番台へ**。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `pink_lips` | ピンクの唇（自然） | 可愛らしく健康的。自然の唇色 |
+| `pale_lips` | 薄い色の唇 | 儚い・血色が薄い。自然の唇色 |
+| `glossy_lips` | 艶やかな唇 | 自然の艶なら `000_base`。リップグロス由来なら 000番台 |
+| `mole_under_mouth` | 口の下のほくろ | 固定の特徴 → `000_base` |
+
+以下は **000番台バリアント**（衣装・メイクに連動）に入れる:
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `lipstick` | 口紅 | 衣装バリアントで指定 |
+| `red_lips` | 赤い唇 | 口紅由来なら 000番台。自然に唇が赤みが強い場合のみ `000_base` |
+| `shiny_lips` | 光沢のある唇 | メイク感強め → 000番台 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_mouth` | 品質補助 → `000_base` に入れない（資料バリアントで任意可） |
+| `parted_lips`, `open_mouth`, `closed_mouth` 等 | 表情・開閉状態 → コマ `prompt_tags` |
+| `smile`, `grin`, `tongue_out`, `pout` 等 | 表情 → コマ `prompt_tags` |
+| `biting_lip`, `licking_lips` | 動作・状態 → コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | ふっくら唇は **`full_lips`・`plump_lips`・`thick_lips` から1つ**（類似のため重複させない） |
+| **統一** | 艶は **`glossy_lips` または `shiny_lips`** のどちらか1つ |
+| **分類** | 唇の色が **自然** か **メイク** かで `000_base` / 000番台を分ける |
+
+### よく使う組み合わせ
+
+- 可愛い・健康的: `small_mouth`, `full_lips`, `pink_lips`
+- クール・シャープ: `thin_lips`, `defined_lips`
+- 自然な艶: `full_lips`, `glossy_lips`
+- 大人・儚い: `defined_lips`, `pale_lips`
+- 個性的: `wide_mouth`, `mole_under_mouth`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 可愛い・自然系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - small_mouth        # Step 1: 大きさ（0〜1つ）
+    - full_lips          # Step 2: 厚み（0〜1つ）
+    - pink_lips          # Step 3: 自然の唇色
+  manga_rules:
+    do_not_change:
+      - lip shape
+
+# 衣装バリアントでメイクを追加する例
+- variant_id: "001_formal"
+  danbooru_tags:
+    - lipstick           # メイク → 000番台
+    - red_lips           # 口紅の色 → 000番台
+```
+
+- **`lipstick` / `red_lips`（口紅由来）/ `shiny_lips`** は衣装バリアントに入れる。自然の唇色（`pink_lips`, `pale_lips`）だけ `000_base` に置く。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 17. 首タグ（NovelAI向け）
+
+キャラクターの首の細さ・長さ・印象を `000_base` に固定するための辞書。
+**首元の装飾（ネックレス・チョーカー等）** は §11（小物・アクセサリータグ）を参照。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・体型）** | 作品を通じて変わらない首の太さ・長さ・特徴 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 衣装の首元開き・露出（スクエアネック等） | 000番台バリアント |
+| **状況・品質** | 緊張・力みなどの一時的状態、クオリティ補助 | コマ `prompt_tags` / 入れない |
+
+### 首の決め方（3ステップ）
+
+**Step 1 — 太さ（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `slender_neck` | 細くしなやかな首 | 華奢で女性らしい。`thin_neck` と類似 → 1つに絞る |
+| `thin_neck` | 細い首 | `slender_neck` より中立的な細さ |
+| `thick_neck` | 太い首 | 逞しい・男性的。`muscular_neck` と類似 → 1つに絞る |
+| `muscular_neck` | 筋肉質の首 | 運動系・戦闘系キャラに |
+
+**Step 2 — 長さ（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `long_neck` | 長い首 | 優雅・モデルっぽい。`slender_neck` と組み合わせ可 |
+| `short_neck` | 短い首 | ずんぐりした印象。太い首と合わせやすい |
+
+矛盾チェック:
+
+- `slender_neck` + `muscular_neck` / `thick_neck` → 細さと太さが逆。1つに絞る。
+- `long_neck` + `short_neck` → 同時に入れない。
+
+**Step 3 — 印象・固定特徴（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `graceful_neck` | 優雅な首 | 上品で美しい。`long_neck` と相性良い |
+| `delicate_neck` | 繊細な首 | 細やかで儚い印象 |
+| `defined_neck` | くっきりした首筋 | 骨格が際立つ。クールな印象 |
+| `smooth_neck` | 滑らかな首 | 肌質が綺麗。触感的な印象 |
+| `neck_tattoo` | 首のタトゥー | 固定の個性 → `000_base` |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_neck` | 品質補助 → `000_base` に入れない |
+| `exposed_neck` | 衣装の首元デザインに依存 → 000番台 |
+| `veiny_neck` | 緊張・力みの状態 → コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細い首は **`slender_neck` または `thin_neck`** のどちらか1つ |
+| **統一** | 太い首は **`thick_neck` または `muscular_neck`** のどちらか1つ（運動系なら `muscular_neck`） |
+
+### よく使う組み合わせ
+
+- 女性・華奢: `slender_neck`, `long_neck`, `graceful_neck`
+- 少女・儚い: `thin_neck`, `delicate_neck`
+- 男性・逞しい: `thick_neck` または `muscular_neck`
+- クール・骨格系: `long_neck`, `defined_neck`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 女性・優雅系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - slender_neck       # Step 1: 太さ（0〜1つ）
+    - long_neck          # Step 2: 長さ（0〜1つ）
+    - graceful_neck      # Step 3: 印象（任意）
+  manga_rules:
+    do_not_change:
+      - neck
+
+# 男性・骨格系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - thick_neck         # Step 1
+    - defined_neck       # Step 3
+```
+
+- 首タグは省略可。女性キャラには `slender_neck` + `long_neck` の組み合わせが汎用的。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 18. 肩タグ（NovelAI向け）
+
+キャラクターの肩幅・傾き・鎖骨の印象を `000_base` に固定するための辞書。
+**肩出し（`bare_shoulders`）** は衣装の一部として 000番台バリアントへ入れる。
+
+肩タグは体型全体の印象（華奢 vs. がっしり、女性的 vs. 男性的）に直接影響する。**§17（首）と合わせて** 上半身の骨格を揃えると一貫性が増す。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・体型）** | 作品を通じて変わらない肩幅・形・鎖骨 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 服の肩出しデザイン（オフショルダー等） | 000番台バリアント |
+| **状況・品質** | 姿勢・力みなどの一時的変化、クオリティ補助 | コマ `prompt_tags` / 入れない |
+
+### 肩の決め方（3ステップ）
+
+**Step 1 — 肩幅（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `broad_shoulders` | 広い肩 | 逞しい・男性的。`wide_shoulders` と類似 → 1つに絞る |
+| `wide_shoulders` | 幅広い肩 | `broad_shoulders` とほぼ同義 → どちらか1つ |
+| `narrow_shoulders` | 狭い肩 | 華奢・小柄。`slender_shoulders` と類似 → 1つに絞る |
+| `slender_shoulders` | 細い肩 | 華奢で女性らしい。`narrow_shoulders` と類似 |
+
+**Step 2 — 肩の形・傾き（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `sloping_shoulders` | なで肩 | 女性らしく柔らかい定番タグ。`drooping_shoulders` より自然 |
+| `square_shoulders` | 四角い肩 | しっかりした骨格感 |
+| `rounded_shoulders` | 丸い肩 | 柔らかくふんわりした印象 |
+| `soft_shoulders` | 柔らかい肩 | 優しい印象。`rounded_shoulders` と類似 → 1つに絞る |
+| `drooping_shoulders` | 落ちた肩 | `sloping_shoulders` より強い傾き。大人な女性・疲れ感に |
+
+矛盾チェック:
+
+- `broad_shoulders` + `narrow_shoulders` / `slender_shoulders` → 幅が逆。1つに絞る。
+- `square_shoulders` + `sloping_shoulders` / `rounded_shoulders` → 骨格の方向性が正反対。
+- `sloping_shoulders` + `drooping_shoulders` → 意味が近いので1つでよい。
+
+**Step 3 — 骨格・体型特徴（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `defined_collarbone` | 鎖骨がくっきり | セクシー・華奢な印象 |
+| `prominent_collarbone` | 目立つ鎖骨 | 痩せ型・モデル系。`defined_collarbone` より強調 |
+| `shoulder_blades` | 肩甲骨 | 背中を向いたシーンで映える |
+| `muscular_shoulders` | 筋肉質の肩 | アスリート・戦闘系。`broad_shoulders` と合わせて |
+| `delicate_shoulders` | 繊細な肩 | 細やかで儚い。`slender_shoulders` と合わせて |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `bare_shoulders` | 衣装の肩出しデザイン → 000番台バリアント |
+| `detailed_shoulders` | 品質補助 → `000_base` に入れない |
+| `hunched_shoulders`, `tense_shoulders` 等 | 姿勢・状態 → コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 広い肩は **`broad_shoulders` または `wide_shoulders`** のどちらか1つ |
+| **統一** | 細い肩は **`narrow_shoulders` または `slender_shoulders`** のどちらか1つ（女性らしさなら `slender_shoulders`） |
+| **統一** | 柔らか肩は **`rounded_shoulders` または `soft_shoulders`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 女性・華奢: `slender_shoulders`, `sloping_shoulders`, `defined_collarbone`
+- 女性・ふんわり: `narrow_shoulders`, `rounded_shoulders`
+- 男性・がっしり: `broad_shoulders`, `square_shoulders`, `muscular_shoulders`
+- スポーツ系: `broad_shoulders`, `muscular_shoulders`
+- モデル・痩せ型: `slender_shoulders`, `prominent_collarbone`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 女性・華奢系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - slender_shoulders  # Step 1: 幅（0〜1つ）
+    - sloping_shoulders  # Step 2: 形・傾き（0〜1つ）
+    - defined_collarbone # Step 3: 骨格（任意）
+  manga_rules:
+    do_not_change:
+      - shoulder width
+
+# 肩出し衣装バリアントの例
+- variant_id: "002_casual"
+  danbooru_tags:
+    - bare_shoulders     # 衣装連動 → 000番台
+```
+
+- **`bare_shoulders`** は服デザインに依存するため `000_base` に入れない。衣装バリアントで管理する。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 19. 男性の胸タグ（NovelAI向け）
+
+男性キャラクターの胸板・筋肉量・質感を `000_base` に固定するための辞書。
+**女性のバスト** は §20（女性の胸タグ）を参照。**鎖骨・肩甲骨**は §18（肩タグ）と重複するため、§18 で管理する。
+
+`muscular_shoulders`（§18 Step 3）と合わせると上半身全体の骨格に一貫性が出る。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・体型・体毛）** | 作品を通じて変わらない筋肉量・胸板の形・体毛 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 上半身裸かどうか（服を着ているかに依存） | 000番台バリアント |
+| **状況** | 汗・力み・緊張による一時的変化 | コマ `prompt_tags` またはバリアント |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 胸の決め方（3ステップ）
+
+**Step 1 — 筋肉量・体格（0〜1つ）**
+
+体型の全体的な筋肉レベルを1つ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `slim_chest` / `flat_chest` | 細身・平らな胸 | 華奢系。どちらか1つに絞る |
+| `lean_chest` | 痩せ型の引き締まり | `flat_chest` より筋肉感があるが細い |
+| `toned` | 引き締まった体 | 細マッチョの基本。全身に適用 |
+| `athletic` | アスレチック体型 | 運動系・スポーツ系。全身に適用 |
+| `muscular` | 筋肉質 | 最も汎用的な男性筋肉タグ |
+| `bodybuilder` | ボディビルダー | 極端な筋肉量。`muscular` より上 |
+
+**Step 2 — 胸板の形・大胸筋（0〜2つ）**
+
+胸板のサイズ・くっきり度を選ぶ。Step 1 と合わせて使う。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `broad_chest` | 広い胸板 | `muscular` と相性良い。`wide_chest` と類似 → 1つに絞る |
+| `thick_pectorals` | 厚い胸板 | ボリューム感。ガチムチ系に |
+| `defined_pectorals` | くっきりした大胸筋 | `toned` / `muscular` と組み合わせて |
+| `well_defined_pectorals` | よく発達した大胸筋 | `defined_pectorals` の強調版 → 1つに絞る |
+| `ripped` | 筋肉が鋭く割れた状態 | 脂肪が少なくカットが出た状態 |
+| `sculpted_chest` | 彫刻のような胸板 | `ripped` より芸術的な表現 |
+
+矛盾チェック:
+
+- `slim_chest` / `flat_chest` + `broad_chest` / `thick_pectorals` / `defined_pectorals` → 細身と筋肉が矛盾。体型方向を統一する。
+- `lean_chest` + `defined_pectorals` → 細マッチョとして成立（自然な組み合わせ）。
+- `toned` + `bodybuilder` → 引き締まりと極端な筋肉量が方向違い。1つに絞る。
+
+**Step 3 — 質感・固定特徴（0〜2つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `hairy_chest` | 胸毛あり | 固定の体毛。成熟・男性的な印象 |
+| `hairless_chest` / `smooth_chest` | 胸毛なし・滑らかな胸 | 類似 → 1つに絞る |
+| `veiny_chest` | 血管が浮いた胸 | 体型の固定特徴として入れる場合のみ `000_base` |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `bare_chest` | 衣装（上半身の脱ぎ状態）に依存 → 000番台バリアント |
+| `detailed_chest` | 品質補助 → `000_base` に入れない |
+| `shiny_chest` | 汗・油による光沢 → コマ `prompt_tags` またはバリアント |
+| `veiny_chest`（状況として使う場合） | 力み・緊張 → コマ `prompt_tags` |
+| `massive_chest` | `bodybuilder` + `thick_pectorals` で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 広い胸板は **`broad_chest` または `wide_chest`** のどちらか1つ |
+| **統一** | くっきり胸筋は **`defined_pectorals` または `well_defined_pectorals`** のどちらか1つ |
+| **統一** | 滑らかな胸は **`hairless_chest` または `smooth_chest`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 細マッチョ: `toned`, `lean_chest`, `defined_pectorals`
+- 標準・スポーツ系: `athletic`, `broad_chest`
+- 筋肉質: `muscular`, `broad_chest`, `thick_pectorals`
+- ガチムチ: `bodybuilder`, `massive_chest`（または `thick_pectorals` + `broad_chest`）
+- 華奢・細身: `slim_chest` または `flat_chest`
+- 胸毛あり: 上記にどれか + `hairy_chest`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 細マッチョ系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - toned              # Step 1: 体格
+    - lean_chest         # Step 1: 細身の引き締まり
+    - defined_pectorals  # Step 2: 大胸筋
+    - hairless_chest     # Step 3: 体毛（任意）
+  manga_rules:
+    do_not_change:
+      - body type
+
+# 上半身裸バリアントの例
+- variant_id: "003_treatment"
+  danbooru_tags:
+    - bare_chest         # 衣装連動 → 000番台
+```
+
+- **`bare_chest`** は服を着ているかどうかに依存するため `000_base` に入れない。上半身裸シーンのバリアントで管理する。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 20. 女性の胸タグ（NovelAI向け）
+
+女性キャラクターのバストサイズ・形状・質感を `000_base` に固定するための辞書。
+**男性の胸板** は §19（男性の胸タグ）を参照。
+
+大きさタグ（Step 1）は未指定だとモデルの既定値に依存しやすいため、**必ず1つ指定することを推奨**する（他の部位と異なり省略しないのが基本）。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・形状）** | 作品を通じて変わらないサイズ・形・質感 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 服の胸元デザイン（谷間・露出量） | 000番台バリアント |
+| **NSFW専用** | 乳首・乳輪の外見（NSFW オンのバリアント） | NSFW バリアントまたは作品設定に従う |
+| **状況** | 動作・ポーズによる変化 | コマ `prompt_tags` またはバリアント |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 胸の決め方（3ステップ）
+
+**Step 1 — 大きさ（1つ、推奨）**
+
+サイズを1つ選ぶ。**省略するとモデルの既定値に依存**するため、基本は指定する。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `flat_chest` | 平らな胸 | 最も小さい。少女・細身キャラに |
+| `small_breasts` | 小さい胸 | 可愛らしく控えめ |
+| `medium_breasts` | 中くらいの胸 | 最も汎用的なサイズ |
+| `large_breasts` | 大きい胸 | グラマー系の基本 |
+| `huge_breasts` | 非常に大きい胸 | 強調グラマー |
+| `gigantic_breasts` | 極端に巨大な胸 | 特殊・誇張表現に |
+
+`big_breasts` / `massive_breasts` は `large_breasts` / `huge_breasts` と類似 → `large_breasts` を優先。
+
+**Step 2 — 形状・シルエット（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `round_breasts` | 丸い胸 | バランスが良く自然な形 |
+| `perky_breasts` | 張りのある上向き胸 | 若々しい印象 |
+| `teardrop_breasts` | 涙滴型 | 自然で美しいシルエット |
+| `bell-shaped_breasts` | 鐘型 | 下膨れな形状 |
+
+**Step 3 — 質感（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `soft_breasts` | 柔らかい胸 | 触感的な柔らかさを強調 |
+| `firm_breasts` | 張りのある胸 | 弾力感・若さ |
+| `plump_breasts` | ぷっくりした胸 | 丸みとボリューム感 |
+| `heavy_breasts` | 重そうな胸 | 大きいサイズと合わせて |
+
+矛盾チェック:
+
+- 大きさタグを2つ以上入れない（`small_breasts` + `large_breasts` 等）。
+- `flat_chest` + `cleavage` / `deep_cleavage` → 谷間は形成できない。
+- `perky_breasts` + `heavy_breasts` → 張りと重さが逆方向。どちらかに絞る。
+- `firm_breasts` + `jiggly_breasts` / `bouncy_breasts` → 硬さが矛盾。
+
+### 衣装連動タグ（000番台バリアントへ）
+
+谷間・露出の程度は服のデザインに依存するため `000_base` に入れない。
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `cleavage` | 谷間 | 服の胸元が開いているとき |
+| `deep_cleavage` | 深い谷間 | より露出が多い服 |
+| `sideboob` | 横乳 | 服のサイドカット |
+| `underboob` | アンダーバスト露出 | 丈の短いトップス等 |
+
+### 本節に載せないもの（状況・NSFW・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `nipples`, `puffy_nipples`, `erect_nipples`, `areola` 等 | NSFW オン時専用 → NSFW バリアントまたは作品設定に従う |
+| `pink_nipples`, `large_nipples`, `small_nipples` 等 | 同上 |
+| `jiggly_breasts`, `bouncy_breasts` | 動作・状況 → コマ `prompt_tags` |
+| `breasts_apart`, `breasts_together` | ポーズ → コマ `prompt_tags` |
+| `shiny_skin`, `oiled_breasts`, `sweaty_breasts` 等 | 状況（汗・油）→ コマ |
+| `veiny_breasts` | 状況（力み等）→ コマ。固定特徴として目立つ場合のみ例外 |
+| `detailed_breasts`, `detailed_nipples`, `realistic_breasts`, `perfect_breasts` | 品質補助 → `000_base` に入れない |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | `large_breasts` を基本とし、`big_breasts` / `massive_breasts` と重複させない |
+| **統一** | 質感は `soft_breasts`・`firm_breasts`・`plump_breasts` から1つ（意味が重なる場合） |
+
+### よく使う組み合わせ
+
+- 細身・少女: `flat_chest` または `small_breasts`
+- 可愛い系: `small_breasts`, `perky_breasts`, `soft_breasts`
+- 自然・標準: `medium_breasts`, `round_breasts`
+- グラマー系: `large_breasts`, `teardrop_breasts`, `plump_breasts`
+- 強調グラマー: `huge_breasts`, `heavy_breasts`（衣装で `deep_cleavage` 追加）
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 中くらい・自然系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - medium_breasts     # Step 1: 大きさ（推奨・1つ）
+    - round_breasts      # Step 2: 形状（0〜1つ）
+    - soft_breasts       # Step 3: 質感（0〜1つ）
+  manga_rules:
+    do_not_change:
+      - breast size
+
+# 谷間が出る衣装バリアントの例
+- variant_id: "001_normal"
+  danbooru_tags:
+    - cleavage           # 衣装連動 → 000番台
+```
+
+- **大きさタグは `000_base` に必ず1つ入れる**のが基本。§14〜§19 と異なり省略しないことを推奨。
+- `cleavage` / `sideboob` / `underboob` は衣装バリアントで管理する。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 21. 男性のウェストタグ（NovelAI向け）
+
+男性キャラクターの腰回り・腹筋・シルエットを `000_base` に固定するための辞書。
+**女性のウェスト** は §22（女性のウェストタグ）を参照。
+
+V字シルエットは **`v-shaped_torso`（本節）＋`broad_shoulders`（§18）** の組み合わせで出やすい。胸板（§19）の `muscular` / `toned` とも合わせると上半身全体に一貫性が出る。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・筋肉）** | 作品を通じて変わらない腰の締まり・腹筋・シルエット | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 服の丈によるお腹の露出 | 000番台バリアント |
+| **状況** | 力み・緊張などの一時的な変化 | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### ウェストの決め方（3ステップ）
+
+**Step 1 — 体型・締まり（0〜1つ）**
+
+腰全体の太さ・筋肉レベルを1つ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `narrow_waist` / `slim_waist` | 細い腰 | 類似 → 1つに絞る |
+| `thin_waist` | 薄いウェスト | `narrow_waist` より細い・骨張った感 |
+| `lean_waist` | 痩せ型の引き締まり | 細身だが筋張っている |
+| `toned_waist` / `athletic_waist` | 引き締まった腰 | 細マッチョの基本。類似 → 1つに絞る |
+| `muscular_waist` | 筋肉質の腰 | がっしり系に |
+| `ripped_waist` / `sculpted_waist` | 筋肉が鋭く割れた腰 | 類似 → 1つに絞る。`muscular_waist` より上 |
+
+**Step 2 — シルエット・ラインの形（0〜1つ）**
+
+上半身から腰へのラインと方向性を選ぶ。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `v-shaped_torso` | V字上半身 | 広い肩と細い腰のライン。最も重要なシルエットタグ |
+| `inverted_triangle` | 逆三角形体型 | `v-shaped_torso` と類似 → 1つに絞る |
+| `narrow_hips` / `straight_hips` | 狭い腰・直線的な腰 | 男性らしい腰周りを強調 |
+| `masculine_waist` | 男らしい腰回り | シルエット全体の印象付け |
+
+**Step 3 — 腹筋・骨盤ライン（0〜2つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `abs` | 腹筋 | 腹筋があることを示す基本タグ |
+| `visible_abs` | 腹筋が浮き出ている | `abs` より明確に見える |
+| `six_pack` | シックスパック | `visible_abs` より強調 |
+| `defined_abdominals` | くっきりした腹筋 | `six_pack` と類似 → 1つに絞る |
+| `pelvic_lines` | 腰骨のライン | 細マッチョ・痩せ型に出やすい骨盤ライン |
+
+矛盾チェック:
+
+- `slim_waist` + `muscular_waist` / `ripped_waist` → 細さと筋肉感が矛盾。体型方向を統一する。
+- `v-shaped_torso` + `broad_hips` → 逆三角形のシルエットと広いヒップが逆方向。
+- `narrow_waist` + `six_pack` → 細マッチョとして成立（自然な組み合わせ）。
+- `inverted_triangle` + `v-shaped_torso` → 類似のため1つに絞る。
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `bare_midriff` | 服の丈によるお腹露出 → 000番台バリアント |
+| `detailed_waist` | 品質補助 → `000_base` に入れない |
+| `veiny_waist` | 力み・緊張 → コマ `prompt_tags`（固定特徴なら例外） |
+| `muscular_torso` | 上半身全体 → §19 の `muscular` / `toned` で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細い腰は **`narrow_waist` または `slim_waist`** のどちらか1つ |
+| **統一** | V字系は **`v-shaped_torso` または `inverted_triangle`** のどちらか1つ（`v-shaped_torso` を推奨） |
+| **統一** | 腹筋は `abs`・`visible_abs`・`six_pack`・`defined_abdominals` から **1〜2つ**（強度に合わせて選択） |
+| **統一** | 引き締まりは **`toned_waist` または `athletic_waist`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 細マッチョ・V字: `slim_waist`, `v-shaped_torso`, `visible_abs`, `pelvic_lines`
+- スポーツ系: `toned_waist`（または `athletic_waist`）, `abs`
+- 筋肉質: `muscular_waist`, `six_pack`
+- 細身・スマート: `narrow_waist`, `lean_waist`, `narrow_hips`
+- ボディビルダー系: `ripped_waist`, `six_pack`（§19 `bodybuilder` と合わせて）
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 細マッチョ・V字系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - slim_waist         # Step 1: 体型（0〜1つ）
+    - v-shaped_torso     # Step 2: シルエット
+    - visible_abs        # Step 3: 腹筋
+    - pelvic_lines       # Step 3: 骨盤ライン（任意）
+  manga_rules:
+    do_not_change:
+      - body type
+
+# お腹露出バリアントの例
+- variant_id: "003_treatment"
+  danbooru_tags:
+    - bare_midriff       # 衣装連動 → 000番台
+```
+
+- V字シルエットには **`v-shaped_torso` ＋ §18 の `broad_shoulders`** の組み合わせが効果的。
+- `bare_midriff` は服の丈に依存するため `000_base` に入れない。衣装バリアントで管理する。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 22. 女性のウェストタグ（NovelAI向け）
+
+女性キャラクターの腰回り・くびれ・ヒップのシルエットを `000_base` に固定するための辞書。
+**男性のウェスト** は §21（男性のウェストタグ）を参照。
+
+**`hourglass_figure`** がシルエット全体を決める最重要タグ。§20（女性の胸）と合わせると上半身から腰のバランスが揃う。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・形状）** | 作品を通じて変わらないウェストの細さ・くびれ・ヒップ | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 服の丈・デザインによるお腹・へその露出 | 000番台バリアント |
+| **状況** | 力みなどの一時的変化 | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### ウェストの決め方（3ステップ）
+
+**Step 1 — ウェストの細さ・くびれ（0〜1つ）**
+
+腰の細さ・くびれの強さを1つ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `soft_waist` | 柔らかい腰回り | 丸みがある。グラマー系・ふっくら系に |
+| `slim_waist` / `narrow_waist` | 細い腰 | 類似 → 1つに絞る |
+| `defined_waist` | くびれがはっきり | 腰のくびれを強調 |
+| `thin_waist` | 薄いウェスト | `slim_waist` より細い |
+| `tiny_waist` | 極細ウェスト | 強調的なくびれ |
+| `cinched_waist` | 締まった腰 | コルセット的な締まり感 |
+| `wasp_waist` | 蜂の腰 | 極端なくびれ。特殊表現に |
+
+**Step 2 — 体型シルエット・ヒップ（0〜1つ）**
+
+腰から腰回りの形状・方向性を選ぶ。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `hourglass_figure` | 砂時計型 | くびれ＋広いヒップを一発で決める最重要タグ |
+| `voluptuous` | グラマラス体型 | 胸・腰のボリュームを強調。§20 の大きめ胸と相性良い |
+| `wide_hips` | 広いヒップ | `hourglass_figure` と組み合わせ可 |
+| `curvy_hips` / `childbearing_hips` | カーブしたヒップ | 類似 → 1つに絞る |
+| `thick_hips` | 厚みのあるヒップ | グラマー系 |
+| `slender_hips` / `narrow_hips` | 細いヒップ | スレンダー系。`hourglass_figure` と矛盾する |
+
+**Step 3 — お腹・骨盤ライン（0〜2つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `flat_stomach` | 平らなお腹 | 引き締まった印象。スレンダー・アスリート系に |
+| `soft_stomach` | 柔らかいお腹 | 丸みがある。グラマー系・ふっくら系に |
+| `toned_waist` | 引き締まったウェスト | `flat_stomach` より筋肉感あり |
+| `abs` / `visible_abs` | 腹筋 | 女性アスリート・格闘系に。類似なら1つに絞る |
+| `pelvic_lines` / `defined_pelvis` | 腰骨・骨盤ライン | 類似 → 1つに絞る。細身・引き締まり系に出やすい |
+
+矛盾チェック:
+
+- `hourglass_figure` + `slender_hips` / `narrow_hips` → 砂時計型はヒップが広いのが前提。矛盾。
+- `wasp_waist` + `soft_waist` → 極細くびれと柔らかい腰が逆方向。
+- `flat_stomach` + `soft_stomach` → 同時に入れない。
+- `flat_stomach` + `voluptuous` → 平らなお腹とグラマー体型は方向が逆。
+- `wide_hips` + `slender_hips` → 同時に入れない。
+
+### 衣装連動タグ（000番台バリアントへ）
+
+服のデザインによるお腹・へその露出は `000_base` に入れない。
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `bare_midriff` | お腹出し | 服の丈が短い・へそが出るデザイン |
+| `navel` | へそ | 衣装がへそを露出しているとき |
+| `deep_navel` | 深いへそ | より強調的な露出 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_waist` | 品質補助 → `000_base` に入れない |
+| `wide_hip_to_waist_ratio` | 比率補助 → `hourglass_figure` で代替 |
+| 腹部の緊張・動き系 | 状況 → コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細い腰は **`slim_waist` または `narrow_waist`** のどちらか1つ |
+| **統一** | 砂時計型は **`hourglass_figure` または `hourglass`** のどちらか1つ |
+| **統一** | カーブしたヒップは **`curvy_hips` または `childbearing_hips`** のどちらか1つ |
+| **統一** | 骨盤ラインは **`pelvic_lines` または `defined_pelvis`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- グラマー・砂時計: `slim_waist`, `hourglass_figure`, `wide_hips`
+- 健康的・引き締まり: `defined_waist`, `flat_stomach`, `toned_waist`
+- 細身・スレンダー: `narrow_waist`, `slender_hips`
+- グラマラス系: `voluptuous`, `thick_hips`, `soft_waist`
+- 細身少女: `slim_waist`（§20 の `flat_chest` と合わせて）
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# グラマー・砂時計系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - slim_waist         # Step 1: くびれ（0〜1つ）
+    - hourglass_figure   # Step 2: シルエット（最重要）
+    - flat_stomach       # Step 3: お腹（任意）
+  manga_rules:
+    do_not_change:
+      - body type
+
+# へそ露出バリアントの例
+- variant_id: "002_casual"
+  danbooru_tags:
+    - bare_midriff       # 衣装連動 → 000番台
+    - navel              # 衣装連動 → 000番台
+```
+
+- **`hourglass_figure`** はくびれ＋広いヒップを一発で設定できる最重要タグ。§20（女性の胸）の胸サイズと合わせると全体バランスが取れる。
+- `bare_midriff` / `navel` は服のデザインに依存するため `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 23. 男性のヒップタグ（NovelAI向け）
+
+男性キャラクターのヒップ幅・尻の形状・太ももを `000_base` に固定するための辞書。
+**女性のヒップ** は §24（女性のヒップタグ）を参照。
+
+体型全体タグ（`v-shaped_torso`, `muscular`, `athletic` 等）は §21（男性のウェスト）・§19（男性の胸）で管理する。本節はヒップ固有タグに絞る。
+`narrow_hips`（本節）＋`v-shaped_torso`（§21）＋`broad_shoulders`（§18）で逆三角形シルエットが出やすい。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（骨格・体型）** | 作品を通じて変わらないヒップ幅・尻の形状 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 腰見せ・ローウェストによる腰回りの露出 | 000番台バリアント |
+| **状況・品質** | 力みなどの一時的変化、クオリティ補助 | コマ `prompt_tags` / 入れない |
+
+### ヒップの決め方（3ステップ）
+
+**Step 1 — ヒップ幅・シルエット（0〜1つ）**
+
+腰回り下部の幅・方向性を1つ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `narrow_hips` / `slim_hips` | 狭い・細いヒップ | 類似 → 1つに絞る。男性的・逆三角形に必須 |
+| `straight_hips` | 直線的なヒップライン | くびれなし・男らしいライン |
+| `masculine_hips` | 男らしいヒップ | 全体印象付け |
+| `wide_hips` | 広いヒップ | ガチムチ系。`narrow_hips` と矛盾 |
+
+**Step 2 — 尻の形状（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `flat_ass` | 平らな尻 | 細身・スリム系に自然 |
+| `small_ass` | 小さめの尻 | 控えめ・華奢系 |
+| `firm_ass` / `tight_ass` | 引き締まった尻 | 類似 → 1つに絞る。細マッチョ・スポーツ系 |
+| `toned_ass` | 筋肉質で締まった尻 | `firm_ass` より筋肉感あり |
+| `muscular_ass` | 筋肉のある尻 | がっしり・ガチムチ系 |
+| `round_ass` / `bubble_butt` | 丸みのある尻 | 類似 → 1つに絞る。男性でも使用可 |
+
+矛盾チェック:
+
+- `narrow_hips` + `wide_hips` → 同時に入れない。
+- `flat_ass` / `small_ass` + `muscular_ass` / `bubble_butt` → 形が逆方向。1つに絞る。
+- `firm_ass` + `tight_ass` → 意味がほぼ同一。どちらか1つ。
+
+**Step 3 — 太もも（0〜1つ、任意）**
+
+ヒップと連動して下半身のバランスを整える。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `muscular_thighs` | 筋肉質の太もも | 筋肉系・ガチムチ系に |
+| `thick_thighs` | 太い太もも | `muscular_thighs` より体型全般的な太さ |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `bare_hips` | 衣装の腰見せ・ローウェストデザイン → 000番台 |
+| `detailed_hips`, `detailed_ass` | 品質補助 → `000_base` に入れない |
+| `veiny_hips` | 力み・緊張 → コマ `prompt_tags` |
+| `defined_pelvis`, `pelvic_lines` | §21（男性のウェスト）で管理 |
+| `v-shaped_torso`, `muscular`, `athletic`, `lean` | 体型全体タグ → §21・§19 で管理 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 狭いヒップは **`narrow_hips` または `slim_hips`** のどちらか1つ |
+| **統一** | 引き締まり系は **`firm_ass` または `tight_ass`** のどちらか1つ |
+| **統一** | 丸み系は **`round_ass` または `bubble_butt`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 細マッチョ・V字: `narrow_hips`, `firm_ass`（§21 `v-shaped_torso` と合わせて）
+- スポーツ系: `narrow_hips`, `toned_ass`, `muscular_thighs`
+- ガチムチ: `wide_hips`, `muscular_ass`, `thick_thighs`
+- 細身・スマート: `narrow_hips`, `slim_hips`（どちらか）, `flat_ass`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 細マッチョ・スポーツ系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - narrow_hips        # Step 1: ヒップ幅（0〜1つ）
+    - firm_ass           # Step 2: 尻の形状（0〜1つ）
+    - muscular_thighs    # Step 3: 太もも（任意）
+  manga_rules:
+    do_not_change:
+      - hip width
+
+# 腰見せバリアントの例
+- variant_id: "003_treatment"
+  danbooru_tags:
+    - bare_hips          # 衣装連動 → 000番台
+```
+
+- 逆三角形シルエットは **`narrow_hips` ＋ §21 `v-shaped_torso` ＋ §18 `broad_shoulders`** の3点セット。
+- `bare_hips` は衣装デザインに依存するため `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 24. 女性のヒップタグ（NovelAI向け）
+
+女性キャラクターのヒップ幅・尻の形状・太ももを `000_base` に固定するための辞書。
+**男性のヒップ** は §23（男性のヒップタグ）を参照。
+
+体型シルエット全体タグ（`hourglass_figure`, `voluptuous`）は §22（女性のウェスト）で管理する。本節はヒップ固有タグに絞る。
+**`wide_hips` + `thick_thighs`** は女性ヒップで特に効果的な定番組み合わせ。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・形状）** | 作品を通じて変わらないヒップ幅・尻の形状・太もも | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 腰見せ・ローウェストによる露出 | 000番台バリアント |
+| **状況・ポーズ** | 動作・ポーズによる変化 | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### ヒップの決め方（3ステップ）
+
+**Step 1 — ヒップ幅（0〜1つ）**
+
+腰回り下部の幅を1つ選ぶ。省略可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `slender_hips` / `narrow_hips` | 細い・狭いヒップ | スレンダー系。類似 → 1つに絞る |
+| `wide_hips` | 広いヒップ | 女性らしさを強調する最重要タグ |
+| `thick_hips` | 厚みのあるヒップ | ボリューム感。`wide_hips` と組み合わせ可 |
+| `curvy_hips` / `childbearing_hips` | カーブしたヒップ | 類似 → 1つに絞る |
+
+**Step 2 — 尻の形状・ボリューム（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `round_ass` | 丸い尻 | バランスが良い自然な形 |
+| `plump_ass` | ぷっくりした尻 | 丸みとボリューム感 |
+| `bubble_butt` | 泡のように丸い張りのある尻 | `round_ass` より強調。人気タグ |
+| `heart-shaped_ass` | ハート型の尻 | 特徴的な形状 |
+| `firm_ass` | 張りのある尻 | 引き締まり・弾力感 |
+| `toned_ass` | 引き締まった尻 | アスリート系 |
+| `soft_ass` | 柔らかい尻 | 柔らかさを強調 |
+| `large_ass` / `huge_ass` | 大きい・非常に大きい尻 | サイズ強調。`wide_hips` と合わせて |
+
+矛盾チェック:
+
+- `wide_hips` + `slender_hips` / `narrow_hips` → 同時に入れない。
+- `soft_ass` + `firm_ass` / `toned_ass` → 柔らかさと硬さが逆。1つに絞る。
+- `huge_ass` + `toned_ass` → 非常に大きいが引き締まっているは方向が違う。
+
+**Step 3 — 太もも（0〜1つ）**
+
+ヒップと連動して下半身のボリューム・バランスを整える。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `thick_thighs` | 太い太もも | `wide_hips` との組み合わせが特に効果的 |
+| `thicc_thighs` | 強調された太もも | `thick_thighs` と類似（スラング系）→ 1つに絞る |
+| `plump_thighs` | ぷっくり太もも | 柔らかく丸みのある太もも |
+| `wide_thighs` | 幅広い太もも | `thick_thighs` より横幅を強調 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `hourglass_figure`, `voluptuous`, `pelvic_lines` | §22（女性のウェスト）で管理 |
+| `bare_hips` | 衣装連動 → 000番台 |
+| `detailed_hips`, `detailed_ass`, `perfect_ass` | 品質補助 → `000_base` に入れない |
+| `jiggly_ass`, `squishy_ass`, `shiny_ass` | 動作・状況（揺れ・汗・油）→ コマ `prompt_tags` |
+| `from_behind`, `bent_over`, `hips_aside` | ポーズ → コマ `prompt_tags` |
+| `wide_hip_to_waist_ratio` | 比率補助 → `hourglass_figure`（§22）で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細いヒップは **`slender_hips` または `narrow_hips`** のどちらか1つ |
+| **統一** | カーブ系は **`curvy_hips` または `childbearing_hips`** のどちらか1つ |
+| **統一** | 強調太ももは **`thick_thighs` または `thicc_thighs`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- グラマー・定番: `wide_hips`, `round_ass`, `thick_thighs`
+- 可愛い・健康的: `wide_hips`, `plump_ass`, `thick_thighs`
+- ぷりっとした丸み: `wide_hips`, `bubble_butt`, `thick_thighs`
+- 引き締まり系: `wide_hips`, `firm_ass`, `toned_ass`
+- スレンダー系: `slender_hips`, `firm_ass`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# グラマー・砂時計系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - wide_hips          # Step 1: ヒップ幅（最重要）
+    - round_ass          # Step 2: 形状（0〜1つ）
+    - thick_thighs       # Step 3: 太もも（任意）
+  manga_rules:
+    do_not_change:
+      - hip size
+
+# 腰見せバリアントの例
+- variant_id: "002_casual"
+  danbooru_tags:
+    - bare_hips          # 衣装連動 → 000番台
+```
+
+- **`wide_hips` + `thick_thighs`** は女性ヒップの最強定番。§22（女性のウェスト）の `hourglass_figure` / `slim_waist` と合わせると全身バランスが取れる。
+- `bare_hips` は衣装デザインに依存するため `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 25. 男性の脚タグ（NovelAI向け）
+
+男性キャラクターの脚全体の体格・太もも・ふくらはぎを `000_base` に固定するための辞書。
+**女性の脚** は §26（女性の脚タグ）を参照。
+
+`muscular_thighs` / `thick_thighs` は §23（男性のヒップ）Step 3 で管理する。本節では重複させず、補完的なタグに絞る。
+脚全体の体格は §19（男性の胸）の `athletic` / `muscular` と合わせると上半身との一貫性が出る。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・筋肉）** | 作品を通じて変わらない脚の体格・長さ・ふくらはぎ | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 短パン・水着など服の丈による脚の露出 | 000番台バリアント |
+| **状況・ポーズ** | 汗・力み・脚の動作・閉じ方など | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 脚の決め方（3ステップ）
+
+**Step 1 — 脚全体の体格・長さ（0〜2つ）**
+
+筋肉量と長さは別軸なので組み合わせ可。筋肉量は1つに絞る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `slender_legs` / `slim_legs` | 細い脚 | 類似 → 1つに絞る |
+| `lean_legs` | 痩せ型の引き締まり | 細身だが筋張っている |
+| `toned_legs` / `athletic_legs` | 引き締まった脚 | 細マッチョ系。類似 → 1つに絞る |
+| `muscular_legs` | 筋肉質の脚 | スポーツ系・ガチムチ系 |
+| `thick_legs` | 太い脚 | ガチムチ系。`muscular_legs` よりボリューム感 |
+| `ripped_legs` / `sculpted_legs` | 筋肉が鋭く割れた脚 | 類似 → 1つに絞る。`muscular_legs` より上 |
+| `long_legs` | 長い脚 | 上記と組み合わせ可（例: `long_legs`, `muscular_legs`） |
+
+**Step 2 — 太もも（0〜1つ）**
+
+`muscular_thighs` / `thick_thighs` は §23 Step 3 で管理。本節では補完的なタグを使う。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `toned_thighs` | 引き締まった太もも | 細マッチョ系 |
+| `slender_thighs` | 細い太もも | スリム系 |
+| `powerful_thighs` | 力強い太もも | アスリート系。`muscular_thighs` より印象系 |
+
+矛盾チェック:
+
+- `slender_legs` / `slim_legs` + `thick_legs` / `muscular_legs` → 同時に入れない。
+- `slender_legs` + `toned_thighs` → 細マッチョとして成立（自然な組み合わせ）。
+- `ripped_legs` + `slender_legs` → 筋肉が割れているのに細い脚は矛盾しやすい。
+
+**Step 3 — ふくらはぎ（0〜1つ、任意）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `muscular_calves` | 筋肉のあるふくらはぎ | 運動系・ガチムチ系 |
+| `well_defined_calves` | くっきりしたふくらはぎ | `muscular_calves` より洗練された表現 |
+| `thick_calves` | 太いふくらはぎ | ボリューム感 |
+| `diamond_calves` | ダイヤモンド型のふくらはぎ | 高度に発達した形状 |
+| `slender_calves` | 細いふくらはぎ | スリム・細身系 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `bare_legs` | 衣装の丈による露出 → 000番台バリアント |
+| `detailed_legs`, `perfect_legs` | 品質補助 → `000_base` に入れない |
+| `shiny_legs`, `veiny_legs`（状況として） | 汗・力み → コマ `prompt_tags`（固定特徴なら例外） |
+| `thighs_together` | ポーズ → コマ `prompt_tags` |
+| `muscular_thighs`, `thick_thighs` | §23（男性のヒップ）Step 3 で管理 |
+| `masculine_legs`, `strong_legs` | 印象系・汎用 → `muscular_legs` / `toned_legs` で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細い脚は **`slender_legs` または `slim_legs`** のどちらか1つ |
+| **統一** | 引き締まりは **`toned_legs` または `athletic_legs`** のどちらか1つ |
+| **統一** | 筋肉割れは **`ripped_legs` または `sculpted_legs`** のどちらか1つ |
+
+### よく使う組み合わせ
+
+- 細マッチョ: `long_legs`, `toned_legs`, `toned_thighs`, `well_defined_calves`
+- スポーツ系: `muscular_legs`, `athletic_legs`（どちらか）, `muscular_calves`
+- ガチムチ: `thick_legs`, `thick_calves`（§23 の `muscular_thighs` と合わせて）
+- 細身・スマート: `slender_legs`（または `slim_legs`）, `slender_calves`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 細マッチョ・スポーツ系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - long_legs          # Step 1: 長さ
+    - toned_legs         # Step 1: 筋肉量（0〜1つ）
+    - toned_thighs       # Step 2: 太もも（0〜1つ）
+    - well_defined_calves # Step 3: ふくらはぎ（任意）
+  manga_rules:
+    do_not_change:
+      - leg shape
+
+# 短パン・水着バリアントの例
+- variant_id: "004_swim"
+  danbooru_tags:
+    - bare_legs          # 衣装連動 → 000番台
+```
+
+- 太もも系の `muscular_thighs` / `thick_thighs` は **§23（男性のヒップ）Step 3** で管理し、本節と重複させない。
+- `bare_legs` は衣装デザインに依存するため `000_base` に入れない。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。
+
+---
+
+## 26. 女性の脚タグ（NovelAI向け）
+
+女性キャラクターの脚の長さ・体格・太ももの質感・ふくらはぎを `000_base` に固定するための辞書。
+**男性の脚** は §25（男性の脚タグ）を参照。
+
+太もものサイズ系（`thick_thighs` / `thicc_thighs` / `plump_thighs` / `wide_thighs`）は §24（女性のヒップ）Step 3 で管理する。本節では重複させない。
+**`long_legs`** は女性キャラクターのスタイルを大きく左右する最重要タグのひとつ。§22（女性のウェスト）の `hourglass_figure` / `slim_waist` と合わせると全身バランスが取れる。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・質感）** | 作品を通じて変わらない脚の長さ・体格・ふくらはぎ | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | ストッキング・素足・ガーターなど服・肌着の種類 | 000番台バリアント |
+| **状況・ポーズ** | 汗・油・ポーズ・脚を組む・閉じるなど | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 脚の決め方（3ステップ）
+
+**Step 1 — 脚の長さ・体格（0〜2つ）**
+
+長さと体格は別軸なので組み合わせ可。体格は1つに絞る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `long_legs` | 長い脚 | 女性スタイルで特に重要。体格タグと組み合わせ可 |
+| `short_legs` | 短い脚 | 小柄・ロリ系キャラに。`long_legs` と同時に入れない |
+| `slender_legs` | 細長い脚 | スリム・モデル系 |
+| `thick_legs` | 太い脚 | グラマー系。`slender_legs` と矛盾 |
+
+`long_slender_legs` は `long_legs` + `slender_legs` の組み合わせで代替できる（単独タグの重複を避ける）。
+
+**Step 2 — 太ももの質感・引き締まり（0〜1つ）**
+
+サイズ系（`thick_thighs` / `thicc_thighs` / `plump_thighs` / `wide_thighs`）は §24 Step 3 で管理。本節では質感・状態に絞る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `soft_thighs` | 柔らかい太もも | ふっくら・触感的な柔らかさ |
+| `toned_thighs` | 引き締まった太もも | スポーツ・アスリート系 |
+| `slender_thighs` | 細い太もも | スリム系 |
+
+矛盾チェック:
+
+- `slender_legs` + `thick_legs` → 同時に入れない。
+- `toned_thighs` + `soft_thighs` → 引き締まりと柔らかさは方向が逆。1つに絞る。
+- `long_legs` + `soft_thighs` → グラマー系として成立（`thick_thighs`（§24）と合わせると更に効果的）。
+
+**Step 3 — ふくらはぎ・脚ライン（0〜1つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `smooth_legs` | 滑らかな脚 | 肌質・ケアされた美脚感 |
+| `shapely_legs` | 形の良い脚 | 美脚全般の印象付け |
+| `well_rounded_calves` | ほどよく丸いふくらはぎ | 女性的なラインを強調 |
+| `defined_calves` | 引き締まったふくらはぎ | スポーツ系・引き締まり |
+| `thick_calves` | 太いふくらはぎ | グラマー系 |
+| `slender_calves` | 細いふくらはぎ | スリム系 |
+
+### 衣装連動タグ（000番台バリアントへ）
+
+脚の衣装（ストッキング・素足等）は服のデザインに依存するため `000_base` に入れない。
+
+| タグ (Danbooru) | 日本語 | 補足 |
+|:---|:---|:---|
+| `bare_legs` | 素足・脚出し | 短スカート・水着等で露出 |
+| `thighhighs` | ニーソックス・サイハイ | 衣装の一部 |
+| `stockings` | ストッキング | 衣装の一部 |
+| `garter_straps` | ガーターベルト | 衣装の一部 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `thick_thighs`, `thicc_thighs`, `plump_thighs`, `wide_thighs` | §24（女性のヒップ）Step 3 で管理 |
+| `detailed_legs`, `perfect_legs`, `perfect_body`, `realistic_legs` | 品質補助 → `000_base` に入れない |
+| `shiny_legs`, `oiled_legs` | 状況（汗・油）→ コマ `prompt_tags` |
+| `jiggly_thighs` | 動作 → コマ `prompt_tags` |
+| `thighs_together`, `crossed_legs`, `leg_focus` | ポーズ・構図 → コマ `prompt_tags` |
+| `hourglass_figure`, `wide_hips`, `curvy` | 体型全体 → §22・§24 で管理 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | `long_slender_legs` は **`long_legs` + `slender_legs`** の組み合わせで代替 |
+| **統一** | 細いふくらはぎは **`slender_calves`**、丸みは **`well_rounded_calves`** で使い分ける |
+
+### よく使う組み合わせ
+
+- 長身モデル: `long_legs`, `slender_legs`, `toned_thighs`, `shapely_legs`
+- グラマー: `long_legs`（+ §24 `thick_thighs`）, `soft_thighs`, `well_rounded_calves`
+- むちむち: §24 の `thick_thighs`, `plump_thighs` ＋ `soft_thighs`（本節）
+- 細身美脚: `long_legs`, `slender_legs`, `slender_thighs`, `slender_calves`
+- 可愛い・小柄: `short_legs`（+ §24 の `thick_thighs`）, `soft_thighs`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 長身グラマー系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - long_legs          # Step 1: 長さ（特に推奨）
+    - soft_thighs        # Step 2: 太もも質感（0〜1つ）
+    - well_rounded_calves # Step 3: ふくらはぎ（任意）
+  manga_rules:
+    do_not_change:
+      - leg shape
+
+# ストッキング衣装バリアントの例
+- variant_id: "001_normal"
+  danbooru_tags:
+    - thighhighs         # 衣装連動 → 000番台
+```
+
+- 太もものサイズは **§24（女性のヒップ）Step 3**（`thick_thighs` 等）で管理し、本節と重複させない。
+- `thighhighs` / `stockings` / `bare_legs` は衣装デザインに依存するため `000_base` に入れない。
+
+---
+
+## 27. 男性の腕・手タグ（NovelAI向け）
+
+男性キャラクターの腕の筋肉量・前腕・手の形状を `000_base` に固定するための辞書。
+**女性の腕・手** は §28（女性の腕・手タグ）を参照。
+
+上腕・肩の骨格は §18（肩タグ）、胸板・体型は §19（男性の胸タグ）との合わせで一貫性が出る。
+男性の逆三角形シルエット補強タグ（`broad_shoulders` + `v-shaped_torso`）との組み合わせが有効。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・筋肉）** | 作品を通じて変わらない腕の筋肉量・前腕・手の大きさ・指の形状 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | 半袖・タンクトップ・袖まくりなど服の丈による腕の露出状態 | 000番台バリアント |
+| **状況・ポーズ** | 腕を組む・握り拳・腰に当てるなどの動作・表情系タグ | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 腕・手の決め方（3ステップ）
+
+**Step 1 — 腕の筋肉量・太さ（0〜2つ）**
+
+筋肉量は1種類に絞り、長さと組み合わせ可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `muscular_arms` | 筋肉質の腕 | **最重要**。スポーツ系・屈強系の基本タグ |
+| `thick_arms` | 太い腕 | `muscular_arms` よりボリューム感が強い |
+| `toned_arms` | 引き締まった腕 | 細マッチョ系。`muscular_arms` より上品な印象 |
+| `defined_arms` | 筋肉のくっきりした腕 | `muscular_arms` + 輪郭強調。組み合わせ可 |
+| `strong_arms` | 力強い腕 | 印象系。単体より `muscular_arms` との組み合わせ推奨 |
+| `slender_arms` | 細い腕 | 細身・中性的な男性に。上記筋肉系との同時使用不可 |
+| `lean_arms` | 痩せ型の引き締まり | 細身だが筋張っている。`slender_arms` より健康的 |
+
+矛盾チェック:
+
+- `muscular_arms` / `thick_arms` ↔ `slender_arms` / `lean_arms` → 同時に入れない。
+- `toned_arms` + `muscular_arms` → 意味が近いため1つに絞る。
+
+**Step 2 — 前腕・血管（0〜2つ）**
+
+前腕の存在感・血管は屈強系・アスリート系キャラの固定特徴として有効。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `muscular_forearms` | 前腕の筋肉 | 腕まくりシーンや格闘系で特に映える |
+| `veiny_forearms` | 前腕の血管が浮いた状態 | 屈強系・肉体労働系。固定特徴として `000_base` 可 |
+| `veiny_arms` | 腕全体の血管 | `veiny_forearms` より広い範囲。どちらか1つに絞る |
+
+**Step 3 — 手の形状・指（0〜2つ）**
+
+手の大きさと指の太さは別軸なので組み合わせ可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `large_hands` | 大きい手 | 男性の大きな手として最定番 |
+| `thick_fingers` | 太い指 | ガチムチ系・労働者系 |
+| `long_fingers` | 長い指 | 知的・芸術家系の男性に |
+| `rough_hands` | 荒々しい手 | 屈強系・肉体労働系。`masculine_hands` より情報量多め |
+
+矛盾チェック:
+
+- `large_hands` ↔ `small_hands` → 同時に入れない。
+- `thick_fingers` ↔ `long_fingers` → 両立可（太くて長い指）だが、優先タグを明確にする。
+
+### 衣装連動タグ（000番台へ）
+
+| タグ | 状況 | 分類 |
+|:---|:---|:---|
+| `bare_arms` | 半袖・タンクトップ・ノースリーブ等で腕が露出 | 衣装連動 → 000番台 |
+| `rolled_up_sleeves` | 袖まくり | 衣装連動 → 000番台（職人系・カジュアル系） |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_hands`, `perfect_hands`, `realistic_hands` | 品質補助 → `000_base` に入れない |
+| `biceps` | Danbooru での使用が解剖学的・品質補助寄り → `muscular_arms` + `defined_arms` で代替 |
+| `crossed_arms`, `clenched_fist`, `hands_on_hips`, `arm_behind_back` | ポーズ → コマ `prompt_tags` |
+| `arm_focus`, `hand_focus` | 構図指示 → コマ `prompt_tags` |
+| `big_arms`, `strong_hands`, `masculine_hands` | 印象系・曖昧語 → より具体的なタグに置き換える |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 血管系は **`veiny_forearms` または `veiny_arms`** のどちらか1つ |
+| **統一** | 引き締まりは **`toned_arms` または `defined_arms`** のどちらか1つ（組み合わせ不可） |
+| **除外** | `strong_arms` は単体では印象系に留まる → `muscular_arms` を優先 |
+
+### よく使う組み合わせ
+
+- 屈強系: `muscular_arms`, `veiny_forearms`, `large_hands`
+- アスリート系: `muscular_arms`, `muscular_forearms`, `toned_arms`, `long_fingers`
+- 細マッチョ系: `toned_arms`, `defined_arms`, `lean_arms`
+- 細身・中性的: `slender_arms`, `long_fingers`
+- 職人・労働者系: `thick_arms`, `rough_hands`, `veiny_forearms`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 屈強系スポーツ男性の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - muscular_arms       # Step 1: 筋肉量（最重要）
+    - muscular_forearms   # Step 2: 前腕
+    - large_hands         # Step 3: 手の大きさ
+    - thick_fingers       # Step 3: 指の太さ（任意）
+  manga_rules:
+    do_not_change:
+      - arm musculature
+
+# 腕まくりバリアントの例
+- variant_id: "002_casual"
+  danbooru_tags:
+    - rolled_up_sleeves   # 衣装連動 → 000番台
+```
+
+- §19（男性の胸）の `athletic` / `broad_chest` と合わせると上半身全体に一貫性が出る。
+- `bare_arms` / `rolled_up_sleeves` は衣装に依存するため `000_base` に入れない。
+
+---
+
+## 28. 女性の腕・手タグ（NovelAI向け）
+
+女性キャラクターの腕の細さ・繊細さ・手の形状を `000_base` に固定するための辞書。
+**男性の腕・手** は §27（男性の腕・手タグ）を参照。
+
+上腕・肩のラインは §18（肩タグ）の `slender_shoulders` / `sloping_shoulders` と合わせると、上半身の繊細さが強調される。
+手袋・アームウォーマーなど衣装小物との相互作用は 000番台バリアントで管理する。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（体型・骨格）** | 作品を通じて変わらない腕の細さ・手の大きさ・指の形状 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **衣装連動** | ノースリーブ・半袖・手袋など服の丈・小物による変化 | 000番台バリアント |
+| **状況・ポーズ** | 腕を組む・頬に手を当てるなどの動作系タグ | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 腕・手の決め方（3ステップ）
+
+**Step 1 — 腕の細さ・印象（0〜2つ）**
+
+細さと引き締まり具合は別軸として組み合わせ可。ただし筋肉系と細さ系は混在させない。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `slender_arms` | 細い腕 | **最重要**。女性キャラの基本タグ |
+| `thin_arms` | 華奢な腕 | `slender_arms` より骨ばった印象。小柄・儚い系 |
+| `delicate_arms` | 繊細な腕 | `slender_arms` との組み合わせで印象強化 |
+| `soft_arms` | 柔らかい腕 | グラマー系・ふわっとした印象に |
+| `toned_arms` | 引き締まった腕 | スポーティ・健康的な女性に。細さ系と組み合わせ可 |
+| `plump_arms` | ふっくらした腕 | 丸みのある体型に。`slender_arms` と同時使用不可 |
+
+矛盾チェック:
+
+- `slender_arms` / `thin_arms` / `delicate_arms` ↔ `plump_arms` → 同時に入れない。
+- `slender_arms` + `toned_arms` → 細くて引き締まった腕として成立（推奨）。
+- `slender_arms` + `soft_arms` → 細いが柔らかい印象として成立。
+
+**Step 2 — 手の形状・印象（0〜2つ）**
+
+手の大きさと印象は別軸で組み合わせ可。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `small_hands` | 小さい手 | 女性の小さな手として定番 |
+| `delicate_hands` | 繊細な手 | `small_hands` より質感・印象を強調 |
+| `slender_hands` | 細長い手 | 指先まで細い、モデル系の手 |
+| `elegant_hands` | 優雅な手 | 貴族系・芸術系キャラに |
+
+**Step 3 — 指・質感（0〜2つ）**
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `long_fingers` | 長い指 | ピアニスト系・モデル系。定番 |
+| `thin_fingers` | 細い指 | `long_fingers` との組み合わせで細長い指を表現 |
+| `slender_fingers` | 細くしなやかな指 | `thin_fingers` と近似。1つに絞る |
+
+矛盾チェック:
+
+- `long_fingers` ↔ `short_fingers` → 同時に入れない。
+- `thin_fingers` と `slender_fingers` → 意味が近いため1つに絞る。
+
+### 衣装連動タグ（000番台へ）
+
+| タグ | 状況 | 分類 |
+|:---|:---|:---|
+| `bare_arms` | ノースリーブ・半袖・タンクトップ等で腕が露出 | 衣装連動 → 000番台 |
+| `gloves` | 手袋着用 | 衣装連動 → 000番台（衣装デザインの一部） |
+| `elbow_gloves` | 長手袋着用 | 衣装連動 → 000番台（ドレス・フォーマル系） |
+| `arm_warmers` | アームウォーマー | 衣装連動 → 000番台 |
+
+### 本節に載せないもの（状況・品質）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_hands`, `beautiful_hands`, `perfect_hands`, `realistic_hands` | 品質補助 → `000_base` に入れない |
+| `crossed_arms`, `hands_on_hips`, `hand_on_chest`, `hand_on_own_face` | ポーズ → コマ `prompt_tags` |
+| `arm_focus`, `hand_focus`, `finger_focus` | 構図指示 → コマ `prompt_tags` |
+| `graceful_arms`, `elegant_arms` | 印象系 → `elegant_hands` + 体型タグで代替 |
+| `fingers_together`, `spread_fingers` | 指の状態 → ポーズ寄り。コマ `prompt_tags` |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 繊細な腕は **`delicate_arms`**（`graceful_arms` は除外） |
+| **統一** | 細い指は **`thin_fingers` または `slender_fingers`** のどちらか1つ |
+| **除外** | `beautiful_hands` は品質補助方向 → `delicate_hands` / `elegant_hands` を使う |
+
+### よく使う組み合わせ
+
+- 儚い系・可憐系: `slender_arms`, `thin_arms`, `delicate_hands`, `long_fingers`
+- モデル系・高身長: `slender_arms`, `toned_arms`, `slender_hands`, `long_fingers`
+- グラマー系: `soft_arms`, `small_hands`（太ももは §24 で管理）
+- お嬢様・貴族系: `slender_arms`, `delicate_arms`, `elegant_hands`, `long_fingers`
+- スポーティ系: `toned_arms`, `small_hands`（肩は §18 と合わせる）
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 細身・可憐系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - slender_arms        # Step 1: 腕の細さ（最重要）
+    - delicate_arms       # Step 1: 繊細さ強調（0〜1つ）
+    - small_hands         # Step 2: 手の大きさ
+    - long_fingers        # Step 3: 指の長さ（任意）
+  manga_rules:
+    do_not_change:
+      - arm slenderness
+
+# 手袋着用バリアントの例（ドレス衣装）
+- variant_id: "003_dress"
+  danbooru_tags:
+    - elbow_gloves        # 衣装連動 → 000番台
+```
+
+- §18（肩タグ）の `slender_shoulders` と組み合わせると上半身の細さが一貫して表現される。
+- `gloves` / `bare_arms` は衣装に依存するため `000_base` に入れない。
+
+---
+
+## 29. 男性の肌質タグ（NovelAI向け）
+
+男性キャラクターの肌の色・質感・固定特徴を `000_base` に設定するための辞書。
+**女性の肌質** は §30（女性の肌質タグ）を参照。
+
+肌色タグは他の部位と異なり「**省略不可・1つ必須**」として扱うことを推奨する。
+モデルが肌色を無指定のまま生成すると、作品ごとにトーンが揺れやすく一貫性が保ちにくい。
+`sweaty_skin` / `wet_skin` 等の状況系は状態変化であるため、コマ `prompt_tags` で管理する。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（肌色・質感）** | 作品を通じて変わらないキャラクターの肌のトーン・質感 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **固定（特徴）** | そばかす・傷跡・体毛など常時存在するキャラクター特有の外見 | `000_base` の `danbooru_tags` |
+| **衣装連動** | 衣装によって見える範囲が変わる肌の露出（他節で管理） | 000番台バリアント（§19・§27等に委譲） |
+| **状況・ポーズ** | 汗・濡れ・油光り・紅潮など場面に応じた肌の変化 | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 肌の決め方（3ステップ）
+
+**Step 1 — 肌の色・トーン（1つ必須）**
+
+肌色は他の部位と異なり **1つは必ず選ぶ**。省略すると生成のたびにトーンが変わる。
+同義語系（`tan_skin` / `tanned_skin` など）は1つに絞る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `pale_skin` | 色白・透き通るような肌 | 病弱系・クール系・室内型。最も淡いトーン |
+| `fair_skin` | 明るめの色白 | 健康的な白肌。`pale_skin` より温かみがある |
+| `light_skin` | 明るい肌色 | `fair_skin` と近似 → どちらか1つに絞る |
+| `medium_skin` | 標準的な肌色 | 特定トーンを目立たせたくないときに |
+| `tan_skin` | 日焼けした肌 | 屋外系・スポーツ系の定番 |
+| `tanned_skin` | 健康的な小麦色 | `tan_skin` と近似 → どちらか1つに絞る |
+| `olive_skin` | オリーブ色の肌 | 地中海系・アラブ系・日本人の自然な色にも |
+| `dark_skin` | 濃い肌色 | 褐色・黒人系・特殊種族など |
+
+矛盾チェック:
+
+- `pale_skin` ↔ `tan_skin` / `dark_skin` → 同時に入れない。
+- `tan_skin` と `tanned_skin` → 意味が近いため1つに絞る。
+- `fair_skin` と `light_skin` → 意味が近いため1つに絞る。
+
+**Step 2 — 肌の質感・ツヤ（0〜1つ）**
+
+質感は省略してもよいが、1つ選ぶとキャラクターのリアリティが増す。
+「光沢が強い」「マット」「粗い」など印象が対称のものは同時に入れない。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `smooth_skin` | 滑らかな肌 | クリーンな印象。クール系・貴公子系に |
+| `matte_skin` | マットな肌 | ツヤ控えめ・自然な肌。`smooth_skin` との組み合わせ可 |
+| `toned_skin` | 引き締まった肌 | 筋肉の陰影が肌に反映。アスリート系・屈強系 |
+| `rough_skin` | 粗い肌 | ワイルド系・労働者系・歴戦系 |
+
+矛盾チェック:
+
+- `smooth_skin` ↔ `rough_skin` → 同時に入れない。
+- `toned_skin` + `smooth_skin` → 両立可（引き締まっているが肌は滑らか）。
+
+**Step 3 — 固定特徴（体毛・血管・傷跡・そばかす）（0〜2つ、任意）**
+
+キャラクターに固有の体の特徴があれば `000_base` に入れる。
+`veiny_skin` は §27（男性の腕・手）の `veiny_forearms` と重複しないよう使い分ける。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `body_hair` | 体毛あり | 成人男性のリアリティ向上。軽い場合は `light_body_hair` |
+| `chest_hair` | 胸毛 | `body_hair` より局所的な指定 |
+| `light_body_hair` | 薄い体毛 | `body_hair` より清潔感を保ちたい場合 |
+| `veiny_skin` | 全身の血管が浮いた肌 | 屈強系。§27の `veiny_forearms` は部位限定なので区別する |
+| `freckles` | そばかす | 子供っぽい・無邪気な印象。キャラ特有の場合に固定 |
+| `scars` | 傷跡 | バトル系・歴戦系。場所が重要なら `scar_on_*` で限定 |
+| `tan_lines` | 日焼け跡（境界線） | 水着跡・部活の日焼け境界を表現したい場合 |
+| `stubble` | 無精ひげ | 青髭系。 大人の男性キャラに。恒常的なら `000_base` |
+
+矛盾チェック:
+
+- `body_hair` と `light_body_hair` → 両立させず1つに絞る。
+- `veiny_skin` + `veiny_forearms`（§27）→ 両方使うと前腕の描写が過剰になりやすい。いずれか1つを選ぶ。
+
+### 状況・品質タグ（コマ除外 / 品質補助除外）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `sweaty_skin` | 発汗は状況変化 → コマ `prompt_tags` |
+| `wet_skin` | 濡れた状態 → コマ `prompt_tags`（入浴・雨シーン等） |
+| `oily_skin` | 油光り → コマ `prompt_tags`（格闘後・夏のシーン等） |
+| `glossy_skin`, `shiny_skin` | 光沢強調 → コマ `prompt_tags`（固定特徴でなければ） |
+| `sun_tanned`, `sun_kissed_skin` | 「日焼けした結果」の状態語 → `tan_skin` / `tanned_skin` で代替 |
+| `detailed_skin`, `realistic_skin`, `perfect_skin`, `porcelain_skin` | 品質補助 → `000_base` に入れない |
+| `muscular_skin`, `defined_muscles` | 筋肉表現は §19・§21・§27 の体型タグで管理 |
+| `flawless_skin`, `clear_skin` | 品質補助 → `smooth_skin` + `matte_skin` で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 日焼け系は **`tan_skin` または `tanned_skin`** のどちらか1つ |
+| **統一** | 色白系は **`pale_skin` または `fair_skin`** のどちらか1つ |
+| **統一** | 体毛は **`body_hair` または `light_body_hair`** のどちらか1つ |
+| **除外** | `sun_kissed_skin` / `sun_tanned` → **`tan_skin`** / **`tanned_skin`** で代替 |
+| **除外** | `detailed_skin` 等の品質タグはコマに入れる（`000_base` から除外） |
+
+### よく使う組み合わせ
+
+- 健康的なアスリート: `tan_skin`, `toned_skin`, `body_hair`（+ §27: `veiny_forearms`）
+- クール系イケメン: `pale_skin`, `smooth_skin`（体毛なし）
+- ガチムチ系: `tan_skin`, `rough_skin`, `body_hair`, `chest_hair`
+- 歴戦の戦士: `tan_skin`, `rough_skin`, `scars`, `stubble`
+- 知的・都市型: `fair_skin`, `smooth_skin`, `matte_skin`
+- 中性的・細身: `pale_skin`, `smooth_skin`（筋肉系除外。§27: `slender_arms` と連携）
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 屈強アスリート系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - tan_skin            # Step 1: 肌色（必須・1つ）
+    - toned_skin          # Step 2: 質感
+    - body_hair           # Step 3: 固定特徴（任意）
+    - veiny_forearms      # §27 腕タグと合わせる場合（veiny_skinと重複に注意）
+  manga_rules:
+    do_not_change:
+      - skin tone
+      - body hair presence
+
+# 汗・光沢はコマ側で管理
+# panels[].prompt_tags に sweaty_skin / glossy_skin を追加する
+```
+
+- **肌色は1つ必須**。省略すると生成ごとにトーンが揺れるため、必ず選ぶ。
+- `sweaty_skin` / `wet_skin` など状況変化タグは `000_base` に入れず、コマ `prompt_tags` で管理する。
+- `body_hair` は成人男性の自然なリアリティ向上に有効だが、年齢・種族によって省略してよい。
+
+---
+
+## 30. 女性の肌質タグ（NovelAI向け）
+
+女性キャラクターの肌の色・質感・固定特徴を `000_base` に設定するための辞書。
+**男性の肌質** は §29（男性の肌質タグ）を参照。
+
+§29（男性）と同様に肌色タグは「**省略不可・1つ必須**」として扱うことを推奨する。
+女性では透明感・みずみずしさ・柔らかさを表すタグが豊富だが、
+「光沢」「汗」「潤い」の演出は場面で変わるため、コマ `prompt_tags` と `000_base` を明確に分ける。
+`blush`（頬の赤み）は表情・感情変化であるため、コマ `prompt_tags` で管理する。
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（肌色・質感）** | 作品を通じて変わらないキャラクターの肌トーン・基本質感 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **固定（特徴）** | そばかす・ほくろ・美人ぼくろなど常時存在するキャラクター特有の外見 | `000_base` の `danbooru_tags` |
+| **衣装連動** | 衣装によって見える範囲が変わる肌の露出（他節で管理） | 000番台バリアント（§20・§28等に委譲） |
+| **状況・ポーズ** | 汗・油光り・頬の赤み・濡れ・場面ごとの艶感 | コマ `prompt_tags` |
+| **品質補助** | 描画クオリティ向上用 | 原則 `000_base` に入れない |
+
+### 肌の決め方（3ステップ）
+
+**Step 1 — 肌の色・トーン（1つ必須）**
+
+肌色は **1つは必ず選ぶ**。同義語系（`tan_skin` / `tanned_skin` など）は1つに絞る。
+女性では `porcelain_skin` が「陶器のように白い肌色」として有効な色トーン指定になる（§29 男性では品質補助扱い）。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `pale_skin` | 色白・透き通るような肌 | 病弱系・ミステリアス系・室内型。最も淡いトーン |
+| `fair_skin` | 明るめの色白 | 健康的な白肌。`pale_skin` より温かみがある |
+| `porcelain_skin` | 陶器のような白い肌 | `pale_skin` より「完璧な白さ」の印象。お嬢様・貴族系に |
+| `light_skin` | 明るい肌色 | `fair_skin` と近似 → どちらか1つに絞る |
+| `medium_skin` | 標準的な肌色 | 特定トーンを目立たせたくないときに |
+| `tan_skin` | 日焼けした肌 | 屋外系・スポーツ系・元気系の定番 |
+| `tanned_skin` | 健康的な小麦色 | `tan_skin` と近似 → どちらか1つに絞る |
+| `olive_skin` | オリーブ色の肌 | 地中海系・エキゾチック系 |
+| `dark_skin` | 濃い肌色 | 褐色・特殊種族など |
+
+矛盾チェック:
+
+- `pale_skin` / `fair_skin` / `porcelain_skin` ↔ `tan_skin` / `dark_skin` → 同時に入れない。
+- `tan_skin` と `tanned_skin` → 意味が近いため1つに絞る。
+- `fair_skin` と `light_skin` → 意味が近いため1つに絞る。
+- `porcelain_skin` + `pale_skin` → 近似。`porcelain_skin` を選んだ場合は `pale_skin` を省く。
+
+**Step 2 — 肌の質感・ツヤ（0〜1つ）**
+
+女性では「みずみずしさ（`dewy_skin`）」と「柔らかさ（`soft_skin`）」が特徴的な固定質感となる。
+`dewy_skin` は汗でなく「自然な肌の潤い・みずみずしさ」であり、固定質感として `000_base` に入れてよい。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `smooth_skin` | 滑らかな肌 | 清潔感・知的系・端正な印象 |
+| `soft_skin` | 柔らかい肌 | グラマー系・癒し系に。触感の柔らかさを強調 |
+| `dewy_skin` | みずみずしい肌（自然な潤い） | 日常の素肌感として固定可。汗と区別する |
+| `silky_skin` | 絹のような肌 | 滑らかさ + ツヤの両方を含む上品な質感 |
+| `velvety_skin` | ビロードのような肌 | `silky_skin` より温かみのある質感 |
+| `matte_skin` | マットな肌 | ツヤ控えめ・自然体・さっぱり系 |
+| `supple_skin` | しなやかな肌 | `soft_skin` より弾力感を強調。成熟した女性に |
+| `delicate_skin` | 繊細な肌 | 薄く繊細な印象。病弱系・幼い系に |
+
+矛盾チェック:
+
+- `smooth_skin` ↔ `rough_skin` → 同時に入れない（女性では `rough_skin` の使用自体が稀）。
+- `dewy_skin` + `matte_skin` → 「みずみずしい」と「マット」は対義。同時に入れない。
+- `silky_skin` / `velvety_skin` → 近似。どちらか1つに絞る。
+- `soft_skin` + `dewy_skin` → 両立可（柔らかくみずみずしい肌）。
+
+**Step 3 — 固定特徴（ほくろ・そばかす・傷跡）（0〜2つ、任意）**
+
+キャラクターに固有の外見的特徴は `000_base` に入れる。
+傷跡は女性キャラでも設定による（バトル系・過去に負傷した経緯がある場合など）。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `mole` | ほくろ | キャラクター特有のほくろ（位置は `mole_on_*` で指定可） |
+| `beauty_mark` | 美人ぼくろ | `mole` より魅力的な印象を持たせた表記 |
+| `freckles` | そばかす | 明るい・天真爛漫系。年少キャラや陽気な性格に |
+| `light_freckles` | 薄いそばかす | `freckles` より控えめ。清楚系にも馴染む |
+| `scars` | 傷跡 | バトル系・過去に傷を負った設定のあるキャラに |
+| `tan_lines` | 日焼け跡（境界線） | 水着跡・アウトドア系キャラに |
+
+矛盾チェック:
+
+- `freckles` と `light_freckles` → どちらか1つに絞る。
+- `mole` と `beauty_mark` → 同じ特徴を異なる語で指定することになるため1つに絞る。
+
+### 状況・品質タグ（コマ除外 / 品質補助除外）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `sweaty_skin` | 発汗は状況変化 → コマ `prompt_tags` |
+| `wet_skin` | 濡れた状態 → コマ `prompt_tags`（入浴・雨シーン等） |
+| `oily_skin` | 油光り → コマ `prompt_tags` |
+| `glossy_skin`, `shiny_skin` | 強い光沢は状況・演出寄り → コマ `prompt_tags` |
+| `luminous_skin`, `glowing_skin` | 発光系 → 品質補助・演出。コマ `prompt_tags` |
+| `blush`, `subtle_blush` | 頬の赤みは表情・感情 → コマ `prompt_tags` |
+| `moist_skin` | 「潤いがある状態」は `dewy_skin` で代替。単独では状況系に近い |
+| `sun_kissed_skin`, `sun_tanned` | 状態語 → `tan_skin` / `tanned_skin` で代替 |
+| `detailed_skin`, `realistic_skin`, `perfect_skin`, `flawless_skin` | 品質補助 → `000_base` に入れない |
+| `clear_skin`, `porcelain_skin`（質感として） | 品質補助方向で使う場合は除外。肌色として使う場合のみ Step 1 |
+| `smooth_body` | 全身の滑らかさを指す広すぎる語 → `smooth_skin` で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 日焼け系は **`tan_skin` または `tanned_skin`** のどちらか1つ |
+| **統一** | 色白系は **`pale_skin`・`fair_skin`・`porcelain_skin`** のうちどれか1つ |
+| **統一** | そばかすは **`freckles` または `light_freckles`** のどちらか1つ |
+| **統一** | 絹・ビロード系は **`silky_skin` または `velvety_skin`** のどちらか1つ |
+| **除外** | `flawless_skin` / `perfect_skin` は品質補助 → `smooth_skin` + `dewy_skin` で代替 |
+| **除外** | `moist_skin` は `dewy_skin` と意味が重なる → `dewy_skin` を優先 |
+
+### よく使う組み合わせ
+
+- 清楚・可憐系: `fair_skin`, `smooth_skin`（特徴なし）
+- 儚い・病弱系: `pale_skin`, `delicate_skin`
+- お嬢様・高貴系: `porcelain_skin`, `silky_skin`
+- 明るい・活発系: `tan_skin`, `soft_skin`, `freckles`
+- 大人っぽい・色気系: `fair_skin`, `supple_skin`, `mole`
+- みずみずしい素肌系: `fair_skin`, `dewy_skin`, `soft_skin`
+- エキゾチック系: `olive_skin`, `smooth_skin`
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 清楚・可憐系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - fair_skin           # Step 1: 肌色（必須・1つ）
+    - smooth_skin         # Step 2: 質感（0〜1つ）
+    # 特徴なし（省略）
+  manga_rules:
+    do_not_change:
+      - skin tone
+
+# みずみずしい系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - pale_skin           # Step 1: 肌色
+    - dewy_skin           # Step 2: みずみずしい質感（固定）
+    - light_freckles      # Step 3: そばかす（キャラ特有）
+  manga_rules:
+    do_not_change:
+      - skin tone
+      - freckles
+
+# 汗・光沢・頬の赤みはコマ側で管理
+# panels[].prompt_tags に sweaty_skin / glossy_skin / blush を追加する
+```
+
+- **肌色は1つ必須**。§29（男性）と同じく省略すると生成ごとにトーンが揺れる。
+- `dewy_skin` は自然な潤い感として `000_base` に入れてよい。`sweaty_skin` や `oily_skin` とは区別する。
+- `blush`（頬の赤み）は表情変化であるためコマ `prompt_tags` で管理し、`000_base` に入れない。
+- `porcelain_skin` は色白の肌色として Step 1 で使い、品質補助タグとして混同しない。
+
+---
+
+## 31. 男性の全体体型バランスタグ（NovelAI向け）
+
+男性キャラクターの身長感と体型の大分類を `000_base` に設定するための辞書。
+**女性の全体体型** は §32（女性の全体体型バランスタグ）を参照。
+
+本節は「全身を俯瞰した体型ラベル」を扱い、各部位の詳細タグは以下の各節に委譲する。
+本節のタグと各部位タグを組み合わせることで、一貫した男性シルエットが完成する。
+
+| 部位 | 参照節 |
+|------|--------|
+| 肩の骨格・形 | §18 肩タグ |
+| 胸板・筋肉 | §19 男性の胸タグ |
+| ウェスト・V字シルエット | §21 男性のウェストタグ |
+| ヒップ幅・太もも | §23 男性のヒップタグ |
+| 脚の長さ・筋肉 | §25 男性の脚タグ |
+| 腕の筋肉 | §27 男性の腕・手タグ |
+| 肌色・質感 | §29 男性の肌質タグ |
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（身長）** | 作品を通じて変わらないキャラクターの身長感 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **固定（体型ラベル）** | 全身の筋肉量・体格を表す大分類タグ | `000_base` の `danbooru_tags` |
+| **品質補助** | 描画クオリティ向上用・印象系の曖昧語 | 原則 `000_base` に入れない |
+
+### 体型の決め方（3ステップ）
+
+**Step 1 — 身長感（0〜1つ）**
+
+省略した場合、モデルは「平均的な身長」として処理することが多い。
+特徴的な身長差を演出したいとき（長身男性・小柄男性など）に明示する。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `tall` | 背が高い | 標準的な長身表現。最も汎用 |
+| `very_tall` | 非常に背が高い | 際立って長身なキャラ |
+| `towering` | 圧倒的な長身・威圧感 | `very_tall` より重圧感・迫力が強い |
+| `short` | 背が低い | 小柄な男性 |
+| `short_male` | 小柄な男性（明示） | `short` より性別限定が明確 |
+| `average_height` | 平均的な身長 | 特に強調なし |
+
+矛盾チェック:
+
+- `tall` / `very_tall` / `towering` ↔ `short` / `short_male` → 同時に入れない。
+- `very_tall` と `towering` → 近似。どちらか1つに絞る。
+
+**Step 2 — 体型の大分類（0〜1つ）**
+
+全身の体格を表すラベル。1つに絞ることで各部位タグとの矛盾を防ぐ。
+選んだ大分類ラベルに合わせて、§18〜§27 の部位タグを揃えると一貫性が出る。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 推奨する部位タグとの組み合わせ |
+|:---|:---|:---|
+| `athletic` | アスレチック体型 | **最重要**。筋肉+スタミナのバランス型。汎用性が最も高い |
+| `muscular` | 筋肉質の体 | §19: `broad_chest` / §21: `v-shaped_torso` / §27: `muscular_arms` |
+| `slim` | 細身 | §18: `slender_shoulders` / §27: `slender_arms` / §25: `slender_legs` |
+| `lean` | 引き締まって細い体 | `slim` より筋張った印象。細マッチョの下地に |
+| `lean_muscular` | 細マッチョ | `lean` + `muscular` の中間。§21: `toned_waist` / §25: `toned_legs` |
+| `burly` | がっしりした大きな体格 | §18: `broad_shoulders` / §19: `broad_chest` / §23: `thick_thighs` |
+| `stocky` | ずんぐりした体型 | 短足・横幅のある体格。`short` と相性がよい |
+| `ripped` | 筋肉が鋭く割れた体 | `muscular` の発展形。§19: `defined_pectorals` / §21: `muscular_abs` |
+| `bodybuilder` | ボディビルダー体型 | 極端な筋肉量。§19/§21/§23 の筋肉タグと合わせる |
+
+矛盾チェック:
+
+- `slim` / `lean` ↔ `muscular` / `burly` / `bodybuilder` / `ripped` → 同時に入れない。
+- `stocky` ↔ `tall` / `lean` / `slim` → 同時に入れない（ずんぐり体型と長身・細身は矛盾）。
+- `athletic` + `muscular` → 近似。どちらか1つに絞る。
+
+**Step 3 — 全体プロポーションの強調（0〜1つ、任意）**
+
+Step 2 の体型ラベルでは表現しきれない全身の均整・比率の印象を補足する。
+具体的な部位タグ（§18〜§27）で補えている場合は省略してよい。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `well_built` | しっかりした体格 | `athletic` より骨格の大きさを強調 |
+| `lanky` | 手足が長く細い体型 | 長身で細身の「もやしっ子」系。`tall` + `slim` との相性がよい |
+| `big` | 大柄な体型 | `burly` / `bodybuilder` より包括的な大きさの表現 |
+
+### 本節に載せないもの（品質補助・重複）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_body`, `realistic_body` | 品質補助 → `000_base` に入れない |
+| `perfect_proportions`, `ideal_male_body`, `well_proportioned` | 品質補助・印象系曖昧語 → 具体タグに置き換える |
+| `masculine_body`, `sculpted_body`, `powerful_build` | 印象系 → `muscular` / `athletic` / `ripped` で代替 |
+| `v-shaped_torso`, `narrow_waist`, `narrow_hips` | §21・§23 で管理 → 本節と重複させない |
+| `broad_shoulders` | §18 で管理 → 本節と重複させない |
+| `long_legs`, `muscular_legs` | §25 で管理 → 本節と重複させない |
+| `muscular_arms` | §27 で管理 → 本節と重複させない |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細身は **`slim`・`lean`・`lean_muscular`** のどれか1つ（目的別に使い分ける） |
+| **統一** | 極端な長身は **`very_tall` または `towering`** のどちらか1つ |
+| **除外** | `masculine_body` → `muscular` / `athletic` に置き換える |
+| **除外** | `proportional` / `well_proportioned` → 具体的な部位タグで代替 |
+
+### よく使う体型ラベルと対応する部位タグの組み合わせ
+
+| 体型 | 本節タグ | 対応する部位タグ（各節を参照） |
+|------|---------|-------------------------------|
+| 細マッチョ | `tall`, `lean_muscular` | §18: `broad_shoulders`, §21: `v-shaped_torso`+`toned_waist`, §25: `toned_legs` |
+| ガチムチ | `burly` | §18: `broad_shoulders`, §19: `broad_chest`, §23: `thick_thighs`, §27: `muscular_arms` |
+| 長身スマート | `tall`, `slim` | §18: `slender_shoulders`, §27: `slender_arms`, §25: `long_legs` |
+| スポーツ系 | `tall`, `athletic` | §19: `athletic`, §21: `v-shaped_torso`, §25: `muscular_legs` |
+| 小柄だが筋肉質 | `short_male`, `muscular` | §19: `broad_chest`, §27: `muscular_arms`, §23: `thick_thighs` |
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# スポーツ系長身男性の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - tall              # Step 1: 身長感
+    - athletic          # Step 2: 体型ラベル
+    # Step 3: 省略（部位タグで補完）
+    # §18〜§27 の部位タグと組み合わせて全身を構成する
+  manga_rules:
+    do_not_change:
+      - overall body type
+      - height
+
+# 細マッチョ系の例
+- variant_id: "000_base"
+  danbooru_tags:
+    - tall
+    - lean_muscular
+  manga_rules:
+    do_not_change:
+      - body build
+```
+
+- **本節は部位タグ（§18〜§30）の土台となる「体型ラベル」と「身長」を担う。**
+  部位タグだけ揃えて体型ラベルを省いても動くが、大分類タグがあることで全身の一貫性がモデルに伝わりやすい。
+- `v-shaped_torso` / `broad_shoulders` など各部位の具体タグは、対応する節で管理する（本節では重複させない）。
+
+---
+
+## 32. 女性の全体体型バランスタグ（NovelAI向け）
+
+女性キャラクターの身長感と体型の大分類を `000_base` に設定するための辞書。
+**男性の全体体型** は §31（男性の全体体型バランスタグ）を参照。
+
+本節は「全身を俯瞰した体型ラベル」を扱い、各部位の詳細タグは以下の各節に委譲する。
+**`hourglass_figure`（§22）は女性シルエット最重要タグ**だが、本節の Step 2 ではなく §22（女性のウェストタグ）で管理する。
+本節では `hourglass_figure` を体型ラベルとして参照するにとどめ、重複して `000_base` に入れない。
+
+| 部位 | 参照節 |
+|------|--------|
+| 胸の大きさ | §20 女性の胸タグ |
+| ウェスト・`hourglass_figure` | §22 女性のウェストタグ |
+| ヒップ幅・太もも | §24 女性のヒップタグ |
+| 脚の長さ | §26 女性の脚タグ |
+| 腕の細さ | §28 女性の腕・手タグ |
+| 肌色・質感 | §30 女性の肌質タグ |
+
+### 固定 / 状況の判断
+
+| 分類 | 判断基準 | YAML IR の置き場所 |
+|------|---------|------------------|
+| **固定（身長）** | 作品を通じて変わらないキャラクターの身長感 | `000_base` の `danbooru_tags` / `consistency_tags` |
+| **固定（体型ラベル）** | 全身のシルエット・体格を表す大分類タグ | `000_base` の `danbooru_tags` |
+| **品質補助** | 描画クオリティ向上用・印象系の曖昧語 | 原則 `000_base` に入れない |
+
+### 体型の決め方（3ステップ）
+
+**Step 1 — 身長感（0〜1つ）**
+
+省略した場合、モデルは「平均的な身長」として処理することが多い。
+女性では `petite`（小柄・可愛らしい）が身長と体型を同時に表す便利なタグとして機能する。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `tall` | 背が高い | 長身女性の標準表現 |
+| `very_tall` | 非常に背が高い | 際立って長身なキャラ |
+| `petite` | 小柄・愛らしいサイズ感 | **女性特有**。身長が低く全体に小さくまとまった印象 |
+| `short` | 背が低い | `petite` より背丈だけを指す |
+| `short_stack` | 小柄だがグラマーな体型 | `petite` + `curvy` の合わせ表現 |
+| `average_height` | 平均的な身長 | 特に強調なし |
+
+矛盾チェック:
+
+- `tall` / `very_tall` ↔ `petite` / `short` / `short_stack` → 同時に入れない。
+- `petite` と `short` → 近似だが `petite` の方が可愛らしい印象が強い。どちらか1つに絞る。
+- `short_stack` は `petite` + `curvy` の意味を内包するため、単独で使える。
+
+**Step 2 — 体型の大分類（0〜1つ）**
+
+全身のシルエットを表すラベル。1つに絞ることで各部位タグとの矛盾を防ぐ。
+「グラマー体型（`curvy` / `voluptuous`）」か「スレンダー体型（`slim` / `slender`）」かが最初の分岐点になる。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 推奨する部位タグとの組み合わせ |
+|:---|:---|:---|
+| `slender` | すらっとした体型 | **細身長身系の最重要**。§26: `long_legs` / §28: `slender_arms` との相性がよい |
+| `slim` | 細身 | `slender` より骨格の細さを強調。`petite` との相性もよい |
+| `athletic` | アスレチック体型 | 筋肉+スタミナのバランス型。§20: 中小の胸 / §26: `toned_legs` と合わせる |
+| `curvy` | カーブしたグラマーな体型 | §20: 大きめの胸 / §22: `hourglass_figure` / §24: `wide_hips`+`thick_thighs` |
+| `voluptuous` | 豊満・官能的な体型 | `curvy` より成熟した印象。§20: 大きい胸 / §24: `wide_hips` |
+| `plump` | ぽっちゃりした体型 | 丸みがあり柔らかな体格。`slim` / `slender` と同時使用不可 |
+| `skinny` | 痩せ型 | 細すぎる印象。病的・幼い系キャラに |
+| `toned` | 引き締まった体型 | 程よい筋肉感。`athletic` より穏やか。§26: `toned_legs` / §28: `toned_arms` と合わせる |
+
+矛盾チェック:
+
+- `slim` / `slender` / `skinny` / `athletic` ↔ `curvy` / `voluptuous` / `plump` → 同時に入れない。
+- `curvy` + `voluptuous` → 近似。どちらか1つに絞る。
+- `slim` + `toned` → 両立可（細くて引き締まった体）。
+- `slender` + `athletic` → 両立可（すらっとしてスポーティ）。
+
+**Step 3 — シルエット補強（0〜1つ、任意）**
+
+Step 2 の体型ラベルだけでは表現しきれない印象・体型の比率感を補足する。
+「`hourglass_figure` 系」が欲しい場合は §22（女性のウェストタグ）で管理し、本節では重複させない。
+
+| タグ (Danbooru) | 日本語・ニュアンス | 補足 |
+|:---|:---|:---|
+| `model_figure` | モデル体型 | 長身+細身+バランスのよさを一括表現 |
+| `lanky` | 手足が長く細い体型 | `tall` + `slender` と相性がよい。少し不格好な長身にも |
+| `big` | 大柄な体型 | `voluptuous` / `plump` より包括的な大きさ |
+
+### 本節に載せないもの（品質補助・重複）
+
+| 除外タグ（要約） | 理由 |
+|:---|:---|
+| `detailed_body`, `realistic_body`, `perfect_body` | 品質補助 → `000_base` に入れない |
+| `perfect_proportions`, `ideal_female_body`, `well_proportioned` | 品質補助・印象系曖昧語 → 具体タグに置き換える |
+| `feminine_body`, `elegant_body`, `graceful_figure`, `seductive_body` | 印象系 → `slender` / `curvy` / `voluptuous` で代替 |
+| `hourglass_figure`, `narrow_waist`, `slim_waist` | §22 で管理 → 本節と重複させない |
+| `wide_hips`, `thick_thighs` | §24 で管理 → 本節と重複させない |
+| `long_legs` | §26 で管理 → 本節と重複させない |
+| `large_breasts` / `small_breasts` 等 | §20 で管理 → 本節と重複させない |
+| `wide_hip_to_waist_ratio` | 比率語・品質補助方向 → `hourglass_figure`（§22）で代替 |
+
+### 重複・除外（表記統一）
+
+| 扱い | タグ |
+|:---|:---|
+| **統一** | 細身系は **`slim`・`slender`・`skinny`** のどれか1つ（印象の強さで使い分ける） |
+| **統一** | グラマー系は **`curvy` または `voluptuous`** のどちらか1つ |
+| **統一** | 小柄は **`petite`・`short`・`short_stack`** のどれか1つ |
+| **除外** | `feminine_body` / `ideal_female_body` → `slender` / `curvy` に置き換える |
+| **除外** | `well_proportioned` / `perfect_proportions` → 具体的な部位タグで代替 |
+
+### よく使う体型ラベルと対応する部位タグの組み合わせ
+
+| 体型 | 本節タグ | 対応する部位タグ（各節を参照） |
+|------|---------|-------------------------------|
+| 長身モデル系 | `tall`, `slender` | §26: `long_legs`, §28: `slender_arms`, §30: `fair_skin` |
+| グラマー系 | `curvy` | §20: 大きい胸, §22: `hourglass_figure`, §24: `wide_hips`+`thick_thighs` |
+| 小柄可愛い系 | `petite`, `slim` | §20: `small_breasts`か省略, §26: `short_legs`, §30: `soft_skin` |
+| 小柄グラマー | `short_stack` | §20: 大きい胸, §22: `hourglass_figure`, §24: `wide_hips` |
+| スポーティ系 | `athletic` or `toned` | §20: 中小の胸, §22: `slim_waist`, §26: `toned_legs` |
+| 細身儚い系 | `slim`, `skinny` | §28: `slender_arms`+`delicate_arms`, §26: `slender_legs` |
+
+### 使い方まとめ（000_base への入れ方）
+
+```yaml
+# 長身スレンダー系の 000_base 例
+- variant_id: "000_base"
+  danbooru_tags:
+    - tall              # Step 1: 身長感
+    - slender           # Step 2: 体型ラベル
+    # Step 3: 省略（部位タグで補完）
+    # §20〜§28 の部位タグと組み合わせて全身を構成する
+  manga_rules:
+    do_not_change:
+      - overall body type
+      - height
+
+# 小柄グラマー系の例
+- variant_id: "000_base"
+  danbooru_tags:
+    - short_stack       # Step 1+2 一括（小柄+グラマーを内包）
+    # §20: 大きい胸, §22: hourglass_figure, §24: wide_hips を別途 000_base に追加
+  manga_rules:
+    do_not_change:
+      - body type
+```
+
+- **本節は部位タグ（§20〜§30）の土台となる「体型ラベル」と「身長」を担う。**
+- `hourglass_figure`（砂時計型）はシルエットの最重要タグだが、**§22（女性のウェストタグ）で管理**する。本節では重複させない。
+- `petite` は身長と可愛らしいサイズ感を一括して伝えられる便利なタグ。`short` より印象が豊か。
+- タグ選定後は `tag/characters/*.yaml` を正本とし、`novel_prompt_ir_export_md.py --novelai-pipe-tags` で `tag/<romaji>.md` を出力する。

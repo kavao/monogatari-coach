@@ -1,0 +1,23 @@
+# -----------------------------------------------
+# 生成画像・アセット（大容量バイナリ、git 管理外）
+# -----------------------------------------------
+
+# 漫画コマ/ページ画像と画像生成メタ（PNG + 隣接 JSON）
+**/manga/_assets/
+**/_manga_temp/_assets/
+**/manga/**/*.zip
+
+# 挿絵・表紙画像と画像生成メタ（PNG + 隣接 JSON）
+**/illustrations/_assets/
+**/illustrations/**/*.zip
+
+# キャラクター生成画像（tag/<romaji>/ フォルダ内の画像ファイル）
+# tag/*.md・tag/characters/*.yaml は追跡するため拡張子指定で除外
+**/tag/**/*.png
+**/tag/**/*.jpg
+**/tag/**/*.jpeg
+**/tag/**/*.webp
+**/tag/**/*.zip
+
+# 書き出し・配布用アーカイブ（上記以外の zip も novels 配下では除外）
+**/*.zip

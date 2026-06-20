@@ -1,0 +1,14 @@
+{
+  "provider": "forge",
+  "prompt": "1girl, fantasy, detailed",
+  "negative_prompt": "lowres, blurry, bad hands",
+  "seed": 123456789,
+  "width": 1024,
+  "height": 1024,
+  "steps": 28,
+  "cfg_scale": 6.5,
+  "sampler_name": "Euler a",
+  "output_dir": "outputs/forge",
+  "file_prefix": "forge",
+  "count": 1
+}

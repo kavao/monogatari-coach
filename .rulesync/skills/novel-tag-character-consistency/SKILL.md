@@ -1,0 +1,108 @@
+---
+name: novel-tag-character-consistency
+description: >-
+  tag/<romaji>.md の Danbooru 行を、character.md の固定外見（目・髪・肌・種族など）と
+  照合し、状況ブロック間の抜け・ブレ・誤混入がないか確認する。Tag Mode 完了後または改稿時に使う。
+targets: ["*"]
+---
+
+## 目的
+
+画像タグは **状況ごとに服装やポーズが変わる**一方で、**同一人物の識別に必要な特徴**（目の色、髪の色・長さ、肌のトーン、種族・耳・固定小物など）は **すべてのブロックで一貫**していなければ、生成画像の「別人化」やブレの原因になる。
+
+本スキルは、その **固定特徴が各キャラのタグに漏れなく明記され、キャラ間で取り違えていないか** を確認する手順を固定する。
+
+## 正本・参照
+
+| 正本 | 用途 |
+|------|------|
+| `novels/<作品>/character.md` | 外見・ボディー・小物の**確定記述**。ここに無い特徴をタグだけで増やさない（要追加なら先に character を更新）。 |
+| `manga-prompt-ir` の `character.yaml` | YAML/JSON 化後のキャラクター定義正本。`character_id`・固定タグ・禁止変更項目を保持する。 |
+| `_how_to/world_wear.md` | **新規**に外見・服のトーンや舞台の配色感を決めるときの参考（雛形は `_how_to.example/world_wear.md`）。**必須手順の詳細はスキル manga-prompt-ir の節「キャラクターIR・外見初版を新規に起こすとき（world_wear.md）」**に従う。既存タグの照合だけのときは任意。 |
+| `_how_to/tag.md` | 「通常時で書いたタグのうち**顔に付ける飾りや、種族に属するもの**は、**他の状況にも引き継いで**ください。」に従う。 |
+| スキル **`novel-tag-md-format`** | `**Danbooru Tags:**` 行の置き方・一括抽出との整合。 |
+
+## 手順（推奨）
+
+### 1. 固定特徴リストの作成（キャラごと）
+
+**キャラのタグ正本を新規に起こす直前**（`character.md` の外見初稿・`tag/characters/*.yaml` の初版）は、スキル **`manga-prompt-ir`** の節 **「キャラクターIR・外見初版を新規に起こすとき（world_wear.md）」** に従い、**`_how_to/world_wear.md`** を参照して舞台トーン・配色・服の系統の目安を取り込んでから、以下のリストを作る（既存IRの照合・軽微修正のみのときは省略可）。
+
+`character.md` と、存在する場合は `character.yaml` 相当の構造化定義を読み、**タグに必ず残したい固定項目**を箇条書きにする（例）。
+
+- 髪：色、長さ、スタイル（例：`black_hair`, `long_hair`, `one_side_up`）
+- 目：色・形状のタグ（例：`purple_eyes`, `amethyst_eyes`）
+- 肌：`fair_skin` など
+- 種族・体型：若妖精なら `_how_to/tag.md` の若妖精ルールに沿ったタグ群
+- 顔周りの固定（メガネ、リボン、種族の耳など）
+  - 固定小物は**大まかなタグだけで終わらせない**。色・形状まで `000_base` に入れる（`world_wear.md` §11 参照）
+  - 例: `glasses` → `glasses`, `black-framed_eyewear`, `rectangular_eyewear`
+  - 例: `hair_ribbon` → `hair_ribbon`, `white_ribbon`, `large_bow`
+- 性別・年齢層を表すタグ方針（`tag.md` の成人・若妖精の扱いに合わせる）
+- `manga_rules.consistency_tags` と `manga_rules.do_not_change` に入っている項目
+
+**作品内で複数キャラがいる場合**は、髪色・目色が近いペアほど、**差別化タグ**（髪型・目の色の言い換えを統一）をリストに明示する。
+
+### 2. YAML IR を走査する（YAML 化済みの場合・優先）
+
+`tag/characters/<character_id>.yaml` が存在するキャラクターは、まずこちらを照合する。
+
+- `000_base.danbooru_tags`（および `manga_rules.consistency_tags`）に定義された固定特徴が、すべての状況バリアントの `prompt_tags` に反映されているか確認する。
+- `manga_rules.do_not_change` に列挙された外見タグが、いずれのバリアントでも上書き・削除されていないか確認する。
+- **服装・ポーズ・表情・背景**はバリアントごとに変わってよい。
+- **髪・目・肌・種族・顔の固定飾り**は、すべてのバリアントで欠落なく反映されているか確認する。
+
+YAML IR がまだ作成されていないキャラクターは下記の互換手順 **2b** を使う。
+
+### 2b. 互換手順: `tag/<romaji>.md` の Danbooru 行を走査
+
+- ファイル先頭のレベル1見出しが **ローマ字ファイル名・character 上の名前と一致**しているか確認する。
+- 各状況ブロックの **`**Danbooru Tags:**` 直下1行** を対象に、手順1のリスト項目が **同等の意味で含まれるか** を確認する。
+  - **服装・ポーズ・表情・背景**はブロックごとに変わってよい。
+  - **髪・目・肌・種族・顔の固定飾り**は、通常時に入れたタグを **他状況でも原則として欠かさない**（`tag.md` の引き継ぎルール）。
+
+### 3. 抜け・ブレの典型パターン（要修正）
+
+- 通常時だけ `brown_eyes`、ボディー治療時だけ目色タグが消えている
+- 髪が `long_hair` と `short_hair` でブロック間で矛盾
+- キャラAの目色タグがキャラBのファイルに混入
+- 若妖精なのに、ブロックによって種族関連タグが欠落
+- **[WARN] 固定小物が大まかタグのみ**: 以下が `000_base` に入っているが、色・形状タグが未指定
+  - `glasses` のみ → フレーム色（`black-framed_eyewear` 等）・形状（`rectangular_eyewear` 等）が未指定
+  - `hair_ribbon` のみ → リボン色（`white_ribbon` 等）・形状（`large_bow` 等）が未指定
+  - `necktie` のみ → ネクタイ色（`red_necktie` 等）が未指定
+  - `earrings` のみ → ピアス形状（`stud_earrings` 等）が未指定
+  - → 詳細タグを `000_base.danbooru_tags` に追加することを推奨する。語彙は `_how_to/world_wear.md` §11 を参照。
+
+### 4. キャラ横断チェック（2人以上のとき）
+
+- `tag/*.md` を並べ、**同じ「状況名」（例：通常時）** の Danbooru 行を見比べ、**髪・目の系統が character の担当と一致**しているか確認する。
+- 類似外見キャラでは、**誤って相手の色タグを貼っていないか** を最後に確認する。
+
+### 5. 機械的な補助（任意）
+
+リポジトリルートで、対象作品の `tag/` だけに絞ってキーワードを拾い、目視比較の足がかりにする（例）。
+
+```bash
+rg -n "eyes|hair|skin|fairy|elf" novels/<作品>/tag/*.md
+```
+
+構文・抽出の最終確認は **`novel-tag-md-format`** の `--dry-run` に従う。
+
+```bash
+python tools/image_provider_novel_tag_batch.py novels/<作品フォルダ> --dry-run
+```
+
+## いつ実行するか
+
+- Tag Mode で **全キャラ・全状況の初版**が揃った直後
+- `character.md` または **外見に関する本文**を変えたあと
+- 画像の「別人感」が出たときの **原因切り分け**として再実行
+
+## 関連
+
+- **Markdown 構造・Danbooru 行**: スキル **`novel-tag-md-format`**
+- **画像フォルダ**: スキル **`novel-image-layout`**
+- **技法ルール**: **`_how_to/tag.md`**
+- **キャラ初版・`world_wear` 参照の必須範囲**: スキル **`manga-prompt-ir`**（「キャラクターIR・外見初版を新規に起こすとき」）
+- **小物・アクセサリータグ語彙**: `_how_to/world_wear.md` §11（眼鏡・リボン・ネクタイ・ネックレス・ピアスの色/形状タグ表）

@@ -1,0 +1,12 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportMissingModuleSource": false,
+  "include": ["tools"],
+  "exclude": [
+    "tools_temp",
+    "_how_to",
+    "tools/tests",
+    "tools/manga_prompt_ir/tests"
+  ]
+}

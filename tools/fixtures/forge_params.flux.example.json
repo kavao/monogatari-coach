@@ -1,0 +1,16 @@
+{
+  "provider": "forge",
+  "prompt": "1girl, school uniform",
+  "negative_prompt": "lowres, blurry",
+  "seed": null,
+  "width": 896,
+  "height": 1152,
+  "steps": 20,
+  "cfg_scale": 1.0,
+  "sampler_name": "Euler",
+  "scheduler": "Simple",
+  "distilled_cfg_scale": 3.5,
+  "output_dir": "outputs/forge",
+  "file_prefix": "flux_test",
+  "count": 1
+}

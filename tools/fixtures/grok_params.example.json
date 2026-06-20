@@ -1,0 +1,11 @@
+{
+  "provider": "grok",
+  "prompt": "A collage of London landmarks in a stenciled street-art style",
+  "output_dir": "outputs/grok",
+  "file_prefix": "grok",
+  "count": 1,
+  "aspect_ratio_preset": "square",
+  "resolution": "1k",
+  "response_format": "b64_json",
+  "model": "grok-imagine-image"
+}

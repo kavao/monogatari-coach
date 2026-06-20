@@ -1,0 +1,20 @@
+{
+  "provider": "novelai",
+  "prompt": "1girl, fantasy, detailed",
+  "negative_prompt": "lowres, blurry, bad hands",
+  "seed": 123456789,
+  "width": 1024,
+  "height": 1024,
+  "steps": 28,
+  "cfg_scale": 6.5,
+  "sampler_name": "k_euler_ancestral",
+  "model": "nai-diffusion-4-5-full",
+  "uc_preset": 0,
+  "reference_image_paths": [],
+  "reference_information_extracted_multiple": [],
+  "reference_strength_multiple": [],
+  "normalize_reference_strength_multiple": true,
+  "output_dir": "outputs/novelai",
+  "file_prefix": "novelai",
+  "count": 1
+}

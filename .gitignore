@@ -1,15 +1,26 @@
 __pycache__/
 _how_to/*
 !_how_to/.gitkeep
+# _workingspace: 査証ログ・日記・計画の運用 README のみ追跡し、月次 *.md はコミットしない
 _workingspace/*
 !_workingspace/.gitkeep
-!_workingspace/log/.gitkeep
+!_workingspace/log/
+_workingspace/log/*
+!_workingspace/log/README.md
+!_workingspace/diary/
+_workingspace/diary/*
+!_workingspace/diary/README.md
+!_workingspace/plans/
+_workingspace/plans/*
+!_workingspace/plans/README.md
 writers/*
 !writers/000_default/writer_profile.md
 novels/*
 !novels/.gitkeep
-!novels/import/
-!novels/import/.gitkeep
+!novels/.gitignore
+!novels/_import/
+novels/_import/*
+!novels/_import/.gitkeep
 !novels/000_old_man_next_door's_cake/
 !novels/000_old_man_next_door's_cake/*
 !novels/000_old_man_next_door's_cake/**   # サブフォルダまで許可
@@ -20,8 +31,26 @@ progress.md
 .cursor/*
 .codex/*
 .github/*
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 .kilocode/*
+.kilo/
+.agents/
+.kiloignore
+kilo.jsonc
 .cursorignore
 .mcp.json
+.env
 CLAUDE.md
 AGENTS.md
+.serena/*
+outputs/
+logs/
+
+# LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
+tools_temp/*
+!tools_temp/README.md
+
+# MCP サーバー接続時に自動生成されるツールスキーマキャッシュ
+mcps/

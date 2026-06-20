@@ -1,0 +1,5 @@
+pydantic>=2.7,<3
+PyYAML>=6.0,<7
+types-PyYAML>=6.0,<7
+pytest>=8.0,<9
+pyright>=1.1,<2
