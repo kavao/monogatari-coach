@@ -120,11 +120,28 @@ targets: ["*"]
 
 ## `panels[].summary_en`（コマ要約の英訳）と NovelAI タグ併用
 
-- **各 `panels[]` に `summary`（日本語）を書いたら、必ず翻訳ツールで `summary_en` を付与する**（手書きしない）。
-  - コマンド: `python tools/novel_manga_panel_summary_en.py novels/<作品>`（`OPENAI_API_KEY`、任意で `MONOCRI_SUMMARY_EN_MODEL`）
-  - `summary` を直したら **再翻訳**（`summary_en_source` と不一致なら `novel_prompt_ir_validate.py` が警告／`--strict-quality` で失敗）
-- **NovelAI `step1-panels`**: `summary_en` は **`prompt_tags` と同じプロンプトのベース側**に併用（既定 ON。`--no-include-panel-summary` で無効化）
-- 品質ゲート（スキル **`manga-tag-quality-gate`** と併用）: 全コマで `summary` / `summary_en` ペア、`summary_en` に CJK なし
+横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+
+### 主経路（エージェント＋検証）
+
+- **`summary`（日本語）を書いた同ターンで**、`summary_en`（英語1文）と **`summary_en_source`（= そのときの `summary` 原文）** を YAML に書く。`location_en` / `pose_action_en` と同型の運用。
+- エージェント向けルール:
+  - キャラ名はローマ字（`ren`, `tsubomi` 等）。`summary_en` に CJK を含めない。
+  - タグ併用を想定し **1文・パイプ `|` なし・概ね 220 文字以内**（`tools/manga_prompt_ir/summary_en.py` の `sanitize_summary_en_for_tags` と整合）。
+  - `summary` のみ直したら **`summary_en` も更新**する（`summary_en_source` 不一致は validate が検出）。
+- **完了判定**: `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` の **exit 0**（チャットだけで翻訳完了とみなさない。YAML 書き込み後に実行・確認）。
+- **NovelAI `step1-panels`**: `summary_en` は **`prompt_tags` と同じプロンプトのベース側**に併用（既定 ON。`--no-include-panel-summary` で無効化）。
+- 品質ゲート（スキル **`manga-tag-quality-gate`** と併用）: 全コマで `summary` / `summary_en` ペア、`summary_en` に CJK なし。
+
+### 任意経路（翻訳ツール・一括再翻訳）
+
+- `python tools/novel_manga_panel_summary_en.py novels/<作品>` — エージェントなしで YAML だけ直したとき、または一括再翻訳。`.env` の `MONOCRI_SUMMARY_EN_PROVIDER`（`openrouter` 可）と対応 API キーが必要。**主経路の代替ではなく、従経路**。
+- 実行後も `novel_prompt_ir_validate.py --strict-quality` で確認する。
+
+### 禁止・注意
+
+- **エディタでの漫然たる英語入力**（`summary_en_source` なし・validate 未確認）で完了扱いにしない。
+- `OPENAI_API_KEY` 未設定は **翻訳ツール未実行の理由にはなるが、主経路（エージェント翻訳）のブロッカーではない**。
 
 ## `_how_to/manga_tag.md` との役割分担（漫画タグ・語彙・置き換え）
 

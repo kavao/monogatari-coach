@@ -96,19 +96,25 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 
 ### コマ要約の英訳（`summary_en`）と NovelAI 併用
 
-各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。`summary_en` は手書きではなく、翻訳ツールで `summary` から生成する。
+各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+
+**主経路（既定）**: Manga Tag Mode で `summary` を書いた同ターンに、エージェントが **`summary_en`** と **`summary_en_source`（= そのときの `summary` 原文）** を YAML に記入する。`location_en` / `pose_action_en` と同型。
 
 ```bash
-# 全ページの未翻訳コマを英訳して YAML に書き込む（OPENAI_API_KEY 等が必要）
-python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
-
-# 検証（欠落・陳腐化・CJK は警告、--strict-quality で失敗）
+# 検証（欠落・鮮度・CJK は警告、--strict-quality で失敗＝完了ゲート）
 python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
+```
+
+**任意経路（一括再翻訳）**: エージェントなしで `summary` だけ直したとき、または Chat API で一括翻訳したいとき。
+
+```bash
+python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
+# 要: MONOCRI_SUMMARY_EN_* と OPENAI_API_KEY または OPENROUTER_API_KEY
 ```
 
 - **`summary_en_source`**: 翻訳時点の `summary` 原文。`summary` を直したあと不一致なら再翻訳が必要（validate が検出）。
 - **コマ生成**: `step1-panels` では既定で **`summary_en` をベースタグ列に併用**（`prompt_tags` と同じプロンプト内）。無効化は `--no-include-panel-summary` または `MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY=0`。
-- 環境変数: `MONOCRI_SUMMARY_EN_MODEL`（既定 `gpt-4o-mini`）、`MONOCRI_SUMMARY_EN_PROVIDER`（`openrouter` 可）。
+- 翻訳ツール用環境変数（任意経路のみ）: `MONOCRI_SUMMARY_EN_MODEL`（既定 `gpt-4o-mini`）、`MONOCRI_SUMMARY_EN_PROVIDER`（`openrouter` 可）。**主経路では未設定でもよい**。
 
 ### ページ生成の provider 別 formatter
 

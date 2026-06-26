@@ -362,17 +362,20 @@ python tools/novel_prompt_ir_migrate_character_tags.py --all-novels --dry-run
 
 ---
 
-### `novel_manga_panel_summary_en.py` — コマ要約の英訳（`summary_en`）
+### `novel_manga_panel_summary_en.py` — コマ要約の英訳（`summary_en`・任意）
 
-`manga/pages/*.yaml` の `panels[].summary` を LLM で英訳し、`summary_en` を書き込みます。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
+`manga/pages/*.yaml` の `panels[].summary` を Chat API で英訳し、`summary_en` / `summary_en_source` を書き込みます。**Manga Tag Mode の主経路はエージェント同時翻訳＋`novel_prompt_ir_validate.py --strict-quality`**（`concepts.md`「Manga `summary_en` の翻訳経路」）。本ツールはエージェントなし編集・一括再翻訳向けの**任意**経路です。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
 
 ```bash
-# 作品フォルダ内の全ページを処理
+# 作品フォルダ内の全ページを処理（要 API キー）
 python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
 
 # 単一ページのみ（dry-run で対象確認）
 python tools/novel_manga_panel_summary_en.py novels/NNN_作品名 \
   --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml --dry-run
+
+# 主経路の完了確認（翻訳ツールの有無に関わらず推奨）
+python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
 ```
 
 ---

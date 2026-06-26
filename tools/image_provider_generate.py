@@ -1348,6 +1348,31 @@ def extract_zip_images(raw: bytes) -> list[tuple[str, bytes]]:
         return images
 
 
+def _novelai_decode_image_entry(entry: Any) -> bytes:
+    """Decode one NovelAI image entry (legacy base64 str or object with image key)."""
+    if isinstance(entry, str):
+        return base64.b64decode(entry)
+    if isinstance(entry, dict):
+        for key in ("image", "b64_json", "data"):
+            raw_b64 = entry.get(key)
+            if isinstance(raw_b64, str) and raw_b64.strip():
+                return base64.b64decode(raw_b64)
+    raise RuntimeError("NovelAI JSON 応答の images/data の形式が未対応です")
+
+
+def _novelai_json_images_to_bytes(images: list[Any]) -> list[tuple[str, bytes]]:
+    out: list[tuple[str, bytes]] = []
+    for idx, entry in enumerate(images, start=1):
+        png_bytes = _novelai_decode_image_entry(entry)
+        suffix = ".png"
+        if isinstance(entry, dict):
+            fname = entry.get("filename") or entry.get("name")
+            if isinstance(fname, str) and fname.strip():
+                suffix = Path(fname).suffix or suffix
+        out.append((f"image_{idx:02d}{suffix}", png_bytes))
+    return out
+
+
 def save_novelai_response(
     *,
     raw: bytes,
@@ -1367,12 +1392,7 @@ def save_novelai_response(
         images = resp.get("images") or resp.get("data") or []
         if not images:
             raise RuntimeError("NovelAI JSON 応答から images/data を取得できませんでした")
-        first = images[0]
-        if isinstance(first, str):
-            png_bytes = base64.b64decode(first)
-            images_bin = [(f"{merged['file_prefix']}_{ts}_{seed_i}.png", png_bytes)]
-        else:
-            raise RuntimeError("NovelAI JSON 応答の images/data の形式が未対応です")
+        images_bin = _novelai_json_images_to_bytes(images)
     else:
         images_bin = extract_zip_images(raw)
         if not images_bin:

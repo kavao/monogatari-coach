@@ -169,7 +169,9 @@ def main(argv: list[str] | None = None) -> int:
     api_key, model, base_url = resolve_translate_config(root)
     if not args.dry_run and not api_key:
         print(
-            "error: OPENAI_API_KEY（または OPENROUTER + MONOCRI_SUMMARY_EN_PROVIDER=openrouter）が必要です",
+            "error: 翻訳ツール実行には OPENAI_API_KEY または "
+            "OPENROUTER_API_KEY + MONOCRI_SUMMARY_EN_PROVIDER=openrouter が必要です"
+            "（主経路はエージェント翻訳＋novel_prompt_ir_validate.py）",
             file=sys.stderr,
         )
         return 2

@@ -83,7 +83,11 @@ def summary_en_quality_issues(
         return warnings, errors
 
     if not summary_en:
-        msg = f"{prefix}: summary がありますが summary_en が空です（novel_manga_panel_summary_en.py で翻訳してください）"
+        msg = (
+            f"{prefix}: summary がありますが summary_en が空です"
+            f"（エージェントが summary_en / summary_en_source を記入するか、"
+            f"任意で novel_manga_panel_summary_en.py を実行してください）"
+        )
         if require_for_manga and strict:
             errors.append(msg)
         else:
@@ -97,11 +101,34 @@ def summary_en_quality_issues(
                 warnings.append(msg)
         if len(summary_en) < 8:
             warnings.append(f"{prefix}: summary_en が短すぎる可能性があります ({len(summary_en)} 文字)")
+        if PIPE_FORBIDDEN.search(summary_en):
+            warnings.append(
+                f"{prefix}: summary_en にパイプ '|' が含まれています"
+                f"（NovelAI タグ列では除去されます。YAML 側で削除を推奨）"
+            )
+        if len(summary_en) > SUMMARY_EN_MAX_TAG_CHARS:
+            warnings.append(
+                f"{prefix}: summary_en が長すぎます ({len(summary_en)} 文字;"
+                f" タグ用は {SUMMARY_EN_MAX_TAG_CHARS} 文字以内を推奨）"
+            )
+        if not normalize_summary_text(panel.get("summary_en_source")):
+            msg = (
+                f"{prefix}: summary_en がありますが summary_en_source が未設定です"
+                f"（翻訳時点の summary 原文を記録してください）"
+            )
+            if strict:
+                errors.append(msg)
+            else:
+                warnings.append(msg)
 
-    if summary_en and summary_en_is_stale(panel):
+    if (
+        summary_en
+        and normalize_summary_text(panel.get("summary_en_source"))
+        and summary_en_is_stale(panel)
+    ):
         msg = (
             f"{prefix}: summary が更新されていますが summary_en_source と一致しません "
-            f"（再翻訳が必要です）"
+            f"（summary_en を更新するか、任意で novel_manga_panel_summary_en.py を再実行してください）"
         )
         if strict:
             errors.append(msg)

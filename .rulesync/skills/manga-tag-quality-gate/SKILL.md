@@ -63,7 +63,7 @@ targets: ["*"]
 | `manga.md` 上の意図 | 主に見る YAML |
 |---------------------|----------------|
 | Step1：各コマの見出し・具体描写 | `panels[].summary`, `panels[].subjects[]`, `panels[].composition`, `panels[].camera`, `panels[].text`, `panels[].prompt_tags` |
-| Step1：コマ要約の英訳（NovelAI タグ併用） | **`panels[].summary_en`**（`tools/novel_manga_panel_summary_en.py` で `summary` から生成）、**`summary_en_source`** が `summary` と一致 |
+| Step1：コマ要約の英訳（NovelAI タグ併用） | **`panels[].summary_en`**（エージェントが `summary` と同ターンで記入、または任意で `novel_manga_panel_summary_en.py`）、**`summary_en_source`** が `summary` と一致。完了は `novel_prompt_ir_validate.py --strict-quality` exit 0 |
 | Step1：ページ全体の作画方針・コマ割の扱い | `render_instruction`（`task` / `prompt_header` / `panel_policy` / `character_policy`）、`manga.panel_layout` |
 | Step2：段・左右・大小・読み順 | `manga.panel_layout`, `meta.reading_order`, `panels[].composition.layout`（互換 Markdown では1行に畳まれる） |
 | Step2：コマ要約（抽象寄り・安全寄りの言い換え） | **`panels[].step2_summary` を優先**（無ければ `summary` が Step2 行に流用される。`manga.md` の「Step2 だけ弱めたい」と同じ） |
@@ -142,7 +142,26 @@ targets: ["*"]
 **YAML 原盤で見る場所**（上記と齟齬がないか）
 
 - コマ本文・具体度: `panels[].summary`, `panels[].subjects[]`, `panels[].composition`, `panels[].camera`, `panels[].text`, `panels[].prompt_tags`
+- コマ要約の英訳: `panels[].summary_en`, `panels[].summary_en_source`（横断正本: `concepts.md`「Manga `summary_en` の翻訳経路」）
 - ページ方針・コマ順: `render_instruction`（`prompt_header` / `panel_policy` 等）、`manga.panel_layout`
+
+### 6b. `summary_en`（コマ要約の英訳・機械ゲート）
+
+**目的**: NovelAI `step1-panels` が既定で `summary_en` をベースタグに併用するため、`summary`（日本語）と英語1文のペアと鮮度を機械確認する。
+
+**この節で足りること**
+
+- `summary` があるコマに **`summary_en` が非空**か。
+- **`summary_en` に CJK が無い**か。
+- **`summary_en_source` が現在の `summary` と一致**するか（`summary` 改稿後の取りこぼし検出）。未設定は strict でエラー。
+- **タグ向け形式**: パイプ `|` なし・**220 文字以内**（超過・`|` 含有は validate が WARNING）。
+- 主経路は **エージェント同時翻訳**（`concepts.md` 参照）。`novel_manga_panel_summary_en.py` は任意。
+
+**確認コマンド**
+
+```bash
+python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
+```
 
 ### 7. 背景概念（`background_concepts[]`）
 
@@ -207,16 +226,18 @@ targets: ["*"]
 
 ## 改稿手順
 
-1. **`_how_to/manga.md` の「互換出力: step1」「互換出力: step2」** を開き、上記 §6・§7・§8 の要約と照合できる状態にする。§7（背景概念）とスキル **`manga-prompt-ir`** の `background_concepts[]` 節も満たす。
+1. **`_how_to/manga.md` の「互換出力: step1」「互換出力: step2」** を開き、上記 §6・§6b・§7 の要約と照合できる状態にする。§7（背景概念）とスキル **`manga-prompt-ir`** の `background_concepts[]` 節も満たす。
 2. 対象の小説本文と `manga/pages/*.yaml` の各 Page を上から読む。
 3. コマごとに §1〜§5（主語・関係・行為・セリフ・部分アップ）を確認する。
 4. §6（step1 準拠）で具体度・1コマ1タグ・レイアウト入口を確認する。
-5. §7（step2 準拠）で抽象化の下限・段・大小・`step2_summary` の有無を確認する。
-6. §8 で `panel_layout` / `reading_order` / `composition.layout` を確認する。
-7. §9 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
-8. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
-9. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
-10. 互換 Markdown の直接修正で終えず、YAML 正本へ戻したかを確認する（詳細は `concepts.md`）。
+5. §6b で `summary_en` / `summary_en_source` を確認し、`novel_prompt_ir_validate.py --strict-quality` を実行する。
+6. §7（背景概念）を確認する。
+7. §8（step2 準拠）で抽象化の下限・段・大小・`step2_summary` の有無を確認する。
+8. §9 で `panel_layout` / `reading_order` / `composition.layout` を確認する。
+9. §10 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
+10. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
+11. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
+12. 互換 Markdown の直接修正で終えず、YAML 正本へ戻したかを確認する（詳細は `concepts.md`）。
 
 ## 禁止事項
 

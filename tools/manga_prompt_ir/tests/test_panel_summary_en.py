@@ -82,3 +82,53 @@ def test_quality_strict_missing_summary_en() -> None:
     )
     assert warn == []
     assert len(err) == 1
+    assert "エージェントが summary_en" in err[0]
+
+
+def test_quality_warns_pipe_in_summary_en() -> None:
+    panel = {
+        "summary": "蓮がつぼみを慰める。",
+        "summary_en": "Ren comforts | Tsubomi.",
+        "summary_en_source": "蓮がつぼみを慰める。",
+    }
+    warn, err = summary_en_quality_issues(
+        panel,
+        panel_label="p1",
+        require_for_manga=True,
+        strict=False,
+    )
+    assert err == []
+    assert any("パイプ" in w for w in warn)
+
+
+def test_quality_warns_long_summary_en() -> None:
+    long_en = "word " * 60  # 300 chars
+    panel = {
+        "summary": "長いシーン。",
+        "summary_en": long_en.strip(),
+        "summary_en_source": "長いシーン。",
+    }
+    warn, err = summary_en_quality_issues(
+        panel,
+        panel_label="p1",
+        require_for_manga=True,
+        strict=False,
+    )
+    assert err == []
+    assert any("長すぎます" in w for w in warn)
+
+
+def test_quality_strict_missing_summary_en_source() -> None:
+    panel = {
+        "summary": "蓮がつぼみを慰める。",
+        "summary_en": "Ren gently comforts Tsubomi at the table.",
+    }
+    warn, err = summary_en_quality_issues(
+        panel,
+        panel_label="p1",
+        require_for_manga=True,
+        strict=True,
+    )
+    assert warn == []
+    assert len(err) == 1
+    assert "summary_en_source が未設定" in err[0]

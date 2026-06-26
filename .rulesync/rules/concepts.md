@@ -257,8 +257,8 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 1. 本文正本とキャラクター正本を確認する。
 2. 作品 `_meta.md` の §4（TPO → variant 対応表）と §5（漫画タグ層）を区間ごとに合意する（書き方は `_how_to.example/meta.md` を正とする）。
-3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。
-4. 品質ゲートで確認し、`tools/novel_prompt_ir_validate.py` で検証する。
+3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。`panels[].summary` があるコマは **「Manga `summary_en` の翻訳経路」** に従い `summary_en` + `summary_en_source` を揃える。
+4. 品質ゲートで確認し、`tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality`）で検証する。
 5. 互換 Markdown が必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
 6. 画像生成は「画像生成: dry-run から本番まで」に従う。
 
@@ -272,6 +272,36 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 - 詳細手順: `.rulesync/skills/manga-prompt-ir/SKILL.md`
 - 品質ゲート: `.rulesync/skills/manga-tag-quality-gate/SKILL.md`
 - 操作説明: `docs/image-generation/manga-prompt-ir.md`
+
+## Manga `summary_en` の翻訳経路
+
+定義:
+漫画ページ IR の `panels[].summary`（日本語・編集用）に対応する英語1文 `panels[].summary_en` の付与方法。`location_en` / `pose_action_en` 等と同様、**エージェントが YAML 保存時に英語行を埋める**のを主経路とする。`summary_en_source` は翻訳時点の `summary` 原文を記録し、鮮度追跡の正本とする。
+
+必須（主経路）:
+
+1. `summary` を書いたコマでは、同ターンで **`summary_en`（英語1文）** と **`summary_en_source`（= そのときの `summary` 原文）** を YAML に書く。
+2. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で検証し、**exit 0** を `summary_en` 完了の機械判定とする（欠落・CJK・鮮度不一致はエラー）。
+3. `summary` のみ直したときは **`summary_en` も更新**するか、validate の鮮度エラーに従って直す。
+
+任意（従経路）:
+
+- `python tools/novel_manga_panel_summary_en.py novels/<作品>` — エージェントなし編集・一括再翻訳・CI 向け。`.env` の `MONOCRI_SUMMARY_EN_*` と Chat API キーが必要。**Manga Tag Mode 完了の前提にはしない**。
+
+省略:
+
+- NovelAI コマ生成で `summary_en` を載せないときは `MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY=0` または `--no-include-panel-summary`。`--strict-quality` で `summary_en` を必須にするかは作品運用で決める（省略時は作品 `_meta.md` に理由を残す運用可）。
+
+禁止:
+
+- `OPENAI_API_KEY` 未設定を理由に Manga Tag Mode 全体を止める扱いにしない（翻訳ツール未実行は主経路ではブロッカーではない）。
+- エディタでの漫然たる英語入力（`summary_en_source` なし・validate 未確認）で完了扱いにしない。
+
+参照:
+
+- スキル: `.rulesync/skills/manga-prompt-ir/SKILL.md`（`panels[].summary_en` 節）
+- 検証実装: `tools/manga_prompt_ir/summary_en.py` の `summary_en_quality_issues`
+- 操作説明: `docs/image-generation/manga-prompt-ir.md`（`summary_en` 節）
 
 ## 挿絵計画（Illustration Plan Mode）
 
