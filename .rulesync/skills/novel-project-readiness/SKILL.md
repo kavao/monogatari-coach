@@ -15,17 +15,18 @@ targets: ["*"]
 リポジトリルートで、対象作品フォルダを渡す:
 
 ```bash
-# 基本チェック
+# 基本チェック（character.md 構造 lint 含む・既定）
 python tools/novel_project_check.py novels/NNN_作品タイトル
 
 # 画像保存フォルダも含めた完全チェック（推奨）
 python tools/novel_project_check.py novels/NNN_作品タイトル --check-image-layout --require-tag
 
-# character.md の構造 lint も含める
-python tools/novel_project_check.py novels/NNN_作品タイトル --require-character-structure --character-profile plan
+# character.md 構造 lint をスキップする場合
+python tools/novel_project_check.py novels/NNN_作品タイトル --no-character-structure
 ```
 
 **改善内容（今後の運用）**:
+- **既定で `character.md` 構造 lint**（`plan` profile）。無効化は `--no-character-structure`
 - `--check-image-layout`: `novel_image_layout.py` と連携し、`tag/<romaji>/` と `manga/_assets/` の完全性を検証
 - 出力が明確化（「=== 結果: OK ===」と「次にすべきことリスト」を自動表示）
 - Windows コンソールの文字化け対策（`stdout.reconfigure(utf-8)`）
@@ -48,7 +49,8 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --require-char
 | `--min-file-bytes N` | 空ファイル除けのしきい値（既定 48） |
 | `--json` | CI やエージェント向け JSON 出力 |
 | `--bootstrap` | `_meta.yaml` / `_novel_text/` / `_reader/` / `references/novelai/` を不足分だけ作成してからチェック |
-| `--require-character-structure` | `tools/novel_character_md_check.py` と同じ基準で `character.md` の構造を必須チェック |
+| `--no-character-structure` | `character.md` 構造 lint をスキップ（**既定は実行**） |
+| `--require-character-structure` | 構造 lint を明示的に有効化（既定と同じ。後方互換用） |
 | `--character-profile NAME` | `character.md` 構造 lint の profile（既定 `plan`） |
 | `--character-strict` | 表形式などの移行猶予 WARN を ERROR 扱いにする |
 | `--character-suggest` | `--json` 出力に不足項目追記案・表形式変換案を含める |

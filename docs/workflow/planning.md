@@ -63,7 +63,7 @@ python tools/novel_scaffold.py novels/NNN_作品名
 python tools/novel_project_check.py novels/NNN_作品名
 ```
 
-人物プロフィールの構造を先に確認する場合は、次を実行します。
+`novel_project_check.py` は既定で `character.md` の構造 lint（`plan` profile）も実行します。詳細だけ先に見る場合は次を使います。
 
 ```bash
 python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
@@ -75,10 +75,10 @@ python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
 python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
 ```
 
-執筆前チェックに character.md の構造 lint も含める場合は、次のようにします。
+構造 lint を執筆前チェックから外す場合のみ `--no-character-structure` を付けます。
 
 ```bash
-python tools/novel_project_check.py novels/NNN_作品名 --require-character-structure --character-profile plan
+python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 ```
 
 結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。

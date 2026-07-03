@@ -124,3 +124,13 @@ def character_base_required_errors(character: Any, label: str) -> list[str]:
     elif not base_variant.danbooru_tags:
         errors.append(f"{label}: 000_base.danbooru_tags が空です")
     return errors
+
+
+def character_height_warnings(character: Any, label: str) -> list[str]:
+    """Return warnings when ``appearance.height`` is missing (character.md 必須項目の YAML 写し)."""
+    height = getattr(character.appearance, "height", None)
+    if height is None or not str(height).strip():
+        return [
+            f"{label}: appearance.height が空です（character.md の身長を YAML に写してください）"
+        ]
+    return []

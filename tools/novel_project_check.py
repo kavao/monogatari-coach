@@ -119,6 +119,129 @@ def _check_slush_g3(work: Path) -> dict[str, Any]:
     }
 
 
+_RE_NOVEL_TEXT = re.compile(r"^novel_text(\d+)(?:_(\d+))?\.md$")
+_RE_SCHEDULE_HEADING = re.compile(r"^#{1,6}\s*.*執筆スケジュール")
+_RE_SCHEDULE_LINE = re.compile(r"第(\d+)章[^：:\n]*[：:]\s*(.+?)\s*$")
+_RE_SUBPART_KEYWORD = re.compile(r"(前半|後半|項|分割|_1|_2|_3)")
+_STATUS_NOT_STARTED = ("未着手", "未定", "予定")
+
+
+def _novel_text_files(work: Path) -> list[Path]:
+    text_dir = work / "_novel_text"
+    if not text_dir.is_dir():
+        return []
+    return sorted(f for f in text_dir.glob("novel_text*.md") if _RE_NOVEL_TEXT.match(f.name))
+
+
+def _written_chapter_map(files: list[Path]) -> dict[int, list[int | None]]:
+    """章番号 → 項番号（項なしは None）のリスト。"""
+    out: dict[int, list[int | None]] = {}
+    for f in files:
+        m = _RE_NOVEL_TEXT.match(f.name)
+        if not m:
+            continue
+        chapter = int(m.group(1))
+        sub = int(m.group(2)) if m.group(2) else None
+        out.setdefault(chapter, []).append(sub)
+    return out
+
+
+def _parse_schedule(design_text: str) -> dict[int, str]:
+    """design_specification.md の「執筆スケジュール」節から 章番号→状態文字列 を抽出。"""
+    lines = design_text.splitlines()
+    in_schedule = False
+    schedule: dict[int, str] = {}
+    for line in lines:
+        if _RE_SCHEDULE_HEADING.search(line):
+            in_schedule = True
+            continue
+        if in_schedule:
+            # 次の見出しでスケジュール節を抜ける
+            if re.match(r"^#{1,6}\s", line):
+                break
+            m = _RE_SCHEDULE_LINE.search(line)
+            if m:
+                schedule[int(m.group(1))] = m.group(2).strip()
+    return schedule
+
+
+def _check_story_sync(work: Path) -> dict[str, Any]:
+    """本文ファイルと design_specification.md 執筆スケジュールの食い違いを WARNING 検出。
+
+    意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の形式的ズレのみを見る。
+    """
+    warnings: list[str] = []
+    files = _novel_text_files(work)
+    chapters = _written_chapter_map(files)
+
+    design = work / "design_specification.md"
+    schedule: dict[int, str] = {}
+    design_ok = design.is_file()
+    if design_ok:
+        try:
+            schedule = _parse_schedule(design.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            design_ok = False
+
+    if not files:
+        return {
+            "ok": True,
+            "written_chapters": [],
+            "schedule_chapters": sorted(schedule.keys()),
+            "warnings": warnings,
+            "detail": "本文ファイルがまだ無いため同期チェックはスキップ",
+        }
+
+    if not design_ok:
+        warnings.append("design_specification.md が読めないため執筆スケジュールと照合できません")
+        return {
+            "ok": False,
+            "written_chapters": sorted(chapters.keys()),
+            "schedule_chapters": [],
+            "warnings": warnings,
+        }
+
+    # 1. 本文があるのにスケジュールが未着手のまま
+    for chapter in sorted(chapters.keys()):
+        status = schedule.get(chapter)
+        if status is None:
+            warnings.append(
+                f"第{chapter}章の本文ファイルがあるのに、執筆スケジュールに第{chapter}章の記載がありません"
+            )
+            continue
+        if any(token in status for token in _STATUS_NOT_STARTED):
+            warnings.append(
+                f"第{chapter}章の本文ファイルがあるのに、執筆スケジュールが「{status}」のままです"
+            )
+
+    # 2. 前後半・項ファイルがあるのに、スケジュールに分割記載がない
+    design_text_l = ""
+    if design_ok:
+        try:
+            design_text_l = design.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            design_text_l = ""
+    for chapter, subs in sorted(chapters.items()):
+        has_sub = any(s is not None for s in subs)
+        if has_sub:
+            status = schedule.get(chapter, "")
+            # スケジュール行または設計書全体に分割の手掛かりがあるか
+            if not _RE_SUBPART_KEYWORD.search(status) and not _RE_SUBPART_KEYWORD.search(
+                design_text_l
+            ):
+                warnings.append(
+                    f"第{chapter}章は前半・後半（項）ファイルに分割されていますが、"
+                    f"design_specification.md に分割の記載が見当たりません"
+                )
+
+    return {
+        "ok": not warnings,
+        "written_chapters": sorted(chapters.keys()),
+        "schedule_chapters": sorted(schedule.keys()),
+        "warnings": warnings,
+    }
+
+
 def _illustration_page_yaml_paths(work: Path) -> list[Path]:
     pages = work / "illustrations" / "pages"
     if not pages.is_dir():
@@ -141,13 +264,15 @@ def check_novel_project(
     require_manga_dir: bool,
     require_meta_yaml: bool = False,
     require_illustration_plan: bool = False,
-    require_character_structure: bool = False,
+    require_character_structure: bool = True,
     character_profile: str = "plan",
     character_strict: bool = False,
     character_suggest: bool = False,
     require_text_lint: bool = False,
     text_lint_profile: str = "default",
     require_slush_g3: bool = False,
+    check_story_sync: bool = False,
+    strict_story_sync: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -158,6 +283,7 @@ def check_novel_project(
         "required_dirs": [],
         "optional": {},
         "issues": [],
+        "warnings": [],
     }
 
     if not work.is_dir():
@@ -317,6 +443,16 @@ def check_novel_project(
             out["ok"] = False
             out["issues"].append(f"本文 lint 実行エラー: {e}")
 
+    if check_story_sync:
+        sync_result = _check_story_sync(work)
+        out["optional"]["story_sync"] = sync_result
+        for w in sync_result.get("warnings") or []:
+            if strict_story_sync:
+                out["ok"] = False
+                out["issues"].append(f"本文・設計書同期: {w}（--strict-story-sync 指定）")
+            else:
+                out["warnings"].append(f"本文・設計書同期: {w}")
+
     return out
 
 
@@ -369,9 +505,14 @@ def main(argv: list[str] | None = None) -> int:
         help="_meta.yaml を必須チェック対象にする（画像生成・ポーション運用時に指定）",
     )
     p.add_argument(
+        "--no-character-structure",
+        action="store_true",
+        help="character.md のチェックリスト構造 lint をスキップする（既定は実行）",
+    )
+    p.add_argument(
         "--require-character-structure",
         action="store_true",
-        help="character.md をチェックリスト YAML に基づいて構造 lint する",
+        help="character.md 構造 lint を明示的に有効化（既定で有効。無効化は --no-character-structure）",
     )
     p.add_argument(
         "--character-profile",
@@ -408,6 +549,19 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--check-story-sync",
+        action="store_true",
+        help=(
+            "本文ファイル（_novel_text/novel_text*.md）と design_specification.md の"
+            "執筆スケジュール・章分割の食い違いを WARNING 表示する（既定では NG にしない）"
+        ),
+    )
+    p.add_argument(
+        "--strict-story-sync",
+        action="store_true",
+        help="--check-story-sync の食い違いを WARNING ではなく NG（失敗）扱いにする",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -430,6 +584,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print()
 
+    require_character_structure = not args.no_character_structure
+    if args.require_character_structure:
+        require_character_structure = True
+
     result = check_novel_project(
         args.work_dir,
         min_file_bytes=args.min_file_bytes,
@@ -437,13 +595,15 @@ def main(argv: list[str] | None = None) -> int:
         require_manga_dir=args.require_manga_dir,
         require_meta_yaml=args.require_meta_yaml,
         require_illustration_plan=args.require_illustration_plan,
-        require_character_structure=args.require_character_structure,
+        require_character_structure=require_character_structure,
         character_profile=args.character_profile,
         character_strict=args.character_strict,
         character_suggest=args.character_suggest,
         require_text_lint=args.require_text_lint,
         text_lint_profile=args.text_lint_profile,
         require_slush_g3=args.require_slush_g3,
+        check_story_sync=args.check_story_sync or args.strict_story_sync,
+        strict_story_sync=args.strict_story_sync,
     )
 
     if args.check_image_layout:
@@ -518,7 +678,7 @@ def main(argv: list[str] | None = None) -> int:
                 "    挿絵計画 cover_plan.md: "
                 + ("OK" if cv_ok else "NG")
             )
-    if args.require_character_structure:
+    if require_character_structure:
         ch = opt.get("character_structure") or {}
         print(
             "    character.md 構造: "
@@ -548,6 +708,24 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"    足切り G3: {'OK' if g3_ok else 'NG'} — {detail}  [{src}]"
         )
+
+    if args.check_story_sync or args.strict_story_sync:
+        ss = opt.get("story_sync") or {}
+        written = ss.get("written_chapters") or []
+        sched = ss.get("schedule_chapters") or []
+        ss_warns = ss.get("warnings") or []
+        print(
+            "    本文・設計書同期: "
+            + ("OK" if ss.get("ok") else f"要確認 — {len(ss_warns)} 件")
+            + f"（本文章: {written} / スケジュール章: {sched}）"
+        )
+        for w in ss_warns:
+            print(f"      - {w}")
+
+    if result.get("warnings"):
+        print("\n  警告（WARNING・NG ではない）:")
+        for line in result["warnings"]:
+            print(f"    ! {line}")
 
     if result["ok"] and not result.get("issues"):
         print("\n=== 結果: OK ===")

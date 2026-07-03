@@ -270,7 +270,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 NSFW を扱う作品では、新規 YAML 作成時の思考順を固定する。
 
-1. **Level 1（SFW）**: `000_base` — 髪・目・肌・種族のみ。`appearance.distinctive_features` / `consistency_tags` にも **裸限定タグを置かない**。
+1. **Level 1（SFW）**: `000_base` — 髪・目・肌・種族のみ。`appearance.height` には **`character.md` の身長**を写す（必須。`novel_character_md_check.py --profile visual` と整合）。`appearance.distinctive_features` / `consistency_tags` にも **裸限定タグを置かない**。
 2. **Level 2（NSFW）**: `006_nude` — `nude`, `uncensored`, 性器・秘部詳細の**唯一のタグ正本**。
 3. **000番台（着衣）**: `001_normal` 等 — 衣装・半脱衣装のみ。裸露本体は載せない。
 4. **Level 3（状況）**: `007_arousal`, `008_relax`, `103_*` 等 — **`combines_with: 006_nude` 必須**。表情・体液・行為タグのみ。

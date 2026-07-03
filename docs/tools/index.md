@@ -64,11 +64,14 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 
 ### `novel_project_check.py` — 必須ファイル確認
 
-執筆開始前に、作品フォルダの必須ファイル・ディレクトリが揃っているかを確認します。終了コード 0 で「問題なし」です。
+執筆開始前に、作品フォルダの必須ファイル・ディレクトリが揃っているかを確認します。終了コード 0 で「問題なし」です。**既定で `character.md` の構造 lint（`plan` profile）も実行**されます。
 
 ```bash
-# 基本確認
+# 基本確認（character.md 構造 lint 含む）
 python tools/novel_project_check.py novels/NNN_作品名
+
+# character.md 構造 lint をスキップ
+python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 
 # Tag Mode 済みを必須にする場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-tag
@@ -79,17 +82,30 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 # G3 足切り通過を必須にする場合（_meta.md または最新 _reader/*.md を確認）
 python tools/novel_project_check.py novels/NNN_作品名 --require-slush-g3
 
+# 本文と設計書（執筆スケジュール・章分割）のズレを警告表示
+python tools/novel_project_check.py novels/NNN_作品名 --check-story-sync
+
+# ズレを NG（失敗）扱いにしたい場合
+python tools/novel_project_check.py novels/NNN_作品名 --strict-story-sync
+
 # _meta.yaml 等を不足分だけ作成してからチェック
 python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 ```
 
 `--require-slush-g3` は、`_meta.md` に「足切りステータス: G3合格」が記録されているか、または最新の `_reader/YYYYMMDD_HHMM.md` に「スコア ≥ 55 かつ読むべき」が記録されているかを確認します。投稿前のゲートや校正着手前の確認に使います。
 
+`--check-story-sync` は、`_novel_text/novel_text*.md`（本文の実在状況）と `design_specification.md` の「執筆スケジュール」節を照合し、次のような形式的なズレを警告します。既定では警告表示のみで終了コードは変えません（`--strict-story-sync` を付けると NG 扱い）。
+
+- ある章の本文ファイルがあるのに、執筆スケジュールがその章を「未着手」等のままにしている。
+- 前半・後半（項）に分割した本文ファイル（例: `novel_text01_1.md`）があるのに、設計書側に分割の記載が見当たらない。
+
+本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。
+
 ---
 
 ### `novel_character_md_check.py` — character.md 構造 lint
 
-`character.md` の見出し・必須フィールド・表形式を、`_how_to` のチェックリスト YAML（既定: `_how_to.example/character_checklist.yaml`）に基づいて検証します。Tag Mode 前の Plan 段階で書き漏れを検出する用途です（外見の機械正本は `tag/characters/*.yaml`）。
+`character.md` の見出し・必須フィールド・表形式を、`_how_to` のチェックリスト YAML（既定: `_how_to.example/character_checklist.yaml`）に基づいて検証します。Tag Mode 前の Plan 段階で書き漏れを検出する用途です（外見の機械正本は `tag/characters/*.yaml`）。`visual` / `plan` profile では **外見の個性** を子項目3件以上で必須とします。
 
 ```bash
 # 作品フォルダ全体の character.md を検証

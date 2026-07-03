@@ -384,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
             }
             from manga_prompt_ir.character_tag_quality import (
                 character_base_required_errors,
+                character_height_warnings,
                 character_nude_base_warnings,
             )
 
@@ -391,9 +392,12 @@ def main(argv: list[str] | None = None) -> int:
             if base_errors:
                 errors.extend(base_errors)
             nude_warnings = character_nude_base_warnings(character, str(path))
+            height_warnings = character_height_warnings(character, str(path))
             warnings.extend(nude_warnings)
+            warnings.extend(height_warnings)
             if args.strict_quality:
                 quality_errors.extend(nude_warnings)
+                quality_errors.extend(height_warnings)
             print(f"OK character: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")

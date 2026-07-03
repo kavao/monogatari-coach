@@ -14,7 +14,9 @@ profiles:
     description: "Tag Mode 前に、見た目の書き漏れを減らすための最小チェック。"
     require_fields:
       - "名前"
+      - "身長"
       - "外見"
+      - "外見の個性"
   plan:
     description: "Plan 完了・執筆前に、人物の声と物語上の役割を確認する。"
     extends: visual
@@ -24,7 +26,7 @@ profiles:
       - "口調"
       - "目標"
 
-# 年齢・立場 などから性別テンプレを推定（ボディー子項目の必須・禁止に使う）
+# 年齢・立場 などから性別テンプレを推定するための補助設定
 gender_detection:
   field: "年齢"
   patterns:
@@ -35,7 +37,6 @@ gender_detection:
       - "女性"
       - "女"
   # 若妖精は 男若妖精／女若妖精 の一体表記を推奨（gender_detection と species_notes を参照）
-  # 推定できないときは body_gender_rules をスキップし WARN のみ
 
 # 若妖精の年齢・立場の書き方（ボディー抽選・character.md 運用の特記。lint 自動検証はしない）
 species_notes:
@@ -48,33 +49,12 @@ species_notes:
       write:
         - "女若妖精（成年）・妖精学校通学（女性の例。立場は作品に合わせる）"
         - "男若妖精（成年）・…（男性の例。立場は作品に合わせる）"
-        - "性別＋若妖精を分けず、男若妖精／女若妖精 の一体表記を使う（body_gender_rules 推定用）"
+        - "性別＋若妖精を分けず、男若妖精／女若妖精 の一体表記を使う"
       do_not_write:
         - "若妖精（成年）・女性・… のように種族と性別を別語で並べる書き方（推奨しない）"
         - "人間の○歳・○才"
         - "人間相当・人間換算の年齢"
         - "高校○年生など、人間の学校段階だけでの年齢の言い換え"
-    body_pick_age_band:
-      value: 若妖精
-      meaning: >-
-        episode_mature.json の体型・ボディー分類用。--age-band 若妖精 は抽選キーであり、
-        プロフィールの年齢欄に数値や人間年齢を書く理由にはならない。
-
-# 「ボディーの特徴」直下の - **子ラベル**: 形式を性別で検証（body_therapy + apply_body_gender_rules）
-body_gender_rules:
-  parent_field: "ボディーの特徴"
-  male:
-    require_child_labels:
-      - "体型"
-    forbid_child_labels:
-      - "水袋"
-      - "臀部"
-  female:
-    require_child_labels:
-      - "水袋"
-      - "臀部"
-    forbid_child_labels:
-      - "体型"
 
 fields:
   "名前":
@@ -98,6 +78,15 @@ fields:
       - "外見（Tag Mode 用メモ）"
       - "見た目"
     min_chars: 20
+  "外見の個性":
+    aliases:
+      - "外見個性"
+      - "見た目の個性"
+      - "外見アイデンティティ"
+    when_present:
+      min_children: 3
+  "身長":
+    min_chars: 3
   "服装":
     aliases:
       - "衣装"

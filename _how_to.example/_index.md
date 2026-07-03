@@ -8,8 +8,11 @@
    - 一般的な小説の文法
 3. novel_structure.md
    - 一般的な小説構造のデータベース
-4. epsode_common.md
-   - 一般的な小説構造のデータベース、恋愛や親愛要素が多い
+3.5. episode/（エピソード技法・雛形）
+   - [episode/README.md](episode/README.md) … general（型・職業・対話）と common（恋愛・描写・抜粋）の入口。
+   - general: [episode/general/episode_.md](episode/general/episode_.md)
+   - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
+4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
    - 文章校正の時に使う
    - 清書稿は `_novel_text_backup/` に旧版を退避したうえで `_novel_text/` を直接更新する
@@ -47,5 +50,3 @@
    - 執筆の開始時・終了時に参照・更新することで、長期的な執筆の継続性を担保する。
 14.（カクヨム向けルビ）雛形 `skills/kakuyomu-convert/`
    - ユーザ作業用に `_how_to/skills/kakuyomu-convert/` へコピーして使う。最短手順は `USER_HINTS.md`（**コピー**／**カクヨムプラグイン**の2点）。`kakuyomu.csv.example` は同梱。実装は `_how_to/tools/kakuyomu_ruby_apply.py`
-15.（body_therapy ボディー抽選）雛形 `skills/character-body-pick/`
-   - 完全版は `_how_to/skills/character-body-pick/`。`episode_mature.json` から候補を抽選。実装は `_how_to/tools/novel_character_body_pick.py`。`character.md` 構造 lint は公式 `tools/novel_character_md_check.py` のまま

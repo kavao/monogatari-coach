@@ -1443,7 +1443,7 @@ long hair をベースに入れておくと安定します。
 | 分類 | 判断基準 | YAML IR の置き場所 |
 |------|---------|------------------|
 | **固定アレンジ** | そのキャラが常に持つ特徴・識別子になる | `000_base` の `danbooru_tags` / `consistency_tags` |
-| **状況アレンジ** | 特定シーンや衣装バリアントだけで現れる | 対象バリアントの `prompt_tags`（例: `003_treatment`）または漫画コマの `prompt_tags` |
+| **状況アレンジ** | 特定シーンや衣装バリアントだけで現れる | 対象バリアントの `prompt_tags`（例: `003_after_activity`）または漫画コマの `prompt_tags` |
 
 固定アレンジの例（`000_base` に入れてよい）:
 `hair_intakes`, `ahoge`, `hair_ribbon`（キャラ識別子）, `side_swept_bangs`（作品を通じて変わらない前髪癖）
@@ -1452,7 +1452,7 @@ long hair をベースに入れておくと安定します。
 
 | タグ | 理由 | 代わりの置き場所 |
 |------|------|-----------------|
-| `wet_hair`, `messy_hair` | 治療・入浴等の場面限定 | `003_treatment` 等のバリアント |
+| `wet_hair`, `messy_hair` | 入浴・運動後などの場面限定 | `003_after_activity` 等のバリアント |
 | `hair_spread_out`, `hair_in_mouth` | 特定コマの演出 | 漫画 `panels[].prompt_tags` のみ |
 | `floating_hair` | 風・感情演出コマ限定 | 漫画 `panels[].prompt_tags` のみ |
 
@@ -2497,7 +2497,7 @@ NovelAIで髪型の基本タグにアレンジを加えるための便利なタ�
       - body type
 
 # 上半身裸バリアントの例
-- variant_id: "003_treatment"
+- variant_id: "003_after_activity"
   danbooru_tags:
     - bare_chest         # 衣装連動 → 000番台
 ```
@@ -2729,7 +2729,7 @@ V字シルエットは **`v-shaped_torso`（本節）＋`broad_shoulders`（§18
       - body type
 
 # お腹露出バリアントの例
-- variant_id: "003_treatment"
+- variant_id: "003_after_activity"
   danbooru_tags:
     - bare_midriff       # 衣装連動 → 000番台
 ```
@@ -2958,7 +2958,7 @@ V字シルエットは **`v-shaped_torso`（本節）＋`broad_shoulders`（§18
       - hip width
 
 # 腰見せバリアントの例
-- variant_id: "003_treatment"
+- variant_id: "003_after_activity"
   danbooru_tags:
     - bare_hips          # 衣装連動 → 000番台
 ```

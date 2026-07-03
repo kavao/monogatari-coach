@@ -70,6 +70,8 @@ FIELD_HINTS = {
     "口調": "語尾、よく使う言い回し、感情が揺れた時の話し方。",
     "目標": "物語上で何を望み、何を達成したいか。",
     "外見": "髪・目・体格・肌・特徴・小物など、画像化でぶれやすい要素。",
+    "外見の個性": "キャラクターを見分ける外見の核を3〜5点。Tag Mode 前の識別用。",
+    "身長": "数値（例: 約135cm）または明確なサイズ感。兄妹・対比がある作品では特に必須。",
     "服装": "普段着、場面別衣装、制服・仕事着など。",
     "ボディーの特徴": "物語上重要な身体的特徴。作品の表現方針に合わせて必要範囲だけ書く。",
 }
@@ -620,9 +622,10 @@ def check_character_file(
                 if isinstance(when_present, dict):
                     min_children = when_present.get("min_children")
                     if isinstance(min_children, int) and len(occ.children) < min_children:
+                        level = "ERROR" if canonical in required_fields else "WARN"
                         char_issues.append(
                             Issue(
-                                "WARN",
+                                level,
                                 f"{canonical} の子項目が少ない可能性があります（{len(occ.children)} < {min_children}）",
                                 section.heading,
                             )

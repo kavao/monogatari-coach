@@ -64,7 +64,8 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 必須:
 
 - Tag Mode 完了時は、主要キャラごとに **`000_base`**（固定外見）と **000番台**（作品に必要な衣装状態）を `tag/characters/*.yaml` に書く。
-- **`000_base.danbooru_tags` に性別・人数（`1boy` / `1girl` / `solo` 等）を含める**。ルートの **`character_tags` フィールドは 2026-06 以降廃止**（移行: `tools/novel_prompt_ir_migrate_character_tags.py`）。
+- **`000_base.danbooru_tags` に性別トークン（`1boy` / `1girl` 等）を含める**。ルートの **`character_tags` フィールドは 2026-06 以降廃止**（移行: `tools/novel_prompt_ir_migrate_character_tags.py`）。
+- **`solo` は継承用の `000_base` には載せない**。`000_base` は全バリアントへ合成されるため、`solo` を入れると `combines_with` 付き（複数人・結合資料の `103_*` / `104_*` 等）へも混入する。**`solo` が要るのはソロ資料バリアントのみ**（例: `100_intro` / `102_signature_pose` の `danbooru_tags`、または `000_base` ジョブ単体生成時の一時付与）。生成実行だけ付ける場合は `image_provider_novel_tag_batch.py` の `--prepend-tags solo` と `--variant-id` の組み合わせ可。
 - **`000_base` は必須**（`novel_prompt_ir_validate.py` で欠落・空は ERROR）。
 - **汎用100番台**（次節「汎用テンプレート」）は Tag Mode の標準成果物とする。
 - **カスタム要素**（次節）は作品メタまたはユーザー指示に列挙したときだけ追加する。
@@ -76,6 +77,7 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 - 000番台のみ作成して Tag Mode 完了扱いにしない（汎用100番を省略するときは理由を明示する）。
 - 漫画 `variant_id` に `100_*` を指定しない。
 - **`000_base`** および **固定合成経路**（次節「身体的正本」§3.1）へ **露出・性器・裸限定**の Danbooru タグを置かない。
+- **`000_base.danbooru_tags` に `solo` を載せる**（継承先の複数人バリアントと矛盾させる）。
 
 参照:
 
