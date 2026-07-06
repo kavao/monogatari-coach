@@ -3,7 +3,7 @@
 全年齢向けの冒頭フック候補。**型（抽象）は各見出しの解説、種（具体）は箇条書き**。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 - 出典メモ: `帰省と身寄せ` は mature「家族ものの出だし」から **治療語彙を除いて全年齢改稿**（`_how_to/episode/mature/epsode_mature_hooks.md` 参照用。example に mature 本文は載せない）。
 
 ## 帰省と身寄せ

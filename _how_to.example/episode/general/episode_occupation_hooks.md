@@ -3,7 +3,7 @@
 職業・役割から物語が動き出す候補。**episode_world.md** の職業文脈を全年齢向けに具体化。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 - 関連: [episode_world.md](episode_world.md)
 
 ## 屋敷奉公

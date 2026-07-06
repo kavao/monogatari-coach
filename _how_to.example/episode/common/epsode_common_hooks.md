@@ -3,7 +3,7 @@
 恋愛・親愛系の冒頭フック候補。**距離軸**でサブカテゴリを分ける。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_common_sync.py`
+- 同期: `python tools/episode_common_sync.py`
 - 関連: [epsode_common_relations.md](epsode_common_relations.md)、[../general/episode_character.md](../general/episode_character.md)
 
 ## 再会

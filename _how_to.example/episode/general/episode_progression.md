@@ -3,7 +3,7 @@
 全年齢向けの進行パターン候補。**型（抽象）は各見出しの解説、種（具体）は箇条書き**。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 
 ## 調査と深化
 

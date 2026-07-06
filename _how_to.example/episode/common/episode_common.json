@@ -2,7 +2,7 @@
   "_meta": {
     "schema_version": "1.1",
     "source_md": "_how_to.example/episode/common/epsode_common_hooks.md",
-    "sync_tool": "_how_to/tools/episode_common_sync.py",
+    "sync_tool": "tools/episode_common_sync.py",
     "pick_paths_examples": [
       "恋愛フック.サブカテゴリ.再会.内訳",
       "関係進行.サブカテゴリ.距離の揺れ.内訳",

@@ -3,7 +3,7 @@
 物語の方向が変わる転換点候補。**型は各見出し、種は箇条書き**。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 
 ## 決断の瞬間
 

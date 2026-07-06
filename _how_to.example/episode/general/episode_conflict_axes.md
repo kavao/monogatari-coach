@@ -3,7 +3,7 @@
 対立の構図・軸候補。**型は各見出し、種は箇条書き**。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 - 関連: [episode_structure.md](episode_structure.md)（敵対する力の原則）
 
 ## 理念の衝突

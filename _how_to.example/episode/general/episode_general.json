@@ -2,7 +2,7 @@
   "_meta": {
     "schema_version": "1.1",
     "source_md": "_how_to.example/episode/general/episode_hooks.md",
-    "sync_tool": "_how_to/tools/episode_general_sync.py",
+    "sync_tool": "tools/episode_general_sync.py",
     "pick_paths_examples": [
       "冒頭フック.サブカテゴリ.帰省と身寄せ.内訳",
       "進行パターン.サブカテゴリ.調査と深化.内訳",

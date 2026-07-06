@@ -3,7 +3,7 @@
 恥じらい・照れ・言いよどみが関係を動かす候補。**epsode_common_relations.md** のギャップ萌え・関係文脈と接続。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_common_sync.py`
+- 同期: `python tools/episode_common_sync.py`
 - 関連: [epsode_common_relations.md](epsode_common_relations.md)
 
 ## 視線と逸らし

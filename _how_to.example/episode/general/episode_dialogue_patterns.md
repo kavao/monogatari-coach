@@ -3,7 +3,7 @@
 会話の型・口調・場面装置の候補。**episode_dialogue.md** の技法を抽選可能な具体場面に落とす。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_general_sync.py`
+- 同期: `python tools/episode_general_sync.py`
 - 関連: [episode_dialogue.md](episode_dialogue.md)（フード理論・話題の考え方）
 
 ## 敬語と崩れ

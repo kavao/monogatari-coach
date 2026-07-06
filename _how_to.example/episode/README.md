@@ -31,8 +31,8 @@ cp -r _how_to.example/episode _how_to/episode
 | common 恥じらい | [common/epsode_common_shyness.md](common/epsode_common_shyness.md) | 同上 | 同上 |
 
 ```bash
-python _how_to/tools/episode_general_sync.py
-python _how_to/tools/episode_common_sync.py
+python tools/episode_general_sync.py
+python tools/episode_common_sync.py
 python tools/novel_pick_registry.py validate
 ```
 

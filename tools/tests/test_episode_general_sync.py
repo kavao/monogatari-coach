@@ -1,4 +1,4 @@
-"""Tests for _how_to/tools/episode_json_sync and episode_general_sync."""
+"""Tests for tools/episode_json_sync and episode_general_sync."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-HOW_TO_TOOLS = ROOT / "_how_to" / "tools"
-sys.path.insert(0, str(HOW_TO_TOOLS))
+TOOLS = ROOT / "tools"
+sys.path.insert(0, str(TOOLS))
 
 from episode_json_sync.hooks import build_hooks_section, parse_hooks_md  # noqa: E402
 from episode_general_sync import sync_general_json  # noqa: E402

@@ -3,7 +3,7 @@
 恋愛・親愛系の進行パターン候補。**段階**でサブカテゴリを分ける。
 
 - 正本: 本ファイル（MD-first）。JSON へは sync のみ反映する。
-- 同期: `python _how_to/tools/episode_common_sync.py`
+- 同期: `python tools/episode_common_sync.py`
 
 ## 距離の揺れ
 
