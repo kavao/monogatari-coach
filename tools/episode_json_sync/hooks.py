@@ -65,8 +65,12 @@ def parse_hooks_md(path: Path) -> dict[str, dict[str, Any]]:
         h2 = _HEADING2_RE.match(line)
         if h2:
             flush_prose()
-            current_key = h2.group(1).strip()
-            subcategories.setdefault(current_key, {"内訳": []})
+            raw_key = h2.group(1)
+            if raw_key is None:
+                continue
+            key = raw_key.strip()
+            current_key = key
+            subcategories.setdefault(key, {"内訳": []})
             continue
 
         item = _bullet_item(line)

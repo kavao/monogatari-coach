@@ -13,12 +13,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 _TOOLS = Path(__file__).resolve().parent
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
-from episode_json_sync.hooks import build_hooks_section, parse_hooks_md  # noqa: E402
+from episode_json_sync import build_hooks_section, coerce_json_dict, parse_hooks_md  # noqa: E402
 
 REPO_ROOT = _TOOLS.parent
 EXAMPLE_COMMON = REPO_ROOT / "_how_to.example" / "episode" / "common"
@@ -69,13 +70,13 @@ def sync_common_json(
     json_path: Path,
     *,
     dry_run: bool = False,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     if not (base / "epsode_common_hooks.md").is_file():
         raise FileNotFoundError(f"epsode_common_hooks.md not found under {base}")
 
-    data: dict[str, object] = {}
+    data: dict[str, Any] = {}
     if json_path.is_file():
-        data = json.loads(json_path.read_text(encoding="utf-8"))
+        data = cast(dict[str, Any], json.loads(json_path.read_text(encoding="utf-8")))
 
     synced_keys: list[str] = []
     for key, md_name, overview in COMMON_SECTIONS:
@@ -97,7 +98,7 @@ def sync_common_json(
     except ValueError:
         source_md = hooks_md.as_posix()
 
-    meta = dict(data.get("_meta") or {})
+    meta = coerce_json_dict(data.get("_meta"))
     meta.update(
         {
             "schema_version": "1.1",
@@ -143,11 +144,19 @@ def main() -> int:
 
     parts: list[str] = []
     for key, _, _ in COMMON_SECTIONS:
-        section = data.get(key) or {}
-        subs = section.get("サブカテゴリ") or {}
-        if not subs:
+        section = data.get(key)
+        if not isinstance(section, dict):
             continue
-        total = sum(len((v or {}).get("内訳") or []) for v in subs.values())
+        subs = section.get("サブカテゴリ")
+        if not isinstance(subs, dict):
+            continue
+        total = 0
+        for sub in subs.values():
+            if not isinstance(sub, dict):
+                continue
+            items = sub.get("内訳")
+            if isinstance(items, list):
+                total += len(items)
         parts.append(f"{key}: {len(subs)} subs, {total} items")
 
     label = "dry-run" if args.dry_run else "wrote"
