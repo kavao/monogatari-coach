@@ -3,7 +3,7 @@ pick_lists:
     domain: character
     visibility: public
     description: 西洋風男性名（1件）
-    source: _how_to/name_creature.json
+    source: _how_to.example/name_creature.json
     path: western_male_first_names
     tool: json_weighted_pick
 
@@ -11,7 +11,7 @@ pick_lists:
     domain: character
     visibility: public
     description: 西洋風女性名（1件）
-    source: _how_to/name_creature.json
+    source: _how_to.example/name_creature.json
     path: western_female_first_names
     tool: json_weighted_pick
 
@@ -19,7 +19,7 @@ pick_lists:
     domain: character
     visibility: public
     description: 平成世代風男性名（1件）
-    source: _how_to/name_creature.json
+    source: _how_to.example/name_creature.json
     path: japanese_male_names_heisei
     tool: json_weighted_pick
 
@@ -27,7 +27,7 @@ pick_lists:
     domain: character
     visibility: public
     description: 平成世代風女性名（1件）
-    source: _how_to/name_creature.json
+    source: _how_to.example/name_creature.json
     path: japanese_female_names_heisei
     tool: json_weighted_pick
 

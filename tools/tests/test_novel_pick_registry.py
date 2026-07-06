@@ -31,8 +31,10 @@ def test_parse_pick_lists_from_file():
 def test_merge_registry_includes_example_and_user():
     entries = merge_registry()
     assert "naming_western_male" in entries
-    assert "mature_episode_opening" in entries
-    assert entries["mature_episode_opening"].visibility == "user"
+    user_mature = ROOT / "_how_to" / "pick_registry" / "mature.yaml"
+    if user_mature.is_file():
+        assert "mature_episode_opening" in entries
+        assert entries["mature_episode_opening"].visibility == "user"
 
 
 def test_validate_public_lists():
