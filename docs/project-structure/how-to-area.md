@@ -77,6 +77,8 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 **公式スキル（`.rulesync/skills/`）ではない**、手書きの手順置き場です。雛形は **`_how_to.example/skills/<名前>/`**、作業用にコピー・編集する先は **`_how_to/skills/<名前>/`** です。一覧は各 `skills/_index.md` から辿れます。
 
+ユーザスキルは「チャットで明示したときだけ読む」だけでなく、**checklist の `suggested_skill` / `suggested_pick_lists` や索引の発動条件**に当てはまれば条件付きで参照されるユーザ運用知識でもある。抽選入口の横断定義は **選定レジストリ**（`_how_to.example/pick_registry/`、`_how_to/pick_registry/`、公式 `tools/novel_pick_registry.py`）。横断定義は [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)「公式スキルとユーザスキルの接続」「選定レジストリ」。
+
 詳細・索引・具体例（カクヨムルビ連携など）は **[ユーザスキルと雛形の置き場](../workflow/user-skills.md)** を参照してください。
 
 ---

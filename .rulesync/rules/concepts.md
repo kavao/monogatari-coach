@@ -65,6 +65,7 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 
 - Tag Mode 完了時は、主要キャラごとに **`000_base`**（固定外見）と **000番台**（作品に必要な衣装状態）を `tag/characters/*.yaml` に書く。
 - **`000_base.danbooru_tags` に性別トークン（`1boy` / `1girl` 等）を含める**。ルートの **`character_tags` フィールドは 2026-06 以降廃止**（移行: `tools/novel_prompt_ir_migrate_character_tags.py`）。
+- **`000_base.danbooru_tags` には外見・体格・髪・目・肌・種族・固定小物を置く**。人物識別は **`character_id` / `name` / `name_en`（メタ情報）** で行い、**`danbooru_tags` に人名・キャラ名トークンを入れない**（`novel_prompt_ir_validate.py` が WARNING / `--strict-quality` で ERROR）。
 - **`solo` は継承用の `000_base` には載せない**。`000_base` は全バリアントへ合成されるため、`solo` を入れると `combines_with` 付き（複数人・結合資料の `103_*` / `104_*` 等）へも混入する。**`solo` が要るのはソロ資料バリアントのみ**（例: `100_intro` / `102_signature_pose` の `danbooru_tags`、または `000_base` ジョブ単体生成時の一時付与）。生成実行だけ付ける場合は `image_provider_novel_tag_batch.py` の `--prepend-tags solo` と `--variant-id` の組み合わせ可。
 - **`000_base` は必須**（`novel_prompt_ir_validate.py` で欠落・空は ERROR）。
 - **汎用100番台**（次節「汎用テンプレート」）は Tag Mode の標準成果物とする。
@@ -78,6 +79,7 @@ NovelAI での生成において、画風・品質タグ（ベース）とキャ
 - 漫画 `variant_id` に `100_*` を指定しない。
 - **`000_base`** および **固定合成経路**（次節「身体的正本」§3.1）へ **露出・性器・裸限定**の Danbooru タグを置かない。
 - **`000_base.danbooru_tags` に `solo` を載せる**（継承先の複数人バリアントと矛盾させる）。
+- **`prompt_variants[].danbooru_tags`** および **`appearance.distinctive_features` / `manga_rules.consistency_tags`** に **`character_id` / `name` / `name_en` と一致する人名トークン**を置く（`caption` / `translation` は人間向け説明として残してよい）。
 
 参照:
 
@@ -430,6 +432,65 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 - ローカル試行: ルート `readme.md` の「ローカル試行用」、`tools_temp/README.md`
 - 入口ルールの詳細: `.rulesync/rules/overview.md` の「スキルへの Python 追加ルール」「`_how_to/tools/`（ユーザ用 Python）」
+
+## 公式スキルとユーザスキルの接続
+
+定義:
+**公式スキル**（`.rulesync/skills/`）はエージェントの既定動作として参照される。**ユーザスキル**（`_how_to/skills/<名前>/SKILL.md`）はユーザー領域の手書き手順であり、公式 agent skill ではない。ただし、公式スキル側に **発動条件** が書かれている場面では、エージェントはユーザスキルを読んでよい／読むべきとする。
+
+必須:
+
+- ユーザスキルの入口は **`_how_to/skills/_index.md`**（発動条件つき索引）。全ファイルを毎回読む運用にはしない。
+- 該当条件がある場合のみ、公式スキル（例: **novel-planning**、**novel-character-profile**）から `_how_to/skills/` を参照する。
+- ユーザスキルに付随する Python は **`_how_to/tools/`** に置く（本ファイル「共有ツールとユーザ用 Python」）。
+- 恒久的・全作品必須になった場合のみ、別計画で `.rulesync/skills/` への昇格を検討する。
+
+代表例（発動条件）:
+
+- **選定レジストリ（Pick Registry）** の `list_id` を、profile・作品メタ・ユーザー指示で選び、抽選は **`tools/novel_pick_registry.py`**（スキル **content-pick-registry**）を正とする。
+- **visibility: user** の list_id（`mature_*` 等）は **`_how_to/pick_registry/`** にのみ定義する。公式ルール・docs には具体 ID を列挙しない。
+- ユーザスキル完全版の索引は **`_how_to/skills/_index.md`**。発動条件に当てはまるときだけ該当 `SKILL.md` を読む（全件必読ではない）。
+
+lint / check 側では、`character_checklist.yaml` の profile に **`suggested_pick_lists`**（任意）と **`suggested_skill`**（任意・ユーザ領域のパス文字列）を載せ、`tools/novel_character_md_check.py` が HINT として再案内できる（skill パスは checklist の文字列をそのまま表示する）。
+
+禁止:
+
+- チャットでユーザスキルを明示したときだけ読む、と公式スキルが縛る記述を残さない（条件付き参照を優先する）。
+- `_how_to/skills/` の全ファイルを Plan Mode 開始時に必読扱いにしない。
+
+参照:
+
+- 索引: `_how_to/skills/_index.md`
+- 操作説明: `docs/workflow/user-skills.md`
+- 人物プロフィール: `.rulesync/skills/novel-character-profile/SKILL.md`
+- 選定レジストリ: `.rulesync/skills/content-pick-registry/SKILL.md`
+
+## 選定レジストリ（Pick Registry）
+
+定義:
+**list_id** ごとに「どの JSON のどの path から何を引くか」を宣言的に登録する横断機構。キャラクター profile 向け（命名・口調候補等）とストーリー／トロープ向け（フック・進行）を同じ CLI 思想で扱う。
+
+必須:
+
+- 正本（雛形）: **`_how_to.example/pick_registry/`**（`public` のみ。`mature.yaml` は載せない）
+- ユーザ運用: **`_how_to/pick_registry/`**（`mature.yaml` 等・visibility: user）。**`_how_to/*` は原則 Git 管理外**（`howto_init.py` でローカル生成）のため、clone に `mature.yaml` が無いのは欠落ではなく **ユーザ fragment 未配置** を意味する
+- user fragment テンプレ: **`_how_to.example/pick_registry/mature.yaml.example`**（コピー先: `_how_to/pick_registry/mature.yaml`）。有効化手順の正本は同ディレクトリ **`README.md`**
+- 作品別（任意）: **`novels/<作品>/pick_registry/work.yaml`**（`_meta.md` 自動連携は未設計。CLI `--novel` フックのみ）
+- マージ: 各 `_index.yaml` の **`merge_order`** に従い後勝ち。`list_id` は横断で一意
+- 低レイヤ抽選: **`tools/json_weighted_pick.py`**（スキル **weighted-pick**）
+- list_id 解決・運用: **`tools/novel_pick_registry.py`**（スキル **content-pick-registry**）
+- mature 向けボディー一括抽選: **`_how_to/tools/novel_character_pick.py`**（registry の `tool: novel_character_pick` から委譲）
+
+禁止:
+
+- 公式 `.rulesync/skills/` に `episode_mature.json` の path や mature 固有スキル名を代表例として直書きしない
+- 計画 MD を経由せず、visibility: user の list_id だけを公式 docs の手順例に載せない
+
+参照:
+
+- スキル: `.rulesync/skills/content-pick-registry/SKILL.md`
+- trope JSON 雛形: `_how_to.example/episode/general/episode_general.json`、`_how_to.example/episode/common/episode_common.json`
+- 操作: `docs/tools/index.md`
 
 ## 画像生成: dry-run から本番まで
 

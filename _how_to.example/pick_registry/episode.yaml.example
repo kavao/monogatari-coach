@@ -1,0 +1,29 @@
+# ユーザ fragment テンプレ — episode list_id 上書き・追加
+#
+# 使い方:
+#   1. _how_to/pick_registry/ を作成
+#   2. 本ファイルを episode.yaml にリネームコピー（mature.yaml と併存可）
+#   3. source を _how_to/episode/... に向ける、または path だけ差し替え
+#   4. python tools/novel_pick_registry.py validate
+#
+# merge では _how_to.example/pick_registry/episode.yaml の後に読み込まれ、
+# 同一 list_id は後勝ちで上書きされる。
+
+pick_lists:
+  # 例: ユーザ JSON へ source を差し替え
+  episode_hook_general:
+    domain: episode
+    visibility: user
+    description: 自作 general フック（帰省軸）— _how_to 側 JSON を参照
+    source: _how_to/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.帰省と身寄せ.内訳
+    tool: json_weighted_pick
+
+  # 例: 作品傾向に合わせた追加 list_id（public 雛形には無い軸）
+  episode_hook_custom_festival:
+    domain: episode
+    visibility: user
+    description: ユーザ追加 — 祭り・季節イベント軸（MD 追加後 sync 必須）
+    source: _how_to/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.依頼と訪問.内訳
+    tool: json_weighted_pick

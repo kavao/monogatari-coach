@@ -102,3 +102,15 @@ _examples:
     extends: plan
     require_fields:
       - "ワンポイント特徴"
+  body_therapy:
+    description: >-
+      身体的ケア・ボディー描写が主軸の作品向け profile の例。
+      実運用では _how_to/character_checklist.yaml の body_therapy を正とする。
+      mature 向け list_id は _how_to/pick_registry/mature.yaml（visibility: user）。
+    extends: plan
+    require_fields:
+      - "ボディーの特徴"
+      - "服装"
+    apply_body_gender_rules: true
+    suggested_pick_lists:
+      - mature_body_pick_female_young

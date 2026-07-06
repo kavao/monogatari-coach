@@ -52,6 +52,12 @@ globs: ["**/*"]
 - **短命の試行**は **`tools_temp/`** を使う（`_how_to/tools/` は運用上そこそこ長く残すスクリプト向け）。
 - 案内文は **`_how_to/tools/README.md`** を正とする。
 
+### `_how_to/skills/`（ユーザスキル）
+
+- **`_how_to/skills/`** は公式スキル（`.rulesync/skills/`）ではない、ユーザー領域の手書き手順置き場である。
+- 入口は **`_how_to/skills/_index.md`**（発動条件つき索引）。Plan Mode で特殊なプロフィール・投稿変換・個人ワークフローが関わる場合は、該当条件に応じて索引からユーザスキルを読む（全件必読ではない）。
+- 横断定義は **`.rulesync/rules/concepts.md`** の「公式スキルとユーザスキルの接続」を正とする。
+
 ---
 
 ## 1. Monogatari Coachのファイル構成
@@ -212,6 +218,8 @@ c. プロフィールについても深く掘り下げてください。
 
 ### 2.2 Plan Mode
 企画・設計・人物・世界観・メタ情報を整え、本文執筆に入れる状態へ進める。詳細な作成順と確認観点はスキル **`novel-planning`**、執筆前の機械確認はスキル **`novel-project-readiness`** を参照する。
+
+Plan Mode で `character.md` 作成・特殊プロフィール（例: `body_therapy`）・投稿変換・個人ワークフローが関わる場合は、**`_how_to/skills/_index.md`** を確認し、該当するユーザスキルを読む（全ユーザスキル必読ではない。発動条件は concepts.md「公式スキルとユーザスキルの接続」）。
 
 Feedback として、既存作品の `judge_result.md` や `impression.md` から再利用できる文体・作風の学びがあれば、該当する作家の `writer_profile.md` へ反映する。
 

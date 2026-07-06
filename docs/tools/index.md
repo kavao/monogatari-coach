@@ -604,11 +604,39 @@ python tools/workspace_audit_log.py diary verify
 
 ### `json_weighted_pick.py` — 確率付き乱数選択
 
-JSON リストから均等または確率フィールドに基づいて要素を選びます。キャラクター命名（`_how_to/name_creature.json`）などで使います。
+JSON リストから均等または確率フィールドに基づいて要素を選びます。キャラクター命名（`_how_to/name_creature.json`）などで使います。registry 経由の抽選は **`novel_pick_registry.py`** を優先する（スキル **content-pick-registry**）。
 
 ```bash
 python tools/json_weighted_pick.py _how_to/name_creature.json
 ```
+
+---
+
+### `novel_pick_registry.py` — 選定レジストリ（Pick Registry）
+
+`_how_to.example/pick_registry/` と `_how_to/pick_registry/` の YAML フラグメントをマージし、`list_id` から source / path を解決して抽選する。命名・プロフィール補助・エピソードトロープの入口を宣言的に登録する。
+
+```bash
+# 登録一覧（public のみ）
+python tools/novel_pick_registry.py list --visibility public
+
+# list_id の詳細
+python tools/novel_pick_registry.py show naming_japanese_female_heisei
+
+# 抽選
+python tools/novel_pick_registry.py pick episode_hook_general
+
+# 全 fragment の source / path 検証
+python tools/novel_pick_registry.py validate
+
+# user fragment（mature.yaml 配置後）
+python tools/novel_pick_registry.py list --visibility user
+python tools/novel_pick_registry.py list --prefix mature_
+```
+
+`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意）。
+
+mature / body 向け user list_id の有効化手順は **`_how_to.example/pick_registry/README.md`** を正とする（公式 docs には具体 path を載せない）。
 
 ---
 

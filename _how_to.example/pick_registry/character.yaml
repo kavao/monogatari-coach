@@ -1,0 +1,40 @@
+pick_lists:
+  naming_western_male:
+    domain: character
+    visibility: public
+    description: 西洋風男性名（1件）
+    source: _how_to/name_creature.json
+    path: western_male_first_names
+    tool: json_weighted_pick
+
+  naming_western_female:
+    domain: character
+    visibility: public
+    description: 西洋風女性名（1件）
+    source: _how_to/name_creature.json
+    path: western_female_first_names
+    tool: json_weighted_pick
+
+  naming_japanese_male_heisei:
+    domain: character
+    visibility: public
+    description: 平成世代風男性名（1件）
+    source: _how_to/name_creature.json
+    path: japanese_male_names_heisei
+    tool: json_weighted_pick
+
+  naming_japanese_female_heisei:
+    domain: character
+    visibility: public
+    description: 平成世代風女性名（1件）
+    source: _how_to/name_creature.json
+    path: japanese_female_names_heisei
+    tool: json_weighted_pick
+
+  profile_speech_pattern:
+    domain: character
+    visibility: public
+    description: 口調・話し方の型候補（敬語と崩れ）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 対話の型.サブカテゴリ.敬語と崩れ.内訳
+    tool: json_weighted_pick

@@ -9,6 +9,7 @@
 | A | [epsode_common_writing.md](epsode_common_writing.md) | 描写のコツ・あらすじ・チャット例・プロフィール例 |
 | B | [epsode_common_structure.md](epsode_common_structure.md) | 物語要素・時系列・概念階層・キャラ多様性 |
 | C | [epsode_common_relations.md](epsode_common_relations.md) | ギャップ萌え・読者の好悪・恋愛考察・恥じらい |
+| C2 | [epsode_common_hooks.md](epsode_common_hooks.md) | **恋愛フック具体シチュエーション**（MD 正本 → sync → `episode_common.json`） |
 
 `気安い関係`・`話題を考える` は [../general/episode_character.md](../general/episode_character.md) / [../general/episode_dialogue.md](../general/episode_dialogue.md) と同一のため、relations 側は索引リンクのみ（正本は `episode_`）。
 

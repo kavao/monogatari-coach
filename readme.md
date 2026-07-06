@@ -90,6 +90,8 @@ git status --short
   [`_how_to/tools/README.md`](_how_to/tools/README.md)
 - ユーザスキル（プラグイン相当）:
   [docs/workflow/user-skills.md](docs/workflow/user-skills.md)
+- 選定レジストリ（Pick Registry）セットアップ:
+  [`_how_to.example/pick_registry/README.md`](_how_to.example/pick_registry/README.md)
 
 ## novels/ の git 管理
 

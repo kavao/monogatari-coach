@@ -39,6 +39,11 @@
    - `character.md` の必須ラベル・任意ラベル・条件付き子項目を宣言するチェックリスト雛形。運用時は `_how_to/character_checklist.yaml` にコピーして調整する
    - `tools/novel_character_md_check.py` とスキル **novel-character-profile** で参照する
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
+11.5. （エピソード抽選）スキル **content-pick-registry**
+   - 命名・口調・フック・進行の入口を `list_id` で宣言。
+   - **MD 正本 → sync → JSON → registry** の流れで拡充。
+   - 一般向け手順雛形: [`skills/episode-general-pick/SKILL.md`](skills/episode-general-pick/SKILL.md)
+   - 抽選 CLI: `tools/novel_pick_registry.py`
 12．manga.md, manga_tag.md, manga_tag_step2.md
    - **manga.md**: 本文から漫画ページIRを起こす手順・YAML構造・**バリアントとタグ注入の優先**（実装と同一の表）・検証の参照先。コマ割りの設計の中心。
    - **manga_tag.md**: コマ・シーン向けの**英語タグ例・語彙**（体勢等）。IRの正本や variant の機械仕様の説明は manga.md に譲る。**Step1／`prompt_tags` 中心**。

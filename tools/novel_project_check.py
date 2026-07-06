@@ -332,6 +332,7 @@ def check_novel_project(
                 "suggest": character_suggest,
                 "errors": [{"level": "ERROR", "message": str(e)}],
                 "warnings": [],
+                "hints": [],
                 "suggestions": [],
                 "characters": [],
             }
@@ -688,6 +689,14 @@ def main(argv: list[str] | None = None) -> int:
         warnings = ch.get("warnings") or []
         if warnings:
             print(f"    character.md WARN: {len(warnings)} 件")
+        hints = ch.get("hints") or []
+        if hints:
+            print(f"    character.md HINT: {len(hints)} 件")
+            for hint in hints:
+                print(f"      - {hint.get('message', '')}")
+                command = hint.get("command")
+                if command:
+                    print(f"        $ {command}")
 
     if args.require_text_lint:
         tl = opt.get("text_lint") or {}

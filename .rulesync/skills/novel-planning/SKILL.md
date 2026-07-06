@@ -39,6 +39,8 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 3. `proposal.md` を作り、作品の核を固定する。
 4. `design_specification.md` を作り、章構成と心理・シーンの流れを具体化する。
 5. `character.md` と `world.md` を作り、人物と世界の矛盾を減らす。`character.md` はスキル **novel-character-profile** に従い、`- **ラベル**:` 形式を基本にする。**全キャラに身長（`- **身長**:`）を書く**。
+   - **該当条件がある場合のみ** `_how_to/skills/_index.md` を確認し、作品タイプ・チェックリスト・ユーザー指示に応じてユーザスキルを読む（全件必読ではない）。
+   - 命名・トロープ・プロフィール候補の抽選は **content-pick-registry** と `tools/novel_pick_registry.py validate` で registry を確認してから `pick <list_id>` する（path 直書きは fallback）。
 6. `_meta.md`, `_novel_text/`, `_reader/` を揃える。
 7. `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` と `references/novelai/` を雛形から作成する（既存の `_meta.yml` は自動で `_meta.yaml` にリネーム）。
 8. 必要なら一度自己評価し、設計の薄い部分を洗練する。

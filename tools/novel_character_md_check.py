@@ -537,6 +537,51 @@ def build_suggestions(
     return suggestions
 
 
+def build_user_skill_hints(
+    *,
+    profile: str,
+    profile_spec: dict[str, Any],
+    suggest: bool = False,
+) -> list[dict[str, str]]:
+    """profile の suggested_skill / suggested_pick_lists に基づく汎用 HINT を返す。"""
+    hints: list[dict[str, str]] = []
+    skill_path = profile_spec.get("suggested_skill")
+    if isinstance(skill_path, str) and skill_path.strip():
+        skill_path = skill_path.strip()
+        hints.append(
+            {
+                "message": (
+                    f"推奨ユーザスキル: {skill_path} "
+                    "（content-pick-registry・concepts.md「公式スキルとユーザスキルの接続」）"
+                ),
+                "skill_path": skill_path,
+            }
+        )
+
+    pick_lists = profile_spec.get("suggested_pick_lists")
+    if isinstance(pick_lists, list) and pick_lists:
+        ids = [str(x).strip() for x in pick_lists if str(x).strip()]
+        if ids:
+            hints.append(
+                {
+                    "message": (
+                        f"推奨 pick list_id: {', '.join(ids)} "
+                        "（tools/novel_pick_registry.py list / pick）"
+                    ),
+                    "pick_lists": ", ".join(ids),
+                }
+            )
+            if suggest:
+                for list_id in ids:
+                    hints.append(
+                        {
+                            "message": f"抽選例: {list_id}",
+                            "command": f"python tools/novel_pick_registry.py pick {list_id}",
+                        }
+                    )
+    return hints
+
+
 def check_character_file(
     character_md: Path,
     *,
@@ -571,6 +616,7 @@ def check_character_file(
         "characters": [],
         "errors": [],
         "warnings": [],
+        "hints": [],
         "suggestions": [],
     }
 
@@ -662,6 +708,12 @@ def check_character_file(
                 required_fields=required_fields,
             )
 
+    result["hints"] = build_user_skill_hints(
+        profile=profile,
+        profile_spec=profile_spec,
+        suggest=suggest,
+    )
+
     errors = [issue.to_dict() for issue in issues if issue.level == "ERROR"]
     warnings = [issue.to_dict() for issue in issues if issue.level == "WARN"]
     result["errors"] = errors
@@ -693,6 +745,14 @@ def print_text_result(result: dict[str, Any]) -> None:
         for issue in result["errors"]:
             prefix = f"[{issue['character']}] " if issue.get("character") else ""
             print(f"  - {prefix}{issue['message']}")
+
+    if result.get("hints"):
+        print("\nHINT:")
+        for hint in result["hints"]:
+            print(f"  - {hint.get('message', '')}")
+            command = hint.get("command")
+            if command:
+                print(f"    $ {command}")
 
     if result.get("suggestions"):
         print("\nSUGGEST:")

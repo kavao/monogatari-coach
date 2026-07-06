@@ -1,0 +1,130 @@
+pick_lists:
+  # --- General ---
+  episode_hook_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの冒頭フック（帰省と身寄せ）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.帰省と身寄せ.内訳
+    tool: json_weighted_pick
+
+  episode_hook_general_visit:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの冒頭フック（依頼と訪問）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.依頼と訪問.内訳
+    tool: json_weighted_pick
+
+  episode_hook_general_discovery:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの冒頭フック（違和感と発見）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.違和感と発見.内訳
+    tool: json_weighted_pick
+
+  episode_hook_general_supernatural:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの冒頭フック（異界の兆し）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 冒頭フック.サブカテゴリ.異界の兆し.内訳
+    tool: json_weighted_pick
+
+  episode_progression_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの進行パターン（調査と深化）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 進行パターン.サブカテゴリ.調査と深化.内訳
+    tool: json_weighted_pick
+
+  episode_progression_general_conflict:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの進行パターン（対立の表面化）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 進行パターン.サブカテゴリ.対立の表面化.内訳
+    tool: json_weighted_pick
+
+  episode_turning_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの転換点（決断の瞬間）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 転換点.サブカテゴリ.決断の瞬間.内訳
+    tool: json_weighted_pick
+
+  episode_conflict_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの対立軸（理念の衝突）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 対立軸.サブカテゴリ.理念の衝突.内訳
+    tool: json_weighted_pick
+
+  episode_occupation_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの職業フック（屋敷奉公）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 職業フック.サブカテゴリ.屋敷奉公.内訳
+    tool: json_weighted_pick
+
+  episode_dialogue_general:
+    domain: episode
+    visibility: public
+    description: 一般エピソードの対話の型（敬語と崩れ）
+    source: _how_to.example/episode/general/episode_general.json
+    path: 対話の型.サブカテゴリ.敬語と崩れ.内訳
+    tool: json_weighted_pick
+
+  # --- Common (Romance/Friendship) ---
+  episode_hook_common:
+    domain: episode
+    visibility: public
+    description: 恋愛・親愛系エピソードのフック（再会）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 恋愛フック.サブカテゴリ.再会.内訳
+    tool: json_weighted_pick
+
+  episode_hook_common_care:
+    domain: episode
+    visibility: public
+    description: 恋愛・親愛系エピソードのフック（日常の世話）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 恋愛フック.サブカテゴリ.日常の世話.内訳
+    tool: json_weighted_pick
+
+  episode_progression_common:
+    domain: episode
+    visibility: public
+    description: 恋愛・親愛系の関係進行（距離の揺れ）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 関係進行.サブカテゴリ.距離の揺れ.内訳
+    tool: json_weighted_pick
+
+  episode_progression_common_secret:
+    domain: episode
+    visibility: public
+    description: 恋愛・親愛系の関係進行（共有の秘密）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 関係進行.サブカテゴリ.共有の秘密.内訳
+    tool: json_weighted_pick
+
+  episode_affection_common:
+    domain: episode
+    visibility: public
+    description: 親愛のきっかけ（偶然の触れ合い）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 親愛のきっかけ.サブカテゴリ.偶然の触れ合い.内訳
+    tool: json_weighted_pick
+
+  episode_shyness_common:
+    domain: episode
+    visibility: public
+    description: 恥じらい（視線と逸らし）
+    source: _how_to.example/episode/common/episode_common.json
+    path: 恥じらい.サブカテゴリ.視線と逸らし.内訳
+    tool: json_weighted_pick

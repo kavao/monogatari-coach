@@ -265,6 +265,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
   - standing / sitting のような姿勢タグ（状況で変わる）
   - 屋外・屋内・背景（作品側/コマ側で管理）
   - **露出・性器・裸限定タグ**（→ **`006_nude`（身体的正本）** および **`combines_with: 006_nude` の Level 3**）
+  - **`character_id` / `name` / `name_en` 相当の人名・キャラ名トークン**（メタ情報として YAML ルートに残し、**`danbooru_tags` 列には入れない**。既存学習キャラへの引きずり防止）
 
 ### 身体的正本（3階層継承・Tag Mode 作成順）
 
@@ -278,7 +279,7 @@ NSFW を扱う作品では、新規 YAML 作成時の思考順を固定する。
 
 Level 1 禁止事項（着衣漏洩防止）: 主経路の character_ir_tags() は 000_base 優先に改修済み。それでも distinctive_features / consistency_tags に裸限定タグがあると、embed・renderer 等の副経路で着衣コマに漏れうる。Tag Mode では Level 1 から裸限定タグを除外すること。
 
-検証: `python tools/novel_prompt_ir_validate.py novels/<作品>`（身体的正本 WARNING、`--strict-quality` で ERROR 化可）。
+検証: `python tools/novel_prompt_ir_validate.py novels/<作品>`（身体的正本 WARNING、人名トークン WARNING、`--strict-quality` で ERROR 化可）。
 
 ### 実装メモ（確認ポイント）
 

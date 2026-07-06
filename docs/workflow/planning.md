@@ -45,6 +45,8 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 | `_meta.md` | 進捗、伏線、次回タスク |
 | `_meta.yaml` | 画像生成の機械可読設定（NovelAI ポーション等） |
 
+`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認する（`python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。作品タイプに応じて **`_how_to/skills/_index.md`** から該当ユーザスキルを読む。全ユーザスキル必読ではない（詳細は [ユーザスキル](user-skills.md)）。
+
 新規作品では、資料を揃えたあと次を実行します。
 
 ```bash
@@ -52,6 +54,16 @@ python tools/novel_scaffold.py novels/NNN_作品名
 ```
 
 作成後は、必要に応じて設計の弱い部分を自己評価し、心理描写や具体的なシーンを増やします。
+
+## エピソード・トロープの抽選（一般向け）
+
+設計を厚くする際、一般向け（全年齢）のエピソードフックや進行パターンを抽選できます。
+
+1. `python tools/novel_pick_registry.py list --domain episode --visibility public` で ID を確認
+2. `python tools/novel_pick_registry.py pick <list_id>` で具体シチュエーションを抽選
+3. 抽選結果を `design_specification.md` のストーリー節やシーン案へ取り込む
+
+詳細は [`_how_to.example/skills/episode-general-pick/SKILL.md`](../../_how_to.example/skills/episode-general-pick/SKILL.md) を参照してください。
 
 ## ユーザーが確認できるもの
 

@@ -84,17 +84,22 @@ python tools/novel_project_check.py novels/<作品>
 
 JSON で提案も含めたいときは `--character-suggest --json` を併用する。
 
-## ボディー候補の抽選（body_therapy・任意）
+## 選定レジストリ（任意）
 
-`episode_mature.json` からボディー子ラベルの候補文を引く処理は **ユーザスキル** に分離した。
+`character_checklist.yaml` の profile に **`suggested_pick_lists`** または **`suggested_skill`** が定義されているとき、候補の抽選は **content-pick-registry** と `tools/novel_pick_registry.py` を参照する。具体内容（mature／body 等）は **`_how_to/pick_registry/`** と **`_how_to/skills/_index.md`** に閉じる。
 
-- 完全版: `_how_to/skills/character-body-pick/SKILL.md`
-- 実装: `_how_to/tools/novel_character_body_pick.py`
+lint 実行時、checklist の文字列が **HINT** として表示される。`--suggest` 併用時は `novel_pick_registry.py pick <list_id>` の例も出る。
 
-チャットでユーザスキルを明示してから使う（公式 agent スキルには載らない）。
+抽選後は必ず lint を通す:
+
+```bash
+python tools/novel_character_md_check.py novels/<作品> --profile <profile名>
+python tools/novel_character_md_check.py novels/<作品> --profile plan
+```
 
 ## 関連
 
+- 選定レジストリ: `.rulesync/skills/content-pick-registry/SKILL.md`
 - Plan Mode: `.rulesync/skills/novel-planning/SKILL.md`
 - 執筆前確認: `.rulesync/skills/novel-project-readiness/SKILL.md`
 - Tag Mode の機械正本: `.rulesync/skills/manga-prompt-ir/SKILL.md`
