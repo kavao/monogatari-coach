@@ -160,24 +160,30 @@ def character_variant_danbooru_line(
     *,
     novelai_pipe_tags: bool,
 ) -> str:
-    """100番台 + combines_with 時は ``資料 | 結合先``（_how_to.example/tag.md）。"""
+    """バッチ実出力と同じ合成結果を記載する（image_provider_novel_tag_batch.compose_job_prompt 準拠）。
+
+    - 100番台 + combines_with + NovelAI: ``資料 | 000_base+結合先``（パイプ）
+    - それ以外の combines_with 持ち（000番台等）: ``状況タグ, 000_base, 結合先`` のカンマ合成
+    - combines_with なし: 状況タグのみ（000〜099 は生成時に 000_base が前置される）
+    """
     tags = as_list(variant.get("danbooru_tags"))
     combines_raw = variant.get("combines_with")
     combines = str(combines_raw).strip() if combines_raw else ""
     vid = str(variant.get("variant_id") or "")
-    if novelai_pipe_tags and combines:
+    if combines:
         from image_provider_novel_tag_batch import (  # noqa: E402
             danbooru_for_combines_with,
             is_reference_slot,
         )
 
-        if is_reference_slot(vid):
-            right = danbooru_for_combines_with(
-                [v for v in variants if isinstance(v, dict)],
-                combines,
-                character,
-            )
+        right = danbooru_for_combines_with(
+            [v for v in variants if isinstance(v, dict)],
+            combines,
+            character,
+        )
+        if novelai_pipe_tags and is_reference_slot(vid):
             return join_novelai_pipe_tag_line(tags, [right])
+        return join_tags(unique([*[str(t) for t in tags], *right]))
     return join_tags(tags)
 
 
@@ -212,7 +218,7 @@ def render_character_md(
         f"- character_id: `{character_id}`",
         f"- 概要: {summary or '構造化IRから生成'}",
         f"- 固定特徴（000_base 正本）: {', '.join(str(v) for v in base_tags) or 'なし'}",
-        "- バッチ合成: 000〜099 は 000_base + 状況タグ。100番台は 資料タグ | combines_with（000_base+結合先）",
+        "- バッチ合成: 000〜099 は 000_base + 状況タグ（combines_with 持ちは 状況タグ + 000_base + 結合先を合成済みで記載）。100番台は 資料タグ | combines_with（000_base+結合先）",
         f"- 変更禁止: {', '.join(str(v) for v in do_not_change) or 'なし'}",
         f"- Negative Tags: {', '.join(str(v) for v in as_list(character.get('negative_tags'))) or 'なし'}",
         "",

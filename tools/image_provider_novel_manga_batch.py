@@ -500,8 +500,60 @@ def expand_aliases(display: str) -> list[str]:
     return result
 
 
+def parse_tag_anchor_ir_export(text: str, tag_path: Path) -> dict[str, object] | None:
+    """novel_prompt_ir_export_md.py が出力する現行形式の tag/<romaji>.md を解析する。
+
+    見出しは ``## N. タイトル``、タグ行は ``**Danbooru Tags:**`` の次行。
+    100番台（資料スロット）は漫画では使わないため除外する（パイプ行の混入防止）。
+    """
+    name_match = re.search(r"(?m)^#\s+([^\n#][^\n]*)$", text)
+    if not name_match:
+        return None
+    display = name_match.group(1).strip()
+    variants = []
+    section_iter = re.finditer(
+        r"(?m)^##\s*(\d+)\.\s*([^\n]+)\r?\n"
+        r"説明:\s*([^\n]*)\r?\n"
+        r"(?:\*\*組み合わせ\*\*:[^\n]*\r?\n)?"
+        r"\r?\n\*\*Danbooru Tags:\*\*\r?\n([^\n]+)",
+        text,
+    )
+    for match in section_iter:
+        index = int(match.group(1))
+        if index >= 100:
+            continue
+        title = match.group(2).strip()
+        description = normalize_step2_block(match.group(3))
+        danbooru = normalize_tag_body(match.group(4))
+        if not danbooru:
+            continue
+        variants.append(
+            {
+                "index": index,
+                "title": title,
+                "description": description,
+                "danbooru": danbooru,
+                "keywords": extract_keywords(f"{title}\n{description}"),
+            }
+        )
+    if not variants:
+        return None
+    default_variant = variants[0]
+    return {
+        "key": tag_path.stem,
+        "display": display,
+        "aliases": expand_aliases(display),
+        "danbooru": default_variant["danbooru"],
+        "variants": variants,
+    }
+
+
 def parse_tag_anchor(tag_path: Path) -> dict[str, object] | None:
     text = tag_path.read_text(encoding="utf-8")
+    parsed = parse_tag_anchor_ir_export(text, tag_path)
+    if parsed:
+        return parsed
+    # 旧形式（Danbooru Tags: 非太字・「1. 通常時」見出し）のフォールバック
     name_match = re.search(r"(?m)^([^\n]+(?:（[^）]+）)?)\s*$", text)
     if not name_match:
         return None
@@ -598,8 +650,9 @@ def character_ir_tags(character: dict, variant_id: str | None = None) -> list[st
         combines = str(variant.get("combines_with") or "").strip()
         variant_tags = [str(v) for v in as_list(variant.get("danbooru_tags"))]
         if combines:
+            # タグ順はキャラ画像バッチ（compose_job_prompt）と同じ「状況タグ→固定外見（継承分）」
             inherited = danbooru_for_combines_with(variants, combines, character)
-            return unique([*inherited, *variant_tags])
+            return unique([*variant_tags, *inherited])
         base = base_fixed_tags_from(character, variants)
         return unique([*base, *variant_tags])
 

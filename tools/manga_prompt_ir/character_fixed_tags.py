@@ -49,9 +49,10 @@ def resolve_variant_danbooru_tags(char: dict[str, Any], variant_id: str | None =
     if combines:
         ref = by_id.get(combines)
         if ref:
+            # タグ順はキャラ画像バッチ（compose_job_prompt）と同じ「状況タグ→固定外見（継承分）」
             base = base_fixed_tags_from(char, variants)
             ref_tags = [str(t) for t in ref.get("danbooru_tags") or [] if t]
             inherited = dedupe_tags([*base, *ref_tags])
-            return dedupe_tags([*inherited, *variant_tags])
+            return dedupe_tags([*variant_tags, *inherited])
     base = base_fixed_tags_from(char, variants)
     return dedupe_tags([*base, *variant_tags])
