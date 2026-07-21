@@ -1,0 +1,27 @@
+schema_version: 2
+
+assets:
+  illust_cover:
+    holder: "著者名"
+    usage:
+      paper_book:
+        permission: unconfirmed
+        basis: null
+        confirmed_at: null
+      ebook:
+        permission: unconfirmed
+        basis: null
+        confirmed_at: null
+
+fonts:
+  - name: "しっぽり明朝"
+    usage_scope: [paper_book, ebook]
+    license: "SIL OFL 1.1"
+    basis: "配布元利用規約"
+    confirmed_at: 2026-07-21
+
+materials: []
+
+copyright:
+  notice: "© 2026 著者名"
+  note: "奥付の copyright_notice が null のときに利用する。"

@@ -8,6 +8,26 @@
 
 ## テキスト・プロジェクト管理
 
+### `book_review.py` / `book_lock.py` / `book_diff.py` — 出版パッケージ Phase 1
+
+作品フォルダ内の `book.yaml` と `rights.yaml` を基に、本文・付属原稿・挿絵・権利・奥付を検証し、入稿用入力一式を lockfile で管理します。PDF / EPUB の組版は行いません。
+
+```bash
+# 執筆中の参照チェック
+python tools/book_review.py novels/NNN_作品名 --gate writing
+
+# 入稿対象ごとの厳密チェック
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper
+
+# error 0 件の入力一式を凍結し、後続変更を確認
+python tools/book_lock.py novels/NNN_作品名 --target paper
+python tools/book_diff.py novels/NNN_作品名 --against lock
+```
+
+`book.lock.yaml` は生成物のため手編集しません。読者向けの「登場人物」原稿を含む導入手順は [Publishing Package](../workflow/publishing-package.md) を参照してください。
+
+---
+
 ### `novel_onboard.py` — 新規作品オンボーディング
 
 新規作品を1コマンドで準備します。作品名を渡すと採番・フォルダ作成・scaffold・プロジェクト確認・次の一言まで一括で実行します。

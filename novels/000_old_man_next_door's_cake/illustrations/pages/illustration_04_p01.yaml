@@ -1,0 +1,123 @@
+schema_version: "1.0"
+meta:
+  intent: illustration
+  reading_order: right_to_left
+  aspect_ratio: "3:4"
+  page_count: 1
+  source_text: "_novel_text/novel_text04.md"
+  source_anchor: ch04-002
+  illustration_type: insert
+render_instruction:
+  task: このYAMLを、第四章の温かな着地を描く文字なしの一枚挿絵として扱う。
+  prompt_header: 不格好なケーキを前に、年齢の異なる二人の隣人が狭い台所で一緒に食べる、静かで温かな場面を描く。
+  panel_policy: panels[] は構図セル1件のみ。枠線・分割画面なしの一枚絵として描く。
+  character_policy: 茜は黒髪・チャコールグレーのパーカー、義雄は白髪・ベージュのカーディガンを守る。
+  text_policy: 画像内に台詞、文字、看板、効果音を入れない。
+  output_policy: 二人の距離が自然に縮まったことを、ケーキを分ける姿勢で見せる。
+  user_directives:
+    page_notes: ["茜が次の年を口にする会話は文字にせず、食卓の温度だけで未来の気配を残す。"]
+    defaults:
+      required_prompt_tags: [contemporary_Japan, homemade_cake, quiet_warmth]
+      omit_prompt_tags: [text, logo, watermark, speech_bubble, comic_panel]
+manga:
+  genre_tags: [contemporary literary fiction illustration]
+  visual_tags: [painterly illustration, warm intimate scene, subtle realism]
+  line_art: soft detailed painterly linework
+  panel_layout: "枠線なし・一枚絵・セル境界なし。テーブルと床の高さの違いで二人の親密さを表す。"
+  text_policy: No text in the image.
+scene:
+  location: コーポ藤見202号室の台所と和室の境目
+  location_en: small kitchen and tatami room threshold in an aging Tokyo suburban apartment, low folding table, one chair, modest evening interior
+  time_of_day: 晩秋の夜
+  time_of_day_en: late autumn night
+  weather: 室内
+  weather_en: quiet indoor night
+  era: contemporary Japan
+  background_notes: 皿に分けられた不格好なケーキ、白いクリーム、二つの苺ジャムの赤い点、古い本棚。
+  background_notes_en: two plates of imperfect homemade sponge cake with white cream and small red strawberry jam accents, old bookshelf, modest apartment interior
+character_ids: [akane, yoshio]
+character_snapshots:
+  - character_id: akane
+    name: 中瀬茜
+    name_en: Akane Nakase
+    selected_variant_id: "001_normal"
+    appearance_summary: 18-year-old adult Japanese woman with shoulder-length natural black hair, slim build, an expression beginning to relax
+    costume_summary: old charcoal gray hoodie and dark blue jeans
+    fixed_tags: [adult_woman, black_hair, shoulder_length_hair]
+    variant_tags: [charcoal_gray_hoodie, dark_blue_jeans]
+    do_not_change: [Do not portray Akane as a child or change her black hair and casual clothes.]
+  - character_id: yoshio
+    name: 三島義雄
+    name_en: Yoshio Mishima
+    selected_variant_id: "001_normal"
+    appearance_summary: 74-year-old Japanese man with short white hair, narrow eyes, weathered large hands, gentle smile
+    costume_summary: thin beige cardigan and navy trousers
+    fixed_tags: [elderly_man, short_white_hair, narrow_eyes]
+    variant_tags: [beige_cardigan, navy_trousers]
+    do_not_change: [Do not portray Yoshio as young or change his white hair and cardigan.]
+background_concepts:
+  - concept_id: cake_table_night
+    title: ケーキを囲む小さな食卓
+    description: 椅子一脚と折りたたみテーブルだけがある、生活感のある夜の部屋。
+    prompt: Modest low folding table in an aging Tokyo apartment at late autumn night, two small plates of imperfect homemade sponge cake with white cream and strawberry jam, one chair, old bookshelf, warm quiet interior, no people
+    negative_tags: [people, text, logo]
+    provider_hint: openai
+    usage: 第4章の食卓とケーキの基準。
+panels:
+  - panel_id: 1
+    summary: 義雄は椅子に、茜は床に座り、不格好なケーキを一緒に食べながら少し笑う。
+    summary_en: Yoshio sits on the only chair and Akane sits on the floor beside him as they share an imperfect homemade cake and begin to smile.
+    summary_en_source: 義雄は椅子に、茜は床に座り、不格好なケーキを一緒に食べながら少し笑う。
+    step2_summary: An elderly man and a young woman share two slices of an imperfect homemade cake in a small Tokyo apartment, quietly warming to one another.
+    subjects:
+      - character_id: akane
+        variant_id: "001_normal"
+        description: テーブル脇の床に座る茜
+        description_en: Akane seated on the floor beside the table
+        pose_action: フォークでケーキを小さくすくい、義雄へ少し顔を向ける
+        pose_action_en: lifting a small bite of cake with a fork and turning slightly toward Yoshio
+        position: foreground
+        expression: 意外な温かさに触れた控えめな笑顔
+        expression_en: a restrained smile touched by unexpected warmth
+      - character_id: yoshio
+        variant_id: "001_normal"
+        description: 唯一の椅子に座る義雄
+        description_en: Yoshio seated on the only chair
+        pose_action: 皿を持ち、ケーキを味わいながら茜を見る
+        pose_action_en: holding his plate and looking toward Akane while tasting the cake
+        position: midground
+        expression: 目を細めた穏やかな笑顔
+        expression_en: a gentle smile with narrowed eyes
+    composition:
+      framing: 二人と食卓を収めるミディアムワイド
+      framing_en: medium-wide shot including both figures and the small table
+      layout: ケーキを中央、床の茜を手前、椅子の義雄を奥に置く三角構図
+      layout_en: cake at the center, Akane in the foreground on the floor, Yoshio in the background on the chair, forming a gentle triangle
+      focus: 二人の皿とケーキを分ける手元
+      focus_en: the two plates and hands sharing the cake
+      perspective: 床に座る茜と同じ低い視点
+      perspective_en: low intimate viewpoint near Akane's seated height
+    camera:
+      angle: 低めの目線
+      angle_en: low eye level
+      shot_size: medium wide shot
+      shot_size_en: medium wide shot
+    lighting:
+      direction: 蛍光灯の白い光とケーキの反射
+      direction_en: soft fluorescent ceiling light with warm reflections from the cake and table
+      quality: 静かで清潔な白い光に、淡い甘さを混ぜる
+      quality_en: clean quiet white light softened by pale warm food tones
+      mood_effect: 不器用な親密さと小さな未来
+      mood_effect_en: awkward intimacy and a small sense of future
+    text: {}
+    mood_atmosphere: [温かさ, 小さな希望, 日常の救い]
+    mood_atmosphere_en: [warmth, small hope, everyday solace]
+    prompt_tags: [homemade_cake, two_plates, folding_table, quiet_smile, old_bookshelf]
+    translation: 不格好なケーキを二人で分ける第四章の挿絵。
+color_palette:
+  mode: full_color
+  colors: [cream_white, strawberry_red, charcoal_gray, beige, navy, warm_gray]
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags: [text, logo, watermark, speech_bubble, comic_panel, panel_border, split_screen, exaggerated_smile, extra_fingers, bad_hands]

@@ -1,0 +1,55 @@
+schema_version: 2
+
+# 表紙・挿絵はこの作品のために新規生成する。公開・販売利用の最終確認前のため、
+# 許諾状態は生成後も unconfirmed として扱う。
+assets:
+  illust_cover:
+    holder: "Claude Sonnet 4"
+    usage:
+      paper_book:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+      ebook:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+  illust_001:
+    holder: "Claude Sonnet 4"
+    usage:
+      paper_book:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+      ebook:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+  illust_003:
+    holder: "Claude Sonnet 4"
+    usage:
+      paper_book:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+      ebook:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+  illust_004:
+    holder: "Claude Sonnet 4"
+    usage:
+      paper_book:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+      ebook:
+        permission: unconfirmed
+        basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
+        confirmed_at: null
+fonts: []
+materials: []
+
+copyright:
+  notice: "なし"
+  note: "ユーザー指定により著作権表記は設けない。"

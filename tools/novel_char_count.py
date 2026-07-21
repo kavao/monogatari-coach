@@ -15,9 +15,21 @@ Monogatari Coach 小説本文の文字数カウント（公式用）。
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import unicodedata
 from pathlib import Path
+
+
+# 出版パッケージが本文のアンカーとして使う行コメント。組版・画像配置のための
+# 構造情報であり、読者が読む本文文字数には含めない。任意の HTML コメントまで
+# 除外しないよう、許可した 2 種類だけを対象にする。
+_PUBLISHING_DIRECTIVE = re.compile(
+    r"(?m)^[ \t]*<!--\s*(?:"
+    r"scene:\s*ch\d{2,}-\d{3,}"
+    r"|illustration:\s*[a-z][a-z0-9_]*"
+    r")\s*-->[ \t]*(?:\r?\n)?"
+)
 
 
 def strip_yaml_front_matter(text: str) -> str:
@@ -36,6 +48,7 @@ def strip_yaml_front_matter(text: str) -> str:
 
 def count_chars(text: str, *, strip_fm: bool) -> int:
     body = strip_yaml_front_matter(text) if strip_fm else text
+    body = _PUBLISHING_DIRECTIVE.sub("", body)
     normalized = unicodedata.normalize("NFC", body)
     return len(normalized)
 
