@@ -11,6 +11,12 @@
 **/illustrations/_assets/
 **/illustrations/**/*.zip
 
+# 代表作品の採用済み表紙・挿絵は、作品パッケージの構成物として通常 Git で追跡する。
+# 他作品の生成画像は引き続き上記の共通除外規則に従う。
+!000_old_man_next_door's_cake/illustrations/
+!000_old_man_next_door's_cake/illustrations/_assets/
+!000_old_man_next_door's_cake/illustrations/_assets/**
+
 # キャラクター生成画像（tag/<romaji>/ フォルダ内の画像ファイル）
 # tag/*.md・tag/characters/*.yaml は追跡するため拡張子指定で除外
 **/tag/**/*.png
