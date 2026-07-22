@@ -26,6 +26,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
 - **出版準備（Phase 1）**: [Publishing Package](publishing-package.md) — 本文・付属原稿・挿絵・権利・奥付を点検し、入稿入力を lockfile で凍結する
+- **紙書籍 proof（Phase 2A）**: [紙書籍 proof PDF](paper-proof-export.md) — lock済み入力からJIS B5縦書き本文PDFを生成・検査する
 - **評価（足切り・Editor Score・一貫性監査）**: [Reader Output](reader-output.md) — 下読み・足切り・Editor Score・Consistency Audit・Synopsis の保存先・操作ツール一覧
 - **運用の骨格**: [自己発展型ルールガバナンス](self-evolving-governance.md)
 

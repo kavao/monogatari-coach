@@ -27,3 +27,6 @@
 
 # 書き出し・配布用アーカイブ（上記以外の zip も novels 配下では除外）
 **/*.zip
+
+# 組版の proof・preflight は再生成できる派生物であり、入力正本とは分ける。
+**/_publication_output/
