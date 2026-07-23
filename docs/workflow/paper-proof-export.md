@@ -1,6 +1,6 @@
 # 紙書籍 proof PDF（Phase 2A）
 
-Phase 1 の出版パッケージを lock した後、本文・付属原稿・採用済み挿絵から **JIS B5 の縦書き本文 proof PDF** を作る手順です。本文や画像を複写・更新せず、派生物だけを `_publication_output/` に保存します。
+Phase 1 の出版パッケージを lock した後、本文・付属原稿・採用済み挿絵から **JIS B5 の縦書き本文 proof PDF** と、表紙を先頭に付けた**閲覧用 proof PDF**を作る手順です。本文や画像を複写・更新せず、派生物だけを `_publication_output/` に保存します。
 
 これは入稿前の確認用 proof です。印刷所固有の PDF/X-1a、CMYK、表1・背・表4をつないだ最終カバーは、この工程の対象外です。
 
@@ -25,10 +25,17 @@ python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
 novels/NNN_作品名/_publication_output/<build-id>/
 ├─ manifest.json     # lock hash・原稿順・画像配置・組版プロファイル
 ├─ interior.pdf      # JIS B5 本文 proof
+├─ reader-proof.pdf  # 表紙 + interior.pdf の閲覧・配布確認用 proof
 └─ preflight.json    # 出力検査の結果
 ```
 
 `_publication_output/` は再生成できる派生物であり、Git の追跡対象外です。出版の正本は引き続き `book.yaml`、`rights.yaml`、`_novel_text/`、`book_matter/`、`illustrations/` です。
+
+## 成果物と用途
+
+- `interior.pdf`: 奇数ページ開始・本文挿絵・埋め込みフォントを確認する内面 proof。紙書籍の本文組版を検討するときに使う。
+- `reader-proof.pdf`: `book.yaml` の `type: cover` で `status: approved` の表紙アートを1ページ目に置き、`interior.pdf` を続けた閲覧・PDF配布確認用のproof。表紙から本文へ入る読者体験を確認する。
+- `cover.pdf`: **この工程では生成しない**。表1・背・表4をつないだ印刷所入稿用カバーは、後述の印刷所仕様が確定してから別工程で生成する。
 
 出力先を固定したいときは `--build-id` を使います。
 
@@ -47,6 +54,7 @@ python tools/book_export.py novels/NNN_作品名 --build-id first-proof
 - `<!-- scene: ... -->`: 本文に出力しない構造アンカー
 - `<!-- illustration: id -->`: `book.yaml` で `status: approved` の画像を本文内の独立ページへ配置
 - 挿絵: 実効 250 dpi 以上を preflight で確認
+- 閲覧用表紙: `reader-proof.pdf` の1ページ目に approved な `type: cover` asset があること、本文 proof より1ページ多いことを preflight で確認
 
 proof 用の日本語フォントは、既定では Windows の Yu Mincho を使い、TrueType として PDF へ埋め込みます。別の埋め込み可能な `.ttf` を明示するときは、環境変数を使います。
 
@@ -72,6 +80,7 @@ preflight は次を検査します。
 - `odd_page` 指定の原稿が奇数ページから始まること
 - directive で参照した挿絵が想定ページに存在すること
 - 挿絵の実効解像度が 250 dpi 以上であること
+- `reader-proof.pdf` が表紙1ページ + `interior.pdf` であり、表紙ページに画像が存在すること
 
 `PF-X01` は、PDF/X と印刷所固有のカラープロファイルが未検証であることを示す proof 固有の warning です。これだけならproofは有効ですが、印刷所への入稿はまだ行いません。
 

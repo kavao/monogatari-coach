@@ -10,8 +10,8 @@ from pathlib import Path
 import sys
 
 from book_package.build import BuildError, build_manifest, write_manifest
-from book_package.preflight import PreflightError, preflight_paper_pdf
-from book_package.render import RenderError, render_paper_proof
+from book_package.preflight import PreflightError, preflight_paper_build
+from book_package.render import RenderError, render_paper_proof, render_reader_proof
 
 
 def repo_root() -> Path:
@@ -29,7 +29,7 @@ def _build_id() -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="lock 済みの出版パッケージから JIS B5 の本文 proof PDF を生成する。"
+        description="lock 済みの出版パッケージから JIS B5 の本文・閲覧用 proof PDF を生成する。"
     )
     parser.add_argument("novel", help="作品フォルダ")
     parser.add_argument("--target", choices=("paper",), default="paper")
@@ -56,9 +56,11 @@ def main(argv: list[str] | None = None) -> int:
 
         pdf_path = build_dir / "interior.pdf"
         render_paper_proof(manifest, pdf_path)
+        reader_proof_path = build_dir / "reader-proof.pdf"
+        render_reader_proof(manifest, pdf_path, reader_proof_path)
         write_manifest(manifest_path, manifest)
 
-        preflight = preflight_paper_pdf(pdf_path, manifest)
+        preflight = preflight_paper_build(pdf_path, reader_proof_path, manifest)
         preflight_path = build_dir / "preflight.json"
         preflight_path.write_text(
             json.dumps(preflight, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -72,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         "build_dir": str(build_dir),
         "manifest": str(manifest_path),
         "pdf": str(pdf_path),
+        "reader_proof": str(reader_proof_path),
         "preflight": str(preflight_path),
         "preflight_summary": preflight["summary"],
         "conformance": preflight["conformance"],
@@ -81,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"build: {build_dir}")
         print(f"pdf: {pdf_path}")
+        print(f"reader proof: {reader_proof_path}")
         print(
             "preflight: "
             f"errors={preflight['summary']['errors']} warnings={preflight['summary']['warnings']}"

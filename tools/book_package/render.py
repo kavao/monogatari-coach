@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import tempfile
 from typing import Any
 
+from pypdf import PdfReader, PdfWriter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -92,6 +94,17 @@ def _asset_path(manifest: dict[str, Any], illustration_id: str) -> Path:
         if illustration["id"] == illustration_id:
             return root / illustration["asset"]
     raise RenderError(f"manifest に挿絵 {illustration_id} がありません。")
+
+
+def _cover_illustration(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Return the one approved cover asset resolved in the build manifest."""
+
+    covers = [item for item in manifest["illustrations"] if item["type"] == "cover"]
+    if not covers:
+        raise RenderError("閲覧用 proof に必要な approved の表紙 asset がありません。")
+    if len(covers) != 1:
+        raise RenderError("閲覧用 proof の表紙は1点だけ指定してください。")
+    return covers[0]
 
 
 class _VerticalProof:
@@ -302,3 +315,100 @@ def render_paper_proof(manifest: dict[str, Any], output: Path) -> dict[str, Any]
         },
     }
     return manifest["render"]
+
+
+def render_reader_proof(
+    manifest: dict[str, Any], interior_pdf: Path, output: Path
+) -> dict[str, Any]:
+    """Create a reader-facing PDF with the approved cover before the interior proof.
+
+    This deliberately emits a single front-cover page only. A printer-ready wrap
+    cover (front, spine, and back) depends on printer specifications and is not
+    inferred by the local proof renderer.
+    """
+
+    if manifest["target"] != "paper":
+        raise RenderError(f"paper proof 以外は未対応です: {manifest['target']}")
+    if not interior_pdf.is_file():
+        raise RenderError(f"本文 proof PDF がありません: {interior_pdf}")
+
+    cover = _cover_illustration(manifest)
+    cover_asset = _asset_path(manifest, str(cover["id"]))
+    if not cover_asset.is_file():  # pragma: no cover - manifest build validates this
+        raise RenderError(f"表紙 asset がありません: {cover_asset}")
+    source_width = int(cover["width_px"])
+    source_height = int(cover["height_px"])
+    if source_width <= 0 or source_height <= 0:
+        raise RenderError(f"表紙 asset の寸法を取得できません: {cover_asset}")
+
+    profile = manifest["profile"]
+    width = float(profile["width_mm"]) * POINTS_PER_MM
+    height = float(profile["height_mm"]) * POINTS_PER_MM
+    font_name, _ = _register_proof_font()
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(
+        mode="wb", suffix=".pdf", prefix=f".{output.stem}-cover-", dir=output.parent, delete=False
+    ) as temporary:
+        cover_page_pdf = Path(temporary.name)
+
+    try:
+        canvas = Canvas(
+            str(cover_page_pdf),
+            pagesize=(width, height),
+            pageCompression=1,
+            invariant=1,
+            pdfVersion=(1, 4),
+            initialFontName=font_name,  # type: ignore[reportArgumentType]
+            initialFontSize=10.0,
+        )
+        canvas.setTitle(manifest["package"]["title"])
+        canvas.setAuthor(manifest["package"]["author"]["name"])
+        canvas.setCreator("Monogatari Coach reader proof renderer")
+        scale = min(width / source_width, height / source_height)
+        draw_width = source_width * scale
+        draw_height = source_height * scale
+        canvas.drawImage(
+            ImageReader(str(cover_asset)),
+            (width - draw_width) / 2,
+            (height - draw_height) / 2,
+            width=draw_width,
+            height=draw_height,
+            mask="auto",
+        )
+        canvas.showPage()
+        canvas.save()
+
+        writer = PdfWriter()
+        writer.append(str(cover_page_pdf))
+        writer.append(str(interior_pdf))
+        writer.add_metadata(
+            {
+                "/Title": manifest["package"]["title"],
+                "/Author": manifest["package"]["author"]["name"],
+                "/Creator": "Monogatari Coach reader proof renderer",
+            }
+        )
+        with output.open("wb") as stream:
+            writer.write(stream)
+    except OSError as exc:
+        raise RenderError(f"閲覧用 proof PDF を生成できません: {exc}") from exc
+    finally:
+        cover_page_pdf.unlink(missing_ok=True)
+
+    page_count = len(PdfReader(str(output), strict=True).pages)
+    manifest["reader_proof"] = {
+        "output": output.name,
+        "page_count": page_count,
+        "cover": {
+            "id": cover["id"],
+            "asset": cover["asset"],
+            "page": 1,
+            "source_width_px": source_width,
+            "source_height_px": source_height,
+            "draw_width_pt": round(draw_width, 3),
+            "draw_height_pt": round(draw_height, 3),
+        },
+        "purpose": "reader preview only; not a printer-ready wrap cover",
+    }
+    return manifest["reader_proof"]

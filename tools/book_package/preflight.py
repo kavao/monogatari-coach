@@ -220,3 +220,129 @@ def preflight_paper_pdf(pdf_path: str | Path, manifest: dict[str, Any]) -> dict[
         "findings": findings,
         "summary": {"errors": errors, "warnings": warnings},
     }
+
+
+def preflight_reader_proof(
+    pdf_path: str | Path, manifest: dict[str, Any], *, interior_page_count: int
+) -> dict[str, Any]:
+    """Check that the reader-facing proof starts with a B5 cover page."""
+
+    pdf = Path(pdf_path)
+    if not pdf.is_file():
+        raise PreflightError(f"PDF がありません: {pdf}")
+    if manifest.get("target") != "paper":
+        raise PreflightError("paper build manifest が必要です。")
+
+    try:
+        reader = PdfReader(str(pdf), strict=True)
+    except Exception as exc:  # pypdf uses several exception types
+        raise PreflightError(f"PDF を読み込めません: {exc}") from exc
+
+    findings: list[dict[str, str]] = []
+    profile = manifest["profile"]
+    expected_width = float(profile["width_mm"]) * POINTS_PER_MM
+    expected_height = float(profile["height_mm"]) * POINTS_PER_MM
+    page_reports: list[dict[str, Any]] = []
+    all_fonts: list[dict[str, Any]] = []
+
+    for number, page in enumerate(reader.pages, start=1):
+        box = page.mediabox
+        width = float(box.width)
+        height = float(box.height)
+        fonts, images = _page_resources(page)
+        all_fonts.extend(fonts)
+        page_reports.append(
+            {
+                "number": number,
+                "width_pt": round(width, 3),
+                "height_pt": round(height, 3),
+                "image_count": images,
+                "fonts": fonts,
+            }
+        )
+        if abs(width - expected_width) > 0.5 or abs(height - expected_height) > 0.5:
+            _finding(
+                findings,
+                "PF-R01",
+                "error",
+                f"閲覧用 proof の {number} ページ目が JIS B5 と一致しません: {width:.2f} × {height:.2f} pt",
+                "表紙と本文を同じ組版プロファイルで再生成してください。",
+            )
+
+    expected_page_count = interior_page_count + 1
+    if len(reader.pages) != expected_page_count:
+        _finding(
+            findings,
+            "PF-R02",
+            "error",
+            f"閲覧用 proof のページ数が本文 proof + 表紙1ページになっていません: {len(reader.pages)} ページ",
+            "reader-proof.pdf の先頭に表紙1ページだけを結合してください。",
+        )
+    if not page_reports or page_reports[0]["image_count"] < 1:
+        _finding(
+            findings,
+            "PF-R03",
+            "error",
+            "閲覧用 proof の1ページ目に表紙画像が見つかりません。",
+            "book.yaml の approved な cover asset を指定して再生成してください。",
+        )
+
+    unique_fonts = {
+        (font["resource"], font["base_font"], bool(font["embedded"]))
+        for font in all_fonts
+    }
+    if not unique_fonts:
+        _finding(
+            findings,
+            "PF-F01",
+            "error",
+            "PDF にフォントリソースがありません。",
+            "本文 proof を埋め込み可能な TrueType フォントで再生成してください。",
+        )
+    elif any(not font[2] for font in unique_fonts):
+        _finding(
+            findings,
+            "PF-F01",
+            "error",
+            "PDF に埋め込まれていないフォントがあります。",
+            "埋め込み可能な TrueType フォントを使って再生成してください。",
+        )
+
+    errors = sum(finding["severity"] == "error" for finding in findings)
+    warnings = sum(finding["severity"] == "warning" for finding in findings)
+    return {
+        "preflight_version": 1,
+        "target": "reader",
+        "pdf": pdf.name,
+        "conformance": "reader_proof" if errors == 0 else "failed",
+        "page_count": len(reader.pages),
+        "expected_page_count": expected_page_count,
+        "expected_page_size_pt": {
+            "width": round(expected_width, 3),
+            "height": round(expected_height, 3),
+        },
+        "pages": page_reports,
+        "findings": findings,
+        "summary": {"errors": errors, "warnings": warnings},
+    }
+
+
+def preflight_paper_build(
+    interior_pdf: str | Path, reader_proof_pdf: str | Path, manifest: dict[str, Any]
+) -> dict[str, Any]:
+    """Run all Phase 2A proof checks for one paper build directory."""
+
+    interior = preflight_paper_pdf(interior_pdf, manifest)
+    reader = preflight_reader_proof(
+        reader_proof_pdf, manifest, interior_page_count=interior["page_count"]
+    )
+    artifacts = {"interior": interior, "reader_proof": reader}
+    errors = sum(item["summary"]["errors"] for item in artifacts.values())
+    warnings = sum(item["summary"]["warnings"] for item in artifacts.values())
+    return {
+        "preflight_version": 2,
+        "target": "paper",
+        "conformance": "proof" if errors == 0 else "failed",
+        "artifacts": artifacts,
+        "summary": {"errors": errors, "warnings": warnings},
+    }

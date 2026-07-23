@@ -14,8 +14,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from book_package.build import BuildError, build_manifest  # noqa: E402
 from book_package.lock import write_lock  # noqa: E402
-from book_package.preflight import preflight_paper_pdf  # noqa: E402
-from book_package.render import RenderError, render_paper_proof  # noqa: E402
+from book_package.preflight import preflight_paper_build, preflight_paper_pdf  # noqa: E402
+from book_package.render import RenderError, render_paper_proof, render_reader_proof  # noqa: E402
 
 
 FIXTURES = ROOT / "tools" / "fixtures" / "book_package"
@@ -103,3 +103,24 @@ def test_exported_proof_has_b5_pages_embedded_font_and_odd_starts(tmp_path: Path
     assert manifest["entries"][0]["start_page"] % 2 == 1
     assert manifest["entries"][1]["start_page"] % 2 == 1
     assert manifest["placements"][0]["effective_dpi"] >= 250
+
+
+def test_reader_proof_places_cover_before_the_interior(tmp_path: Path) -> None:
+    package = _make_exportable_package(tmp_path)
+    manifest = build_manifest(package)
+    interior_pdf = tmp_path / "interior.pdf"
+    reader_proof_pdf = tmp_path / "reader-proof.pdf"
+    try:
+        render_paper_proof(manifest, interior_pdf)
+        render_reader_proof(manifest, interior_pdf, reader_proof_pdf)
+    except RenderError as exc:
+        pytest.skip(str(exc))
+
+    result = preflight_paper_build(interior_pdf, reader_proof_pdf, manifest)
+
+    assert result["summary"]["errors"] == 0
+    assert result["artifacts"]["reader_proof"]["page_count"] == (
+        result["artifacts"]["interior"]["page_count"] + 1
+    )
+    assert result["artifacts"]["reader_proof"]["pages"][0]["image_count"] >= 1
+    assert manifest["reader_proof"]["cover"]["id"] == "illust_cover"

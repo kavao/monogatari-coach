@@ -28,7 +28,7 @@ python tools/book_diff.py novels/NNN_作品名 --against lock
 
 ### `book_export.py` / `book_preflight.py` — 紙書籍 proof PDF（Phase 2A）
 
-paper 用に lock した出版入力を、JIS B5の縦書き本文proofとして組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。
+paper 用に lock した出版入力から、JIS B5の縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。
 
 ```bash
 # clean な paper lock からproofを生成
@@ -38,7 +38,7 @@ python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
 python tools/book_preflight.py novels/NNN_作品名/_publication_output/<build-id> --target paper
 ```
 
-これは確認用のproofであり、印刷所固有のPDF/X・CMYK・巻カバー合成は行いません。詳細は [紙書籍 proof PDF](../workflow/paper-proof-export.md) を参照してください。
+`reader-proof.pdf` は閲覧・PDF配布確認用です。印刷所固有のPDF/X・CMYK・表1・背・表4を一体化した `cover.pdf` は、仕様確定後の別工程です。詳細は [紙書籍 proof PDF](../workflow/paper-proof-export.md) を参照してください。
 
 ---
 

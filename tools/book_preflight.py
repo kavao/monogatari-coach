@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import sys
 
-from book_package.preflight import PreflightError, preflight_paper_pdf
+from book_package.preflight import PreflightError, preflight_paper_build
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,9 +21,10 @@ def main(argv: list[str] | None = None) -> int:
     build_dir = args.build_dir.resolve()
     manifest_path = build_dir / "manifest.json"
     pdf_path = build_dir / "interior.pdf"
+    reader_proof_path = build_dir / "reader-proof.pdf"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        result = preflight_paper_pdf(pdf_path, manifest)
+        result = preflight_paper_build(pdf_path, reader_proof_path, manifest)
     except (OSError, json.JSONDecodeError, PreflightError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
