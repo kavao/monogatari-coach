@@ -532,6 +532,27 @@ lint / check 側では、`character_checklist.yaml` の profile に **`suggested
 - 画像生成スキル: `.rulesync/skills/forge-txt2img/SKILL.md`
 - 操作説明: `docs/image-generation/index.md`
 
+## キャラ／漫画タグ生成時マスク（置換／除外）
+
+定義:
+作品 `_meta.yaml` の `character_tag_batch` / `manga_tag_batch`（および CLI）で、生成直前の positive タグを **置換（replace）・除外（omit）** するレイヤ。YAML IR 正本は書き換えない。
+
+必須:
+
+- キャラ画像は `tools/image_provider_novel_tag_batch.py` の compose 後に適用する（適用順: replace → omit）。
+- 漫画コマ（`step1-panels`）は `tools/image_provider_novel_manga_batch.py` でタグ組み立て後に適用する。`manga_tag_batch` が無ければ `character_tag_batch` の omit/replace を下敷きにする。
+- dry-run で置換・除外を確認してから本番する。
+
+禁止:
+
+- マスクのためだけに `tag/characters/*.yaml`・`manga/pages/*.yaml`・互換 Markdown を一括書き換えして完了扱いにしない。
+
+参照:
+
+- 実装: `tools/tag_prompt_mask.py`
+- 操作: `docs/tools/index.md`（tag batch / manga batch）
+- 設計: `_workingspace/plans/20260724_character-tag-masking.md`
+
 ## 画像生成失敗時の provider 切替
 
 定義:

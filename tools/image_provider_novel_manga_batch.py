@@ -76,6 +76,15 @@ from manga_prompt_ir.user_directives import (
     apply_to_tags as apply_user_directives_to_tags,
     omit_tags_for_panel as user_directives_omit_tags,
 )
+from tag_prompt_mask import (
+    MaskApplyResult,
+    MaskRuleSet,
+    apply_mask,
+    load_novel_mask_rules,
+    mask_csv_or_pipe_prompt,
+    merge_mask_results,
+    parse_cli_replace_tags,
+)
 from manga_prompt_ir.prompt_formatters import (
     NATIVE_NEGATIVE,
     NOVELAI_PIPE,
@@ -1995,12 +2004,14 @@ def iter_yaml_manga_jobs(
     color_mode_override: str | None = None,
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
+    mask_rules: MaskRuleSet | None = None,
 ) -> list[dict[str, str]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
     if not pages_dir.is_dir():
         raise FileNotFoundError(f"manga/pages/ がありません: {pages_dir}")
     characters = load_character_ir_map(novel_dir)
+    rules = mask_rules or MaskRuleSet.empty()
     # プロバイダごとのプロンプトバイト上限を config から取得
     # novel_dir = novels/<作品名>/ → 2階層上がプロジェクトルート
     _project_root = novel_dir.resolve()
@@ -2149,6 +2160,7 @@ def iter_yaml_manga_jobs(
             technical = page.get("technical") or {}
             tech_neg = as_list(technical.get("negative_tags"))
             for panel_index, panel in enumerate(panels, start=1):
+                mask_result = MaskApplyResult(tags=[])
                 if use_novelai_pipe_split:
                     btags, char_segs = yaml_panel_tags_novelai_split(
                         page,
@@ -2158,18 +2170,30 @@ def iter_yaml_manga_jobs(
                         omit_panel_background=omit_panel_background,
                         include_panel_summary=include_panel_summary,
                     )
-                    tags = join_novelai_pipe_tag_line(btags, char_segs)
-                else:
-                    tags = join_tags(
-                        yaml_panel_tags(
-                            page,
-                            panel,
-                            characters,
-                            single_panel=True,
-                            omit_panel_background=omit_panel_background,
-                            include_panel_summary=include_panel_summary,
+                    if rules != MaskRuleSet.empty():
+                        base_masked = apply_mask(btags, rules)
+                        seg_masked = [apply_mask(seg, rules) for seg in char_segs]
+                        mask_result = merge_mask_results(base_masked, *seg_masked)
+                        tags = join_novelai_pipe_tag_line(
+                            base_masked.tags,
+                            [m.tags for m in seg_masked],
                         )
+                    else:
+                        tags = join_novelai_pipe_tag_line(btags, char_segs)
+                else:
+                    tag_list = yaml_panel_tags(
+                        page,
+                        panel,
+                        characters,
+                        single_panel=True,
+                        omit_panel_background=omit_panel_background,
+                        include_panel_summary=include_panel_summary,
                     )
+                    if rules != MaskRuleSet.empty():
+                        mask_result = apply_mask(tag_list, rules)
+                        tags = join_tags(mask_result.tags)
+                    else:
+                        tags = join_tags(tag_list)
                 if not tags:
                     continue
                 panel_neg = as_list(panel.get("negative_tags"))
@@ -2201,20 +2225,21 @@ def iter_yaml_manga_jobs(
                     job_meta["omit_panel_background"] = True
                 if include_panel_summary:
                     job_meta["include_panel_summary"] = True
-                all_jobs.append(
-                    {
-                        "stem": stem,
-                        "page": str(page_num),
-                        "koma": str(panel_index),
-                        "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
-                        "prompt": bundle.prompt,
-                        "negative_prompt": bundle.negative_prompt,
-                        "prompt_formatter": bundle.formatter,
-                        "negative_mode": bundle.negative_mode,
-                        "output_dir": comic_dir.as_posix(),
-                        "metadata": job_meta,
-                    }
-                )
+                job_entry: dict[str, Any] = {
+                    "stem": stem,
+                    "page": str(page_num),
+                    "koma": str(panel_index),
+                    "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
+                    "prompt": bundle.prompt,
+                    "negative_prompt": bundle.negative_prompt,
+                    "prompt_formatter": bundle.formatter,
+                    "negative_mode": bundle.negative_mode,
+                    "output_dir": comic_dir.as_posix(),
+                    "metadata": job_meta,
+                }
+                if mask_result.replaced or mask_result.omitted:
+                    job_entry["mask_result"] = mask_result
+                all_jobs.append(job_entry)
     return all_jobs
 
 
@@ -2234,6 +2259,7 @@ def iter_jobs_by_input(
     color_mode_override: str | None = None,
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
+    mask_rules: MaskRuleSet | None = None,
 ) -> tuple[str, list[dict[str, str]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2249,11 +2275,12 @@ def iter_jobs_by_input(
             color_mode_override=color_mode_override,
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
+            mask_rules=mask_rules,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
             raise ValueError("background-concepts は YAML 入力専用です")
-        return "markdown", iter_manga_jobs(
+        md_jobs = iter_manga_jobs(
             novel_dir,
             only_stem,
             source,
@@ -2261,6 +2288,17 @@ def iter_jobs_by_input(
             style_helper,
             no_character_anchors=no_character_anchors,
         )
+        rules = mask_rules or MaskRuleSet.empty()
+        if rules != MaskRuleSet.empty() and source == "step1-panels":
+            for job in md_jobs:
+                new_prompt, mask_result = mask_csv_or_pipe_prompt(
+                    str(job.get("prompt") or ""),
+                    rules,
+                )
+                job["prompt"] = new_prompt
+                if mask_result.replaced or mask_result.omitted:
+                    job["mask_result"] = mask_result
+        return "markdown", md_jobs
     raise ValueError(f"unsupported input kind: {input_kind}")
 
 
@@ -2356,6 +2394,26 @@ def main(argv: list[str] | None = None) -> int:
             "step1-panels（コマ生成）のみ: 舞台・背景・場所・照明タグをプロンプトから外し、"
             "simple_background 等を付与。背景資料と合成する前提。"
             f" 環境変数 {MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV}=1 でも有効"
+        ),
+    )
+    p.add_argument(
+        "--omit-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help=(
+            "生成時に positive タグ列から除外（YAML IR は変更しない・step1-panels）。"
+            "カンマ区切り1引数可"
+        ),
+    )
+    p.add_argument(
+        "--replace-tag",
+        action="append",
+        default=None,
+        metavar="OLD=NEW",
+        help=(
+            "生成時に OLD を NEW へ置換（複数可・YAML IR は変更しない・step1-panels）。"
+            "例: --replace-tag childlike_mature=toddler"
         ),
     )
     p.add_argument(
@@ -2611,6 +2669,34 @@ def main(argv: list[str] | None = None) -> int:
         source=args.source,
     )
     try:
+        novel_mask = load_novel_mask_rules(
+            novel,
+            primary_key="manga_tag_batch",
+            fallback_key="character_tag_batch",
+        )
+        cli_replace = tuple(parse_cli_replace_tags(args.replace_tag))
+        cli_omit: list[str] = []
+        for raw in args.omit_tags or []:
+            for part in str(raw).split(","):
+                token = part.strip()
+                if token:
+                    cli_omit.append(token)
+        cli_mask = MaskRuleSet(
+            omit_tags=tuple(dict.fromkeys(cli_omit)),
+            replace_pairs=cli_replace,
+        )
+        mask_rules = novel_mask.merge(cli_mask)
+    except ValueError as e:
+        print(f"error: マスク設定: {e}", file=sys.stderr)
+        return 2
+    if mask_rules != MaskRuleSet.empty() and args.source != "step1-panels":
+        print(
+            "warning: omit_tags / replace_tags は step1-panels のみ適用します"
+            f"（source={args.source} では無視）",
+            file=sys.stderr,
+        )
+        mask_rules = MaskRuleSet.empty()
+    try:
         input_used, jobs = iter_jobs_by_input(
             novel,
             args.manga_stem,
@@ -2626,6 +2712,7 @@ def main(argv: list[str] | None = None) -> int:
             color_mode_override=args.color_mode,
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
+            mask_rules=mask_rules,
         )
     except (FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -2699,6 +2786,18 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  reference_information_extracted_multiple={ri}")
     if args.source == "step2-pages" and input_used == "yaml":
         print(f"step2_paraphrase (effective): {effective_paraphrase(step2_px)}")
+    if mask_rules.replace_pairs:
+        pairs = ", ".join(f"{src}→{dst}" for src, dst in mask_rules.replace_pairs)
+        print(f"replace_tags: {pairs}")
+    if mask_rules.omit_tags:
+        print(f"omit_tags: {', '.join(mask_rules.omit_tags)}")
+    conflicts = mask_rules.conflict_from_in_omit()
+    if conflicts:
+        print(
+            "warning: replace の from が omit_tags にもあります "
+            f"（置換後に除外されます）: {', '.join(conflicts)}",
+            file=sys.stderr,
+        )
 
     for job in jobs:
         out_dir = Path(job["output_dir"])
@@ -2732,6 +2831,15 @@ def main(argv: list[str] | None = None) -> int:
                 f"({payload['negative_mode']})"
             )
             print(f"    prompt[:100]: {payload['prompt'][:100]}...")
+            mask_result = job.get("mask_result")
+            if isinstance(mask_result, MaskApplyResult) and (
+                mask_result.replaced or mask_result.omitted
+            ):
+                if mask_result.replaced:
+                    rep = ", ".join(f"{a}→{b}" for a, b in mask_result.replaced)
+                    print(f"    mask replaced: {rep}")
+                if mask_result.omitted:
+                    print(f"    mask omitted: {', '.join(mask_result.omitted)}")
             neg_show = payload["negative_prompt"]
             if len(neg_show) > 160:
                 neg_show = neg_show[:160] + "..."

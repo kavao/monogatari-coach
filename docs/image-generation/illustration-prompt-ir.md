@@ -242,6 +242,8 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 
 `--dry-run` では `novelai_reference: N file(s) (source=…)` と、merge 後の `width×height`・`novelai_reference_images` をジョブごとに表示します。`provider=novelai` なのに `resolution` を指定した場合は warning を出します。
 
+生成時マスク（`omit_tags` / `replace_tags`）は YAML IR を変えず、タグ組み立て後に適用します。`_meta.yaml` の `illustration_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`。dry-run では `omit_tags:` / `replace_tags:` 行も出ます。
+
 Grok / OpenAI / OpenRouter 系では、挿絵YAMLを `natural_sections` formatter で自然文セクションへ変換します。`technical.negative_tags` や CLI の negative は `Do not include:` に移し、API の `negative_prompt` には渡しません。Forge / NovelAI は従来互換の `tag_csv` を使います。
 
 formatter を比較するときは `--prompt-formatter` を使います。

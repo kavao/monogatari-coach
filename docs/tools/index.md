@@ -488,13 +488,21 @@ python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
   --prepend-tags solo simple_background --dry-run
 ```
 
-**プロンプトのタグ順**（positive）: 品質プリフィックス → `prepend_tags` → 固定タグ（YAML）→ バリアント `danbooru_tags` → `append_tags`。
+**プロンプトのタグ順**（positive）: 品質プリフィックス → `prepend_tags` → 固定タグ（YAML）→ バリアント `danbooru_tags` → `append_tags` → **マスク**（`replace_tags` → `omit_tags`）。
 
 | 指定場所 | キー / フラグ |
 |----------|----------------|
-| 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` など |
-| `tag/characters/<id>.yaml` | `tag_batch.prepend_tags` など（任意） |
-| CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--prepend-negative-tags` / `--append-negative-tags` |
+| 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` / `omit_tags` / `replace_tags` など |
+| `tag/characters/<id>.yaml` | `tag_batch.*`（任意。同キー） |
+| CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW` / negative 系 |
+
+マスクは **生成時のみ** 適用し、`tag/characters/*.yaml` の正本は書き換えません。dry-run では適用した置換・除外をジョブごとに表示します。
+
+```bash
+# 生成時マスクの確認例
+python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
+  --replace-tag old_token=new_token --omit-tags unwanted --dry-run
+```
 
 生成画像の保存先: `novels/<作品>/tag/<romaji>/`
 
@@ -513,6 +521,11 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step1-panels
 
+# 生成時マスク確認（step1-panels。_meta.yaml の manga_tag_batch / character_tag_batch も可）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step1-panels \
+  --replace-tag childlike_mature=toddler --omit-tags fairy --dry-run
+
 # 精密ページ生成（dry-run）
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step1-pages \
@@ -527,6 +540,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source background-concepts --dry-run
 ```
+
+**生成時マスク（step1-panels）**: YAML IR は変えず、組み立て後のタグ列に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `manga_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
 
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
@@ -552,7 +567,13 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
   --illustration-stem illustration_01 \
   --prompt-formatter natural_sections --dry-run
+
+# 生成時マスク確認（_meta.yaml の illustration_tag_batch / character_tag_batch も可）
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --omit-tags "pointed ears" --replace-tag "childlike_mature=toddler" --dry-run
 ```
+
+**生成時マスク**: YAML IR は変えず、タグ組み立て後に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `illustration_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
 
 生成画像の保存先: `novels/<作品>/illustrations/_assets/<illustration_XX>/`
 

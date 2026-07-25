@@ -322,17 +322,21 @@ python tools/image_provider_novel_tag_batch.py novels/<作品> \
   --prepend-tags solo simple_background --dry-run
 ```
 
-**タグの前後追加**（`prepend_tags` → 固定タグ → `danbooru_tags` → `append_tags`）:
+**タグの前後追加とマスク**（`prepend_tags` → 固定タグ → `danbooru_tags` → `append_tags` → `replace_tags` → `omit_tags`）:
 
 | 層 | 指定 |
 |----|------|
-| 作品 | `_meta.yaml` の `character_tag_batch` |
+| 作品 | `_meta.yaml` の `character_tag_batch`（`omit_tags` / `replace_tags` 含む） |
 | キャラ | `tag/characters/<id>.yaml` の `tag_batch`（任意） |
-| CLI | `--prepend-tags` / `--append-tags`（その実行のみ） |
+| CLI | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW`（その実行のみ） |
 
-negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
+マスクは YAML IR を変えず、生成直前のプロンプトにだけ効きます。negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
 
-dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
+**漫画コマ（step1-panels）のマスク**: 同じ `omit_tags` / `replace_tags` を `image_provider_novel_manga_batch.py` でも使えます。`_meta.yaml` の `manga_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`（step1-panels のみ）。
+
+**挿絵・表紙のマスク**: `image_provider_novel_illustration_batch.py` でも同じ規則を使えます。`_meta.yaml` の `illustration_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`。
+
+dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` / `replace_tags: ...` / `omit_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
 
 ---
 

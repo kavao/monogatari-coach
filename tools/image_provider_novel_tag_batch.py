@@ -34,6 +34,11 @@ prepend / append の指定（後勝ちではなく連結。重複は先勝ちで
   2. tag/characters/<id>.yaml の tag_batch
   3. CLI --prepend-tags / --append-tags（その実行だけ）
 
+マスク（生成時のみ・YAML IR は書き換えない）:
+  compose のあと replace_tags → omit_tags。
+  優先マージは prepend と同じ層順。replace の同 from は後勝ち。
+  CLI: --replace-tag old=new / --omit-tags
+
 negative は DEFAULT_NEGATIVE + prepend_negative + YAML negative_tags + append_negative。
 """
 
@@ -48,6 +53,14 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from tag_prompt_mask import (
+    MaskApplyResult,
+    MaskRuleSet,
+    apply_mask,
+    mask_rules_from_mapping,
+    parse_cli_replace_tags,
+)
 
 _VARIANT_ID_NUM = re.compile(r"^(\d+)")
 
@@ -148,19 +161,28 @@ def dedupe_tags(tags: Iterable[str]) -> list[str]:
 
 @dataclass(frozen=True)
 class TagBatchLayers:
-    """バッチ実行時にプロンプト前後へ挿入するタグ層。"""
+    """バッチ実行時にプロンプト前後へ挿入するタグ層＋生成時マスク。"""
 
     prepend_tags: tuple[str, ...] = ()
     append_tags: tuple[str, ...] = ()
     prepend_negative_tags: tuple[str, ...] = ()
     append_negative_tags: tuple[str, ...] = ()
+    omit_tags: tuple[str, ...] = ()
+    replace_pairs: tuple[tuple[str, str], ...] = ()
 
     @staticmethod
     def empty() -> TagBatchLayers:
         return TagBatchLayers()
 
+    def mask_rules(self) -> MaskRuleSet:
+        return MaskRuleSet(
+            omit_tags=self.omit_tags,
+            replace_pairs=self.replace_pairs,
+        )
+
     def merge(self, other: TagBatchLayers) -> TagBatchLayers:
-        """self のあとに other を連結（同キー内の順序を保つ）。"""
+        """self のあとに other を連結（同キー内の順序を保つ）。replace は後勝ち。"""
+        merged_mask = self.mask_rules().merge(other.mask_rules())
         return TagBatchLayers(
             prepend_tags=tuple(dedupe_tags([*self.prepend_tags, *other.prepend_tags])),
             append_tags=tuple(dedupe_tags([*self.append_tags, *other.append_tags])),
@@ -170,6 +192,8 @@ class TagBatchLayers:
             append_negative_tags=tuple(
                 dedupe_tags([*self.append_negative_tags, *other.append_negative_tags])
             ),
+            omit_tags=merged_mask.omit_tags,
+            replace_pairs=merged_mask.replace_pairs,
         )
 
 
@@ -197,12 +221,34 @@ def layers_from_mapping(data: object | None) -> TagBatchLayers:
             return ()
         return tuple(dedupe_tags(str(x) for x in raw))
 
+    mask = mask_rules_from_mapping(data)
     return TagBatchLayers(
         prepend_tags=_list("prepend_tags"),
         append_tags=_list("append_tags"),
         prepend_negative_tags=_list("prepend_negative_tags"),
         append_negative_tags=_list("append_negative_tags"),
+        omit_tags=mask.omit_tags,
+        replace_pairs=mask.replace_pairs,
     )
+
+
+def _merge_mask_results(*parts: MaskApplyResult) -> MaskApplyResult:
+    """パイプ左右など複数セグメントのマスク結果をログ用に合算する。"""
+    tags: list[str] = []
+    replaced: list[tuple[str, str]] = []
+    omitted: list[str] = []
+    for part in parts:
+        tags.extend(part.tags)
+        replaced.extend(part.replaced)
+        omitted.extend(part.omitted)
+    return MaskApplyResult(tags=tags, replaced=replaced, omitted=omitted)
+
+
+def apply_layers_mask(
+    tags: list[str],
+    layers: TagBatchLayers,
+) -> MaskApplyResult:
+    return apply_mask(tags, layers.mask_rules())
 
 
 def load_novel_tag_batch_layers(novel_dir: Path) -> TagBatchLayers:
@@ -304,8 +350,8 @@ def compose_job_prompt(
     job_layers: TagBatchLayers,
     *,
     use_novelai_pipe: bool,
-) -> str:
-    """1ジョブ分の positive プロンプト（STYLE_PREFIX 込み）。"""
+) -> tuple[str, MaskApplyResult]:
+    """1ジョブ分の positive プロンプト（STYLE_PREFIX 込み）とマスク適用結果。"""
     base_fixed = base_fixed_tags_from(char, variants)
     danbooru: list[str] = list(variant.get("danbooru_tags") or [])
     vid = str(variant.get("variant_id") or "")
@@ -317,19 +363,25 @@ def compose_job_prompt(
         if use_novelai_pipe:
             from image_provider_novel_manga_batch import join_novelai_pipe_tag_line
 
-            left_tags = compose_positive_tags([], danbooru, job_layers)
-            body = join_novelai_pipe_tag_line(left_tags, [right_tags])
-            return STYLE_PREFIX + body
-        merged = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
-        return STYLE_PREFIX + ", ".join(merged)
+            left_raw = compose_positive_tags([], danbooru, job_layers)
+            left_masked = apply_layers_mask(left_raw, job_layers)
+            # 右辺は combines_with 先。prepend/append は左に載せたうえで、マスクは両側に適用
+            right_masked = apply_layers_mask(list(right_tags), job_layers)
+            body = join_novelai_pipe_tag_line(left_masked.tags, [right_masked.tags])
+            return STYLE_PREFIX + body, _merge_mask_results(left_masked, right_masked)
+        merged_raw = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
+        masked = apply_layers_mask(merged_raw, job_layers)
+        return STYLE_PREFIX + ", ".join(masked.tags), masked
 
     if combines:
         right_tags = danbooru_for_combines_with(variants, combines, char)
-        merged = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
-        return STYLE_PREFIX + ", ".join(merged)
+        merged_raw = compose_positive_tags([], [*danbooru, *right_tags], job_layers)
+        masked = apply_layers_mask(merged_raw, job_layers)
+        return STYLE_PREFIX + ", ".join(masked.tags), masked
 
-    all_tags = compose_positive_tags(base_fixed, danbooru, job_layers)
-    return STYLE_PREFIX + ", ".join(all_tags)
+    all_raw = compose_positive_tags(base_fixed, danbooru, job_layers)
+    masked = apply_layers_mask(all_raw, job_layers)
+    return STYLE_PREFIX + ", ".join(masked.tags), masked
 
 
 def iter_tag_jobs(
@@ -375,7 +427,14 @@ def iter_tag_jobs(
         if only_char and char_id not in only_char:
             continue
 
-        char_layers = layers_from_mapping(char.get("tag_batch"))
+        try:
+            char_layers = layers_from_mapping(char.get("tag_batch"))
+        except ValueError as e:
+            print(
+                f"warning: {char_id} の tag_batch を無視 ({e})",
+                file=sys.stderr,
+            )
+            char_layers = TagBatchLayers.empty()
         job_layers = base_layers.merge(char_layers)
         neg_extra: list[str] = char.get("negative_tags") or []
         variants: list[dict] = char.get("prompt_variants") or []
@@ -393,7 +452,7 @@ def iter_tag_jobs(
                 continue
 
             try:
-                prompt = compose_job_prompt(
+                prompt, mask_result = compose_job_prompt(
                     char,
                     v,
                     variants,
@@ -416,6 +475,7 @@ def iter_tag_jobs(
                 "prompt": prompt,
                 "neg_extra": neg_extra,
                 "tag_layers": job_layers,
+                "mask_result": mask_result,
                 "output_dir": output_dir,
             })
 
@@ -532,6 +592,26 @@ def main(argv: list[str] | None = None) -> int:
         help="negative 末尾へ追加（YAML negative_tags の後）",
     )
     p.add_argument(
+        "--omit-tags",
+        nargs="*",
+        default=None,
+        metavar="TAG",
+        help=(
+            "生成時に positive から除外（YAML IR は変更しない）。"
+            "カンマ区切り1引数可。例: --omit-tags solo unwanted_token"
+        ),
+    )
+    p.add_argument(
+        "--replace-tag",
+        action="append",
+        default=None,
+        metavar="OLD=NEW",
+        help=(
+            "生成時に OLD を NEW へ置換（複数指定可・YAML IR は変更しない）。"
+            "例: --replace-tag old_token=new_token"
+        ),
+    )
+    p.add_argument(
         "--novelai-portion-id",
         default=None,
         metavar="ID",
@@ -606,13 +686,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.variant_id else None
     )
 
-    novel_layers = load_novel_tag_batch_layers(novel)
-    cli_layers = TagBatchLayers(
-        prepend_tags=tuple(parse_tag_tokens(args.prepend_tags)),
-        append_tags=tuple(parse_tag_tokens(args.append_tags)),
-        prepend_negative_tags=tuple(parse_tag_tokens(args.prepend_negative_tags)),
-        append_negative_tags=tuple(parse_tag_tokens(args.append_negative_tags)),
-    )
+    try:
+        novel_layers = load_novel_tag_batch_layers(novel)
+        cli_replace = tuple(parse_cli_replace_tags(args.replace_tag))
+        cli_layers = TagBatchLayers(
+            prepend_tags=tuple(parse_tag_tokens(args.prepend_tags)),
+            append_tags=tuple(parse_tag_tokens(args.append_tags)),
+            prepend_negative_tags=tuple(parse_tag_tokens(args.prepend_negative_tags)),
+            append_negative_tags=tuple(parse_tag_tokens(args.append_negative_tags)),
+            omit_tags=tuple(parse_tag_tokens(args.omit_tags)),
+            replace_pairs=cli_replace,
+        )
+    except ValueError as e:
+        print(f"error: character_tag_batch / CLI マスク設定: {e}", file=sys.stderr)
+        return 2
     run_layers = novel_layers.merge(cli_layers)
 
     try:
@@ -673,6 +760,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"prepend_tags: {', '.join(run_layers.prepend_tags)}")
     if run_layers.append_tags:
         print(f"append_tags: {', '.join(run_layers.append_tags)}")
+    if run_layers.replace_pairs:
+        pairs = ", ".join(f"{src}→{dst}" for src, dst in run_layers.replace_pairs)
+        print(f"replace_tags: {pairs}")
+    if run_layers.omit_tags:
+        print(f"omit_tags: {', '.join(run_layers.omit_tags)}")
+    conflicts = run_layers.mask_rules().conflict_from_in_omit()
+    if conflicts:
+        print(
+            "warning: replace の from が omit_tags にもあります "
+            f"（置換後に除外されます）: {', '.join(conflicts)}",
+            file=sys.stderr,
+        )
     if run_layers.prepend_negative_tags or run_layers.append_negative_tags:
         print(
             "negative layers: "
@@ -725,6 +824,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {job['output_dir']}")
             print(f"    prompt[:120]: {payload['prompt'][:120]}...")
+            mask_result: MaskApplyResult | None = job.get("mask_result")
+            if mask_result and (mask_result.replaced or mask_result.omitted):
+                if mask_result.replaced:
+                    rep = ", ".join(f"{a}→{b}" for a, b in mask_result.replaced)
+                    print(f"    mask replaced: {rep}")
+                if mask_result.omitted:
+                    print(f"    mask omitted: {', '.join(mask_result.omitted)}")
             continue
 
         (novel / "tag" / job["char_id"]).mkdir(parents=True, exist_ok=True)
@@ -744,19 +850,32 @@ def main(argv: list[str] | None = None) -> int:
                 cwd=str(root),
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
         finally:
             tf_path.unlink(missing_ok=True)
 
         if r.returncode != 0:
-            print(r.stderr or r.stdout, file=sys.stderr)
+            err_text = (r.stderr or r.stdout or "").strip()
+            if err_text:
+                print(err_text.encode("utf-8", errors="replace").decode("utf-8"), file=sys.stderr)
             print(
                 f"error: 生成失敗 ({job['prefix']}) code={r.returncode}",
                 file=sys.stderr,
             )
             return r.returncode or 1
 
-        print(r.stdout.strip())
+        out_text = (r.stdout or "").strip()
+        if out_text:
+            # Windows コンソール (cp932) でも落ちないよう置換して表示
+            try:
+                print(out_text)
+            except UnicodeEncodeError:
+                enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+                print(out_text.encode(enc, errors="replace").decode(enc, errors="replace"))
+        else:
+            print(f"ok: {job['prefix']}")
 
     return 0
 

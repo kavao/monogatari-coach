@@ -3,7 +3,7 @@
 """作品フォルダ ``_meta.yaml`` の読み込み（画像生成の機械可読メタ）。
 
 現行スコープ: ``novelai.portions``（Vibe Transfer / ポーション）、
-``character_tag_batch``（キャラタグ一括の前後タグ挿入）、``workflows`` など。
+``character_tag_batch``（キャラタグ一括の前後タグ挿入・生成時マスク）、``workflows`` など。
 散文・進捗は ``_meta.md`` のまま。
 """
 

@@ -48,6 +48,12 @@ from manga_prompt_ir.prompt_formatters import (  # noqa: E402
     provider_config_from_root,
     resolve_prompt_formatter,
 )
+from tag_prompt_mask import (  # noqa: E402
+    MaskRuleSet,
+    apply_mask,
+    load_novel_mask_rules,
+    parse_cli_replace_tags,
+)
 
 
 ILLUSTRATION_PROVIDER_ENV = "MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT"
@@ -116,9 +122,11 @@ def iter_illustration_jobs(
     cli_negative_prompt: str,
     provider: str,
     prompt_formatter: str,
+    mask_rules: MaskRuleSet | None = None,
 ) -> list[dict[str, str]]:
     characters = load_character_ir_map(novel_dir)
     pages_dir = novel_dir / "illustrations"
+    rules = mask_rules or MaskRuleSet.empty()
     jobs: list[dict[str, str]] = []
     for index, path in enumerate(iter_illustration_paths(novel_dir, only_stem), start=1):
         page = load_yaml(path)
@@ -127,7 +135,10 @@ def iter_illustration_jobs(
             raise ValueError(f"{path}: meta.intent は illustration である必要があります")
         stem = illustration_asset_stem(path, page)
         page_num = yaml_page_number(path, index)
-        tags = join_tags(page_prompt_tags(page, characters))
+        tag_list = page_prompt_tags(page, characters)
+        if rules != MaskRuleSet.empty():
+            tag_list = apply_mask(tag_list, rules).tags
+        tags = join_tags(tag_list)
         if not tags:
             continue
         technical = page.get("technical") or {}
@@ -397,6 +408,20 @@ def main(argv: list[str] | None = None) -> int:
         metavar="FLOAT",
         help="NovelAI information_extracted 乗数",
     )
+    parser.add_argument(
+        "--omit-tags",
+        action="append",
+        default=None,
+        metavar="TAGS",
+        help="生成時に除外するタグ（カンマ区切り可・複数指定可）。_meta.yaml に後勝ちマージ",
+    )
+    parser.add_argument(
+        "--replace-tag",
+        action="append",
+        default=None,
+        metavar="OLD=NEW",
+        help="生成時タグ置換（例: childlike_mature=toddler）。複数指定可",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -428,12 +453,31 @@ def main(argv: list[str] | None = None) -> int:
             ILLUSTRATION_RESOLUTION_ENV,
             default="2k",
         )
+        # illustration_tag_batch があれば後勝ち。無ければ character_tag_batch を下敷き。
+        novel_mask = load_novel_mask_rules(
+            novel,
+            primary_key="illustration_tag_batch",
+            fallback_key="character_tag_batch",
+        )
+        cli_replace = tuple(parse_cli_replace_tags(args.replace_tag))
+        cli_omit: list[str] = []
+        for raw in args.omit_tags or []:
+            for part in str(raw).split(","):
+                token = part.strip()
+                if token:
+                    cli_omit.append(token)
+        cli_mask = MaskRuleSet(
+            omit_tags=tuple(dict.fromkeys(cli_omit)),
+            replace_pairs=cli_replace,
+        )
+        mask_rules = novel_mask.merge(cli_mask)
         jobs = iter_illustration_jobs(
             novel,
             args.illustration_stem,
             cli_negative_prompt=args.negative_prompt,
             provider=provider,
             prompt_formatter=prompt_formatter,
+            mask_rules=mask_rules,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -502,6 +546,19 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"  strength_multiplier={novelai_ref.strength} "
                 f"ie_multiplier={novelai_ref.information_extracted}"
+            )
+    if mask_rules != MaskRuleSet.empty():
+        if mask_rules.replace_pairs:
+            pairs = ", ".join(f"{src}→{dst}" for src, dst in mask_rules.replace_pairs)
+            print(f"replace_tags: {pairs}")
+        if mask_rules.omit_tags:
+            print(f"omit_tags: {', '.join(mask_rules.omit_tags)}")
+        conflicts = mask_rules.conflict_from_in_omit()
+        if conflicts:
+            print(
+                "warning: replace の from が omit_tags にもあります "
+                f"（{', '.join(conflicts)}）。replace 後に omit されます",
+                file=sys.stderr,
             )
     print(f"jobs: {len(jobs)}")
 
