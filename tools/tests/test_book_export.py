@@ -12,7 +12,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from book_package.build import BuildError, build_manifest  # noqa: E402
+from book_package.build import (  # noqa: E402
+    BUNKO_HEIGHT_MM,
+    BUNKO_WIDTH_MM,
+    BuildError,
+    build_manifest,
+    profile_definition,
+)
 from book_package.lock import write_lock  # noqa: E402
 from book_package.preflight import preflight_paper_build, preflight_paper_pdf  # noqa: E402
 from book_package.render import RenderError, render_paper_proof, render_reader_proof  # noqa: E402
@@ -103,6 +109,31 @@ def test_exported_proof_has_b5_pages_embedded_font_and_odd_starts(tmp_path: Path
     assert manifest["entries"][0]["start_page"] % 2 == 1
     assert manifest["entries"][1]["start_page"] % 2 == 1
     assert manifest["placements"][0]["effective_dpi"] >= 250
+
+
+def test_bunko_profile_is_iso_a6_size() -> None:
+    profile = profile_definition("bunko")
+    assert profile["name"] == "bunko"
+    assert profile["width_mm"] == BUNKO_WIDTH_MM
+    assert profile["height_mm"] == BUNKO_HEIGHT_MM
+    assert profile["trim_size"] == "文庫（ISO A6）"
+
+
+def test_exported_bunko_proof_matches_a6_page_size(tmp_path: Path) -> None:
+    package = _make_exportable_package(tmp_path)
+    manifest = build_manifest(package, profile="bunko")
+    pdf_path = tmp_path / "interior-bunko.pdf"
+    try:
+        render_paper_proof(manifest, pdf_path)
+    except RenderError as exc:
+        pytest.skip(str(exc))
+
+    result = preflight_paper_pdf(pdf_path, manifest)
+    assert result["summary"]["errors"] == 0
+    assert manifest["profile"]["name"] == "bunko"
+    page = result["pages"][0]
+    assert abs(page["width_pt"] - BUNKO_WIDTH_MM * 72.0 / 25.4) < 0.5
+    assert abs(page["height_pt"] - BUNKO_HEIGHT_MM * 72.0 / 25.4) < 0.5
 
 
 def test_reader_proof_places_cover_before_the_interior(tmp_path: Path) -> None:

@@ -20,10 +20,13 @@ from .schemas import BookPackage, load_book_package
 
 
 Target = Literal["paper"]
-ProfileName = Literal["jis_b5"]
+ProfileName = Literal["jis_b5", "bunko"]
 
 JIS_B5_WIDTH_MM = 182.0
 JIS_B5_HEIGHT_MM = 257.0
+# ISO A6。日本の文庫本仕上がりに近い寸法として proof 用に使う。
+BUNKO_WIDTH_MM = 105.0
+BUNKO_HEIGHT_MM = 148.0
 POINTS_PER_MM = 72.0 / 25.4
 
 _SCENE_DIRECTIVE = re.compile(r"^\s*<!--\s*scene:\s*ch\d{2,}-\d{3,}\s*-->\s*$")
@@ -42,23 +45,39 @@ def sha256_file(path: Path) -> str:
 
 
 def profile_definition(name: ProfileName) -> dict[str, Any]:
-    if name != "jis_b5":  # pragma: no cover - Literal guards callers
-        raise BuildError(f"Unsupported paper profile: {name}")
-    return {
-        "name": name,
-        "trim_size": "JIS B5",
-        "width_mm": JIS_B5_WIDTH_MM,
-        "height_mm": JIS_B5_HEIGHT_MM,
-        "writing_direction": "vertical",
-        "proof_only": True,
-        "margins_mm": {
-            "top": 18.0,
-            "bottom": 18.0,
-            "inner": 18.0,
-            "outer": 15.0,
-        },
-        "minimum_image_dpi": 250,
-    }
+    if name == "jis_b5":
+        return {
+            "name": name,
+            "trim_size": "JIS B5",
+            "width_mm": JIS_B5_WIDTH_MM,
+            "height_mm": JIS_B5_HEIGHT_MM,
+            "writing_direction": "vertical",
+            "proof_only": True,
+            "margins_mm": {
+                "top": 18.0,
+                "bottom": 18.0,
+                "inner": 18.0,
+                "outer": 15.0,
+            },
+            "minimum_image_dpi": 250,
+        }
+    if name == "bunko":
+        return {
+            "name": name,
+            "trim_size": "文庫（ISO A6）",
+            "width_mm": BUNKO_WIDTH_MM,
+            "height_mm": BUNKO_HEIGHT_MM,
+            "writing_direction": "vertical",
+            "proof_only": True,
+            "margins_mm": {
+                "top": 12.0,
+                "bottom": 12.0,
+                "inner": 14.0,
+                "outer": 11.0,
+            },
+            "minimum_image_dpi": 250,
+        }
+    raise BuildError(f"Unsupported paper profile: {name}")
 
 
 def png_dimensions(path: Path) -> tuple[int, int]:

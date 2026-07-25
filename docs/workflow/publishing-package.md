@@ -1,6 +1,6 @@
 # Publishing Package（Phase 1）
 
-本文・挿絵・権利・奥付の**入稿用入力一式**を、各作品フォルダの中で宣言・点検・凍結するための運用です。Phase 1 は組版へ渡す入力の欠落や参照ずれを、再現できる形で検出します。lock後にJIS B5の本文proofを作るときは、[紙書籍 proof PDF（Phase 2A）](paper-proof-export.md) を使います。
+本文・挿絵・権利・奥付の**入稿用入力一式**を、各作品フォルダの中で宣言・点検・凍結するための運用です。Phase 1 は組版へ渡す入力の欠落や参照ずれを、再現できる形で検出します。lock後に本文proof（`bunko` 文庫 / `jis_b5`）を作るときは、[紙書籍 proof PDF（Phase 2A）](paper-proof-export.md) を使います。
 
 ## 置き場所と正本
 

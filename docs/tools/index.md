@@ -28,10 +28,13 @@ python tools/book_diff.py novels/NNN_作品名 --against lock
 
 ### `book_export.py` / `book_preflight.py` — 紙書籍 proof PDF（Phase 2A）
 
-paper 用に lock した出版入力から、JIS B5の縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。
+paper 用に lock した出版入力から、縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。プロファイルは `bunko`（文庫 / ISO A6・105×148mm）または `jis_b5`（182×257mm）。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。
 
 ```bash
-# clean な paper lock からproofを生成
+# 文庫サイズ（ISO A6）で proof を生成
+python tools/book_export.py novels/NNN_作品名 --target paper --profile bunko
+
+# JIS B5 で生成する場合
 python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
 
 # 生成済みproofを再検査

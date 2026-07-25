@@ -109,12 +109,15 @@ def preflight_paper_pdf(pdf_path: str | Path, manifest: dict[str, Any]) -> dict[
             }
         )
         if abs(width - expected_width) > 0.5 or abs(height - expected_height) > 0.5:
+            trim = str(profile.get("trim_size") or profile.get("name") or "指定寸法")
+            w_mm = float(profile["width_mm"])
+            h_mm = float(profile["height_mm"])
             _finding(
                 findings,
                 "PF-P01",
                 "error",
-                f"{number}ページ目の寸法が JIS B5 と一致しません: {width:.2f} × {height:.2f} pt",
-                "組版プロファイルの仕上がり寸法を 182 × 257 mm に修正してください。",
+                f"{number}ページ目の寸法が {trim} と一致しません: {width:.2f} × {height:.2f} pt",
+                f"組版プロファイルの仕上がり寸法を {w_mm:g} × {h_mm:g} mm に修正してください。",
             )
 
     if not reader.pages:
@@ -225,7 +228,7 @@ def preflight_paper_pdf(pdf_path: str | Path, manifest: dict[str, Any]) -> dict[
 def preflight_reader_proof(
     pdf_path: str | Path, manifest: dict[str, Any], *, interior_page_count: int
 ) -> dict[str, Any]:
-    """Check that the reader-facing proof starts with a B5 cover page."""
+    """Check that the reader-facing proof starts with a cover page of the profile size."""
 
     pdf = Path(pdf_path)
     if not pdf.is_file():
@@ -261,11 +264,12 @@ def preflight_reader_proof(
             }
         )
         if abs(width - expected_width) > 0.5 or abs(height - expected_height) > 0.5:
+            trim = str(profile.get("trim_size") or profile.get("name") or "指定寸法")
             _finding(
                 findings,
                 "PF-R01",
                 "error",
-                f"閲覧用 proof の {number} ページ目が JIS B5 と一致しません: {width:.2f} × {height:.2f} pt",
+                f"閲覧用 proof の {number} ページ目が {trim} と一致しません: {width:.2f} × {height:.2f} pt",
                 "表紙と本文を同じ組版プロファイルで再生成してください。",
             )
 

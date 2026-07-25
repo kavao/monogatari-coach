@@ -23,17 +23,26 @@ def resolve_novel_dir(value: str) -> Path:
     return path.resolve() if path.is_absolute() else (repo_root() / path).resolve()
 
 
-def _build_id() -> str:
-    return "paper-jis_b5-" + datetime.now().astimezone().strftime("%Y%m%dT%H%M%S%z")
+def _build_id(profile: str) -> str:
+    stamp = datetime.now().astimezone().strftime("%Y%m%dT%H%M%S%z")
+    return f"paper-{profile}-{stamp}"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="lock 済みの出版パッケージから JIS B5 の本文・閲覧用 proof PDF を生成する。"
+        description=(
+            "lock 済みの出版パッケージから紙書籍の本文・閲覧用 proof PDF を生成する。"
+            "プロファイルは jis_b5（182×257mm）または bunko（文庫 / ISO A6・105×148mm）。"
+        )
     )
     parser.add_argument("novel", help="作品フォルダ")
     parser.add_argument("--target", choices=("paper",), default="paper")
-    parser.add_argument("--profile", choices=("jis_b5",), default="jis_b5")
+    parser.add_argument(
+        "--profile",
+        choices=("jis_b5", "bunko"),
+        default="jis_b5",
+        help="組版プロファイル（既定: jis_b5。文庫サイズは bunko）。",
+    )
     parser.add_argument(
         "--build-id",
         default=None,
@@ -43,7 +52,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = resolve_novel_dir(args.novel)
-    build_dir = root / "_publication_output" / (args.build_id or _build_id())
+    build_dir = root / "_publication_output" / (
+        args.build_id or _build_id(args.profile)
+    )
     if build_dir.exists():
         print(f"error: 出力先が既にあります: {build_dir}", file=sys.stderr)
         return 2

@@ -1,6 +1,6 @@
 # 紙書籍 proof PDF（Phase 2A）
 
-Phase 1 の出版パッケージを lock した後、本文・付属原稿・採用済み挿絵から **JIS B5 の縦書き本文 proof PDF** と、表紙を先頭に付けた**閲覧用 proof PDF**を作る手順です。本文や画像を複写・更新せず、派生物だけを `_publication_output/` に保存します。
+Phase 1 の出版パッケージを lock した後、本文・付属原稿・採用済み挿絵から **縦書き本文 proof PDF** と、表紙を先頭に付けた**閲覧用 proof PDF**を作る手順です。本文や画像を複写・更新せず、派生物だけを `_publication_output/` に保存します。
 
 これは入稿前の確認用 proof です。印刷所固有の PDF/X-1a、CMYK、表1・背・表4をつないだ最終カバーは、この工程の対象外です。
 
@@ -16,15 +16,19 @@ Phase 1 の出版パッケージを lock した後、本文・付属原稿・採
 ## 生成
 
 ```bash
+# 文庫サイズ（ISO A6・105 × 148 mm）
+python tools/book_export.py novels/NNN_作品名 --target paper --profile bunko
+
+# JIS B5（182 × 257 mm）
 python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
 ```
 
-出力先は次のようになります。`<build-id>` は実行時刻を基に生成されます。
+出力先は次のようになります。`<build-id>` は実行時刻を基に生成されます（既定は `paper-<profile>-…`）。
 
 ```text
 novels/NNN_作品名/_publication_output/<build-id>/
 ├─ manifest.json     # lock hash・原稿順・画像配置・組版プロファイル
-├─ interior.pdf      # JIS B5 本文 proof
+├─ interior.pdf      # 本文 proof（選択したプロファイル寸法）
 ├─ reader-proof.pdf  # 表紙 + interior.pdf の閲覧・配布確認用 proof
 └─ preflight.json    # 出力検査の結果
 ```
@@ -40,14 +44,26 @@ novels/NNN_作品名/_publication_output/<build-id>/
 出力先を固定したいときは `--build-id` を使います。
 
 ```bash
-python tools/book_export.py novels/NNN_作品名 --build-id first-proof
+python tools/book_export.py novels/NNN_作品名 --profile bunko --build-id first-bunko-proof
 ```
 
 同じ build ID が既にある場合、上書きせず停止します。
 
-## 組版プロファイル `jis_b5`
+## 組版プロファイル
+
+### `bunko`（文庫 / ISO A6）
+
+- 仕上がり寸法: 105 × 148 mm（ISO A6。文庫本に近い確認用寸法）
+- 余白（proof）: 天/地 12 mm、のど 14 mm、小口 11 mm
+- 本文: 右から左へ送る縦書きの proof 組版
+- その他の原稿順・directive・挿絵 dpi・閲覧用表紙の扱いは `jis_b5` と同じ
+
+`book.yaml` の `format.trim_size: 文庫` は書誌メタです。PDF 寸法は **`--profile bunko`** で決めます。
+
+### `jis_b5`
 
 - 仕上がり寸法: JIS B5、182 × 257 mm
+- 余白（proof）: 天/地/のど 18 mm、小口 15 mm
 - 本文: 右から左へ送る縦書きの proof 組版
 - 原稿順: `frontmatter → chapters → backmatter`
 - `start_page_policy: odd_page`: 必要なら空白ページを挿入して奇数ページから開始
@@ -60,7 +76,7 @@ proof 用の日本語フォントは、既定では Windows の Yu Mincho を使
 
 ```powershell
 $env:MONOCRI_BOOK_FONT = "C:\fonts\NotoSerifJP-Regular.ttf"
-python tools/book_export.py novels/NNN_作品名 --target paper
+python tools/book_export.py novels/NNN_作品名 --target paper --profile bunko
 ```
 
 proof フォントはローカル確認用です。最終入稿では、フォントライセンスを `rights.yaml` に記録し、印刷所の指定に合わせて確定してください。
@@ -75,7 +91,7 @@ python tools/book_preflight.py novels/NNN_作品名/_publication_output/<build-i
 
 preflight は次を検査します。
 
-- 全ページが JIS B5 のPDFポイント寸法であること
+- 全ページが選択したプロファイルの仕上がり寸法であること
 - 本文フォントが埋め込まれていること
 - `odd_page` 指定の原稿が奇数ページから始まること
 - directive で参照した挿絵が想定ページに存在すること

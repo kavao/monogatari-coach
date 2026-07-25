@@ -274,7 +274,7 @@ class _VerticalProof:
 
 
 def render_paper_proof(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
-    """Render one JIS B5 vertical-writing interior proof and return page metadata."""
+    """Render one vertical-writing interior proof and return page metadata."""
 
     if manifest["target"] != "paper":
         raise RenderError(f"paper proof 以外は未対応です: {manifest['target']}")

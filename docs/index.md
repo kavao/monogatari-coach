@@ -29,7 +29,7 @@
 - [Publishing Package（Phase 1）](workflow/publishing-package.md)
   読者向けの付属原稿、挿絵・権利・奥付の点検、入稿入力の lockfile 管理
 - [紙書籍 proof PDF（Phase 2A）](workflow/paper-proof-export.md)
-  lock 済みの出版入力から JIS B5 縦書き本文 proof を生成し、PDF を機械検査する手順
+  lock 済みの出版入力から縦書き本文 proof（`bunko` / `jis_b5`）を生成し、PDF を機械検査する手順
 - [Reader Output](workflow/reader-output.md)
   下読み・書評・興味判定の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
