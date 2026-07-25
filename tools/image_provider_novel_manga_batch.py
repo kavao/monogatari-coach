@@ -1947,7 +1947,7 @@ def iter_manga_jobs(
     style_helper: str | None,
     *,
     no_character_anchors: bool = False,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     manga_dir = novel_dir / "manga"
     if not manga_dir.is_dir():
         raise FileNotFoundError(f"manga/ がありません: {manga_dir}")
@@ -2005,7 +2005,7 @@ def iter_yaml_manga_jobs(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
     if not pages_dir.is_dir():
@@ -2260,7 +2260,7 @@ def iter_jobs_by_input(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
-) -> tuple[str, list[dict[str, str]]]:
+) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
             novel_dir,
