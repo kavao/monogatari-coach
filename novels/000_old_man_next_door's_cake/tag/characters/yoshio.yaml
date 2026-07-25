@@ -1,0 +1,59 @@
+schema_version: "1.0"
+character_id: yoshio
+name: 三島義雄
+name_en: Yoshio Mishima
+role: 茜の隣人・元高校教師
+appearance:
+  age_range: 74-year-old elderly man
+  gender_presentation: masculine
+  body_type: medium build, slightly stooped
+  height: average height
+  hair_style: short cropped hair
+  hair_color: white
+  distinctive_features:
+    - narrow eyes that become even narrower when smiling
+    - large, weathered hands
+costume:
+  outfit_tags: [beige_cardigan, navy_trousers, casual_clothes]
+  main_outfit: 薄いベージュのカーディガンと濃紺のズボン
+  accessories: []
+  color_palette: [beige, navy, warm_gray]
+personality:
+  archetype_tags: [gentle_elder]
+  personality_tags: [sociable, clumsy, lonely]
+  default_expression: やわらかな笑顔の奥に、静かな寂しさを残す。
+  speech_style: 気さくで少し古風。感情が高ぶると口数が減る。
+manga_rules:
+  consistency_tags: [elderly_man, short_white_hair, beige_cardigan, navy_trousers, narrow_eyes]
+  do_not_change:
+    - 髪を白以外の色にしない
+    - 若者として描かない
+    - ベージュのカーディガンと濃紺のズボンを保つ
+  closeup_rules: 笑顔でも目の奥の寂しさと年齢相応の表情を残す。
+prompt_variants:
+  - variant_id: "000_base"
+    title: 固定外見
+    description: 高齢男性としての固定外見。衣装・姿勢なし。
+    danbooru_tags: [1man, elderly_man, short_white_hair, narrow_eyes]
+  - variant_id: "001_normal"
+    title: 晩秋の普段着
+    description: コーポ藤見で暮らす義雄の通常衣装。
+    danbooru_tags: [beige_cardigan, navy_trousers, casual_clothes]
+    caption: Yoshio Mishima in his everyday late-autumn apartment clothes.
+    translation: 晩秋の普段着を着た三島義雄。
+  - variant_id: "100_intro"
+    title: 紹介用
+    description: 読者向け人物紹介に使う、親しみのある立ち姿。
+    danbooru_tags: [standing, gentle_smile, simple_background]
+    combines_with: "001_normal"
+  - variant_id: "101_turnaround"
+    title: 三面図用
+    description: 固定外見と普段着を確認するための資料用バリアント。
+    danbooru_tags: [character_sheet, front_view, side_view, back_view, simple_background]
+    combines_with: "001_normal"
+  - variant_id: "102_signature_pose"
+    title: 決めポーズ用
+    description: 大きな手で湯呑を包み、穏やかに笑う姿。
+    danbooru_tags: [holding_cup, gentle_smile, seated]
+    combines_with: "001_normal"
+negative_tags: [young_man, black_hair, fantasy_costume, exaggerated_muscles]

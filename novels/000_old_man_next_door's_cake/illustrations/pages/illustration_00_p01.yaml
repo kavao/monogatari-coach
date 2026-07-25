@@ -1,0 +1,125 @@
+schema_version: "1.0"
+meta:
+  intent: illustration
+  reading_order: right_to_left
+  aspect_ratio: "B5 portrait"
+  page_count: 1
+  source_text: "作品全体"
+  illustration_type: cover
+render_instruction:
+  task: このYAMLを、B5判小説の文字なし表紙用一枚絵として扱う。
+  prompt_header: 晩秋の東京郊外、古いアパートの狭い台所を舞台にした現代日本の文学的な表紙イラストを描く。
+  panel_policy: panels[] は構図セル1件のみ。枠線・分割画面なしの一枚絵として統合する。
+  character_policy: character_snapshots の年齢、髪、服装、表情を厳守し、茜と義雄を別人化しない。
+  text_policy: 画像内に題字、著者名、会話、看板などの文字を入れない。
+  output_policy: B5判向けの縦長構図。上部30%に後載せの題字安全圏を残す。
+  notes:
+    - ケーキは小さく不格好だが、食べ物として自然で温かく見せる。
+    - 感傷的にしすぎず、静かな関係の変化を描く。
+  user_directives:
+    page_notes: ["上部30%は人物や重要小物を置かない暗めの文字安全圏。"]
+    defaults:
+      required_prompt_tags: [contemporary_Japan, literary_fiction_cover, warm_kitchen_light]
+      omit_prompt_tags: [text, logo, watermark, speech_bubble, comic_panel]
+manga:
+  genre_tags: [contemporary literary fiction, Japanese novel cover]
+  visual_tags: [painterly illustration, cinematic composition, soft texture]
+  line_art: soft detailed painterly linework
+  panel_layout: "枠線なし・一枚絵・セル境界なし。上部30%は題字後載せの安全圏。"
+  text_policy: No text in the image.
+scene:
+  location: コーポ藤見202号室の狭い台所
+  location_en: cramped kitchen of an aging Tokyo suburban apartment, small folding table, old sink, fluorescent ceiling light
+  time_of_day: 晩秋の夜
+  time_of_day_en: late autumn night
+  weather: 室内
+  weather_en: quiet indoor night, no visible weather
+  era: contemporary Japan
+  background_notes: 小さな窓の外は暗く、テーブル中央に不格好なケーキがある。
+  background_notes_en: dark small window, modest folding table with an imperfect homemade sponge cake topped with two small red strawberry jam accents
+character_ids: [akane, yoshio]
+character_snapshots:
+  - character_id: akane
+    name: 中瀬茜
+    name_en: Akane Nakase
+    selected_variant_id: "001_normal"
+    appearance_summary: 18-year-old adult Japanese woman, slim with a neat posture, shoulder-length natural black hair usually tied back, reserved expression
+    costume_summary: old charcoal gray hoodie and dark blue jeans
+    fixed_tags: [adult_woman, black_hair, shoulder_length_hair]
+    variant_tags: [charcoal_gray_hoodie, dark_blue_jeans]
+    do_not_change: [Do not portray Akane as a child, do not change her black hair or casual hoodie and jeans.]
+  - character_id: yoshio
+    name: 三島義雄
+    name_en: Yoshio Mishima
+    selected_variant_id: "001_normal"
+    appearance_summary: 74-year-old Japanese man, short cropped white hair, narrow eyes, medium build, weathered large hands, gentle but lonely presence
+    costume_summary: thin beige cardigan and navy trousers
+    fixed_tags: [elderly_man, short_white_hair, narrow_eyes]
+    variant_tags: [beige_cardigan, navy_trousers]
+    do_not_change: [Do not portray Yoshio as young, do not change his white hair or beige cardigan.]
+background_concepts:
+  - concept_id: kitchen_cover
+    title: コーポ藤見の台所
+    description: 古いアパートの狭い台所。蛍光灯の白さとケーキの温かさが同居する。
+    prompt: Empty cramped kitchen of an aging Tokyo suburban apartment at late autumn night, folding table, old sink, dark small window, fluorescent ceiling light, quiet literary atmosphere, no people
+    negative_tags: [people, text, logo]
+    provider_hint: openai
+    usage: 表紙の空間・光・小道具の基準。
+panels:
+  - panel_id: 1
+    summary: 不格好なケーキを中央に、茜と義雄が同じテーブルを挟んで静かに手を伸ばす表紙。
+    summary_en: An imperfect homemade cake rests at the center while Akane and Yoshio quietly reach toward the same table in a small late-autumn kitchen.
+    summary_en_source: 不格好なケーキを中央に、茜と義雄が同じテーブルを挟んで静かに手を伸ばす表紙。
+    step2_summary: A warm literary cover of two neighbors sharing a modest homemade cake in a cramped Tokyo apartment kitchen at night.
+    subjects:
+      - character_id: akane
+        variant_id: "001_normal"
+        description: テーブル左側の茜
+        description_en: Akane at the left side of the table
+        pose_action: ケーキ皿へそっと手を伸ばす
+        pose_action_en: gently reaching toward a small cake plate
+        position: foreground
+        expression: 少し戸惑いながらも柔らかくなった表情
+        expression_en: hesitant but softened expression
+      - character_id: yoshio
+        variant_id: "001_normal"
+        description: テーブル右奥の義雄
+        description_en: Yoshio at the far right side of the table
+        pose_action: 椅子に座り、ケーキを見守る
+        pose_action_en: seated and quietly watching the cake
+        position: midground
+        expression: 穏やかな笑顔の奥にある寂しさ
+        expression_en: a gentle smile with quiet sadness underneath
+    composition:
+      framing: 縦長のミディアムワイド
+      framing_en: portrait medium-wide shot
+      layout: ケーキを中央下、二人を左右に置き、上部に安全圏を残す
+      layout_en: cake in the lower center, two figures on opposite sides, empty dark upper area for title placement
+      focus: 二人の間にある不格好なケーキ
+      focus_en: the imperfect homemade cake between the two neighbors
+      perspective: 目線より少し高い静かな視点
+      perspective_en: slightly elevated intimate viewpoint
+    camera:
+      angle: やや俯瞰
+      angle_en: slight high angle
+      shot_size: medium wide shot
+      shot_size_en: medium wide shot
+    lighting:
+      direction: 天井の蛍光灯とテーブル周りの反射光
+      direction_en: fluorescent ceiling light with gentle reflected warmth from the table
+      quality: 冷たい白さの中に食べ物の温かさ
+      quality_en: cool white room light balanced by the warm tones of food and skin
+      mood_effect: 静かな救いと距離の変化
+      mood_effect_en: quiet comfort and a subtle change in distance
+    text: {}
+    mood_atmosphere: [静かな温かさ, 晩秋の夜, 控えめな希望]
+    mood_atmosphere_en: [quiet warmth, late autumn night, restrained hope]
+    prompt_tags: [imperfect_homemade_cake, folding_table, fluorescent_kitchen, quiet_relationship]
+    translation: 茜と義雄が不格好なケーキを前にする表紙用の一枚絵。
+color_palette:
+  mode: full_color
+  colors: [charcoal_gray, beige, navy, cool_white, strawberry_red]
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags: [text, title, logo, watermark, speech_bubble, comic_panel, panel_border, split_screen, extra_fingers, bad_hands]

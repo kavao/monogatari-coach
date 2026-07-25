@@ -1,0 +1,123 @@
+schema_version: "1.0"
+meta:
+  intent: illustration
+  reading_order: right_to_left
+  aspect_ratio: "3:4"
+  page_count: 1
+  source_text: "_novel_text/novel_text03.md"
+  source_anchor: ch03-004
+  illustration_type: insert
+render_instruction:
+  task: このYAMLを、第三章の感情の核心を描く文字なしの一枚挿絵として扱う。
+  prompt_header: 狭い台所の蛍光灯の下、若い女性と高齢の男性が言葉を失い、互いを見つめる現代文学的な場面を描く。
+  panel_policy: panels[] は構図セル1件のみ。枠線・分割画面なしの一枚絵として描く。
+  character_policy: 茜の黒髪・チャコールグレーのパーカー、義雄の白髪・ベージュのカーディガンを一貫させる。
+  text_policy: 画像内に台詞、文字、看板、効果音を入れない。
+  output_policy: 感情を説明しすぎず、光、手元、視線の間で沈黙を表現する。
+  user_directives:
+    page_notes: ["『ありがとう』の台詞は文字として出さず、言葉の後に残る静寂を描く。"]
+    defaults:
+      required_prompt_tags: [contemporary_Japan, quiet_kitchen, emotional_silence]
+      omit_prompt_tags: [text, logo, watermark, speech_bubble, comic_panel]
+manga:
+  genre_tags: [contemporary literary fiction illustration]
+  visual_tags: [painterly illustration, restrained emotion, cinematic interior]
+  line_art: soft detailed painterly linework
+  panel_layout: "枠線なし・一枚絵・セル境界なし。テーブル越しの二人と窓の暗さを使う。"
+  text_policy: No text in the image.
+scene:
+  location: コーポ藤見202号室の台所
+  location_en: cramped kitchen of an aging Tokyo suburban apartment, old sink, small window into the dark night, refrigerator hum implied
+  time_of_day: 晩秋の夜
+  time_of_day_en: late autumn night
+  weather: 室内
+  weather_en: quiet indoor night
+  era: contemporary Japan
+  background_notes: ボウルの生クリーム、泡立て器、冷めたスポンジが置かれた小さな台所。
+  background_notes_en: bowl of whipped cream, whisk, cooled sponge cake, cramped counter, small window opening into darkness
+character_ids: [akane, yoshio]
+character_snapshots:
+  - character_id: akane
+    name: 中瀬茜
+    name_en: Akane Nakase
+    selected_variant_id: "001_normal"
+    appearance_summary: 18-year-old adult Japanese woman with shoulder-length natural black hair, slim build, reserved expression softening with empathy
+    costume_summary: old charcoal gray hoodie and dark blue jeans
+    fixed_tags: [adult_woman, black_hair, shoulder_length_hair]
+    variant_tags: [charcoal_gray_hoodie, dark_blue_jeans]
+    do_not_change: [Do not portray Akane as a child or change her black hair and casual clothes.]
+  - character_id: yoshio
+    name: 三島義雄
+    name_en: Yoshio Mishima
+    selected_variant_id: "001_normal"
+    appearance_summary: 74-year-old Japanese man with short white hair, narrow eyes, weathered hands, gentle expression carrying quiet grief
+    costume_summary: thin beige cardigan and navy trousers
+    fixed_tags: [elderly_man, short_white_hair, narrow_eyes]
+    variant_tags: [beige_cardigan, navy_trousers]
+    do_not_change: [Do not portray Yoshio as young or change his white hair and cardigan.]
+background_concepts:
+  - concept_id: kitchen_silence
+    title: 沈黙の台所
+    description: 夜の台所に、泡立て器と生クリームのボウル、暗い窓が残る。
+    prompt: Empty cramped Tokyo apartment kitchen at late autumn night, whisk in a bowl of whipped cream, cooled sponge cake, small dark window, cool fluorescent light, restrained literary mood, no people
+    negative_tags: [people, text, logo]
+    provider_hint: openai
+    usage: 第3章の静かな対話場面の空間基準。
+panels:
+  - panel_id: 1
+    summary: 義雄が言えなかった感謝を伝えた後、茜と義雄が小さな台所で沈黙を共有する。
+    summary_en: After Yoshio finally voices his gratitude, Akane and Yoshio share a heavy, quiet silence in the small kitchen.
+    summary_en_source: 義雄が言えなかった感謝を伝えた後、茜と義雄が小さな台所で沈黙を共有する。
+    step2_summary: In a cool fluorescent kitchen, an elderly man and a young woman face one another after a difficult confession, with a whisk and cooled cake between them.
+    subjects:
+      - character_id: akane
+        variant_id: "001_normal"
+        description: ボウルのそばに立つ茜
+        description_en: Akane standing beside the bowl
+        pose_action: 泡立て器を静かに持ち、義雄を見つめる
+        pose_action_en: holding a whisk still while looking toward Yoshio
+        position: foreground
+        expression: 言葉を探しながら相手を受け止める表情
+        expression_en: an expression of searching for words while receiving his confession
+      - character_id: yoshio
+        variant_id: "001_normal"
+        description: 窓の近くに座る義雄
+        description_en: Yoshio seated near the dark window
+        pose_action: 大きな手を膝に置き、茜へ視線を戻す
+        pose_action_en: resting his weathered hands on his knees and looking back at Akane
+        position: midground
+        expression: 穏やかだが長い後悔を抱えた顔
+        expression_en: a gentle face carrying long-held regret
+    composition:
+      framing: テーブル越しのミディアムショット
+      framing_en: medium shot across the narrow kitchen counter
+      layout: 茜の泡立て器を手前、義雄と暗い窓を奥に置く
+      layout_en: Akane's still whisk in the foreground, Yoshio and the dark window in the background
+      focus: 二人の視線の間と止まった泡立て器
+      focus_en: the space between their eyes and the motionless whisk
+      perspective: 茜の肩越しの近い視点
+      perspective_en: intimate over-the-shoulder viewpoint from near Akane
+    camera:
+      angle: 目線の高さ
+      angle_en: eye level
+      shot_size: medium shot
+      shot_size_en: medium shot
+    lighting:
+      direction: 天井の蛍光灯と窓からの暗い反射
+      direction_en: cool fluorescent ceiling light with faint darkness reflected from the window
+      quality: 白く静かな光、肌と生クリームだけに微かな温かさ
+      quality_en: quiet cool white light with a slight warmth on skin and cream
+      mood_effect: 言葉の後に残る重さと受容
+      mood_effect_en: the weight and acceptance left after difficult words
+    text: {}
+    mood_atmosphere: [沈黙, 受容, 静かな悲しみ]
+    mood_atmosphere_en: [silence, acceptance, quiet sadness]
+    prompt_tags: [whisk, whipped_cream_bowl, dark_window, fluorescent_kitchen, emotional_silence]
+    translation: 義雄の告白の後、二人が沈黙を共有する第三章の挿絵。
+color_palette:
+  mode: full_color
+  colors: [cool_white, charcoal_gray, beige, navy, muted_cream]
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags: [text, logo, watermark, speech_bubble, comic_panel, panel_border, split_screen, melodramatic_tears, extra_fingers, bad_hands]

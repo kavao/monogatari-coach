@@ -1,0 +1,118 @@
+schema_version: 2
+
+book:
+  title: "隣の爺さんのケーキ"
+  subtitle: null
+  volume: 1
+  author:
+    name: "Standard Writer"
+    kana: null
+  illustrator: null
+  genre: [現代, 日常ドラマ, 短編]
+  synopsis: "上京した大学生の茜は、隣室に暮らす老人・三島義雄のケーキ作りを手伝う夜を通じて、誰かに頼ることへの恐れと向き合う。"
+
+format:
+  primary: paperback
+  writing_direction: vertical
+  binding: right
+  trim_size: "B5"
+  target_pages: null
+
+manuscript:
+  frontmatter:
+    - id: characters
+      title: "登場人物"
+      file: book_matter/frontmatter/characters.md
+      start_page_policy: odd_page
+  chapters:
+    - id: ch01
+      title: "第一章　迷惑な隣人"
+      file: _novel_text/novel_text01.md
+      start_page_policy: odd_page
+    - id: ch02
+      title: "第二章　言えなかったことがあって"
+      file: _novel_text/novel_text02.md
+      start_page_policy: odd_page
+    - id: ch03
+      title: "第三章　頼ることが怖かった"
+      file: _novel_text/novel_text03.md
+      start_page_policy: odd_page
+    - id: ch04
+      title: "第四章　不格好なケーキ"
+      file: _novel_text/novel_text04.md
+      start_page_policy: odd_page
+  backmatter: []
+
+# 表紙・挿絵の prompt IR は illustrations/pages/、採用画像は asset に置く。
+illustrations:
+  - id: illust_cover
+    type: cover
+    color: true
+    scene_ref: null
+    brief: "晩秋の夜、狭い台所で不格好なケーキを前にする茜と義雄。タイトルを後載せできる上部余白を残す。"
+    status: approved
+    asset: illustrations/_assets/illustration_00/cover_20260722_021622.png
+  - id: illust_001
+    type: insert
+    color: true
+    scene_ref: ch01-002
+    brief: "薄暗いアパート廊下で、帰宅した茜が座り込む義雄を見つける場面。"
+    status: approved
+    asset: illustrations/_assets/illustration_01/illust_001_20260722_021741.png
+  - id: illust_003
+    type: insert
+    color: true
+    scene_ref: ch03-004
+    brief: "蛍光灯の台所で、茜と義雄が言葉を失いながら向き合う場面。"
+    status: approved
+    asset: illustrations/_assets/illustration_03/illust_003_20260722_022037.png
+  - id: illust_004
+    type: insert
+    color: true
+    scene_ref: ch04-002
+    brief: "不格好なケーキを二人で分け、次の年を口にする温かな場面。"
+    status: approved
+    asset: illustrations/_assets/illustration_04/illust_004_20260722_022320.png
+
+cover:
+  front:
+    title_display: "隣の爺さんのケーキ"
+    credit_author: true
+    credit_illustrator: false
+  spine:
+    enabled: true
+  back:
+    isbn: null
+    barcode: false
+    blurb: null
+
+colophon:
+  publish_date: "2026-03-14T00:05:08+09:00"
+  edition: "初版"
+  publisher: "Claude Sonnet 4"
+  contact: "なし"
+  printer: null
+  copyright_notice: "なし"
+
+export:
+  paper:
+    bleed_mm: 3
+    format: pdf_x1a
+  ebook:
+    format: epub3
+    cover_image: illustrations/_assets/illustration_00/cover_20260722_021622.png
+  web:
+    platform: kakuyomu
+    chapter_split: per_chapter
+
+sales:
+  catch_copy: null
+  description: null
+  tags: [現代ドラマ, 世代間交流, 日常, 短編, ケーキ]
+  price:
+    paper_jpy: null
+    ebook_jpy: null
+
+resources:
+  fonts: []
+  materials: []
