@@ -47,8 +47,24 @@ assets:
         permission: unconfirmed
         basis: "2026-07-22 に本作品用として新規生成。公開・販売利用の最終確認前。"
         confirmed_at: null
-fonts: []
-materials: []
+fonts:
+  - name: "BIZ UDPMincho"
+    usage_scope: [paper_book, ebook]
+    license: "Windows 付属フォント / 利用範囲は OS および権利者条件に従う（公開・販売前に要確認）"
+    basis: "表紙題字用。ローカル proof 試作。販売出力前に埋め込み可否を再確認する。"
+    confirmed_at: null
+  - name: "BIZ UDPGothic"
+    usage_scope: [paper_book, ebook]
+    license: "Windows 付属フォント / 利用範囲は OS および権利者条件に従う（公開・販売前に要確認）"
+    basis: "表紙クレジット用。ローカル proof 試作。販売出力前に埋め込み可否を再確認する。"
+    confirmed_at: null
+materials:
+  # name は cover.yaml の logo_asset レイヤー id（title）と揃える（P-V03）
+  - name: "title"
+    usage_scope: [paper_book, ebook, promotion]
+    license: "本作品用に grok_pro で生成した題字ロゴ。公開・販売利用の最終確認前。"
+    basis: "cover/assets/title_logo.png（採用元 title_logo_A2_cake_20260726_002530_02.png）。表示名: 題字ロゴ『隣の爺さんのケーキ』。2026-07-26 採用。"
+    confirmed_at: null
 
 copyright:
   notice: "なし"

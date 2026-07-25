@@ -17,6 +17,7 @@ from .schemas import (
     ManuscriptEntry,
     RightsPackage,
     load_book_package,
+    load_cover_layout,
     load_rights_package,
 )
 
@@ -77,6 +78,20 @@ def collect_lock_files(
     records: dict[str, dict[str, Any]] = {}
     _add_file(records, root, root / "book.yaml")
     _add_file(records, root, root / "rights.yaml")
+
+    # cover.yaml and its package-local assets alter composed front covers just
+    # as directly as manuscript or illustration inputs.  Freeze them so a
+    # later logo/layout change is visible through book_diff and P-E02.
+    cover_path = root / "cover.yaml"
+    if cover_path.is_file():
+        _add_file(records, root, cover_path)
+        cover = load_cover_layout(cover_path)
+        for layer in cover.layers:
+            if layer.asset is not None:
+                _add_file(records, root, resolve_package_path(root, layer.asset))
+        for face in cover.fonts.values():
+            if face.file is not None and not Path(face.file).expanduser().is_absolute():
+                _add_file(records, root, resolve_package_path(root, face.file))
 
     illustrations = {item.id: item for item in book.illustrations}
     locked_illustrations: list[dict[str, str]] = []

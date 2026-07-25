@@ -1,0 +1,50 @@
+# 表紙レイアウト（どこにどう出すか）。書誌の意味情報は book.yaml を正とする。
+# 位置方針（2026-07-26）:
+# - 題字: 採用ロゴ title_logo.png（A2 #02・明朝縦＋ケーキ）を logo_asset で右上に後載せ
+# - 著者: 左下床際・横書き（英語名）
+# - セーフは実画の暗がりに合わせて題字帯を上部40%まで
+schema_version: 1
+
+base_art:
+  illustration_id: illust_cover
+  fit: contain
+  background: "#0b0a0c"
+
+layers:
+  - id: title
+    type: logo_asset
+    # logo_asset でも書誌の正本を明示し、題名更新時の review で参照切れを防ぐ。
+    source: book.title
+    asset: cover/assets/title_logo.png
+    required: true
+    # ケーキ＋縦題字の柱。safe_areas.title（上部40%）内。
+    box: { x: 0.70, y: 0.02, w: 0.26, h: 0.38 }
+  - id: author
+    type: text
+    source: book.author.name
+    required: true
+    # 床の暗がり。箱は文字幅に近づけ、脚の主要面より下へ。
+    box: { x: 0.04, y: 0.94, w: 0.30, h: 0.035 }
+    typography:
+      font_ref: credit_gothic
+      direction: horizontal
+      size_pt: 9
+      tracking: 0.02
+      color: "#b8b0a4"
+
+safe_areas:
+  title: { x: 0.00, y: 0.00, w: 1.00, h: 0.40 }
+  credit: { x: 0.00, y: 0.70, w: 1.00, h: 0.30 }
+  author: { x: 0.00, y: 0.92, w: 1.00, h: 0.08 }
+
+fonts:
+  # 著者クレジット用（題字は logo_asset）
+  credit_gothic:
+    family: "BIZ UDPGothic"
+    file: null
+    subfont_index: 0
+
+profiles:
+  reader_front: { canvas: jis_b5_front }
+  ebook_front: { canvas: ebook_front }
+  paper_wrap: { canvas: printer_template_required }

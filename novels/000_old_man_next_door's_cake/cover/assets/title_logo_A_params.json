@@ -1,0 +1,10 @@
+{
+  "provider": "grok_pro",
+  "prompt": "Japanese novel title logo only, vertical single column text reading exactly 「隣の爺さんのケーキ」 (10 characters: 隣 の 爺 さ ん の ケ ー キ). Transparent background. No people, no kitchen, no cake, no scenery, no full book cover illustration. Quiet thin Mincho-like typeface, slightly open tracking, literary Japanese book cover title. Warm ivory cream lettering near #f7f2e8. Minimal decoration, tall narrow canvas like a single vertical pillar of text. High legibility of every character. Do not include: people, faces, kitchen, cake, food, room, horizontal title, English title, author name, watermark, speech bubble, comic effects, neon, chrome, glitter, heavy shadow, blurry or missing characters.",
+  "output_dir": "novels/000_old_man_next_door's_cake/cover/assets",
+  "file_prefix": "title_logo_A_mincho",
+  "count": 2,
+  "aspect_ratio_preset": "story_vertical",
+  "resolution": "2k",
+  "response_format": "b64_json"
+}

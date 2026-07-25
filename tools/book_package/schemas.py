@@ -232,6 +232,101 @@ class RightsPackage(StrictModel):
     copyright: Copyright = Field(default_factory=Copyright)
 
 
+# --- cover.yaml (Phase C1: layout only; bibliography stays in book.yaml) ---
+
+
+class CoverBox(StrictModel):
+    """Normalized finish-area box. Origin top-left, values in 0.0–1.0."""
+
+    x: float = Field(ge=0.0, le=1.0)
+    y: float = Field(ge=0.0, le=1.0)
+    w: float = Field(gt=0.0, le=1.0)
+    h: float = Field(gt=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def within_finish(self) -> "CoverBox":
+        if self.x + self.w > 1.0 + 1e-9 or self.y + self.h > 1.0 + 1e-9:
+            raise ValueError("cover layer box must stay within the finish area (0–1).")
+        return self
+
+
+class CoverTypography(StrictModel):
+    font_ref: str = Field(min_length=1)
+    direction: Literal["vertical", "horizontal"] = "vertical"
+    size_pt: float = Field(default=14.0, gt=0)
+    tracking: float = Field(default=0.0)
+    color: str = Field(default="#ffffff", min_length=1)
+
+
+class CoverLayer(StrictModel):
+    id: str = Field(pattern=_IDENTIFIER_PATTERN)
+    type: Literal["text", "logo_asset", "shape", "image", "barcode"]
+    source: str | None = None
+    value: str | None = None
+    required: bool = False
+    box: CoverBox
+    typography: CoverTypography | None = None
+    # shape / logo / image / barcode extras (kept minimal for C1)
+    fill: str | None = None
+    asset: str | None = None
+    opacity: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def validate_layer_payload(self) -> "CoverLayer":
+        if self.type == "text":
+            if self.typography is None:
+                raise ValueError("text layers require typography.")
+            if self.source is None and self.value is None:
+                raise ValueError("text layers require source or value.")
+        if self.type in {"logo_asset", "image", "barcode"} and self.asset is None:
+            raise ValueError(f"{self.type} layers require asset.")
+        if self.type == "shape" and self.fill is None:
+            raise ValueError("shape layers require fill.")
+        return self
+
+
+class CoverBaseArt(StrictModel):
+    illustration_id: str = Field(pattern=_IDENTIFIER_PATTERN)
+    fit: Literal["contain", "cover"] = "contain"
+    background: str = Field(default="#ffffff", min_length=1)
+
+
+class CoverFontFace(StrictModel):
+    family: str = Field(min_length=1)
+    file: str | None = None
+    subfont_index: int = Field(default=0, ge=0)
+
+
+class CoverProfileRef(StrictModel):
+    canvas: str = Field(min_length=1)
+
+
+class CoverLayout(StrictModel):
+    """cover.yaml — where/how to place layers. Does not duplicate bibliography."""
+
+    schema_version: Literal[1]
+    base_art: CoverBaseArt
+    layers: list[CoverLayer] = Field(default_factory=list)
+    safe_areas: dict[str, CoverBox] = Field(default_factory=dict)
+    fonts: dict[str, CoverFontFace] = Field(default_factory=dict)
+    profiles: dict[str, CoverProfileRef] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_font_refs_and_layer_ids(self) -> "CoverLayout":
+        layer_ids = [layer.id for layer in self.layers]
+        if len(layer_ids) != len(set(layer_ids)):
+            raise ValueError("cover layers[].id must be unique.")
+        for layer in self.layers:
+            if layer.type != "text" or layer.typography is None:
+                continue
+            if layer.typography.font_ref not in self.fonts:
+                raise ValueError(
+                    f"layers[{layer.id}].typography.font_ref "
+                    f"{layer.typography.font_ref!r} is not declared under fonts."
+                )
+        return self
+
+
 def _load_mapping(path: Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -258,3 +353,9 @@ def load_book_package(path: str | Path) -> BookPackage:
 
 def load_rights_package(path: str | Path) -> RightsPackage:
     return _load_model(Path(path), RightsPackage)
+
+
+def load_cover_layout(path: str | Path) -> CoverLayout:
+    """Load and validate cover.yaml (layout only; no book.yaml path checks)."""
+
+    return _load_model(Path(path), CoverLayout)

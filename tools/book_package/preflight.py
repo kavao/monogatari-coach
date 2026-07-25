@@ -312,6 +312,84 @@ def preflight_reader_proof(
             "埋め込み可能な TrueType フォントを使って再生成してください。",
         )
 
+    # PF-V01 / PF-V04: layered cover metadata from render_reader_proof.
+    cover_meta = (manifest.get("reader_proof") or {}).get("cover") or {}
+    layers = cover_meta.get("layers") or []
+    composition = cover_meta.get("composition")
+    safe_areas = cover_meta.get("safe_areas") or {}
+    for layer in layers:
+        if layer.get("skipped") or not layer.get("required"):
+            continue
+        box = layer.get("box") or {}
+        try:
+            x = float(box["x"])
+            y = float(box["y"])
+            w = float(box["w"])
+            h = float(box["h"])
+        except (KeyError, TypeError, ValueError):
+            _finding(
+                findings,
+                "PF-V01",
+                "error",
+                f"必須レイヤー {layer.get('id')} の座標が不正です。",
+                "cover.yaml の box を 0–1 の正規化座標で指定してください。",
+            )
+            continue
+        if x < -1e-9 or y < -1e-9 or x + w > 1.0 + 1e-9 or y + h > 1.0 + 1e-9:
+            _finding(
+                findings,
+                "PF-V01",
+                "error",
+                f"必須レイヤー {layer.get('id')} が仕上がり領域をはみ出しています。",
+                "cover.yaml の box を仕上がり（0–1）内に収めてください。",
+            )
+        layer_id = str(layer.get("id") or "")
+        if layer_id in safe_areas:
+            safe = safe_areas[layer_id]
+            try:
+                sx, sy, sw, sh = (
+                    float(safe["x"]),
+                    float(safe["y"]),
+                    float(safe["w"]),
+                    float(safe["h"]),
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (
+                x + 1e-6 < sx
+                or y + 1e-6 < sy
+                or x + w > sx + sw + 1e-6
+                or y + h > sy + sh + 1e-6
+            ):
+                _finding(
+                    findings,
+                    "PF-V01",
+                    "error",
+                    f"必須レイヤー {layer_id} が safe_areas.{layer_id} の外にあります。",
+                    "レイヤー box を対応する safe_areas 内へ移動してください。",
+                )
+
+    if composition == "layered" and any(
+        not layer.get("skipped") and layer.get("type") == "text" for layer in layers
+    ):
+        cover_fonts = page_reports[0]["fonts"] if page_reports else []
+        if not cover_fonts:
+            _finding(
+                findings,
+                "PF-V04",
+                "error",
+                "表紙ページに文字レイヤーがありますがフォントリソースがありません。",
+                "cover.yaml の書体を埋め込み可能な TrueType/TTC で再生成してください。",
+            )
+        elif any(not font.get("embedded") for font in cover_fonts):
+            _finding(
+                findings,
+                "PF-V04",
+                "error",
+                "表紙ページの文字が埋め込みフォントで描画されていません。",
+                "埋め込み可能な書体で cover.yaml の font_ref を解決し直してください。",
+            )
+
     errors = sum(finding["severity"] == "error" for finding in findings)
     warnings = sum(finding["severity"] == "warning" for finding in findings)
     return {

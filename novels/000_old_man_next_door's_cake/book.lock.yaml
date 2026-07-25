@@ -1,5 +1,5 @@
 lock_version: 1
-generated_at: '2026-07-22T02:24:28+09:00'
+generated_at: '2026-07-26T00:54:44+09:00'
 export_target: paper
 tool_version: monocri 0.0.0
 book_snapshot:
@@ -8,14 +8,14 @@ book_snapshot:
   edition: 初版
 files:
 - path: _novel_text/novel_text01.md
-  sha256: 69dc078e8e73d9991549cc42eec07b4012a68aa832626f4d9685aa49b2b7134a
+  sha256: 3eb1bf7bc63945d1eff156d80b64bcea220efbf47e085dcaa72844bcb9a4eb3e
   scenes:
   - ch01-001
   - ch01-002
   - ch01-003
   - ch01-004
 - path: _novel_text/novel_text02.md
-  sha256: e546ba6abaeb3b33e2b5f23c6f09378bd04c49383953a1ffcdae4187207eed3d
+  sha256: ee1f33048224881cba1598edc3f9e750f9b23caebd8e269e081210c32f56cbaf
   scenes:
   - ch02-001
   - ch02-002
@@ -23,23 +23,27 @@ files:
   - ch02-004
   - ch02-005
 - path: _novel_text/novel_text03.md
-  sha256: 17b5a4818299857e245b00dae47328cdefd7c673f6db23471d2d3cf4e6a62ff8
+  sha256: 504202ebe2426c0cc5cfc964cdc7e436a68f29472464bab9772de24fc47f719f
   scenes:
   - ch03-001
   - ch03-002
   - ch03-003
   - ch03-004
 - path: _novel_text/novel_text04.md
-  sha256: 648ee7b90ac0cdc8789df68535935e782cbe635451d7102e35c1d53e1b8504a4
+  sha256: 30611dd6af1688b8d66523c6589809c360114832120b30f90e97e286d42ddb85
   scenes:
   - ch04-001
   - ch04-002
   - ch04-003
   - ch04-004
 - path: book.yaml
-  sha256: f7e98586ef439a2d978b0f1c6c5a0632a65dad5a8cbb7e5dfc01eb2917a9c42d
+  sha256: eab1660d8c860de987109565055476f3e560ead754c367bfeeb73a6b79729210
 - path: book_matter/frontmatter/characters.md
   sha256: 011a64a89d4b2b739414ba93cafa2417d67c0126f1ceb001872e21e848883e3e
+- path: cover.yaml
+  sha256: b32098d4b4308ca18b5cf39ffc3ae9264a67c9e75f07542b222e73fe9b6f6844
+- path: cover/assets/title_logo.png
+  sha256: b352189d8f6564206683d8e13a5405b526fc5e6c1352e73bebb86440c4641d7e
 - path: illustrations/_assets/illustration_00/cover_20260722_021622.png
   sha256: 8f188e172fc2d71d7930629ee82331aef79c6602103c489584f396fd68a45248
 - path: illustrations/_assets/illustration_01/illust_001_20260722_021741.png
@@ -49,7 +53,7 @@ files:
 - path: illustrations/_assets/illustration_04/illust_004_20260722_022320.png
   sha256: ac3b6170537fa2522424d86a2a08b97a265b50c6d92dfce3b44d936dbcbe6cc7
 - path: rights.yaml
-  sha256: ceb0d3d598ccb40b1470c31ca6c1632c8b78cda725faf0b6ebe5a46857dc845d
+  sha256: 4d4fe2c46b9932a00ccd39c3fe1187c33a63970f536f8beaf9d62f800823a431
 illustrations:
 - id: illust_001
   asset: illustrations/_assets/illustration_01/illust_001_20260722_021741.png
@@ -66,6 +70,6 @@ illustrations:
 review_result:
   mode: export_gate
   errors: 0
-  warnings: 8
+  warnings: 9
 rights_snapshot:
   copyright_notice: なし

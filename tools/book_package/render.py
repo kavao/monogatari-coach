@@ -2,29 +2,23 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import tempfile
 from typing import Any
 
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
 from .build import POINTS_PER_MM
+from .cover import CoverComposeError, compose_cover_page, load_package_cover
+from .fonts import FontError, find_proof_font, register_proof_font
+from .schemas import load_book_package
 
 
 class RenderError(ValueError):
     """A build manifest could not be rendered into a proof PDF."""
 
-
-_FONT_CANDIDATES = (
-    Path(r"C:\Windows\Fonts\yumin.ttf"),
-    Path(r"C:\Windows\Fonts\NotoSerifJP-VF.ttf"),
-    Path(r"C:\Windows\Fonts\BIZ-UDMinchoM.ttc"),
-)
 
 _VERTICAL_FORMS = str.maketrans(
     {
@@ -49,36 +43,20 @@ _VERTICAL_FORMS = str.maketrans(
 )
 
 
-def find_proof_font() -> Path:
-    """Return a local Japanese TTF usable for a proof build."""
-
-    configured = os.environ.get("MONOCRI_BOOK_FONT")
-    if configured:
-        selected = Path(configured).expanduser()
-        if selected.is_file() and selected.suffix.lower() == ".ttf":
-            return selected
-        raise RenderError(
-            "MONOCRI_BOOK_FONT は存在する .ttf の絶対パスで指定してください: "
-            f"{selected}"
-        )
-    for candidate in _FONT_CANDIDATES:
-        if candidate.is_file() and candidate.suffix.lower() == ".ttf":
-            return candidate
-    raise RenderError(
-        "日本語 proof 用 TrueType フォントが見つかりません。"
-        " MONOCRI_BOOK_FONT に .ttf の絶対パスを指定してください。"
-    )
+# Re-export for callers/tests that imported these from render.
+__all__ = [
+    "RenderError",
+    "find_proof_font",
+    "render_paper_proof",
+    "render_reader_proof",
+]
 
 
 def _register_proof_font() -> tuple[str, Path]:
-    font_path = find_proof_font()
-    font_name = "MonocriProofMincho"
-    if font_name not in pdfmetrics.getRegisteredFontNames():
-        try:
-            pdfmetrics.registerFont(TTFont(font_name, str(font_path), subfontIndex=0))
-        except (OSError, ValueError) as exc:
-            raise RenderError(f"proof フォントを登録できません: {font_path}: {exc}") from exc
-    return font_name, font_path
+    try:
+        return register_proof_font()
+    except FontError as exc:
+        raise RenderError(str(exc)) from exc
 
 
 def _png_dimensions(manifest: dict[str, Any], illustration_id: str) -> tuple[int, int]:
@@ -322,6 +300,9 @@ def render_reader_proof(
 ) -> dict[str, Any]:
     """Create a reader-facing PDF with the approved cover before the interior proof.
 
+    When the package has ``cover.yaml``, title/author layers are composed on top of
+    the base art. Without ``cover.yaml``, behaviour stays art-only (backward compatible).
+
     This deliberately emits a single front-cover page only. A printer-ready wrap
     cover (front, spine, and back) depends on printer specifications and is not
     inferred by the local proof renderer.
@@ -332,6 +313,7 @@ def render_reader_proof(
     if not interior_pdf.is_file():
         raise RenderError(f"本文 proof PDF がありません: {interior_pdf}")
 
+    package_root = Path(manifest["package"]["root"])
     cover = _cover_illustration(manifest)
     cover_asset = _asset_path(manifest, str(cover["id"]))
     if not cover_asset.is_file():  # pragma: no cover - manifest build validates this
@@ -346,12 +328,14 @@ def render_reader_proof(
     height = float(profile["height_mm"]) * POINTS_PER_MM
     font_name, _ = _register_proof_font()
     output.parent.mkdir(parents=True, exist_ok=True)
+    layout = load_package_cover(package_root)
 
     with tempfile.NamedTemporaryFile(
         mode="wb", suffix=".pdf", prefix=f".{output.stem}-cover-", dir=output.parent, delete=False
     ) as temporary:
         cover_page_pdf = Path(temporary.name)
 
+    cover_meta: dict[str, Any]
     try:
         canvas = Canvas(
             str(cover_page_pdf),
@@ -365,17 +349,47 @@ def render_reader_proof(
         canvas.setTitle(manifest["package"]["title"])
         canvas.setAuthor(manifest["package"]["author"]["name"])
         canvas.setCreator("Monogatari Coach reader proof renderer")
-        scale = min(width / source_width, height / source_height)
-        draw_width = source_width * scale
-        draw_height = source_height * scale
-        canvas.drawImage(
-            ImageReader(str(cover_asset)),
-            (width - draw_width) / 2,
-            (height - draw_height) / 2,
-            width=draw_width,
-            height=draw_height,
-            mask="auto",
-        )
+
+        if layout is not None:
+            try:
+                book = load_book_package(package_root / "book.yaml")
+                composition = compose_cover_page(
+                    canvas,
+                    package_root=package_root,
+                    book=book,
+                    layout=layout,
+                    page_width_pt=width,
+                    page_height_pt=height,
+                )
+            except CoverComposeError as exc:
+                raise RenderError(f"表紙レイヤーを合成できません: {exc}") from exc
+            cover_meta = composition.to_manifest_cover()
+            cover_meta["composition"] = "layered"
+        else:
+            scale = min(width / source_width, height / source_height)
+            draw_width = source_width * scale
+            draw_height = source_height * scale
+            canvas.drawImage(
+                ImageReader(str(cover_asset)),
+                (width - draw_width) / 2,
+                (height - draw_height) / 2,
+                width=draw_width,
+                height=draw_height,
+                mask="auto",
+            )
+            cover_meta = {
+                "id": cover["id"],
+                "asset": cover["asset"],
+                "page": 1,
+                "source_width_px": source_width,
+                "source_height_px": source_height,
+                "draw_width_pt": round(draw_width, 3),
+                "draw_height_pt": round(draw_height, 3),
+                "layers": [],
+                "fonts": {},
+                "composition": "art_only",
+            }
+
         canvas.showPage()
         canvas.save()
 
@@ -400,15 +414,7 @@ def render_reader_proof(
     manifest["reader_proof"] = {
         "output": output.name,
         "page_count": page_count,
-        "cover": {
-            "id": cover["id"],
-            "asset": cover["asset"],
-            "page": 1,
-            "source_width_px": source_width,
-            "source_height_px": source_height,
-            "draw_width_pt": round(draw_width, 3),
-            "draw_height_pt": round(draw_height, 3),
-        },
+        "cover": cover_meta,
         "purpose": "reader preview only; not a printer-ready wrap cover",
     }
     return manifest["reader_proof"]

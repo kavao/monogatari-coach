@@ -114,5 +114,7 @@ sales:
     ebook_jpy: null
 
 resources:
-  fonts: []
-  materials: []
+  # 表紙レイヤーで使用（cover.yaml の family 名と揃える）
+  fonts: ["BIZ UDPGothic"]
+  # cover.yaml layers[id=title] の logo_asset と P-V03 名を一致させる
+  materials: ["title"]
