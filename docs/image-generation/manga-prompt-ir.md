@@ -144,7 +144,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 NovelAI で `|` 分割を使わない比較は、従来どおり `--no-novelai-pipe-character-tags` を付けます。この場合、effective formatter は `tag_csv` と表示されます。
 
-**ベース列のキャラ単独トークン**: `novelai_pipe` 時、ベース側から **スペースなし**で `character_id` / `name_en` と一致するトークン（例: `focus_en: yuna`）は `character_token_filter` で除外される。`focus_en` はキャラ ID 単体ではなく構図タグ（例: `lying figure on bed`）を書く（`.rulesync/skills/manga-prompt-ir/SKILL.md`）。
+**キャラ単独トークン（tag_csv / pipe base）**: `tag_csv`（`yaml_panel_tags`・挿絵バッチ含む）および `novelai_pipe` のベース列では、`character_id` / `name_en` / `name` と一致するトークン（例: `focus_en: yuna`、誤って入った `Tsumugi`）を `character_token_filter` で除外する。`yaml_panel_tags` は人名を後付けしない。`focus_en` はキャラ ID 単体ではなく構図タグ（例: `lying figure on bed`）を書く（`.rulesync/skills/manga-prompt-ir/SKILL.md`）。pipe のキャラセグメント先頭 `name_en` は今回の除外対象外。
 
 ### 互換 Markdown を出すとき（`novel_prompt_ir_export_md.py`）
 

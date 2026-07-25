@@ -1124,6 +1124,13 @@ def yaml_panel_tags(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
 ) -> list[str]:
+    """Flat tag list for tag_csv / Forge / illustration batch.
+
+    Does **not** append ``name_en`` / ``name`` / ``character_id`` as standalone
+    tags (copyright character pull). Appearance comes from snapshot / IR tags
+    only. Standalone tokens matching those names are filtered at the end
+    (same rules as NovelAI pipe base via ``character_token_filter``).
+    """
     manga = page.get("manga") or {}
     scene = panel.get("scene") or page.get("scene") or {}
     composition = panel.get("composition") or {}
@@ -1156,11 +1163,9 @@ def yaml_panel_tags(
         cid = subject.get("character_id")
         snapshot = subject_snapshot(page, subject)
         if snapshot:
-            tags.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
             tags.extend(snapshot_tags(snapshot))
         elif cid and cid in characters:
             character = characters[cid]
-            tags.append(str(character.get("name_en") or cid))
             tags.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
         else:
             tags.append(subject_tag_line_token(subject))
@@ -1172,6 +1177,8 @@ def yaml_panel_tags(
         tags = filter_single_panel_tags(tags)
     if omit_panel_background:
         tags = apply_omit_panel_background_tags(tags)
+    blocked = collect_blocked_character_tokens(page, panel, characters)
+    tags = filter_base_standalone_character_tokens(tags, blocked)
     return tags
 
 

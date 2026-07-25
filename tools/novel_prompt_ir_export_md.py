@@ -22,6 +22,7 @@ from image_provider_novel_manga_batch import (
     comma_split_tags,
     filter_single_panel_tags,
     join_novelai_pipe_tag_line,
+    yaml_panel_tags,
     yaml_panel_tags_novelai_split,
 )
 from manga_prompt_ir.scene_prompt import (
@@ -307,43 +308,8 @@ def subject_text(subject: dict[str, Any], characters: dict[str, dict[str, Any]])
 
 
 def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str, dict[str, Any]]) -> list[str]:
-    """互換 Markdown の Step1 タグ行用。image_provider_novel_manga_batch.yaml_panel_tags(..., single_panel=True) と整合させる。"""
-    manga = page.get("manga") or {}
-    scene = panel.get("scene") or page.get("scene") or {}
-    composition = panel.get("composition") or {}
-    camera = panel.get("camera") or {}
-    lighting = panel.get("lighting") or {}
-    tags: list[str] = []
-    tags.extend(STYLE_TAGS)
-    tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
-    tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
-    tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
-    tags.extend(str(v) for v in as_list(manga.get("background_tags")))
-    tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
-    tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
-    tags.extend(composition_tag_tokens(composition))
-    tags.extend(camera_tag_tokens(camera))
-    tags.extend(lighting_tag_tokens(lighting))
-    # composition.layout は single_panel 時はコマ割りメモ向けのためタグ列から除外
-    tags.extend(composition_layout_tag_token(composition, single_panel=True))
-    for subject in as_list(panel.get("subjects")):
-        if not isinstance(subject, dict):
-            continue
-        cid = subject.get("character_id")
-        snapshot = subject_snapshot(page, subject)
-        if snapshot:
-            tags.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
-            tags.extend(snapshot_tags(snapshot))
-        elif cid and cid in characters:
-            tags.append(str(characters[cid].get("name_en") or cid))
-            tags.extend(resolve_variant_danbooru_tags(characters[cid], selected_subject_variant_id(subject)))
-        else:
-            tags.append(subject_tag_line_token(subject))
-        tags.extend(subject_situational_tag_tokens(subject))
-    tags.extend(panel_mood_atmosphere_tag_tokens(panel))
-    tags = apply_user_directives_to_tags(unique(tags), page, panel)
-    return filter_single_panel_tags(tags)
+    """互換 Markdown の Step1 タグ行用。生成バッチの yaml_panel_tags に委譲（人名単独タグなし）。"""
+    return yaml_panel_tags(page, panel, characters, single_panel=True)
 
 
 def panel_tag_line_for_export(
