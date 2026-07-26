@@ -26,9 +26,23 @@ python tools/book_diff.py novels/NNN_作品名 --against lock
 
 `book.lock.yaml` は生成物のため手編集しません。読者向けの「登場人物」原稿を含む導入手順は [Publishing Package](../workflow/publishing-package.md) を参照してください。
 
+### `book_cover_review.py` / `book_cover_export.py` — 表紙合成（Phase 1.5）
+
+`cover.yaml` のレイアウト・base art・書体・権利を検査します。題字は組版（`type: text`）または題字ロゴ（`type: logo_asset`）です。ebook 前面 PDF の単体出力は `book_cover_export.py`（paper wrap は printer profile 未確定のため停止し得ます）。
+
+```bash
+# 表紙構成の確認（writing ゲート）
+python tools/book_cover_review.py novels/NNN_作品名 --target reader --gate writing
+
+# 公開・販売前の厳格ゲート
+python tools/book_cover_review.py novels/NNN_作品名 --target reader --gate export
+```
+
+手順と題字方針の分岐は [表紙合成・題字ロゴ](../workflow/cover-composition.md) を参照してください。
+
 ### `book_export.py` / `book_preflight.py` — 紙書籍 proof PDF（Phase 2A）
 
-paper 用に lock した出版入力から、縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。プロファイルは `bunko`（文庫 / ISO A6・105×148mm）または `jis_b5`（182×257mm）。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。
+paper 用に lock した出版入力から、縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。プロファイルは `bunko`（文庫 / ISO A6・105×148mm）または `jis_b5`（182×257mm）。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。`cover.yaml` がある作品では reader-proof の1ページ目が layered cover になります。
 
 ```bash
 # 文庫サイズ（ISO A6）で proof を生成

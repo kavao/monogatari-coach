@@ -45,7 +45,8 @@ targets: ["*"]
 1. `_how_to.example/illustration_plan.md` の「表紙計画」節を雛形として使う。
 2. 本文・design_specification・character.md を参照し、表紙の構図・登場人物・衣装 variant を記入する。
 3. 候補複数案がある場合は表形式で列挙する。
-4. `_meta.md` §3.1 の「計画状態」を `計画済` に更新する。
+4. タイトル文字節に **題字方針**（`組版` / `logo_asset` / `後回し`）を書き、`_meta.md` §3.1 と一致させる。`logo_asset` のときは続けてスキル **title-logo-plan** を案内する。
+5. `_meta.md` §3.1 の「計画状態」を `計画済` に更新する。
 
 ### Step D — 章挿絵計画（`chapter_plan.md`）
 

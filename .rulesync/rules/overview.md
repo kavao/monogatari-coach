@@ -498,6 +498,46 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 #### 画像生成の指示文テンプレ（チャットで使う）
 挿絵・表紙の既定は **`image_provider_novel_illustration_batch.py`**。表紙向け比率は `--aspect-ratio book_cover`（2:3）など。コマンド例は `docs/image-generation/illustration-prompt-ir.md` を正とする。
 
+### 2.2.4 Cover Composition Mode（表紙合成・題字）
+
+表紙**絵**の上に題字・クレジットを後載せし、`cover.yaml` を正本に閲覧用 proof へつなぐ。横断正本は **`.rulesync/rules/concepts.md`** の「表紙合成と題字」「出版完成目安」。
+
+- **題字方針**（`_meta.md` §3.1）: `組版`（`type: text`）／`logo_asset`／`後回し`
+- **logo_asset 経路**: スキル **`title-logo-plan`**（`cover/title_logo_plan.md` → asset → `cover.yaml`）
+- **組版・review・export**: スキル **`novel-cover-layout`**（`book_cover_review` → lock → `book_export` → `_meta.md` §7）
+- 操作説明: `docs/workflow/cover-composition.md`
+- 雛形: `_how_to.example/publishing/`
+
+最小トリガー例:
+
+```
+題字ロゴを計画してください。
+```
+
+```
+表紙合成して proof を出してください。
+```
+
+印刷包み表紙（表1・背・表4）と EPUB は本モードの対象外。
+
+### 2.2.5 Publication Package Mode（出版パッケージ・proof）
+
+本文・付属原稿・挿絵・権利を `book.yaml` / `rights.yaml` で宣言し、lock のあと `interior.pdf` / `reader-proof.pdf` を出す。進捗の完成目安は **`_meta.md` §7**。
+
+- Phase 1: `docs/workflow/publishing-package.md`（`book_review` / `book_lock` / `book_diff`）
+- Phase 1.5: 上記 Cover Composition（`cover.yaml`）
+- Phase 2A: `docs/workflow/paper-proof-export.md`（`book_export` / `book_preflight`）
+
+最小トリガー例:
+
+```
+出版パッケージを点検して lock してください。
+```
+
+```
+bunko の reader-proof を出してください。
+```
+
 ### 2.3 Writing Mode
 1. **執筆前チェック（推奨・新規作品では必須に近い）**
    - **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、必須ファイル・`_novel_text/`・`_reader/`・`config` 整合が **OK** であることを確認する（スキル **`novel-project-readiness`**）。

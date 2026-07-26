@@ -1,0 +1,121 @@
+# 題字ロゴ発注文（構造化オーダー）
+# コピー先: novels/<作品>/cover/title_logo_order.yaml
+# 用途: 画像生成AIへの発注。表紙一枚絵（illustration_00）とは別ジョブ。
+schema_version: 1
+kind: title_logo_order
+
+meta:
+  novel_id: "NNN_作品フォルダ名"
+  work_title: "作品タイトル"
+  work_title_en: "English Title (optional)"
+  intent: title_logo
+  language: ja
+  writing_direction: horizontal  # horizontal (既定: ラノベ・商業本標準) | vertical
+  status: draft_order  # draft_order | ordered | delivered | approved
+  related:
+    cover_layout: cover.yaml
+    cover_art_illustration_id: illust_cover
+    cover_plan: illustrations/plans/cover_plan.md
+    plan: cover/title_logo_plan.md
+    asset_dir: cover/assets/
+
+content:
+  text: "作品タイトル"
+  text_as_list: ["作", "品", "タ", "イ", "ト", "ル"]
+  include_author: false
+  include_subtitle: false
+  include_volume: false
+  include_series_mark: false
+  notes_ja: >
+    日本語タイトルのみ。横書き。句読点なし。
+    ライトノベル・現代書籍風のキャッチーで可読性の高いタイトルデザイン。
+
+placement:
+  target_layer_id: title
+  box:
+    x: 0.05
+    y: 0.05
+    w: 0.90
+    h: 0.22
+  finish_hint: bunko_front or jis_b5_front
+  background_context_ja: >
+    表紙上部〜中央の横長エリア。人物の顔・主要モチーフに被せない。
+  recommended_pixel_size:
+    width: 1792
+    height: 512
+    aspect_note: "match cover.yaml title box aspect (approx 3.5:1 horizontal banner)"
+  preferred_export:
+    format: png
+    alpha: true
+    filename: cover/assets/title_logo.png
+
+# --- AIへ引き渡す世界観・雰囲気・デザイン情報 ---
+world_context:
+  genre_ja: "現代ファンタジー / 学園日常"
+  theme_keywords_ja: ["魔法", "学園", "秘密", "成長"]
+  key_motifs_ja: ["小さな鍵", "星のモチーフ"]
+  visual_atmosphere_ja: "明るく華やか、少し秘密めいた放課後の光"
+
+style:
+  tone_ja:
+    - キャッチーで魅力的
+    - ライトノベル風の存在感
+    - 清潔感と透明感
+  color:
+    fill_hex: "#f7f2e8"
+    fill_name_en: warm ivory cream with subtle pastel accents
+    avoid: ["pure white neon", "gold foil flashy", "rainbow"]
+  typography_feel:
+    primary: light novel style horizontal title, stylish clean typography
+    alternatives:
+      - soft rounded brush horizontal title
+      - horizontal title with subtle motif emblem
+  must:
+    - horizontal Japanese title layout
+    - transparent or easily keyable background
+    - high legibility of all characters
+    - no people
+    - no scene illustration
+  must_not:
+    - bake logo into full book cover scene
+    - speech bubbles, watermark, QR, barcode
+    - comic speed lines, heavy drop shadow, 3D chrome
+
+prompt_variants:
+  - variant_id: "A_lightnovel_horizontal"
+    label_ja: ライトノベル風横書きタイトル（文字主体・スタイリッシュ）
+    recommended: true
+    natural_language_ja: >
+      日本語のライトノベル風タイトルロゴだけを描く。文字は横書き1行（または横書き2段）で作品タイトルどおり。
+      背景は完全に透明。人物・背景描写は描かない。明るく洗練されたタイポグラフィデザイン。
+      文字色はアイボリー（#f7f2e8 近傍）または作品のテーマ色。文字は非常に読みやすい。
+    natural_language_en: >
+      Japanese light novel title logo only, horizontal layout, transparent background,
+      no people, stylish clean typography design, warm ivory cream lettering,
+      high legibility, anime light novel book title design.
+    danbooru_style_tags: >-
+      title logo, japanese text, horizontal text, transparent background,
+      light novel title, typography design, simple, clean, cream colored text,
+      no humans, no scenery, high legibility
+    negative_tags: >-
+      people, human, face, scenery, full cover illustration, watermark,
+      speech bubble, comic, neon, blurry text, missing characters, author name, vertical text
+
+  - variant_id: "B_horizontal_with_motif"
+    label_ja: 横書きタイトル＋小さな世界観モチーフ（エンブレム付き）
+    recommended: false
+    natural_language_ja: >
+      日本語のライトノベル風タイトルロゴ。ベースは横書きの読みやすいタイトルデザイン。
+      ロゴの端や文字の隙間に、作品のキーモチーフ（例: 小さなモチーフ象徴）がワンポイントとして添えられている。
+      文字の可読性を最優先し、背景は完全透過。人物や背景イラストは描かない。
+    natural_language_en: >
+      Japanese light novel title logo, horizontal layout, with a small world motif emblem
+      integrated neatly beside or above the text. Transparent background, stylish readable
+      typography, no humans, no full cover scene, high legibility.
+    danbooru_style_tags: >-
+      title logo, japanese text, horizontal text, transparent background,
+      light novel title, typography design, small motif emblem, clean,
+      no humans, no scenery, high legibility
+    negative_tags: >-
+      people, human, face, full scenery, full cover illustration, watermark,
+      speech bubble, comic, neon, blurry text, missing characters, vertical text

@@ -117,6 +117,8 @@ lock 後に原稿や採用画像を変えると `book_diff.py` が `added` / `re
 4. 採用画像だけを `illustrations[].asset` に登録し、権利根拠を `rights.yaml` に記録する。
 5. writing review で参照の不足を直し、入稿時に export review → lock → diff の順で確認する。
 
-この導入は既存の本文・挿絵 IR・画像生成フローを変更しません。Phase 1 の対象外である PDF / EPUB 組版、表紙文字の合成、契約文の法的判断は、後続フェーズで扱います。
+この導入は既存の本文・挿絵 IR・画像生成フローを変更しません。契約文の法的判断は対象外です。
 
-紙書籍の本文proofは Phase 2A で対応しましたが、印刷所固有の PDF/X、CMYK、表1・背・表4を一体化した最終カバーは、印刷所テンプレートと用紙・綴じ仕様の確定後に扱います。
+**表紙文字の合成（`cover.yaml`）** は Phase 1.5 として扱います。題字を組版（`type: text`）または題字ロゴ（`type: logo_asset`）で後載せし、`book_cover_review.py` で確認してから lock します。手順は [表紙合成・題字ロゴ](cover-composition.md) を正とします。
+
+紙書籍の本文proofは Phase 2A（[紙書籍 proof PDF](paper-proof-export.md)）です。印刷所固有の PDF/X、CMYK、表1・背・表4を一体化した最終カバーと EPUB は、仕様確定後の別工程です。

@@ -122,8 +122,12 @@ novelai:
 - **構図メモ（1行）**: （例: 雨上がりの夕暮れ、主人公が窓辺に立ち手のひらの雨粒を見つめるバストアップ。背後に未整理の机と書きかけの原稿）
 - **画像内文字**: 原則なし（タイトル・著者名は後載せ。要る場合は `cover_plan.md` に安全圏を1行メモ）
 - **計画状態**: （`未` / `計画済` / `YAML済` / `生成済` のいずれか）
+- **題字方針**: （`組版` / `logo_asset` / `後回し` のいずれか。表紙絵に文字を焼かない）
+- **題字ロゴ状態**: （`未` / `計画済` / `生成済` / `採用済` / `—`。方針が `組版` または `後回し` のときは `—`）
+- **題字ロゴ計画**: `cover/title_logo_plan.md`（方針が `logo_asset` のとき。雛形: `_how_to.example/publishing/title_logo_plan.md`）
+- **表紙レイアウト**: `cover.yaml`（配置正本。雛形: `_how_to.example/publishing/cover.yaml.example`）
 
-**§3.2 章別割当表に表紙行を載せない。** 表紙の進捗は本節と `cover_plan.md` で追う。
+**§3.2 章別割当表に表紙行を載せない。** 表紙絵の進捗は本節と `cover_plan.md`、題字・合成は本節と `cover.yaml`（および題字ロゴ計画）で追う。
 
 ## 3.2 章別挿絵割当表（TPO 正本・計画 MD / YAML より先に更新）
 
@@ -270,6 +274,30 @@ render_instruction:
 4. `embed_snapshots` → `novel_prompt_ir_validate.py` → エクスポート／生成。
 
 詳細なフィールド定義は **`.rulesync/skills/manga-prompt-ir/SKILL.md`** の「ユーザ指示の正本」を参照。
+
+---
+
+## 7. 出版パッケージ進捗（完成目安）
+
+紙・電子向けの **入稿入力〜閲覧用 proof PDF** の進捗をここに書く。`_meta.yaml`（画像バッチ定量）とは別。操作の正本は `docs/workflow/cover-composition.md` と `docs/workflow/publishing-package.md` / `paper-proof-export.md`。
+
+| 項目 | 状態 | メモ |
+|------|------|------|
+| book.yaml | （`未` / `済`） | 書誌・原稿順・挿絵宣言 |
+| rights.yaml | （`未` / `済`） | 素材・フォント許諾 |
+| cover.yaml | （`未` / `済` / `—`） | 題字・著者レイヤー。表紙なしなら `—` |
+| 題字レイヤー | （`組版` / `logo_asset` / `未` / `—`） | §3.1 題字方針と一致させる |
+| book.lock.yaml | （`未` / `済`） | export review 通過後に lock |
+| interior.pdf | （`未` / `済`） | `_publication_output/<build-id>/` |
+| reader-proof.pdf | （`未` / `済`） | 表紙合成＋本文の閲覧 proof |
+| preflight | （`未` / `errors=0`） | `book_preflight.py` |
+| 権利 confirmed（販売前） | （`未` / `済` / `—`） | 公開・販売時のみ必須。proof 確認だけでは `未` のまま可 |
+
+- **最新 build-id**: （例: `first-bunko-proof`）
+- **プロファイル**: （`bunko` / `jis_b5`）
+- **次回の出版タスク**: （例: reader-proof 目視／題字を logo_asset へ切替／権利 confirmed）
+
+印刷所向け wrap cover（表1・背・表4）と EPUB は本節の完成条件に含めない。
 
 ---
 

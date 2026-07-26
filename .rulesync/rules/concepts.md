@@ -386,15 +386,62 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 | 節 | 内容 |
 |----|------|
 | **§3 方針** | 挿絵密度方針・章あたり既定枚数・1枚時の既定位置・候補数・優先場面・除外条件・計画正本パス・IR 番号設計 |
-| **§3.1 表紙** | 表紙の有無・比率・計画正本・採用IR・計画状態（別枠・§3.2 に混在させない） |
+| **§3.1 表紙** | 表紙の有無・比率・計画正本・採用IR・計画状態・**題字方針**・題字ロゴ状態（別枠・§3.2 に混在させない） |
 | **§3.2 章別割当表** | 章ごとの 0/1/multiple・位置・優先シーン・計画／YAML／生成の進捗状態 |
+| **§7 出版パッケージ進捗** | book / rights / cover.yaml / lock / interior / reader-proof / preflight（完成目安） |
 
 必須:
 
 - Illustration Plan Mode 開始時に必ず `_meta.md` §3〜§3.2 を読む。
 - §3.2 の「枚数」列が章ごとの 0/1/multiple の正本。計画 MD と矛盾するときは、**直近のユーザー指示 → §3.2 表 → §3 方針フィールド** の順で優先する。
 - 表紙は §3.1 と `cover_plan.md` で管理し、§3.2 の表には載せない。
-- フィールド定義の詳細は `_how_to.example/meta.md` §3〜§3.2 を参照する。
+- フィールド定義の詳細は `_how_to.example/meta.md` §3〜§3.2・§7 を参照する。
+
+## 表紙合成と題字（Cover Composition）
+
+定義:
+表紙**絵**（`illustration_00`）と題字・クレジットは分離する。配置の正本は作品直下の **`cover.yaml`**。書誌の意味情報は **`book.yaml`**。
+
+必須:
+
+- 表紙絵にタイトル文字を焼かない（原則）。後載せは `cover.yaml` の layers。
+- **原則（既定）**: 題字ロゴは指定がない限り**横書き（`horizontal`）タイトル主体**（ライトノベル等の現代商業スタイル）を基本とし、作品の世界観・トーン・キーアイテム・カラー情報をAI発注文（`title_logo_order.yaml`）へ引き渡してデザインさせる。
+- **題字方針**は `_meta.md` §3.1 で先に決める: `組版`（`type: text`）／`logo_asset`（`cover/assets/title_logo.png` 等）／`後回し`。
+- 方針が `logo_asset` のとき: `cover/title_logo_plan.md` →（任意で）`title_logo_order.yaml` → 生成 → 採用 asset → `cover.yaml` の title を `logo_asset` に差し替え → `rights.yaml` 登録。
+- 方針が `組版` のとき: title レイヤーは `type: text` のままで題字完了とみなせる（題字ロゴ状態は `—`）。
+- export 前に `book_cover_review.py`（または publishing review）で cover／権利を確認する。
+- 印刷包み表紙（表1・背・表4）と EPUB は本節の完了条件に含めない。到達点は `interior.pdf` と `reader-proof.pdf`（layered cover）。
+
+禁止:
+
+- `illustration_00` だけを「題字込み表紙完成」として完了扱いにしない。
+- 題字方針を決めないまま logo と組版を二重に載せない。
+
+参照:
+
+- 雛形: `_how_to.example/publishing/`
+- 操作: `docs/workflow/cover-composition.md`
+- スキル: `.rulesync/skills/title-logo-plan/SKILL.md`、`.rulesync/skills/novel-cover-layout/SKILL.md`
+
+## 出版完成目安（Publication Gate）
+
+定義:
+紙・電子の閲覧用 proof までを、作品 `_meta.md` **§7 出版パッケージ進捗**で追う完成ゲート。`_meta.yaml` は画像バッチ用であり、出版チェックの正本にしない。
+
+必須（一区切り）:
+
+1. 表紙絵: §3.1 計画状態が `生成済`（または表紙 `なし`＋理由）
+2. 題字: §3.1 題字方針が `組版` または `logo_asset` で、`cover.yaml` に対応レイヤーがあり cover review が通る
+3. `rights.yaml` に表紙／ロゴ素材が登録されている（販売前の confirmed は別ゲート）
+4. `book.lock.yaml` が現行入力と一致する
+5. `_publication_output/<build-id>/` に `interior.pdf` と `reader-proof.pdf` があり preflight errors 0
+6. `_meta.md` §7 が上記と同期している
+
+参照:
+
+- Phase 1: `docs/workflow/publishing-package.md`
+- Phase 2A: `docs/workflow/paper-proof-export.md`
+- 表紙合成: `docs/workflow/cover-composition.md`
 
 ## 画像保存先
 

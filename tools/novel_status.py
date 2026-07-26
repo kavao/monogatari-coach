@@ -162,6 +162,104 @@ def _has_images(work_dir: Path) -> bool:
     return False
 
 
+def _read_meta_md(work_dir: Path) -> str:
+    meta_md = work_dir / "_meta.md"
+    if not meta_md.is_file():
+        return ""
+    try:
+        return meta_md.read_text(encoding="utf-8")
+    except Exception:
+        return ""
+
+
+def _meta_title_policy(meta_text: str) -> str | None:
+    """_meta.md の題字方針行を読む。組版 / logo_asset / 後回し。
+
+    行末の説明に別キーワードが混ざっても誤判定しないよう、
+    ラベル直後（コロン後の先頭付近）だけを見る。
+    """
+    for line in meta_text.splitlines():
+        if "題字方針" not in line:
+            continue
+        after = line.split(":", 1)[-1] if ":" in line else line.split("：", 1)[-1]
+        head = after[:48]
+        # 方針値はラベル直後に置く慣例（`組版` / `logo_asset` / `後回し`）
+        if "組版" in head:
+            return "組版"
+        if "logo_asset" in head.lower():
+            return "logo_asset"
+        if "後回し" in head:
+            return "後回し"
+    return None
+
+
+def _cover_title_needs_logo_asset(work_dir: Path) -> bool:
+    """cover.yaml の title が logo_asset なのに asset が無い、または方針が logo で計画が無い。"""
+    cover = work_dir / "cover.yaml"
+    if cover.is_file():
+        try:
+            text = cover.read_text(encoding="utf-8")
+        except Exception:
+            text = ""
+        if "type: logo_asset" in text or "type:logo_asset" in text:
+            asset = work_dir / "cover" / "assets" / "title_logo.png"
+            if not asset.is_file():
+                return True
+    policy = _meta_title_policy(_read_meta_md(work_dir))
+    if policy == "logo_asset":
+        plan = work_dir / "cover" / "title_logo_plan.md"
+        asset = work_dir / "cover" / "assets" / "title_logo.png"
+        if not plan.is_file() and not asset.is_file():
+            return True
+        if plan.is_file() and not asset.is_file():
+            return True
+    return False
+
+
+def _has_publication_pdf(work_dir: Path) -> bool:
+    out = work_dir / "_publication_output"
+    if not out.is_dir():
+        return False
+    return any(out.rglob("reader-proof.pdf"))
+
+
+def _publication_next_step(work_dir: Path) -> tuple[str, str] | None:
+    """book.yaml がある作品向けの出版・題字ヒント。該当しなければ None。"""
+    if not (work_dir / "book.yaml").is_file():
+        return None
+
+    rel = str(work_dir).replace("\\", "/")
+
+    if _cover_title_needs_logo_asset(work_dir):
+        return (
+            "題字ロゴ (Title Logo)",
+            "題字ロゴを計画してください（cover/title_logo_plan.md → asset → cover.yaml）",
+        )
+
+    if not (work_dir / "cover.yaml").is_file():
+        # 表紙絵計画があるのに cover.yaml が無いときだけ促す
+        cover_plan = work_dir / "illustrations" / "plans" / "cover_plan.md"
+        if cover_plan.is_file():
+            return (
+                "Cover Composition",
+                "cover.yaml を組版または logo_asset で整えてください",
+            )
+
+    if not (work_dir / "book.lock.yaml").is_file():
+        return (
+            "出版 lock",
+            f"python tools/book_lock.py {rel} --target paper",
+        )
+
+    if not _has_publication_pdf(work_dir):
+        return (
+            "出版 proof (dry-run 相当の確認後に export)",
+            f"python tools/book_export.py {rel} --target paper --profile bunko",
+        )
+
+    return None
+
+
 def determine_next_step(work_dir: Path) -> tuple[str, str]:
     """ファイルシステムの状態から次のステップを判定する。
 
@@ -204,6 +302,10 @@ def determine_next_step(work_dir: Path) -> tuple[str, str]:
     if not has_manga_ir:
         if manga_dir_exists:
             return ("Manga Tag Mode", "漫画タグを作成してください")
+        # 漫画フォルダが無い作品: 出版パッケージがあれば出版ヒントを優先
+        pub = _publication_next_step(work_dir)
+        if pub is not None:
+            return pub
         if is_chat:
             return ("次のセグメント執筆", "次のセグメントを執筆してください")
         return ("執筆", "本文の執筆を続けてください")
@@ -217,7 +319,12 @@ def determine_next_step(work_dir: Path) -> tuple[str, str]:
             " --source step1-panels --dry-run",
         )
 
-    # 5. 画像あり → 次の執筆へ
+    # 5. 漫画画像あり → 出版パッケージがあれば出版ヒント
+    pub = _publication_next_step(work_dir)
+    if pub is not None:
+        return pub
+
+    # 6. それ以外は執筆・清書
     if is_chat:
         return ("次のセグメント執筆", "次のセグメントを執筆してください")
     return ("執筆・清書", "本文の清書または次の章の執筆をしてください")

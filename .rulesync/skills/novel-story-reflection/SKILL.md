@@ -44,6 +44,16 @@ targets: ["*"]
 ### 4. 査証ログへの記録
 - 文字数と同期内容を `_workingspace/log/YYYYMM.md` に追記する（スキル **`workspace-audit-log`**）。
 
+### 5. 挿絵・表紙・出版メタの同期（該当時）
+
+本文以外の作業（挿絵生成・題字採用・cover 合成・proof export）の直後にも、次を `_meta.md` へ反映する。
+
+- **§3.1**: 表紙の計画状態、題字方針、題字ロゴ状態
+- **§3.2**: 章挿絵の計画／YAML／生成列（挿絵タスク時）
+- **§7 出版パッケージ進捗**: book / rights / cover.yaml / lock / interior / reader-proof / preflight / 最新 build-id
+
+出版の完了条件の正本は **`.rulesync/rules/concepts.md`** の「出版完成目安」。スキル **`novel-cover-layout`** / **`title-logo-plan`** 完了時は本節を必ず更新する。
+
 ## 完了の定義（ストーリー反映）
 
 ユーザーに「執筆完了」を伝える際には、次の要素が揃っていることを条件とする。

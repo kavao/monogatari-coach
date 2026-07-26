@@ -37,6 +37,8 @@
 [K-1. 挿絵計画](#k-1-挿絵計画を作るillustration-plan-mode) /
 [K-2. 挿絵IR作成](#k-2-挿絵表紙の-ir-を作るillustration-tag-mode) /
 [L. 挿絵生成](#l-挿絵表紙を生成する) /
+[L-2. 表紙合成・題字](#l-2-表紙合成題字ロゴcover-composition) /
+[L-3. 出版 proof](#l-3-出版パッケージと-proof-pdf) /
 [M. 背景資料生成](#m-背景画像背景資料を生成する)
 
 ---
@@ -673,6 +675,47 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
   --illustration-stem illustration_01
 ```
+
+---
+
+### L-2. 表紙合成・題字ロゴ（Cover Composition）
+
+```text
+題字ロゴを計画してください。
+```
+
+または:
+
+```text
+表紙合成して proof を出してください。
+```
+
+**このように動きます:**
+1. `_meta.md` §3.1 の題字方針（`組版` / `logo_asset`）を確認する
+2. `logo_asset` なら `cover/title_logo_plan.md` を起こし、dry-run → 承認 → 採用PNG → `cover.yaml` を差し替える
+3. `組版` なら `cover.yaml` の title を `type: text` で整える
+4. `book_cover_review.py` で確認し、`_meta.md` §3.1／§7 を更新する
+
+詳細は [表紙合成・題字ロゴ](cover-composition.md)。
+
+---
+
+### L-3. 出版パッケージと proof PDF
+
+```text
+出版パッケージを点検して lock してください。
+```
+
+```text
+bunko の reader-proof を出してください。
+```
+
+**このように動きます:**
+1. `book_review.py --gate export` → `book_lock.py` → `book_diff.py`
+2. `book_export.py --profile bunko|jis_b5` で interior / reader-proof を生成する
+3. `book_preflight.py` で errors=0 を確認し、`_meta.md` §7 を同期する
+
+詳細は [Publishing Package](publishing-package.md) と [紙書籍 proof PDF](paper-proof-export.md)。
 
 ---
 

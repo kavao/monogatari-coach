@@ -38,7 +38,7 @@ novels/NNN_作品名/_publication_output/<build-id>/
 ## 成果物と用途
 
 - `interior.pdf`: 奇数ページ開始・本文挿絵・埋め込みフォントを確認する内面 proof。紙書籍の本文組版を検討するときに使う。
-- `reader-proof.pdf`: `book.yaml` の `type: cover` で `status: approved` の表紙アートを1ページ目に置き、`interior.pdf` を続けた閲覧・PDF配布確認用のproof。表紙から本文へ入る読者体験を確認する。
+- `reader-proof.pdf`: `book.yaml` の `type: cover` で `status: approved` の表紙アートを1ページ目に置き、`interior.pdf` を続けた閲覧・PDF配布確認用のproof。作品に **`cover.yaml` がある場合**は、題字・著者レイヤーを表紙絵の上に合成した **layered cover** を1ページ目にする（`type: text` 組版／`type: logo_asset` 題字ロゴのどちらも可）。手順は [表紙合成・題字ロゴ](cover-composition.md) を参照。
 - `cover.pdf`: **この工程では生成しない**。表1・背・表4をつないだ印刷所入稿用カバーは、後述の印刷所仕様が確定してから別工程で生成する。
 
 出力先を固定したいときは `--build-id` を使います。

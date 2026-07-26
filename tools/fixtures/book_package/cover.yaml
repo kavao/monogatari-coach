@@ -1,0 +1,48 @@
+# Minimal cover.yaml fixture for package tests / docs examples.
+schema_version: 1
+
+base_art:
+  illustration_id: illust_cover
+  fit: contain
+  background: "#101010"
+
+layers:
+  - id: title
+    type: text
+    source: book.title
+    required: true
+    box: { x: 0.05, y: 0.05, w: 0.20, h: 0.40 }
+    typography:
+      font_ref: title_mincho
+      direction: vertical
+      size_pt: 12
+      color: "#f0f0f0"
+  - id: author
+    type: text
+    source: book.author.name
+    required: true
+    box: { x: 0.05, y: 0.92, w: 0.40, h: 0.04 }
+    typography:
+      font_ref: credit_gothic
+      direction: horizontal
+      size_pt: 8
+      color: "#c0c0c0"
+
+safe_areas:
+  title: { x: 0.00, y: 0.00, w: 1.00, h: 0.40 }
+  author: { x: 0.00, y: 0.90, w: 1.00, h: 0.10 }
+
+fonts:
+  title_mincho:
+    family: "Yu Mincho"
+    file: null
+    subfont_index: 0
+  credit_gothic:
+    family: "BIZ UDPGothic"
+    file: null
+    subfont_index: 0
+
+profiles:
+  reader_front: { canvas: bunko_front }
+  ebook_front: { canvas: ebook_front }
+  paper_wrap: { canvas: printer_template_required }
