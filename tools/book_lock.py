@@ -23,9 +23,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="export ゲート通過後の出版入力を lockfile に凍結する。")
     parser.add_argument("novel", help="作品フォルダ")
     parser.add_argument("--target", choices=("paper", "ebook", "web"), required=True)
+    parser.add_argument(
+        "--manuscript-source",
+        choices=("novel_text", "novel_text_re"),
+        default=None,
+        help=(
+            "本文ソース（省略時は book.yaml の manuscript.source、なければ novel_text）。"
+            "手仕上げ稿は novel_text_re。"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
-        path = write_lock(resolve_novel_dir(args.novel), target=args.target)
+        path = write_lock(
+            resolve_novel_dir(args.novel),
+            target=args.target,
+            manuscript_source=args.manuscript_source,
+        )
     except (LockError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

@@ -9,7 +9,12 @@ from typing import Any, Literal
 
 import yaml
 
-from .paths import resolve_package_path
+from .paths import (
+    ManuscriptSource,
+    apply_manuscript_source,
+    resolve_manuscript_source,
+    resolve_package_path,
+)
 from .references import extract_illustration_directives, extract_scene_anchors
 from .review import ReviewResult, review_package
 from .schemas import (
@@ -70,7 +75,10 @@ def _manuscript_entries(
 
 
 def collect_lock_files(
-    package_root: Path, book: BookPackage
+    package_root: Path,
+    book: BookPackage,
+    *,
+    manuscript_source: ManuscriptSource = "novel_text",
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """Collect the current declared input files and illustration asset hashes."""
 
@@ -109,7 +117,8 @@ def collect_lock_files(
         )
 
     for section_name, entry in _manuscript_entries(book):
-        for raw_path in entry.source_files():
+        for declared_path in entry.source_files():
+            raw_path = apply_manuscript_source(declared_path, manuscript_source)
             path = resolve_package_path(root, raw_path)
             text = path.read_text(encoding="utf-8")
             scenes = (
@@ -144,22 +153,35 @@ def collect_lock_files(
     )
 
 
-def build_lock(package_root: str | Path, *, target: Target) -> dict[str, Any]:
+def build_lock(
+    package_root: str | Path,
+    *,
+    target: Target,
+    manuscript_source: ManuscriptSource | None = None,
+) -> dict[str, Any]:
     """Build, but do not write, a lockfile after a successful export-gate review."""
 
     root = Path(package_root).resolve()
-    review = review_package(root, gate="export", target=target)
+    book = load_book_package(root / "book.yaml")
+    resolved_source = resolve_manuscript_source(
+        cli=manuscript_source, book_source=book.manuscript.source
+    )
+    review = review_package(
+        root, gate="export", target=target, manuscript_source=resolved_source
+    )
     if review.has_errors:
         raise LockError("Export-gate review contains errors.")
 
-    book = load_book_package(root / "book.yaml")
     rights = load_rights_package(root / "rights.yaml")
-    files, illustrations = collect_lock_files(root, book)
+    files, illustrations = collect_lock_files(
+        root, book, manuscript_source=resolved_source
+    )
     return {
         "lock_version": LOCK_VERSION,
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "export_target": target,
         "tool_version": TOOL_VERSION,
+        "manuscript_source": resolved_source,
         "book_snapshot": {
             "title": book.book.title,
             "volume": book.book.volume,
@@ -182,11 +204,16 @@ def _review_summary(review: ReviewResult) -> dict[str, int | str]:
     }
 
 
-def write_lock(package_root: str | Path, *, target: Target) -> Path:
+def write_lock(
+    package_root: str | Path,
+    *,
+    target: Target,
+    manuscript_source: ManuscriptSource | None = None,
+) -> Path:
     """Create or replace book.lock.yaml with the current reviewed snapshot."""
 
     root = Path(package_root).resolve()
-    payload = build_lock(root, target=target)
+    payload = build_lock(root, target=target, manuscript_source=manuscript_source)
     lock_path = root / "book.lock.yaml"
     lock_path.write_text(
         yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, width=120),

@@ -10,8 +10,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from book_package.paths import (  # noqa: E402
     PackagePathError,
+    apply_manuscript_source,
     iter_book_file_references,
     normalize_package_path,
+    resolve_manuscript_source,
     resolve_package_path,
 )
 from book_package.schemas import load_book_package  # noqa: E402
@@ -33,6 +35,31 @@ def test_normalize_package_path_requires_portable_relative_path() -> None:
     ):
         with pytest.raises(PackagePathError):
             normalize_package_path(unsafe)
+
+
+def test_apply_manuscript_source_rewrites_only_novel_text_prefix() -> None:
+    chapter = "_novel_text/novel_text01.md"
+    assert apply_manuscript_source(chapter, "novel_text") == chapter
+    assert apply_manuscript_source(chapter, "novel_text_re") == (
+        "_novel_text_re/novel_text01.md"
+    )
+    assert (
+        apply_manuscript_source("book_matter/frontmatter/characters.md", "novel_text_re")
+        == "book_matter/frontmatter/characters.md"
+    )
+    assert (
+        apply_manuscript_source("_novel_text_re/novel_text01.md", "novel_text_re")
+        == "_novel_text_re/novel_text01.md"
+    )
+
+
+def test_resolve_manuscript_source_prefers_cli_over_book() -> None:
+    assert resolve_manuscript_source() == "novel_text"
+    assert resolve_manuscript_source(book_source="novel_text_re") == "novel_text_re"
+    assert (
+        resolve_manuscript_source(cli="novel_text", book_source="novel_text_re")
+        == "novel_text"
+    )
 
 
 def test_resolve_package_path_stays_in_package_root(tmp_path: Path) -> None:

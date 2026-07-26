@@ -9,7 +9,12 @@ from typing import Literal, cast
 
 from .cover import CoverComposeError, has_cover_layout, load_package_cover, resolve_layer_text
 from .fonts import FontError, resolve_font_path
-from .paths import resolve_package_path
+from .paths import (
+    ManuscriptSource,
+    apply_manuscript_source,
+    resolve_manuscript_source,
+    resolve_package_path,
+)
 from .references import extract_illustration_directives, extract_scene_anchors
 from .schemas import (
     BookPackage,
@@ -101,7 +106,11 @@ def _export_severity(gate: Gate) -> Literal["error", "info"]:
 
 
 def _read_declared_manuscript(
-    package_root: Path, book: BookPackage, findings: list[Finding]
+    package_root: Path,
+    book: BookPackage,
+    findings: list[Finding],
+    *,
+    manuscript_source: ManuscriptSource,
 ) -> dict[str, list[tuple[Path, str]]]:
     contents: dict[str, list[tuple[Path, str]]] = {}
     for section_name, entries in (
@@ -111,8 +120,9 @@ def _read_declared_manuscript(
     ):
         for entry in entries:
             paths: list[tuple[Path, str]] = []
-            for index, raw_path in enumerate(entry.source_files(), start=1):
+            for index, declared_path in enumerate(entry.source_files(), start=1):
                 label = f"manuscript.{section_name}.{entry.id}.{index}"
+                raw_path = apply_manuscript_source(declared_path, manuscript_source)
                 path = resolve_package_path(package_root, raw_path)
                 if not path.is_file():
                     _add(
@@ -120,7 +130,8 @@ def _read_declared_manuscript(
                         "P-M01",
                         "error",
                         f"{label} が存在しません: {raw_path}",
-                        "book.yaml の file/files を実在する原稿ファイルへ修正してください。",
+                        "book.yaml の file/files を実在する原稿ファイルへ修正してください。"
+                        "手仕上げ稿を使う場合は --manuscript-source novel_text_re を指定してください。",
                     )
                     continue
                 paths.append((path, path.read_text(encoding="utf-8")))
@@ -135,9 +146,12 @@ def _collect_findings(
     *,
     gate: Gate,
     target: Target,
+    manuscript_source: ManuscriptSource,
 ) -> tuple[Finding, ...]:
     findings: list[Finding] = []
-    manuscript = _read_declared_manuscript(package_root, book, findings)
+    manuscript = _read_declared_manuscript(
+        package_root, book, findings, manuscript_source=manuscript_source
+    )
 
     chapter_ids = {entry.id for entry in book.manuscript.chapters}
     anchors_by_id: dict[str, tuple[str, int]] = {}
@@ -371,7 +385,9 @@ def _collect_findings(
         from .diff import LockDiffError, diff_against_lock
 
         try:
-            lock_delta = diff_against_lock(package_root)
+            lock_delta = diff_against_lock(
+                package_root, manuscript_source=manuscript_source
+            )
         except (LockDiffError, ValueError) as exc:
             _add(
                 findings,
@@ -641,6 +657,7 @@ def review_package(
     *,
     gate: Gate = "writing",
     target: str | None = None,
+    manuscript_source: ManuscriptSource | None = None,
 ) -> ReviewResult:
     """Review one novel's publishing declarations without modifying any files."""
 
@@ -648,14 +665,27 @@ def review_package(
     book = load_book_package(root / "book.yaml")
     rights = load_rights_package(root / "rights.yaml")
     resolved_target = _normalise_target(book, target)
+    resolved_source = resolve_manuscript_source(
+        cli=manuscript_source, book_source=book.manuscript.source
+    )
     findings = _collect_findings(
-        root, book, rights, gate=gate, target=resolved_target
+        root,
+        book,
+        rights,
+        gate=gate,
+        target=resolved_target,
+        manuscript_source=resolved_source,
     )
     exportable = {
         candidate: not any(
             finding.severity == "error"
             for finding in _collect_findings(
-                root, book, rights, gate="export", target=candidate
+                root,
+                book,
+                rights,
+                gate="export",
+                target=candidate,
+                manuscript_source=resolved_source,
             )
         )
         for candidate in ("paper", "ebook", "web")

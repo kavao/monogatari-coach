@@ -32,6 +32,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="出力対象（省略時は book.yaml の format.primary）",
     )
+    parser.add_argument(
+        "--manuscript-source",
+        choices=("novel_text", "novel_text_re"),
+        default=None,
+        help=(
+            "本文ソース（省略時は book.yaml の manuscript.source、なければ novel_text）。"
+            "手仕上げ稿は novel_text_re。"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="JSON で出力する")
     return parser
 
@@ -40,7 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         result = review_package(
-            resolve_novel_dir(args.novel), gate=args.gate, target=args.target
+            resolve_novel_dir(args.novel),
+            gate=args.gate,
+            target=args.target,
+            manuscript_source=args.manuscript_source,
         )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)

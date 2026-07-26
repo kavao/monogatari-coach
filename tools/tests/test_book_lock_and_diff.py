@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from book_package.diff import diff_against_lock  # noqa: E402
 from book_package.lock import LockError, write_lock  # noqa: E402
 from book_package.review import review_package  # noqa: E402
+import yaml  # noqa: E402
 
 
 FIXTURES = ROOT / "tools" / "fixtures" / "book_package"
@@ -50,6 +51,14 @@ def _make_lockable_package(tmp_path: Path) -> Path:
     return package
 
 
+def _add_hand_finished_manuscript(package: Path) -> None:
+    re_dir = package / "_novel_text_re"
+    re_dir.mkdir()
+    (re_dir / "novel_text01.md").write_text(
+        "<!-- scene: ch01-003 -->\n手仕上げ本文", encoding="utf-8"
+    )
+
+
 def test_lock_writes_reviewed_snapshot_and_clean_diff(tmp_path: Path) -> None:
     package = _make_lockable_package(tmp_path)
 
@@ -59,6 +68,41 @@ def test_lock_writes_reviewed_snapshot_and_clean_diff(tmp_path: Path) -> None:
     payload = diff_against_lock(package)
     assert payload == {"added": [], "removed": [], "changed": []}
 
+
+def test_lock_with_novel_text_re_records_remapped_paths(tmp_path: Path) -> None:
+    package = _make_lockable_package(tmp_path)
+    _add_hand_finished_manuscript(package)
+
+    lock_path = write_lock(package, target="paper", manuscript_source="novel_text_re")
+    data = yaml.safe_load(lock_path.read_text(encoding="utf-8"))
+    paths = {item["path"] for item in data["files"]}
+
+    assert data["manuscript_source"] == "novel_text_re"
+    assert "_novel_text_re/novel_text01.md" in paths
+    assert "_novel_text/novel_text01.md" not in paths
+    assert diff_against_lock(package, manuscript_source="novel_text_re") == {
+        "added": [],
+        "removed": [],
+        "changed": [],
+    }
+
+
+def test_review_defaults_to_novel_text_even_when_re_exists(tmp_path: Path) -> None:
+    package = _make_lockable_package(tmp_path)
+    _add_hand_finished_manuscript(package)
+    (package / "_novel_text" / "novel_text01.md").unlink()
+
+    result = review_package(package, gate="writing", target="paper")
+
+    assert any(
+        finding.rule == "P-M01" and "_novel_text/novel_text01.md" in finding.message
+        for finding in result.findings
+    )
+
+    ok = review_package(
+        package, gate="writing", target="paper", manuscript_source="novel_text_re"
+    )
+    assert not any(finding.rule == "P-M01" for finding in ok.findings)
 
 def test_diff_reports_changed_manuscript(tmp_path: Path) -> None:
     package = _make_lockable_package(tmp_path)

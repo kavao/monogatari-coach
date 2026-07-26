@@ -48,6 +48,15 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="出力先 _publication_output/<build-id>/ を明示する（省略時は時刻ベース）。",
     )
+    parser.add_argument(
+        "--manuscript-source",
+        choices=("novel_text", "novel_text_re"),
+        default=None,
+        help=(
+            "本文ソース（省略時は book.yaml の manuscript.source、なければ novel_text）。"
+            "手仕上げ稿は novel_text_re。lock 時と同じ値を指定すること。"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="成果物の要約を JSON で出力する。")
     args = parser.parse_args(argv)
 
@@ -60,7 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        manifest = build_manifest(root, target=args.target, profile=args.profile)
+        manifest = build_manifest(
+            root,
+            target=args.target,
+            profile=args.profile,
+            manuscript_source=args.manuscript_source,
+        )
         build_dir.mkdir(parents=True)
         manifest_path = build_dir / "manifest.json"
         write_manifest(manifest_path, manifest)

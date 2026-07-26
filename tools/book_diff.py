@@ -24,10 +24,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="book.lock.yaml との差分を表示する。")
     parser.add_argument("novel", help="作品フォルダ")
     parser.add_argument("--against", choices=("lock",), required=True)
+    parser.add_argument(
+        "--manuscript-source",
+        choices=("novel_text", "novel_text_re"),
+        default=None,
+        help=(
+            "本文ソース（省略時は book.yaml の manuscript.source、なければ novel_text）。"
+            "lock 時と同じ値を指定すること。"
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        payload = diff_against_lock(resolve_novel_dir(args.novel))
+        payload = diff_against_lock(
+            resolve_novel_dir(args.novel),
+            manuscript_source=args.manuscript_source,
+        )
     except (LockDiffError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

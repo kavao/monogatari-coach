@@ -11,6 +11,17 @@ Phase 1 の出版パッケージを lock した後、本文・付属原稿・採
 3. `python tools/book_lock.py novels/NNN_作品名 --target paper` を実行済みである。
 4. `python tools/book_diff.py novels/NNN_作品名 --against lock` の added / removed / changed が空である。
 
+### 手仕上げ本文（`_novel_text_re`）で proof する場合
+
+`book.yaml` の章 `file:` は `_novel_text/...` のままでよく、手で `_novel_text_re/` に書き換える必要はありません。`--manuscript-source novel_text_re` を **review / lock / export / diff で同じ値**にしてください（優先順位: CLI > `book.yaml` の `manuscript.source` > 既定 `novel_text`）。リマップ対象は `_novel_text/` プレフィックスの章・原稿パスだけです。
+
+```bash
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper --manuscript-source novel_text_re
+python tools/book_lock.py novels/NNN_作品名 --target paper --manuscript-source novel_text_re
+python tools/book_diff.py novels/NNN_作品名 --against lock --manuscript-source novel_text_re
+python tools/book_export.py novels/NNN_作品名 --profile bunko --manuscript-source novel_text_re
+```
+
 依存パッケージは `requirements.txt` または `pyproject.toml` にある `reportlab` と `pypdf` です。ReportLab は Unicode の TrueType フォントを埋め込め、pypdf は生成PDFのページ・リソース検査に使います。詳細は [ReportLab の公式フォントガイド](https://docs.reportlab.com/reportlab/userguide/ch3_fonts/) と [pypdf の公式ドキュメント](https://pypdf.readthedocs.io/en/stable/) を参照してください。
 
 ## 生成

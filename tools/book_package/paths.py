@@ -4,12 +4,44 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Literal
 
 from .schemas import BookPackage
+
+ManuscriptSource = Literal["novel_text", "novel_text_re"]
+_NOVEL_TEXT_PREFIX = "_novel_text/"
+_NOVEL_TEXT_RE_PREFIX = "_novel_text_re/"
 
 
 class PackagePathError(ValueError):
     """Raised when a declaration path is not safely relative to its novel."""
+
+
+def apply_manuscript_source(raw_path: str, source: ManuscriptSource) -> str:
+    """Rewrite chapter manuscript paths for hand-finished (_novel_text_re) builds.
+
+    Only remaps paths that start with ``_novel_text/``. Frontmatter, backmatter
+    under ``book_matter/``, illustrations, and already-rewritten ``_novel_text_re/``
+    paths are left unchanged.
+    """
+
+    if source == "novel_text_re" and raw_path.startswith(_NOVEL_TEXT_PREFIX):
+        return _NOVEL_TEXT_RE_PREFIX + raw_path[len(_NOVEL_TEXT_PREFIX) :]
+    return raw_path
+
+
+def resolve_manuscript_source(
+    *,
+    cli: ManuscriptSource | None = None,
+    book_source: ManuscriptSource | None = None,
+) -> ManuscriptSource:
+    """CLI overrides book.yaml ``manuscript.source``; default is ``novel_text``."""
+
+    if cli is not None:
+        return cli
+    if book_source is not None:
+        return book_source
+    return "novel_text"
 
 
 def normalize_package_path(raw_path: str) -> str:

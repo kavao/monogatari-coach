@@ -22,6 +22,11 @@ python tools/book_review.py novels/NNN_作品名 --gate export --target paper
 # error 0 件の入力一式を凍結し、後続変更を確認
 python tools/book_lock.py novels/NNN_作品名 --target paper
 python tools/book_diff.py novels/NNN_作品名 --against lock
+
+# 手仕上げ稿（_novel_text_re）を使う場合は review / lock / diff で同じフラグを付ける
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper --manuscript-source novel_text_re
+python tools/book_lock.py novels/NNN_作品名 --target paper --manuscript-source novel_text_re
+python tools/book_diff.py novels/NNN_作品名 --against lock --manuscript-source novel_text_re
 ```
 
 `book.lock.yaml` は生成物のため手編集しません。読者向けの「登場人物」原稿を含む導入手順は [Publishing Package](../workflow/publishing-package.md) を参照してください。
@@ -50,6 +55,9 @@ python tools/book_export.py novels/NNN_作品名 --target paper --profile bunko
 
 # JIS B5 で生成する場合
 python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
+
+# 手仕上げ稿で proof（lock 時と同じ --manuscript-source を指定）
+python tools/book_export.py novels/NNN_作品名 --profile bunko --manuscript-source novel_text_re
 
 # 生成済みproofを再検査
 python tools/book_preflight.py novels/NNN_作品名/_publication_output/<build-id> --target paper

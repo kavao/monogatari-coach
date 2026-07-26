@@ -13,7 +13,12 @@ from typing import Any, Literal
 import yaml
 
 from .diff import LockDiffError, diff_against_lock
-from .paths import resolve_package_path
+from .paths import (
+    ManuscriptSource,
+    apply_manuscript_source,
+    resolve_manuscript_source,
+    resolve_package_path,
+)
 from .references import extract_illustration_directives
 from .review import review_package
 from .schemas import BookPackage, load_book_package
@@ -100,7 +105,12 @@ def _load_lock(lock_path: Path) -> dict[str, Any]:
     return data
 
 
-def _ensure_clean_lock(package_root: Path, target: Target) -> dict[str, Any]:
+def _ensure_clean_lock(
+    package_root: Path,
+    target: Target,
+    *,
+    manuscript_source: ManuscriptSource,
+) -> dict[str, Any]:
     lock_path = package_root / "book.lock.yaml"
     if not lock_path.is_file():
         raise BuildError("PDF を作る前に book_lock.py で入力一式を lock してください。")
@@ -108,8 +118,15 @@ def _ensure_clean_lock(package_root: Path, target: Target) -> dict[str, Any]:
     if lock.get("export_target") != target:
         actual = lock.get("export_target")
         raise BuildError(f"book.lock.yaml の対象が {target} ではありません: {actual}")
+    locked_source = lock.get("manuscript_source", "novel_text")
+    if locked_source != manuscript_source:
+        raise BuildError(
+            "book.lock.yaml の manuscript_source が一致しません: "
+            f"lock={locked_source} requested={manuscript_source}。"
+            "同じ --manuscript-source で book_lock.py を再実行してください。"
+        )
     try:
-        delta = diff_against_lock(package_root)
+        delta = diff_against_lock(package_root, manuscript_source=manuscript_source)
     except (LockDiffError, ValueError) as exc:
         raise BuildError(f"book.lock.yaml と入力一式を比較できません: {exc}") from exc
     if any(delta.values()):
@@ -188,11 +205,18 @@ def build_manifest(
     *,
     target: Target = "paper",
     profile: ProfileName = "jis_b5",
+    manuscript_source: ManuscriptSource | None = None,
 ) -> dict[str, Any]:
     """Resolve a clean Phase 1 lock into a renderer-neutral paper manifest."""
 
     root = Path(package_root).resolve()
-    review = review_package(root, gate="export", target=target)
+    book = load_book_package(root / "book.yaml")
+    resolved_source = resolve_manuscript_source(
+        cli=manuscript_source, book_source=book.manuscript.source
+    )
+    review = review_package(
+        root, gate="export", target=target, manuscript_source=resolved_source
+    )
     if review.has_errors:
         errors = "; ".join(
             f"{finding.rule}: {finding.message}"
@@ -202,8 +226,7 @@ def build_manifest(
         raise BuildError(f"export review に error があります: {errors}")
 
     lock_path = root / "book.lock.yaml"
-    lock = _ensure_clean_lock(root, target)
-    book = load_book_package(root / "book.yaml")
+    lock = _ensure_clean_lock(root, target, manuscript_source=resolved_source)
     illustrations = _approved_illustrations(root, book)
 
     entries: list[dict[str, Any]] = []
@@ -214,7 +237,8 @@ def build_manifest(
     ):
         for entry in declarations:
             files: list[dict[str, Any]] = []
-            for source_path in entry.source_files():
+            for declared_path in entry.source_files():
+                source_path = apply_manuscript_source(declared_path, resolved_source)
                 source = resolve_package_path(root, source_path)
                 text = source.read_text(encoding="utf-8")
                 files.append(
@@ -264,6 +288,7 @@ def build_manifest(
             "sha256": sha256_file(lock_path),
             "generated_at": lock.get("generated_at"),
             "export_target": lock.get("export_target"),
+            "manuscript_source": resolved_source,
         },
         "entries": entries,
         "illustrations": [illustrations[key] for key in sorted(illustrations)],

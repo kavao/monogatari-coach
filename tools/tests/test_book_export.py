@@ -155,3 +155,37 @@ def test_reader_proof_places_cover_before_the_interior(tmp_path: Path) -> None:
     )
     assert result["artifacts"]["reader_proof"]["pages"][0]["image_count"] >= 1
     assert manifest["reader_proof"]["cover"]["id"] == "illust_cover"
+
+
+def test_manifest_uses_novel_text_re_when_requested(tmp_path: Path) -> None:
+    package = _make_exportable_package(tmp_path)
+    re_dir = package / "_novel_text_re"
+    re_dir.mkdir()
+    (re_dir / "novel_text01.md").write_text(
+        "# 第一章\n\n<!-- scene: ch01-003 -->\n\n手仕上げ本文です。\n",
+        encoding="utf-8",
+    )
+    write_lock(package, target="paper", manuscript_source="novel_text_re")
+
+    manifest = build_manifest(package, manuscript_source="novel_text_re")
+    chapter_files = manifest["entries"][1]["files"]
+
+    assert chapter_files[0]["path"] == "_novel_text_re/novel_text01.md"
+    assert any(
+        block["kind"] == "paragraph" and "手仕上げ" in block["text"]
+        for block in chapter_files[0]["blocks"]
+    )
+    assert manifest["lock"]["manuscript_source"] == "novel_text_re"
+
+
+def test_manifest_rejects_mismatched_manuscript_source_lock(tmp_path: Path) -> None:
+    package = _make_exportable_package(tmp_path)
+    re_dir = package / "_novel_text_re"
+    re_dir.mkdir()
+    (re_dir / "novel_text01.md").write_text(
+        "# 第一章\n\n<!-- scene: ch01-003 -->\n\n手仕上げ本文です。\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BuildError, match="manuscript_source"):
+        build_manifest(package, manuscript_source="novel_text_re")

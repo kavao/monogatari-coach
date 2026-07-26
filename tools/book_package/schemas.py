@@ -65,6 +65,7 @@ class ManuscriptEntry(StrictModel):
 
 
 class Manuscript(StrictModel):
+    source: Literal["novel_text", "novel_text_re"] | None = None
     frontmatter: list[ManuscriptEntry] = Field(default_factory=list)
     chapters: list[ManuscriptEntry] = Field(min_length=1)
     backmatter: list[ManuscriptEntry] = Field(default_factory=list)
