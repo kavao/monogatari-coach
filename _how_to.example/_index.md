@@ -29,6 +29,7 @@
    - [`genre/inshu_mura.md`](genre/inshu_mura.md) … 因習村・閉鎖的村落。地理、共同体、禁忌、儀礼、排除、秘密、物語構造、配慮。
    - [`genre/isekai_craft.md`](genre/isekai_craft.md) … 異世界クラフト。技術ツリー、スキル制約、社会波及、発明と障害。
    - [`genre/isekai_modern_knowledge.md`](genre/isekai_modern_knowledge.md) … 異世界現代知識無双。知識範囲、解説演出、受容の階梯、実装の壁、考証。
+   - [`genre/dungeon.md`](genre/dungeon.md) … ダンジョンもの。迷宮法則、生態系、探索ループ、経済、成長、パーティ、感情設計。
    - [`genre/akuyaku_reijo.md`](genre/akuyaku_reijo.md) … 悪役令嬢。原作知識、破滅回避、人物ロール、断罪、ざまぁ、話法。
 8. reader.md
    - 小説の書評・下読みを行うときに使うレビュアープロンプト

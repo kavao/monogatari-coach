@@ -8,6 +8,7 @@
 | [inshu_mura.md](inshu_mura.md) | 因習村・閉鎖的村落。共同体、禁忌、儀礼、排除、秘密、物語構造 |
 | [isekai_craft.md](isekai_craft.md) | 異世界クラフト。技術ツリー、スキル制約、社会波及、発明の障害 |
 | [isekai_modern_knowledge.md](isekai_modern_knowledge.md) | 異世界現代知識無双。知識範囲、解説演出、受容の階梯、実装の壁、考証 |
+| [dungeon.md](dungeon.md) | ダンジョンもの。迷宮法則、生態系、探索ループ、経済、成長、パーティ、感情設計 |
 | [akuyaku_reijo.md](akuyaku_reijo.md) | 悪役令嬢。原作知識、破滅回避、人物ロール、断罪、ざまぁ、話法 |
 
 ## `episode/` との住み分け
