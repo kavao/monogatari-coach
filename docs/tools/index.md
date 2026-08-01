@@ -439,7 +439,7 @@ python tools/novel_prompt_ir_migrate_character_tags.py --all-novels --dry-run
 
 ### `novel_manga_panel_summary_en.py` — コマ要約の英訳（`summary_en`・任意）
 
-`manga/pages/*.yaml` の `panels[].summary` を Chat API で英訳し、`summary_en` / `summary_en_source` を書き込みます。**Manga Tag Mode の主経路はエージェント同時翻訳＋`novel_prompt_ir_validate.py --strict-quality`**（`concepts.md`「Manga `summary_en` の翻訳経路」）。本ツールはエージェントなし編集・一括再翻訳向けの**任意**経路です。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
+`manga/pages/*.yaml` の `panels[].summary` を Chat API で英訳し、`summary_en` / `summary_en_source` を書き込みます。**Manga Tag Mode の主経路はエージェント同時翻訳＋`novel_prompt_ir_validate.py --strict-quality`**（[ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)「Manga `summary_en` の翻訳経路」）。本ツールはエージェントなし編集・一括再翻訳向けの**任意**経路です。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
 
 ```bash
 # 作品フォルダ内の全ページを処理（要 API キー）
@@ -736,14 +736,13 @@ python tools/codex_builtin_image_archive.py --help
 
 `.rulesync/rules/` / `.rulesync/skills/` を編集したあと、各 AI ツールの設定フォルダ（`.codex/`、`.kilocode/` 等）へ生成物を同期します。
 
-```bash
-corepack pnpm dlx rulesync generate
-
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+```powershell
+python tools/rulesync.py generate --dry-run
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
-`corepack enable` は不要です。Windows では Node.js のインストール先に shim を作ろうとして権限エラーになることがあるため、Corepack から直接 `pnpm` を呼び出します。代替として `npm exec --yes rulesync -- generate` も使えます。
+初回のみ `python tools/install_rulesync.py` で固定版バイナリを取得します。Node.js・pnpm・グローバル npm は不要です（詳細は [Rulesync](../rulesync.md)）。ルール変更後の確認コマンドやコミット前ゲートは [開発者向け検証コマンド](../developer-verification.md) を参照してください。
 
 主編集先: `.rulesync/rules/*.md` / `.rulesync/skills/*/SKILL.md` / `.rulesync/mcp.json` / `.rulesync/hooks.json`
 

@@ -1,29 +1,22 @@
 """
-後方互換用ラッパー。実体は rulesync CLI のフル生成と同じ。
+後方互換用ラッパー。実体は固定・検証済み Rulesync 15.0.1 のフル生成と同じ。
 
-推奨: プロジェクトルートで直接
-
-    corepack pnpm dlx rulesync generate
-
-を実行する（pnpm / rulesync はグローバルインストール不要。引数なしで全ターゲット・全機能を再生成）。
-
-注意: `uv run python sync_rules.py` を使う場合も、シェル経由で PATH を解決するため
-Node.js 同梱の Corepack が通常のターミナルと同様に見えます（Windows の .cmd シムも含む）。
+初回は `python tools/install_rulesync.py` で単体バイナリを取得する。
+日常の生成は `python tools/rulesync.py generate` または本ラッパーを使う。
 """
 
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parent
-    # shell=True: Windows で corepack.cmd を確実に起動し、ユーザーの PATH を引き継ぐ
     return subprocess.run(
-        "corepack pnpm dlx rulesync generate -V",
+        [sys.executable, str(repo_root / "tools" / "rulesync.py"), "generate"],
         cwd=repo_root,
-        shell=True,
         check=False,
     ).returncode
 

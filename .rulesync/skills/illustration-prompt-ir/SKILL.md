@@ -8,7 +8,7 @@ targets: ["*"]
 
 # Illustration Prompt IR
 
-> 横断正本: `.rulesync/rules/concepts.md` の「挿絵IR」を正とする。型・フィールドは `tools/manga_prompt_ir/schemas/manga_page.py` の `MangaPagePrompt` を使い、`meta.intent: illustration` で漫画ページと区別する。
+> 横断正本: `.rulesync/rules/workflow-specification.md` の「挿絵IR」を正とする。型・フィールドは `tools/manga_prompt_ir/schemas/manga_page.py` の `MangaPagePrompt` を使い、`meta.intent: illustration` で漫画ページと区別する。
 
 ## 目的
 
@@ -40,7 +40,7 @@ Illustration Tag Mode（YAML IR 作成）は **Step 2** である。開始前に
 - `panels[]` は漫画のコマではなく、構図の構成セルとして扱う。
 - 単体挿絵は `panels[]` 1件を推奨する。
 - 群像や複合構図では、`panels[]` を複数セルにして、各セルの `summary` / `subjects` / `composition.*_en` に配置意図を書く。
-- **複合構図が要る作品だけ**セル複数にする判断・書き方・生成方針（1枚合成／セル別）は **`.rulesync/rules/overview.md`** の Illustration Tag Modeを正とする。
+- **複合構図が要る作品だけ**セル複数にする判断・書き方・生成方針（1枚合成／セル別）は **`.rulesync/rules/workflow-specification.md`** の Illustration Tag Modeを正とする。
 - 既定は枠線なし・パネル境界なしの一枚絵。枠や分割画面を使うときは、`manga.panel_layout` または `render_instruction.user_directives.page_notes` に理由を書く。
 - `text.dialogue` / `text.narration` / `text.monologue` / `text.sfx` は原則空。画像内文字が必要な場合のみ明示する。
 

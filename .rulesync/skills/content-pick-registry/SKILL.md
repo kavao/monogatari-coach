@@ -9,7 +9,7 @@ targets: ["*"]
 
 ## 目的
 
-命名・プロフィール補助・エピソード／トロープ候補など、**JSON リストへの抽選入口**を `list_id` で宣言的に登録する。公式ルールは本スキルと **concepts.md「選定レジストリ」** に汎用機構だけを書き、mature／body 等の具体内容は **`_how_to/pick_registry/`** に閉じる。
+命名・プロフィール補助・エピソード／トロープ候補など、**JSON リストへの抽選入口**を `list_id` で宣言的に登録する。公式ルールは本スキルと **workflow-specification.md「選定レジストリ」** に汎用機構だけを書き、mature／body 等の具体内容は **`_how_to/pick_registry/`** に閉じる。
 
 ## 正本の所在
 
@@ -81,7 +81,7 @@ checklist の **`suggested_pick_lists`** と mature 向け手順の索引は **`
 
 ## 関連
 
-- 横断: `.rulesync/rules/concepts.md`「選定レジストリ」「公式スキルとユーザスキルの接続」
+- 横断: `.rulesync/rules/workflow-specification.md`「選定レジストリ」「公式スキルとユーザスキルの接続」
 - 低レイヤ: `.rulesync/skills/weighted-pick/SKILL.md`
 - 命名: `.rulesync/skills/character-naming/SKILL.md`
 - プロフィール lint: `.rulesync/skills/novel-character-profile/SKILL.md`

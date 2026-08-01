@@ -40,7 +40,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
    - **採用**: `proposal.md` の作品名、および `config.md` の「作品名」に反映する。
    - **不採用候補の記録**: `config.md` の「資料上の別名」に候補（2〜5件）と却下理由を残す。
    - 参照（技法の雛形）: `_how_to.example/naming.md`
-   - 参照（必須ゲート定義）: `.rulesync/rules/concepts.md`「タイトル命名ゲート（Plan Mode）」
+   - 参照（必須ゲート定義）: `.rulesync/rules/workflow-specification.md`「タイトル命名ゲート（Plan Mode）」
 4. `proposal.md` を作り、作品の核を固定する（作品名は上記ゲートで確定済みを前提）。
 4. `design_specification.md` を作り、章構成と心理・シーンの流れを具体化する。
 5. `character.md` と `world.md` を作り、人物と世界の矛盾を減らす。`character.md` はスキル **novel-character-profile** に従い、`- **ラベル**:` 形式を基本にする。**全キャラに身長（`- **身長**:`）を書く**。

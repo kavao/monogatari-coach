@@ -52,6 +52,6 @@ description: >-
 
 ## 参照
 
-- 概念: `.rulesync/rules/concepts.md`「表紙合成と題字」
+- 概念: `.rulesync/rules/workflow-specification.md`「表紙合成と題字」
 - 操作: `docs/workflow/cover-composition.md`
 - レイアウト続き: `.rulesync/skills/novel-cover-layout/SKILL.md`

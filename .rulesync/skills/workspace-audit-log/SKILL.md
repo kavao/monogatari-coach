@@ -8,7 +8,7 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/concepts.md` の **「プロジェクト・インテリジェンス」** に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
+`.rulesync/rules/workflow-specification.md` の **「プロジェクト・インテリジェンス」** に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
 
 - **追記型のみ**: 新規エントリは **`tools/workspace_audit_log.py append`** で追加する。スクリプトは **`open(..., "a")` 以外でログ本文を書かない**（新規月ファイルのヘッダ初回だけ同じ追記処理内で行う）。
 - **ファイル命名**: 西暦4桁＋月2桁、`202604.md` のように **ゼロ埋め2桁の月**。
@@ -96,12 +96,12 @@ python tools/workspace_audit_log.py append --dry-run "本文"
 
 - セッション終了前に **可能な限り `append` を1回実行**し、査証ログを更新する。
 - チャットに「査証ログを書いた」と書くだけで済ませず、**実際にコマンドを実行したか**を作業フローに含める（実行不能な環境のみ、その旨をチャットに明記）。
-- `_workingspace/plans/*.md` のチェックリストを持つ計画を実行した場合、**査証ログ追記の前に**計画書の該当タスクを `- [x]` へ更新し、査証ログ本文に「どの計画のどの項目を完了にしたか」を含める（概念正本: `.rulesync/rules/concepts.md`「計画書チェック更新ゲート」）。
+- `_workingspace/plans/*.md` のチェックリストを持つ計画を実行した場合、**査証ログ追記の前に**計画書の該当タスクを `- [x]` へ更新し、査証ログ本文に「どの計画のどの項目を完了にしたか」を含める（概念正本: `.rulesync/rules/workflow-specification.md`「計画書チェック更新ゲート」）。
 
 ## 関連パス
 
 - スクリプト: `tools/workspace_audit_log.py`（`append` / `path` / `verify` は査証ログ用）
 - 保存先: `_workingspace/log/YYYYMM.md`
-- 概念正本: `.rulesync/rules/concepts.md`（プロジェクト・インテリジェンス）
-- 入口ルール: `.rulesync/rules/overview.md`（プロジェクト・インテリジェンス）
+- 概念正本: `.rulesync/rules/workflow-specification.md`（プロジェクト・インテリジェンス）
+- 入口ルール: `.rulesync/rules/workflow-specification.md`（プロジェクト・インテリジェンス）
 - **横断ナレッジ日記**（別スキル）: `workspace-diary` — `workspace_audit_log.py diary append` などで `_workingspace/diary/YYYYMM.md` へ追記

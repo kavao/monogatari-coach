@@ -43,7 +43,7 @@ targets: ["*"]
 
 - **同一応答（同一ターン）内**で、可能なら **退避・`_novel_text/` への書き込み・`Read`／`novel_char_count.py`** まで進める。長くなる場合でも、**最低でも退避（バックアップファイルの作成）または正本への書き込みのいずれか一歩**をツールで実行してから区切る。
 - **応答が続く場合**、次のメッセージでは **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
-- **例外（画像生成）**: **`tools/image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。`.rulesync/rules/concepts.md` の「画像生成: dry-run から本番まで」とスキル **`image-provider（旧 forge-txt2img）`** に従い、計画と `--dry-run` の提示までで一度止める。
+- **例外（画像生成）**: **`tools/image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。`.rulesync/rules/workflow-specification.md` の「画像生成: dry-run から本番まで」とスキル **`image-provider（旧 forge-txt2img）`** に従い、計画と `--dry-run` の提示までで一度止める。
 - 旧版退避を含む清書・校正の手順はスキル **`novel-refinement-output`** に従う。
 
 ## 必須（執筆ターンごと）
@@ -82,4 +82,4 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 - 分量の公式カウント: **`novel-char-count`**（`tools/novel_char_count.py`）
 - 画像生成の計画・承認・完了検証: **`image-provider（旧 forge-txt2img）`**
 - 完了条件の横断正本: **`.rulesync/rules/concepts.md`**
-- プロジェクト全体のルール: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.3.1 本文出力の確認」「2.2.1 画像生成（txt2img）の事前確認」
+- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode と画像生成の事前確認

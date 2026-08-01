@@ -37,7 +37,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 1. 本文を読んでコマ・ページに分解する
 2. `novels/<作品>/manga/pages/manga_XX_pYY.yaml` を作成する（ページ定義の正本）
 3. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で型・参照・品質を検証する
-4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する（**チャットやエージェントの Write だけでは不可**。完了条件は `.rulesync/rules/concepts.md` の「漫画互換Markdownの完了条件」・スキル `novel-manga-md-output`）
+4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する（**チャットやエージェントの Write だけでは不可**。完了条件は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「漫画互換Markdownの完了条件」・スキル `novel-manga-md-output`）
 
 ### ユーザーが確認できるもの
 
@@ -55,7 +55,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 
 ## 正本と入出力
 
-正本・副本の横断定義は [概念正本](../../.rulesync/rules/concepts.md) の「漫画IRと互換Markdown」にあります。このページでは、人間が実際に確認するファイルとコマンドの流れだけを説明します。
+正本・副本の横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「漫画IRと互換Markdown」にあります。このページでは、人間が実際に確認するファイルとコマンドの流れだけを説明します。
 
 | 役割 | パス |
 |------|------|
@@ -96,7 +96,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 
 ### コマ要約の英訳（`summary_en`）と NovelAI 併用
 
-各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。横断正本は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「Manga `summary_en` の翻訳経路」。
 
 **主経路（既定）**: Manga Tag Mode で `summary` を書いた同ターンに、エージェントが **`summary_en`** と **`summary_en_source`（= そのときの `summary` 原文）** を YAML に記入する。`location_en` / `pose_action_en` と同型。
 
@@ -418,7 +418,7 @@ character_snapshots: []
 
 | 内容 | 参照先 |
 |------|--------|
-| 生成モード語（コマ／ページ／精密） | [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) の Manga 節 |
+| 生成モード語（コマ／ページ／精密） | [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「生成モード用語」 |
 | スキル総説 | [`.rulesync/skills/manga-prompt-ir/SKILL.md`](../../.rulesync/skills/manga-prompt-ir/SKILL.md) |
 | 品質ゲート（主語・レイアウト） | [`.rulesync/skills/manga-tag-quality-gate/SKILL.md`](../../.rulesync/skills/manga-tag-quality-gate/SKILL.md) |
 | 互換 Step1/Step2 の**長文指示・例**（本書の型・最小例と対で読む） | [manga-tag-generation.md](manga-tag-generation.md) |

@@ -10,6 +10,10 @@
 
 - [Getting Started](getting-started/index.md)
   初回セットアップ、`uv`、`.env`、主要コマンドの最短導線
+- [Rulesync の固定運用](rulesync.md)
+  固定版バイナリの取得、ルール生成、整合確認
+- [開発者向け検証コマンド](developer-verification.md)
+  変更種別ごとの確認、コミット前の総合ゲート、実クライアント観測
 - [Image Generation](image-generation/index.md)
   Forge / NovelAI / Grok の使い分け、既定値、バッチ生成
 - [Manga prompt IR / パイプライン](image-generation/manga-prompt-ir.md)

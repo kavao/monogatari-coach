@@ -8,7 +8,7 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/overview.md`（命名・採番ルール）の次を、**推測せず**リポジトリ上のフォルダから機械的に行う。
+`.rulesync/rules/workflow-specification.md`（命名・採番ルール）の次を、**推測せず**リポジトリ上のフォルダから機械的に行う。
 
 - **`novel_code`** は `novels/` 直下で使われている番号の **最大 + 1** を基本とする（新規フォルダ名の接頭辞候補）。
 - 作品名が資料内で揺れる場合はフォルダ名は暫定でもよいが、**`config.md` に「資料上の別名」をメモ**する — 揺れを扱うときは見出しの存在を `verify --require-alias` で確認できる。
@@ -73,4 +73,4 @@ python tools/novel_code_allocate.py verify novels/051_作品名 --require-alias
 ## 関連パス
 
 - スクリプト: `tools/novel_code_allocate.py`
-- ルール記述: `.rulesync/rules/overview.md`（命名・採番ルール）
+- ルール記述: `.rulesync/rules/workflow-specification.md`（命名・採番ルール）

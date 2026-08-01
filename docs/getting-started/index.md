@@ -15,16 +15,7 @@ cd monocri
 
 このガイドのコマンドは、すべて `monocri` のリポジトリルートで実行します。`.env.example`、`howto_init.py`、`tools/` が見える場所です。
 
-## 2. Node.js を入れる
-
-Node.js を導入します。Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出すため、`corepack enable`、`pnpm` のグローバルインストール、`rulesync` のグローバルインストールはいずれも不要です。
-
-- Node.js:
-  https://nodejs.org/en/download
-- rulesync:
-  https://github.com/dyoshikawa/rulesync
-
-## 3. uv を入れる
+## 2. uv を入れる
 
 Python スクリプト運用は `uv` 推奨です。
 
@@ -37,7 +28,7 @@ Windows PowerShell:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## 4. Python 環境を整える
+## 3. Python 環境を整える
 
 依存関係と `.venv` を作ります。エディタ（Cursor/VSCode）の静的解析が別の Python を見ている場合も、この手順で警告を減らせます。
 
@@ -53,7 +44,7 @@ uv sync
 .\.venv\Scripts\python.exe -c "import pydantic; print(pydantic.__version__)"
 ```
 
-## 5. 初回セットアップ
+## 4. 初回セットアップ
 
 プロジェクトルートで実行します。
 
@@ -80,20 +71,18 @@ git status --short
 
 `Test-Path .env.example` が `False` の場合は、clone したフォルダとは別の場所で実行しているか、取得した配布物に `.env.example` が含まれていない可能性があります。
 
-## 6. ルールを再生成する
+## 5. ルールを再生成する
 
-`.rulesync/` のルール・スキルから、AI ツールごとの入口ファイルを生成します。
+`.rulesync/` のルール・スキルから、AI ツールごとの入口ファイルを生成します。固定版 Rulesync 15.0.1 の単体バイナリを使うため、Node.js・pnpm・グローバル npm は不要です（詳細は [Rulesync](../rulesync.md)）。
 
-```bash
-corepack pnpm dlx rulesync generate
-
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+```powershell
+python tools/install_rulesync.py
+python tools/rulesync.py generate --dry-run
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
-`corepack enable` は不要です。Windows では Node.js のインストール先に shim を作ろうとして権限エラーになることがあるため、Corepack から直接 `pnpm` を呼び出します。代替として `npm exec --yes rulesync -- generate` も使えます。
-
-## 7. `.env` を埋める
+## 6. `.env` を埋める
 
 最低限、使う画像プロバイダに応じてトークンを設定します。
 
@@ -124,20 +113,21 @@ MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 python tools/env_check.py
 ```
 
-## 8. 最小成功チェック
+## 7. 最小成功チェック
 
 初回導入は、次が通ればひとまず成功です。
 
 ```bash
 uv sync
 uv run python howto_init.py
-corepack pnpm dlx rulesync generate
+python tools/install_rulesync.py
+python tools/rulesync.py generate
 python tools/env_check.py
 ```
 
 `env_check.py` が API キー不足を出す場合でも、まだ画像生成をしないなら設定待ちとして扱えます。使う provider が決まったら `.env` にキーを入れて再実行します。
 
-## 9. よく使うコマンド
+## 8. よく使うコマンド
 
 初回化:
 
@@ -147,11 +137,10 @@ uv run python howto_init.py
 
 ルール再生成:
 
-```bash
-corepack pnpm dlx rulesync generate
-
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+```powershell
+python tools/rulesync.py generate --dry-run
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
 `.rulesync/` のルール・スキルを更新したあとに実行します。生成後は `AGENTS.md` / `CLAUDE.md` の差分を確認し、入口ファイルに意図しない肥大化や欠落がないか見ます。
@@ -162,7 +151,7 @@ uv run python sync_rules.py
 uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 ```
 
-## 10. 新規作品を始める
+## 9. 新規作品を始める
 
 初期設定が終わったら、1コマンドで新規作品フォルダを準備できます。
 
@@ -182,6 +171,7 @@ python tools/novel_onboard.py "作品タイトル" --dry-run
 
 - チャットからどう指示するか知りたい → [ワークフロー（指示テンプレ付き）](../workflow/instruction-driven.md)
 - どちらの進め方が合うか確認したい → [ワークフロー入口（資料先出し vs 対話先出し）](../workflow/index.md)
+- ルール変更後の確認やコミット前ゲート → [開発者向け検証コマンド](../developer-verification.md)
 - 詰まったとき → [トラブルシューティング](../workflow/troubleshooting.md)
 - 画像生成の設定を行いたい → [Image Generation](../image-generation/index.md)
 - リポジトリ構成を把握したい → [Project Structure](../project-structure/index.md)

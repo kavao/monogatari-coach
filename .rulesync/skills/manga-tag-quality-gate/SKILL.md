@@ -10,7 +10,7 @@ description: >-
 targets: ["*"]
 ---
 
-> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、その正本である `manga/pages/*.yaml` の品質点検に集中する。
+> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、その正本である `manga/pages/*.yaml` の品質点検に集中する。
 
 ## 目的
 
@@ -27,7 +27,7 @@ targets: ["*"]
 
 を最低限読める状態まで整えるための品質ゲートを定義する。
 
-`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/image_provider_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。詳細は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を参照する。
+`manga/manga_XX.md` の **Step1 / Step2** は、YAML IR 検証後に `tools/image_provider_novel_manga_batch.py` へ渡すための互換出力である。Manga Tag Mode の初手で Markdown だけを直接作成・修正して完了しない。詳細は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を参照する。
 
 本スキルでは、`render_instruction` + `manga` + `panels[]` + `character_snapshots` を合わせた YAML 全体を **Step1相当の作画依頼** とみなし、主語・関係・行為・セリフ・レイアウトが読めるかを点検する。
 
@@ -45,7 +45,7 @@ targets: ["*"]
 | `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
 | `_how_to/manga.md` | Step1 / Step2 の出力基準 |
 | `_how_to/manga_tag.md` | コマの英語タグ・置き換え・NSFW 慣例。`prompt_tags` を埋める前に必ず開く。詳細はスキル **`manga-prompt-ir`** の「`_how_to/manga_tag.md` との役割分担」 |
-| `.rulesync/rules/concepts.md` | YAML IR と互換 Markdown の正本・副本関係 |
+| `.rulesync/rules/workflow-specification.md` | YAML IR と互換 Markdown の正本・副本関係 |
 
 ## `manga.md` を核にした Step1 / Step2（機能の芯と YAML 写像）
 
@@ -142,7 +142,7 @@ targets: ["*"]
 **YAML 原盤で見る場所**（上記と齟齬がないか）
 
 - コマ本文・具体度: `panels[].summary`, `panels[].subjects[]`, `panels[].composition`, `panels[].camera`, `panels[].text`, `panels[].prompt_tags`
-- コマ要約の英訳: `panels[].summary_en`, `panels[].summary_en_source`（横断正本: `concepts.md`「Manga `summary_en` の翻訳経路」）
+- コマ要約の英訳: `panels[].summary_en`, `panels[].summary_en_source`（横断正本: `workflow-specification.md`「Manga `summary_en` の翻訳経路」）
 - ページ方針・コマ順: `render_instruction`（`prompt_header` / `panel_policy` 等）、`manga.panel_layout`
 
 ### 6b. `summary_en`（コマ要約の英訳・機械ゲート）
@@ -155,7 +155,7 @@ targets: ["*"]
 - **`summary_en` に CJK が無い**か。
 - **`summary_en_source` が現在の `summary` と一致**するか（`summary` 改稿後の取りこぼし検出）。未設定は strict でエラー。
 - **タグ向け形式**: パイプ `|` なし・**220 文字以内**（超過・`|` 含有は validate が WARNING）。
-- 主経路は **エージェント同時翻訳**（`concepts.md` 参照）。`novel_manga_panel_summary_en.py` は任意。
+- 主経路は **エージェント同時翻訳**（`workflow-specification.md`「Manga `summary_en` の翻訳経路」参照）。`novel_manga_panel_summary_en.py` は任意。
 
 **確認コマンド**
 
@@ -237,7 +237,7 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 9. §10 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
 10. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
 11. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
-12. 互換 Markdown の直接修正で終えず、YAML 正本へ戻したかを確認する（詳細は `concepts.md`）。
+12. 互換 Markdown の直接修正で終えず、YAML 正本へ戻したかを確認する（詳細は `workflow-specification.md`「漫画IRと互換Markdown」）。
 
 ## 禁止事項
 
@@ -271,5 +271,5 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 ## 関連
 
 - スキル `manga-tag-character-sync`
-- ルール `.rulesync/rules/overview.md` の Manga Tag Mode
+- 詳細仕様 `.rulesync/rules/workflow-specification.md` の Manga Tag Mode
 - 画像生成スキル `image-provider（旧 forge-txt2img）`

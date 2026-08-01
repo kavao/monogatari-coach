@@ -83,7 +83,7 @@ python tools/book_preflight.py novels/NNN_作品名/_publication_output/cover-pr
 - §3.1: 題字方針・題字ロゴ状態・表紙レイアウトパス
 - §7: book / rights / cover.yaml / lock / interior / reader-proof / preflight
 
-横断定義は `.rulesync/rules/concepts.md` の「表紙合成と題字」「出版完成目安」。
+横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「表紙合成と題字」「出版完成目安」。
 
 ## 関連
 

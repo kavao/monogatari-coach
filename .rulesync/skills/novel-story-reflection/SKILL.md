@@ -52,7 +52,7 @@ targets: ["*"]
 - **§3.2**: 章挿絵の計画／YAML／生成列（挿絵タスク時）
 - **§7 出版パッケージ進捗**: book / rights / cover.yaml / lock / interior / reader-proof / preflight / 最新 build-id
 
-出版の完了条件の正本は **`.rulesync/rules/concepts.md`** の「出版完成目安」。スキル **`novel-cover-layout`** / **`title-logo-plan`** 完了時は本節を必ず更新する。
+出版の完了条件の正本は **`.rulesync/rules/workflow-specification.md`** の「出版完成目安」。スキル **`novel-cover-layout`** / **`title-logo-plan`** 完了時は本節を必ず更新する。
 
 ## 完了の定義（ストーリー反映）
 
