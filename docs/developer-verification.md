@@ -1,6 +1,6 @@
 # 開発者向け検証コマンド
 
-このガイドを読むと、Monogatari Coach の正本・ツール・ドキュメントを変更したあとに、変更範囲に応じた確認コマンドを選べます。画像生成など課金を伴う本番処理は、この確認に含めません。
+このガイドを読むと、Monogatari Coach の正本・ツール・ドキュメントを変更したあとに、変更範囲に応じた確認コマンドを選べます。画像生成など課金を伴う本番処理は通常の変更確認には含めず、環境設定と明示承認がある場合だけ「画像生成の追加確認」として実施します。
 
 ## 最初に確認すること
 
@@ -248,7 +248,7 @@ Turn 1 と同じ会話で次を入力します。
 同じ会話で次を入力します。
 
 ```text
-さっきの作品の第1章第1項を書いて。`_novel_text/novel_text01_1.md`に、4,000文字くらいを目安に保存して。書いたらReadかnovel_char_count.pyで確認して、_meta.mdの進捗・次回タスクにも反映してから、更新パスと確認結果を教えて。
+さっきの作品の第1章を書いて。`_novel_text/novel_text01_1.md`に、4,000文字くらいを目安に保存して。書いたらReadかnovel_char_count.pyで確認して、_meta.mdの進捗・次回タスクにも反映してから、更新パスと確認結果を教えて。
 ```
 
 合格条件は、本文がチャットだけでなく `novel_text01_1.md` に保存され、保存確認と `_meta.md` 反映が終わってから完了報告されることです。本文を会話にだけ出す、保存前に完了と報告する場合は不合格です。
@@ -288,3 +288,125 @@ novels/<allocated_code>_星灯りの修理店/
 ```
 
 ツールごとに、各 Turn の入力、実際に更新されたパス、検証コマンドの終了結果、合格・不合格の理由を `_workingspace/log/YYYYMM.md` へ追記します。Cursor が全 Turn を通過すれば、新規小説制作フローの必須テストは合格です。共通の `.rulesync/` 正本を変更した場合は、Codex と Claude Code でも同じフローを実行し、互換確認の結果を残します。
+
+### 追加
+
+#### 画像生成の追加確認
+
+画像生成を確認する場合は、使用するプロバイダに必要な環境変数とAPIキーをあらかじめ設定します。APIキーなどの秘密情報は、チャット、ログ、ドキュメント、生成メタデータへ表示・記録しません。画像生成は外部送信や課金を伴う場合があるため、必ず次の順序で確認します。
+
+1. 生成できるかを質問する。
+2. Monogatari Coach が正本・プロバイダ・ジョブ数・保存先を示し、dry-runを行う。
+3. dry-runの結果を確認してから、ユーザーが本番生成を明示承認する。
+4. 本番生成後、指定保存先にPNGと付随メタデータがあることを確認する。
+
+dry-run前に本番生成を始めた場合、または保存ファイルを確認せず完了と報告した場合は不合格です。プロバイダの失敗時に、ユーザー承認なしで別プロバイダへ切り替えた場合も不合格です。
+
+#### キャラクタータグ画像
+
+キャラクター画像では、`tag/characters/*.yaml`を正本として使用し、画像を`tag/<romaji>/`へ保存します。次の入力を順に行います。
+
+```text
+キャラクタータグの画像を出せますか
+```
+
+Monogatari Coach が、対象キャラクター、バリアント数、使用プロバイダ、保存先を説明し、dry-runを行うことを確認します。dry-runでは画像ファイルを作成しません。
+
+dry-runの内容を確認したあと、たとえばNovelAIを使う場合は次を入力します。
+
+```text
+NovelAIで本番生成して
+```
+
+生成後、各`tag/<romaji>/`にPNGと付随JSONが保存され、生成数と検証結果が報告されれば合格です。
+
+#### 漫画タグ画像
+
+漫画コマ画像では、漫画ページの正本である`manga/pages/*.yaml`を使用します。互換Markdownを使う場合も、Markdownを正本にせず、YAMLから出力されたものを参照します。画像は`manga/_assets/<manga_XX>/comic/`へ保存します。
+
+次の入力を順に行います。
+
+```text
+漫画タグの画像を出せますか
+```
+
+dry-runで対象ページ、コマ数、プロバイダ、`manga/_assets/<manga_XX>/comic/`の保存先が示されることを確認します。その後、ユーザーが次のように承認します。
+
+```text
+OK
+本番生成して
+```
+
+生成後、対象コマ数分のPNGと付随JSONが保存され、`project check --check-image-layout`などで保存先を確認できれば合格です。ページ全体を1枚で生成する場合は、コマ生成とは別のモードとして、dry-runで対象モードと保存先を確認します。
+
+#### 挿絵・表紙画像
+
+挿絵や表紙では、`illustrations/pages/*.yaml`を正本として使用し、画像を`illustrations/_assets/<illustration_XX>/`へ保存します。確認入力の例は次のとおりです。
+
+```text
+挿絵の画像を出せますか
+```
+
+Monogatari Coach が対象YAML、プロバイダ、ジョブ数、保存先を示してdry-runを行い、ユーザーが内容を確認したあとに次を入力します。
+
+```text
+OK
+本番生成して
+```
+
+生成後、指定した`illustrations/_assets/<illustration_XX>/`に画像と付随メタデータが保存され、対象YAMLと生成物の対応を確認できれば合格です。
+
+#### PDF proof出力
+
+PDF出力は、本文を単に変換する操作ではなく、出版パッケージから閲覧用のproof（確認用PDF）を作る工程です。`book.yaml`、`rights.yaml`、本文、必要な付属原稿、採用済み画像が揃っていることを先に確認します。出版パッケージが未整備の場合は、PDF出力へ進まず、不足している正本を確認します。
+
+確認入力の例は次のとおりです。
+
+```text
+PDF proofを出力できますか
+```
+
+Monogatari Coach が、対象作品、`bunko`（文庫）または`jis_b5`（JIS B5）の出力プロファイル、前提ファイル、保存先を説明します。ユーザーがプロファイルを指定して承認したあと、次の順で確認します。
+
+1. `book_review.py --gate export --target paper`で出版入力を検査する。
+2. reviewがエラー0のときだけ`book_lock.py`で入力をlockする。
+3. `book_diff.py --against lock`でlock後の差分がないことを確認する。
+4. `book_export.py`で`interior.pdf`と`reader-proof.pdf`を生成する。
+5. `book_preflight.py`でページ寸法、フォント、挿絵配置、表紙ページを再検査する。
+
+ユーザーがプロファイルを指定する入力例です。
+
+```text
+JIS B5でPDF proofを出力して
+```
+
+実行例です。`<build-id>`は`book_export.py`が出力したビルド識別子に置き換えます。
+
+```powershell
+# 出版入力を検査する
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper
+
+# review成功後に入力をlockする
+python tools/book_lock.py novels/NNN_作品名 --target paper
+
+# lock後の差分がないことを確認する
+python tools/book_diff.py novels/NNN_作品名 --against lock
+
+# JIS B5の本文proofと閲覧用proofを生成する
+python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
+
+# 生成されたビルドを再検査する
+python tools/book_preflight.py novels/NNN_作品名/_publication_output/<build-id> --target paper
+```
+
+成功時は、作品フォルダ内の次の派生物を確認します。
+
+```text
+novels/NNN_作品名/_publication_output/<build-id>/
+├─ manifest.json
+├─ interior.pdf
+├─ reader-proof.pdf
+└─ preflight.json
+```
+
+`interior.pdf`と`reader-proof.pdf`が存在し、`preflight.json`のerrorsが0であればproof出力の確認は合格です。`reader-proof.pdf`は表紙を先頭に付けた閲覧用PDFです。印刷所固有のPDF/X、CMYK、表1・背・表4を結合した最終`cover.pdf`は、この検証の対象外です。
