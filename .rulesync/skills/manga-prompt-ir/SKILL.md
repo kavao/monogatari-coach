@@ -8,7 +8,7 @@ targets: ["*"]
 
 # Manga Prompt IR
 
-> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、Manga Prompt IR を実際に編集・検証・エクスポートするときの作業手順を扱う。
+> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、Manga Prompt IR を実際に編集・検証・エクスポートするときの作業手順を扱う。
 
 ## 目的
 
@@ -28,7 +28,7 @@ targets: ["*"]
 3. `tools/manga_prompt_ir/converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
 4. `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換・**人間向けの可読副本**・旧資産からの移行元として扱う。
 
-正本・副本関係の詳細は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を参照する。
+正本・副本関係の詳細は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を参照する。
 
 ## ユーザー向けマニュアル（ツール・パイプライン）
 
@@ -51,7 +51,7 @@ targets: ["*"]
 1. **「漫画 variant 対応（TPO 正本）」** — 区間ごとの **状況バリアント（`01_` 以降）** → YAML は `subjects[].variant_id`
 2. **「漫画タグ層（区間・常時上乗せ）」** — 区間ごとに全コマへ足す／外す **英語タグ** → YAML は区間内各ページの `render_instruction.user_directives.defaults`（バッチは `_meta` を直接読まない）。§5 テーブルから YAML への転記漏れを防ぐには `python tools/novel_manga_apply_tag_defaults.py novels/<作品> [--apply]` を使う。
 
-表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode ワークフロー」。
+表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/workflow-specification.md`** の「Manga Tag Mode ワークフロー」。
 - `character_id` はキャラクター一貫性の主キーとし、ページ側の `character_ids` と各コマの `subjects[].character_id` から参照する。
 - セリフ、モノローグ、ナレーション、効果音は混ぜず、`text.dialogue` / `text.monologue` / `text.narration` / `text.sfx` に分ける。
 - 漫画ページ YAML を単体で画像モデルへ渡す運用では、`render_instruction` に作画依頼文を入れる。外側の Markdown やチャット冒頭文が無くても、何を描くか・コマ割りをどう扱うか・キャラクター外見をどう継承するかが読める状態を正とする。
@@ -120,7 +120,7 @@ targets: ["*"]
 
 ## `panels[].summary_en`（コマ要約の英訳）と NovelAI タグ併用
 
-横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「Manga `summary_en` の翻訳経路」。
 
 ### 主経路（エージェント＋検証）
 
@@ -235,8 +235,8 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。
 
 - **Pydantic 上の型**: `variant_id` は **任意の文字列**。推奨形式 **`NNN_short_slug`（3桁ゼロ埋め）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
-- **命名・階層の正本**: **`.rulesync/rules/concepts.md`**（「Tag Mode バリアント階層」「Tag Mode 身体的正本（3階層継承）」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（着衣）→ `006_nude`（NSFW 作品）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
-- **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **concepts.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
+- **命名・階層の正本**: **`.rulesync/rules/workflow-specification.md`**（「Tag Mode バリアント階層」「Tag Mode 身体的正本（3階層継承）」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（着衣）→ `006_nude`（NSFW 作品）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
+- **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **workflow-specification.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
 - **互換 Markdown の `## 1.` など**: `tools/novel_prompt_ir_export_md.py` は、`prompt_variants` の **配列の並び順**に従い、状況ブロック見出しを `## 1.` `## 2.` … と付ける。**見出しの連番は `variant_id` の先頭数字から自動算出されない**（先頭要素が必ず `## 1.` に対応する）。
 - **検証ツール**: `tools/novel_prompt_ir_validate.py` は、漫画ページなどとの **参照整合**（存在しない `variant_id` を指していないか等）は確認するが、**`NN_short_slug` 形式かどうかは検証しない**。
 
@@ -249,7 +249,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 具体的には、`fixed_prompt_tags()` が返す **`000_base.danbooru_tags`** が、各バリアント合成の土台として毎回混ざる。
 
-**副経路**（`novel_prompt_ir_embed_snapshots`、`prompt_renderer` の snapshot 未使用時等）では、従来どおり `manga_rules.consistency_tags` や `appearance.distinctive_features` が **追加注入され得る**（concepts「身体的正本」§3.1 参照）。
+**副経路**（`novel_prompt_ir_embed_snapshots`、`prompt_renderer` の snapshot 未使用時等）では、従来どおり `manga_rules.consistency_tags` や `appearance.distinctive_features` が **追加注入され得る**（`workflow-specification.md`「Tag Mode 身体的正本（3階層継承）」参照）。
 
 ### ルール（推奨）
 

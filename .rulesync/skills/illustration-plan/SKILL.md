@@ -99,6 +99,6 @@ targets: ["*"]
 ## 参照
 
 - 創作技法雛形: `_how_to.example/illustration_plan.md`
-- 作品メタ設計: `.rulesync/rules/concepts.md`「挿絵計画」「Illustration Tag Mode 作品メタ」
+- 作品メタ設計: `.rulesync/rules/workflow-specification.md`「挿絵計画」「Illustration Tag Mode 作品メタ」
 - Step 2 スキル: `.rulesync/skills/illustration-prompt-ir/SKILL.md`
 - 操作説明: `docs/image-generation/illustration-prompt-ir.md`

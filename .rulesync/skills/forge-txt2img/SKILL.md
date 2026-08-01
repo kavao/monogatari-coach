@@ -9,7 +9,7 @@ targets: ["*"]
 
 > 移行メモ: 旧スキル名 `forge-txt2img` と旧スクリプト名 `forge_*` は互換名として残す。新しい案内・運用名は **image-provider** / `image_provider_*` を使う。`provider=forge` は Forge WebUI を指す provider 名として継続する。
 
-> 横断正本: 画像生成の承認・失敗時の provider 切替禁止・生成完了条件・生成モード用語は **`.rulesync/rules/concepts.md`** を正とする。このスキルは image-provider 作業での適用手順と provider 別の確認事項を扱う。
+> 横断正本: 画像生成の承認・失敗時の provider 切替禁止・生成完了条件・生成モード用語は **`.rulesync/rules/workflow-specification.md`** を正とする。このスキルは image-provider 作業での適用手順と provider 別の確認事項を扱う。
 
 ## 目的
 
@@ -82,7 +82,7 @@ Grok / OpenAI 系は native `negative_prompt` を持たない、または効き�
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
 
 > **⚠️ ユーザー確認（必須）**
-> プロバイダ・モデル・ジョブ数が確定したら、**`.rulesync/rules/concepts.md` の「画像生成: dry-run から本番まで」**に従い、`--dry-run` の結果提示とユーザー承認を挟んでから本番実行する。
+> プロバイダ・モデル・ジョブ数が確定したら、**`.rulesync/rules/workflow-specification.md` の「画像生成: dry-run から本番まで」**に従い、`--dry-run` の結果提示とユーザー承認を挟んでから本番実行する。
 
 ## 小説執筆の「実行継続」との関係（画像生成は例外）
 
@@ -90,7 +90,7 @@ Grok / OpenAI 系は native `negative_prompt` を持たない、または効き�
 
 ## エラー時の扱い（自動プロバイダ切り替え禁止）
 
-HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concepts.md` の「画像生成失敗時の provider 切替」**に従う。失敗した provider 名、代表エラー、影響範囲を報告し、別 provider への自動切替は行わない。
+HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/workflow-specification.md` の「画像生成失敗時の provider 切替」**に従う。失敗した provider 名、代表エラー、影響範囲を報告し、別 provider への自動切替は行わない。
 
 ## 生成「完了」の定義（幻覚完了の防止）
 
@@ -100,7 +100,7 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 
 ## 漫画生成の用語整理
 
-生成モード用語の横断定義は **`.rulesync/rules/concepts.md` の「生成モード用語」**を正とする。このスキルでは、各モードで推奨する provider と実行コマンドを扱う。会話で明示がない場合は **コマ生成** とみなす。
+生成モード用語の横断定義は **`.rulesync/rules/workflow-specification.md` の「生成モード用語」**を正とする。このスキルでは、各モードで推奨する provider と実行コマンドを扱う。会話で明示がない場合は **コマ生成** とみなす。
 
 ## 推奨プロバイダ分担（Step1 コマ／ページ系）
 
@@ -140,7 +140,7 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
   - 例: `webui-user.bat` で `set COMMANDLINE_ARGS=--api` のあと起動。
 - 疎通確認: `python tools/image_provider_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
 - 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/image_provider_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
-- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「画像生成（txt2img）の事前確認」）。
+- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/workflow-specification.md` の「画像生成（txt2img）の事前確認」）。
 
 ### Forge + Flux（ブラウザと API を揃える）
 
@@ -243,7 +243,7 @@ python tools/codex_builtin_image_archive.py \
 
 ## 保存先の約束（推奨）
 
-`.rulesync/rules/overview.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
+`.rulesync/rules/workflow-specification.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
 
 | 種別 | 推奨パス（`output_dir`） | メモ |
 |------|-------------------------|------|

@@ -32,7 +32,7 @@ description: >-
 
 ## 完了条件
 
-concepts「出版完成目安」に同じ:
+`workflow-specification.md`「出版完成目安」に同じ:
 
 1. 表紙絵 §3.1 が `生成済`（またはなし＋理由）
 2. 題字レイヤーが方針どおりで cover review が通る
@@ -50,5 +50,5 @@ concepts「出版完成目安」に同じ:
 ## 参照
 
 - 操作: `docs/workflow/cover-composition.md`、`publishing-package.md`、`paper-proof-export.md`
-- 概念: `.rulesync/rules/concepts.md`「表紙合成と題字」「出版完成目安」
+- 概念: `.rulesync/rules/workflow-specification.md`「表紙合成と題字」「出版完成目安」
 - 題字ロゴ: `.rulesync/skills/title-logo-plan/SKILL.md`

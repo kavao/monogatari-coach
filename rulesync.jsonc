@@ -4,7 +4,8 @@
     "cursor",
     "claudecode",
     "codexcli",
-    "kilo"
+    "kilo",
+    "agentsmd"
   ],
   "features": [
     "rules",
@@ -15,7 +16,7 @@
   "outputRoots": [
     "."
   ],
-  "delete": true,
+  "delete": false,
   "verbose": false,
   "silent": false,
   "global": false,

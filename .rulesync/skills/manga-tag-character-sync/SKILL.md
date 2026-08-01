@@ -99,6 +99,6 @@ manga/manga_XX.md は必要時に YAML からエクスポートする（人間�
 
 ## 関連
 
-- ルール: `.rulesync/rules/overview.md` の Manga Tag Mode
+- 詳細仕様: `.rulesync/rules/workflow-specification.md` の Manga Tag Mode
 - 画像タグ整合: スキル `novel-tag-character-consistency`
 - 画像生成: スキル `image-provider（旧 forge-txt2img）`

@@ -73,11 +73,11 @@ uv sync
 # 初回セットアップ（_how_to/ と .env を未作成時にコピー）
 uv run python howto_init.py
 
-# ルール・スキルの生成物を同期
-corepack pnpm dlx rulesync generate
+# 初回のみ: 固定版 Rulesync を取得
+python tools/install_rulesync.py
 
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+# ルール・スキルの生成物を同期
+python tools/rulesync.py generate
 
 # .env の不足確認
 python tools/env_check.py
@@ -387,7 +387,7 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 
 これだけ入力しても Monogatari Coach は Tag Mode を開始します。
 
-**正本（必須 ID・汎用／カスタムの分離）:** [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」。**創作技法（任意）:** `_how_to/tag.md`（Danbooru 語彙・`outfit_tags` 混入など）。
+**正本（必須 ID・汎用／カスタムの分離）:** [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」。**創作技法（任意）:** `_how_to/tag.md`（Danbooru 語彙・`outfit_tags` 混入など）。
 
 **バリアントの3層（主要キャラごと）**
 
@@ -428,7 +428,7 @@ python tools/novel_prompt_ir_export_md.py \
 Tag Mode（テンプレート一式）でお願いします。
 ```
 
-`concepts.md`「Tag Mode テンプレート一式」に従い、主要キャラごとに次を書きます。**カスタムはテンプレート一式だけでは追加されません**（作品メタに列挙した分のみ）。
+ワークフロー詳細仕様の「Tag Mode テンプレート一式」に従い、主要キャラごとに次を書きます。**カスタムはテンプレート一式だけでは追加されません**（作品メタに列挙した分のみ）。
 
 | 対象 | 内容 |
 |------|------|
@@ -436,12 +436,12 @@ Tag Mode（テンプレート一式）でお願いします。
 | 000番台 | `_meta.md` §4（漫画 variant 表）の `variant_id` をすべて YAML に揃える |
 | カスタム | `_meta.md` **キャラタグ方針**の **カスタム要素** に列挙した ID のみ |
 
-作品ごとに常時テンプレート一式にする場合は、`_meta.md` のキャラタグ方針で **バリアント方針: テンプレート一式** と書く（フィールド定義は `concepts.md`「Tag Mode 作品メタ」。記載例: `_how_to.example/meta.md` §6）。除外する ID があるときだけチャットで列挙する。
+作品ごとに常時テンプレート一式にする場合は、`_meta.md` のキャラタグ方針で **バリアント方針: テンプレート一式** と書く（フィールド定義はワークフロー詳細仕様「Tag Mode 作品メタ」。記載例: `_how_to.example/meta.md` §6）。除外する ID があるときだけチャットで列挙する。
 
 **より詳細に指定したい場合（コピペ用）:**
 
 ```text
-Tag Mode: novels/NNN_作品名。concepts.md の汎用テンプレートに従い、
+Tag Mode: novels/NNN_作品名。ワークフロー詳細仕様の汎用テンプレートに従い、
 主要キャラ全員で 000_base → 000番台 → 100番台（100_intro, 101_turnaround,
 102_signature_pose、combines_with 付き）を tag/characters/*.yaml に作成。
 カスタムは _meta.md キャラタグ方針のカスタム要素列挙分のみ。
@@ -450,7 +450,7 @@ Tag Mode: novels/NNN_作品名。concepts.md の汎用テンプレートに従�
 
 ```text
 Tag Mode（テンプレート一式）: novels/NNN_作品名。
-concepts.md「Tag Mode テンプレート一式」に従い、汎用 ID と _meta.md §4 の 000番台を
+ワークフロー詳細仕様「Tag Mode テンプレート一式」に従い、汎用 ID と _meta.md §4 の 000番台を
 tag/characters/*.yaml に揃え、--novelai-pipe-tags で MD 出力。
 カスタムは _meta.md のカスタム要素列挙分のみ。除外 ID だけチャットで列挙。
 ```
@@ -748,7 +748,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source background-concepts
 ```
 
-> この操作は `.rulesync/rules/overview.md` §2.2.2「生成モードの用語統一」および `docs/image-generation/index.md`「背景資料生成」節に定義があります。
+> この操作は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「生成モード用語」および `docs/image-generation/index.md`「背景資料生成」節に定義があります。
 
 ---
 

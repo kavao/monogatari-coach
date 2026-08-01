@@ -11,7 +11,7 @@ targets: ["*"]
 
 First Reader Mode と Interest Check Mode で、評価結果の所在を曖昧にしない。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。このスキルは、その保存条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価出力の保存先」。このスキルは、その保存条件を満たすための実行手順を定める。
 
 ## 保存先（必須）
 
@@ -148,6 +148,6 @@ G3（全文）評価で全文一括読み込みが困難な場合（目安: **�
 
 ## 関連
 
-- 概念正本: `.rulesync/rules/concepts.md`（評価出力の保存先）
-- 入口ルール: `.rulesync/rules/overview.md` §2.6（First Reader Mode）、§2.7（Interest Check Mode）
+- 概念正本: `.rulesync/rules/workflow-specification.md`（評価出力の保存先）
+- 詳細仕様: `.rulesync/rules/workflow-specification.md`（First Reader / Interest Check）
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

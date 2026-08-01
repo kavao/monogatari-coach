@@ -64,6 +64,6 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 
 ## 正本
 
-- ファイル一覧の意味付け: **`.rulesync/rules/overview.md`** の「小説ファイル (novels/...)」
+- ファイル一覧の意味付け: **`.rulesync/rules/workflow-specification.md`** の「小説ファイル (novels/[novel_code]_[novel_title]/)」
 - 人物プロフィールの構造 lint: スキル **`novel-character-profile`**
 - 本文保存の確認: スキル **`novel-text-file-output`**

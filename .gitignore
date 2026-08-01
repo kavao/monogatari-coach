@@ -47,6 +47,7 @@ AGENTS.md
 .serena/*
 outputs/
 logs/
+.tools/
 
 # LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
 tools_temp/*

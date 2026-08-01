@@ -11,7 +11,7 @@ targets: ["*"]
 
 First Reader（足切り）通過後の深掘り評価モード（Editor Score / Consistency Audit / Synopsis）で、評価結果の所在を曖昧にしない。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価ファイル命名と役割」および「足切りと深掘り評価の住み分け」。このスキルは、それらの保存条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」および「足切りと深掘り評価の住み分け」。このスキルは、それらの保存条件を満たすための実行手順を定める。
 
 **重要**: 足切り（First Reader）は `.rulesync/skills/novel-reader-output/SKILL.md` が正とする。本スキルは足切り手順を上書きしない。
 
@@ -68,7 +68,7 @@ First Reader（足切り）通過後の深掘り評価モード（Editor Score /
 
 ## 長文多段パイプライン（合計30,000字超 / 章8,000字超）
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
 
 ### 作業領域の構造
 
@@ -176,7 +176,7 @@ Editor Score 実施後は、作品 `_meta.md` の「評価・足切り履歴」�
 
 ## 関連
 
-- 横断正本: `.rulesync/rules/concepts.md`（評価ファイル命名と役割・住み分け・長文閾値）
+- 横断正本: `.rulesync/rules/workflow-specification.md`（評価ファイル命名と役割・住み分け・長文閾値）
 - 足切りスキル: `.rulesync/skills/novel-reader-output/SKILL.md`
-- 入口ルール: `.rulesync/rules/overview.md` §2.8（Editor Score）、§2.9（Consistency Audit）
+- 詳細仕様: `.rulesync/rules/workflow-specification.md`（Editor Score / Consistency Audit）
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

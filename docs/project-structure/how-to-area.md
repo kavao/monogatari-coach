@@ -15,7 +15,7 @@
 | `manga.md` | 漫画のコマ割り・演出の作法（ツールの検証・バッチ・export のコマンド詳細は [`docs/image-generation/manga-prompt-ir.md`](../image-generation/manga-prompt-ir.md)、互換 Step 長文テンプレは [`manga-tag-generation.md`](../image-generation/manga-tag-generation.md)） |
 | `manga_tag.md` | 漫画タグ生成のルール・形式（英語タグ語彙・置き換え。Step1／`prompt_tags` 中心） |
 | `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |
-| `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)（Tag Mode 各節）が正本 |
+| `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)（Tag Mode 各節）が正本 |
 | `rewrite.md` | 文章校正・清書の作法 |
 | `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |
 | `editor_score.md` | 足切り通過後の深掘り採点（5項目×20点・致命的弱点の優先順位付け。スキル: `novel-evaluation-output`） |
@@ -65,8 +65,7 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 **`_how_to/skills/`** のユーザスキルと一体で使う Python スクリプトは **`_how_to/tools/`** に置きます。リポジトリ全体の共有ツールは **`tools/`**（リポジトリ直下）です。
 
-- 正本ルール: [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「共有ツールとユーザ用 Python」
-- 入口と昇格の考え方: [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) の「`_how_to/tools/`（ユーザ用 Python）」
+- 正本ルールと入口・昇格の考え方: [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「共有ツールとユーザ用 Python」
 - 案内: [`_how_to/tools/README.md`](../../_how_to/tools/README.md)
 
 短命の試行は **`tools_temp/`** を使います（`_how_to/tools/` は運用上そこそこ長く残すスクリプト向け）。
@@ -77,7 +76,7 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 **公式スキル（`.rulesync/skills/`）ではない**、手書きの手順置き場です。雛形は **`_how_to.example/skills/<名前>/`**、作業用にコピー・編集する先は **`_how_to/skills/<名前>/`** です。一覧は各 `skills/_index.md` から辿れます。
 
-ユーザスキルは「チャットで明示したときだけ読む」だけでなく、**checklist の `suggested_skill` / `suggested_pick_lists` や索引の発動条件**に当てはまれば条件付きで参照されるユーザ運用知識でもある。抽選入口の横断定義は **選定レジストリ**（`_how_to.example/pick_registry/`、`_how_to/pick_registry/`、公式 `tools/novel_pick_registry.py`）。横断定義は [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)「公式スキルとユーザスキルの接続」「選定レジストリ」。
+ユーザスキルは「チャットで明示したときだけ読む」だけでなく、**checklist の `suggested_skill` / `suggested_pick_lists` や索引の発動条件**に当てはまれば条件付きで参照されるユーザ運用知識でもある。抽選入口の横断定義は **選定レジストリ**（`_how_to.example/pick_registry/`、`_how_to/pick_registry/`、公式 `tools/novel_pick_registry.py`）。横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)「公式スキルとユーザスキルの接続」「選定レジストリ」。
 
 詳細・索引・具体例（カクヨムルビ連携など）は **[ユーザスキルと雛形の置き場](../workflow/user-skills.md)** を参照してください。
 

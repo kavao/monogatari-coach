@@ -40,7 +40,7 @@ description: >-
 ## 他フェーズとの関係（参照）
 
 - **執筆直後の機械校正（`grammar --fix`）**: スキル **`novel-text-rewrite-lint`**。`_novel_text` 保存後に誤打（`　「`・半角 `,`・`…` 等）を **安全な置換だけ** 直す。**本スキル（rewrite 清書）の前**に行ってよいが、**代わりにはしない**。
-- **Writing Mode §2.3 手順7（reader.md による清書）**: 手順どおりなら **`_novel_text/` 内の同一ファイル名を置換**する（下読み・体裁の清書）。
+- **Writing Mode / Refinement（`workflow-specification.md` §2.3・§2.5）**: 手順どおりなら **`_novel_text/` 内の同一ファイル名を置換**する（下読み・体裁の清書）。
 - **本スキル（rewrite.md による文章校正）**: 手順7と同様に **`_novel_text/`** を更新するが、**更新前に必ず `_novel_text_backup/` へ旧版を退避する**。
 
 ## 手順（推奨順）
@@ -61,7 +61,7 @@ description: >-
 
 ## 関連
 
-- プロジェクト全体: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.5 Writing Mode Refinement」
+- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode / Writing Mode Refinement
 - 初稿のファイル出力: **`novel-text-file-output`**
 - 技法: **`_how_to/rewrite.md`**
 - 執筆直後の機械校正・清書後 lint: **`novel-text-rewrite-lint`**

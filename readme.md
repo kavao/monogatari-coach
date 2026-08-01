@@ -13,6 +13,7 @@ Monogatari Coach は、小説執筆の企画、設計、執筆、推敲、評価
 - [Workflow](docs/workflow/index.md)
 - [Project Structure](docs/project-structure/index.md)
 - [Community](docs/community/index.md)
+- [Rulesync の固定運用](docs/rulesync.md)
 
 ## Quick Start
 
@@ -25,27 +26,28 @@ git clone https://github.com/kavao/monocri.git
 cd monocri
 ```
 
-2. Node.js を導入
-
-Node.js 同梱の Corepack 経由で `pnpm` を都度呼び出します。`rulesync` や `pnpm` のグローバルインストールは不要です。
-
-3. `uv` を導入して初回セットアップ
+2. `uv` を導入して初回セットアップ
 
 ```bash
 uv sync
 uv run python howto_init.py
 ```
 
-4. ルールを再生成
+3. Rulesync を取得してルールを再生成
 
 ```bash
-corepack pnpm dlx rulesync generate
+# 初回のみ: 固定版 15.0.1 の検証済み単体バイナリを取得
+python tools/install_rulesync.py
 
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+# 生成前の確認
+python tools/rulesync.py generate --dry-run
+
+# 生成と整合確認
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
-5. `.env` を整える
+4. `.env` を整える
 
 `howto_init.py` が `.env.example` から `.env` を未作成時にコピーします。画像生成を使う場合は、使う provider に応じて `.env` に API キーを入れます。
 
@@ -131,13 +133,12 @@ uv run python howto_init.py
 ルール再生成:
 
 ```bash
-corepack pnpm dlx rulesync generate
-
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+python tools/rulesync.py generate --dry-run
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
-`.rulesync/` 側の正本を更新したあとに実行します。実行後は `AGENTS.md` / `CLAUDE.md` の差分が、LLM 別入口として意図どおりか確認します。
+`.rulesync/` 側の正本を更新したあとに実行します。初回取得・再取得・固定版の詳細は [Rulesync の固定運用](docs/rulesync.md) を参照してください。
 
 文字数確認:
 
