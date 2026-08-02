@@ -23,6 +23,12 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。
 
+## Plan Mode の完了
+
+- **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
+- Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・`_meta.md` への実施記録。
+- 手順の正本はスキル **`novel-planning`**。横断の厚さ・命名は `workflow-specification.md` の関連仕様を参照する。
+
 ## ルールとドキュメント
 
 - ルール・スキル更新は `.rulesync/` を主編集先とし、`rule-authoring.md` に従う。

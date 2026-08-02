@@ -44,18 +44,19 @@ globs: ["novels/**", "_how_to/**", "_how_to.example/**"]
 ## タイトル命名ゲート（Plan Mode）
 
 定義:
-作品のタイトル命名は「なんとなく決める」ではなく、**候補生成→比較→採用→記録**を行い、再現可能にするための必須ゲートである。
+作品のタイトル命名は「なんとなく決める」ではなく、**候補生成→比較→採用→記録**を行い、再現可能にするための必須ゲートである。Plan Mode では **Gate B** の一部として扱う（企画完了の定義は `concepts.md`「Plan Mode の完了」）。
 
 必須:
 
-- Plan Mode では、タイトル候補を **最低 5 件**生成し、比較観点（内容想起・ジャンル伝達・固有性/検索性・読後の意味）で採否理由を付けて 1 件採用する。
+- 新規起こし、またはタイトル変更時は、タイトル候補を **最低 5 件**生成し、比較観点（内容想起・ジャンル伝達・固有性/検索性・読後の意味）で採否理由を付けて 1 件採用する。
 - 採用タイトルは `proposal.md` と `config.md` の **作品名**に反映する。
 - 不採用候補（2〜5件）と簡単な却下理由は、`config.md` の **「資料上の別名」**へ残す（作品名揺れのメモを兼ねる）。
+- 既存作品で命名記録がすでにある場合は再抽選せず、記録の存在を確認して Gate B 記録に残す。
 
 参照:
 
 - 命名技法（雛形・基準）: `_how_to.example/naming.md`
-- Plan Mode への組込み: `.rulesync/skills/novel-planning/SKILL.md`
+- Plan Mode への組込み（Gate A / Gate B）: `.rulesync/skills/novel-planning/SKILL.md`
 
 ## NovelAI 向けタグ分離（パイプ区切り）
 
@@ -952,11 +953,8 @@ Monogatari Coachは、必要なファイルとオプションのコンテキス�
 #### - 小説ファイル (novels/[novel_code]_[novel_title]/)
 原則、/novels/以下に新しく小説をはじめる際にはこれらファイルを作成します。
 原則指定がない限りは、新しい小説として起こしてください。
-まず一度揃えてから、次は”再度確認してよりよい内容に洗練します”と、次回の修正を促します。
-a. 先ほど作成したdesign_specification.mdの設定や心理などに難がありそうな場所について評価してください。
-b. 評価を元に、プロットを再構成して、ストーリーの箇条書きの項目も倍にしてください。心理描写や具体的なシーン描写を増やしてください。
-c. プロフィールについても深く掘り下げてください。
-そのあと、ようやくnovel_text 以外の全て揃えた後に小説を書き始めます。
+Plan Mode では **Gate A（骨格）のあと Gate B（知識・厚さ・洗練）を必須**とし、詳細はスキル **`novel-planning`** を正とする（完了定義は `concepts.md`「Plan Mode の完了」）。
+そのあと、ようやく novel_text 以外の全て揃えた後に小説を書き始めます。
 小説の執筆は必ずファイルに出力してください。指定がない限りは1テキストファイル当たりの執筆は4000文字を目安にしてください｡分量が不足しそうな場合には、作業配分を考えた上で回数を分けて出力を行ってください。
 前半の後半のような場合には追記する形などファイルへの更新対応も考慮してください。
 
@@ -976,7 +974,7 @@ c. プロフィールについても深く掘り下げてください。
    - 作品名、ログライン、ターゲット層、あらすじ、キャラクター紹介、作品の3つの魅力など
 2. design_specification.md
    - 小説の設計書
-   - テーマ、コンセプト、ストーリー（章ごとに箇条書きでかならず誰が何をしたといった具体的な内容で,1章5項目以上）、ストーリー相関図（Mermaid記法）、執筆スケジュールなど
+   - テーマ、コンセプト、ストーリー（章ごとに箇条書きでかならず誰が何をしたといった具体的な内容。**最低項目数・洗練後の厚さはスキル `novel-planning` の Gate B を正とする**）、ストーリー相関図（Mermaid記法）、執筆スケジュールなど
 3. config.md
    - 小説の基本情報、執筆再開などの際の取りかかりにする。
    - novel_ID、writer_code、作品名、作者名、ジャンル、キーワード、テーマ、コンセプトなど
@@ -1012,11 +1010,12 @@ c. プロフィールについても深く掘り下げてください。
    - **互換出力（任意）**: `illustrations/illustration_XX.md`（初期運用では必須にしない）。
    - 生成画像は **`illustrations/_assets/<illustration_XX>/`** に集約する（詳細は §2.2.3・スキル **novel-image-layout**）
 11. _meta.md
-   - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報を管理するメタデータファイル。
-   - `_how_to/meta.md` のフォーマットに従って生成・更新される（挿絵の密度・表紙方針は同ファイル「画像・漫画生成設定」の **挿絵・表紙** 節）。
+   - 小説ごとの進捗、伏線、次回のタスク、外部投稿用情報、**Plan Mode の Gate B 実施記録**を管理するメタデータファイル。
+   - `_how_to/meta.md` のフォーマットに従って生成・更新される（挿絵の密度・表紙方針は同ファイル「画像・漫画生成設定」の **挿絵・表紙** 節。Gate B 記録の雛形は `_how_to.example/meta.md`）。
 
 **執筆前の資料・ディレクトリ確認（曖昧にしない）**
 - 原則、**`novel_text` 以外**が揃ってから本文執筆に入る（上記 1〜5・7・10 と、空でもよい **`_novel_text/`**・**`_reader/`**）。
+- **Plan Mode 完了**は Gate A（`novel_project_check`）だけでなく Gate B（知識・厚さ・洗練・`_meta.md` 記録）も満たす（スキル **`novel-planning`**）。
 - エージェントは Writing Mode に入る前、または執筆指示を受けた直後に **`python tools/novel_project_check.py novels/NNN_作品名`** を実行し、**終了コード 0** を確認する（詳細はスキル **`novel-project-readiness`**）。
 - Tag Mode 済みを必須にする場合は **`--require-tag`**、漫画フォルダまで揃えたい場合は **`--require-manga-dir`** を付ける。
 
@@ -1052,20 +1051,23 @@ c. プロフィールについても深く掘り下げてください。
 現時点では、作家プロフィールを扱う必要がある場合は既存の `writers/<writer_code>_<writer_name>/writer_profile.md` を参照し、恒久的なロール追加ルールはここへ継ぎ足さない。
 
 ### 2.2 Plan Mode
-企画・設計・人物・世界観・メタ情報を整え、本文執筆に入れる状態へ進める。詳細な作成順と確認観点はスキル **`novel-planning`**、執筆前の機械確認はスキル **`novel-project-readiness`** を参照する。
+企画・設計・人物・世界観・メタ情報を整え、本文執筆に入れる状態へ進める。
 
-Plan Mode で `character.md` 作成・特殊プロフィール（例: `body_therapy`）・投稿変換・個人ワークフローが関わる場合は、**`_how_to/skills/_index.md`** を確認し、該当するユーザスキルを読む（全ユーザスキル必読ではない。発動条件は workflow-specification.md「公式スキルとユーザスキルの接続」）。
+**完了**: Gate A（骨格・`novel_project_check`）∧ Gate B（知識読込・設計の厚さ・洗練・`_meta.md` の実施記録）。短い定義は **`concepts.md`「Plan Mode の完了」**。手順の正本はスキル **`novel-planning`**。執筆前の機械確認は **`novel-project-readiness`**。
+
+Gate B では作品経路（新規 / 資料取り込み / 既存洗練）と作品プロファイル（一般 / `mature` / `body_therapy` 等・複数可）を分けて判定する。`character.md` 作成・特殊プロフィール・投稿変換・個人ワークフローが関わる場合は、**`_how_to/skills/_index.md`** を確認し、該当するユーザスキルだけを読む（全件必読ではない。発動条件は本ファイル「公式スキルとユーザスキルの接続」）。
+
+設計の厚さ（章ごと具体出来事の最低項目数、洗練後の倍増、Mermaid 相関図、必須構成要素）は **`novel-planning` の Gate B** を正とする。小説ファイル節の「1章5項目以上」等と矛盾するときは、スキル側の判定可能な基準を優先し、必要なら本ファイルを短く追随させる。
 
 Feedback として、既存作品の `judge_result.md` や `impression.md` から再利用できる文体・作風の学びがあれば、該当する作家の `writer_profile.md` へ反映する。
 
 ```mermaid
 flowchart TD
-    Start[Start Plan] --> CheckMemory[Check Monogatari Coach]
-    CheckMemory --> FilesReady{All Files Ready?}
-    FilesReady -->|No| CreateDoc[Create Documents]
-    CreateDoc --> PlanDone[Plan Documented]
-    FilesReady -->|Yes| VerifyContext[Verify Context]
-    VerifyContext --> PlanDone
+    Start[Start Plan] --> Classify[経路とプロファイル判定]
+    Classify --> GateA[Gate A 骨格]
+    GateA --> GateB[Gate B 知識と厚さ]
+    GateB --> Record[Update _meta Gate B]
+    Record --> PlanDone[Plan Complete]
 ```
 
 ### 2.2.1 Tag Mode（画像タグ作成：プロフィール作成後／本文執筆前）

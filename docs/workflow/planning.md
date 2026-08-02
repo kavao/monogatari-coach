@@ -33,7 +33,11 @@ novels/NNN_作品名/ の設計を確認して、足りないところを洗練�
 
 ## Monogatari Coach が行うこと
 
-Monogatari Coach は、執筆前に必要なファイルを確認し、不足しているものを作成・更新します。
+Monogatari Coach は、企画を **Gate A（骨格）** と **Gate B（知識・厚さ）** の二段で進めます。ファイルが揃っただけでは企画完了になりません。
+
+### Gate A（骨格）
+
+必須ファイルとディレクトリを揃え、機械チェックを通します。
 
 | ファイル | 内容 |
 |----------|------|
@@ -42,10 +46,8 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 | `config.md` | novel_ID、writer_code、ジャンル、キーワード |
 | `character.md` | 登場人物のプロフィール、課題、目的、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術 |
-| `_meta.md` | 進捗、伏線、次回タスク |
+| `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録** |
 | `_meta.yaml` | 画像生成の機械可読設定（NovelAI ポーション等） |
-
-`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認する（`python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。作品タイプに応じて **`_how_to/skills/_index.md`** から該当ユーザスキルを読む。全ユーザスキル必読ではない（詳細は [ユーザスキル](user-skills.md)）。
 
 新規作品では、資料を揃えたあと次を実行します。
 
@@ -53,7 +55,29 @@ Monogatari Coach は、執筆前に必要なファイルを確認し、不足し
 python tools/novel_scaffold.py novels/NNN_作品名
 ```
 
-作成後は、必要に応じて設計の弱い部分を自己評価し、心理描写や具体的なシーンを増やします。
+続いて人物構造とプロジェクト準備を確認します。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+python tools/novel_project_check.py novels/NNN_作品名
+```
+
+新規は採番から、既存作品の洗練では再採番しません。合否はコマンドの終了コードを正とします。
+
+### Gate B（知識・厚さ）
+
+作品の経路とプロファイルを判定し、必要な創作技法だけを読んで設計を厚くします。
+
+1. **分類**: 作品経路（新規起こし / 資料取り込み / 既存洗練）と作品プロファイル（一般 / mature / body_therapy 等・複数可）を決める
+2. **必読選択**: `_how_to/_index.md` から該当資料だけを読む（全件は読まない）
+3. **ユーザスキル**: `_how_to/skills/_index.md` の発動条件に当たるものだけ読む
+4. **抽選**: 必要なら選定レジストリで `pick`（使わない場合は理由を残す）
+5. **タイトル命名**: 新規または改題時は候補5件以上。既存で記録がある場合は確認のみ
+6. **設計の厚さ**: 初回は各章5項目以上 → 洗練後は原則2倍かつ最低10項目。Mermaid 相関図は必須
+7. **洗練**: 自己評価 → プロット厚化 → 心理・シーン増 → プロフィール掘り下げ（省略しない）
+8. **記録**: `_meta.md` の Gate B 記録へ、読んだ資料・スキル・pick・厚さを残す
+
+`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認します（`python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。詳細は [ユーザスキル](user-skills.md) を参照してください。
 
 ## エピソード・トロープの抽選（一般向け）
 
@@ -67,7 +91,7 @@ python tools/novel_scaffold.py novels/NNN_作品名
 
 ## ユーザーが確認できるもの
 
-作品フォルダ `novels/<作品>/` に、企画・設計・人物・世界観のファイルが揃います。
+作品フォルダ `novels/<作品>/` に、企画・設計・人物・世界観のファイルが揃います。あわせて `_meta.md` に Gate B 記録があることを確認できます。
 
 執筆前には次のコマンドで不足がないか確認できます。
 
@@ -93,10 +117,11 @@ python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --s
 python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 ```
 
-結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
+**Gate A が OK でも、Gate B（知識読込・厚い設計・洗練・`_meta.md` 記録）が終わるまで企画完了にはしません。** 両方そろったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
 
 ## 関連ページ
 
 - 原資料から始める場合は [Source Material Intake](source-material-intake.md) を参照してください。
 - 指示文の一覧は [指示出しベースのワークフロー](instruction-driven.md) を参照してください。
 - 作品フォルダの構造は [Project Structure](../project-structure/index.md) を参照してください。
+- 受け入れ条件は [開発者向け検証](../developer-verification.md) の Plan Mode Gate A / Gate B を参照してください。
