@@ -11,6 +11,7 @@
 | D2 | [episode_hooks.md](episode_hooks.md) | **冒頭フック具体シチュエーション**（MD 正本 → sync → `episode_general.json`） |
 | E | [episode_social.md](episode_social.md) | 社会心理参照（ステレオタイプ注意付き） |
 | F | [episode_tempo_ensemble.md](episode_tempo_ensemble.md) | 序盤／中盤／終盤／多人数テンポ（密度の対になる指針） |
+| G | [episode_engine_map.md](episode_engine_map.md) | 展開エンジン表・運用カード・昭和的勢い展開（E2） |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 

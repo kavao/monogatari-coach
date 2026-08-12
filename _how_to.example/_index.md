@@ -12,6 +12,7 @@
    - [episode/README.md](episode/README.md) … general（型・職業・対話）と common（恋愛・描写・抜粋）の入口。
    - general: [episode/general/episode_.md](episode/general/episode_.md)
    - general（序盤／中盤／終盤／多人数テンポ）: [episode/general/episode_tempo_ensemble.md](episode/general/episode_tempo_ensemble.md)
+   - general（展開エンジン／運用カード／勢い展開）: [episode/general/episode_engine_map.md](episode/general/episode_engine_map.md)
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
