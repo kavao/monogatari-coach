@@ -51,7 +51,7 @@ description: >-
 4. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル。**§9 章番号・前章メタ参照の除去**を含む）。
 5. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
 6. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
-7. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスクを更新する。
+7. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスク、および `design_specification.md` の実文字数・状態を更新する。
 8. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。
    - **部分加筆・シーンの途中挿入**でも手順 3〜7 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
 
