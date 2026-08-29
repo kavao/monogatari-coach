@@ -24,7 +24,7 @@
 | Editor Score | `Editor Scoreで採点してください。` | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（改善優先度用） |
 | Consistency Audit | `第1〜3章の一貫性を監査してください。` | `_reader/consistency_YYYYMMDD.md` | なし（表形式） |
 | Synopsis（前処理） | `あらすじを作成してください。` | `_reader/synopsis_YYYYMMDD.md` | なし |
-| Reader Walk（読み進み） | `第1章から読み進めて` | `_reader/walk/journal.md` | なし（感想＋任意の反応メタデータ） |
+| Reader Walk（読み進み） | `第1章から読み進めて` | `_reader/walk/<session_id>/journal.md` | なし（感想＋任意の反応メタデータ） |
 
 足切り（First Reader）と Editor Score は配点・目的が異なる別モードです。First Reader は「読むか読まないか」の選別、Editor Score は「どこを直すと何点上がるか」の改善優先度付けです。Reader Walk は採点せず、一般読者として今読んだ場面の感想だけを残します。
 
@@ -127,11 +127,11 @@ G3（全文）で合計30,000字超の場合は、Synopsis を先行してから
 
 ### Monogatari Coach が行うこと
 
-指定したペルソナ（指定がなければ `readers/000_default/reader_preferences.md`）の読み手として、指定範囲（なければ対象ペルソナにとって未読の残り全部）を場面ごとに読みます。感想を `_reader/walk/journal.md` へ場面ごとに追記し、到達位置を対象ペルソナの状態ファイルに残します。既定ペルソナは `_reader/walk/state.md`、追加ペルソナは `_reader/walk/state/<persona_id>.md` を使います。
+指定したペルソナ（指定がなければ `readers/000_default/reader_preferences.md`）の読み手として、指定範囲（なければ対象ペルソナにとって未読の残り全部）を場面ごとに読みます。新規セッションではJSTの `YYYYMMDD_HHMM_<persona_id>` 形式でセッションIDを発行し、感想を `_reader/walk/<session_id>/journal.md` へ場面ごとに追記します。到達位置は同じセッションディレクトリの `state.md` に残します。セッションIDまたはセッションディレクトリを指定した場合は、そのセッションだけを再開します。指定がない場合は、対象ペルソナの読了が未の最新セッションを再開し、該当がなければ新しいセッションを発行します。「新規セッション」「別の読者として」などを明示した場合は、必ず新しいセッションを発行します。
 
 ### ユーザーが確認できるもの
 
-- 保存先: `novels/<作品>/_reader/walk/journal.md` と `walk/state.md`（追加ペルソナは `walk/state/<persona_id>.md`）
+- 保存先: `novels/<作品>/_reader/walk/<session_id>/journal.md` と同じセッションディレクトリの `state.md`
 - チャットには「進めた範囲・通しの要約」のみ返ります。
 - ジャーナル全文はチャットには出ません。
 
@@ -151,13 +151,14 @@ G3（全文）で合計30,000字超の場合は、Synopsis を先行してから
 
 `reaction_intensity` は感情の大きさ、`continuation_pull` は次を開きたい強さで、どちらも0〜5です。`reaction_valence` は `positive` / `negative` / `mixed` / `neutral`、タグは `curiosity` / `tension` / `surprise` / `joy` / `relief` / `sadness` / `anger` / `fear` / `confusion` / `boredom` / `admiration` から1〜3個をJSON配列で選び、記載順に並べます。場面アンカーは `<!-- scene: chNN-MMM -->` の形式を使い、本文に無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付けます。
 
-ブロックの必須項目・順序・値域を検査し、既読範囲の山谷を生成するには次を実行します。`journal.md` が正本で、trace JSONは生成物です。
+ブロックの必須項目・順序・値域を検査し、既読範囲の山谷を生成するには、セッションディレクトリを指定して次を実行します。`journal.md` が正本で、trace JSONは同じセッションディレクトリの生成物です。
 
 ```bash
-python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md --trace-output novels/NNN_作品名/_reader/walk/reaction_trace.json
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> \
+  --trace-output novels/NNN_作品名/_reader/walk/<session_id>/reaction_trace.json
 ```
 
-新規の定量化セッションでは終了コード0を確認してから完了します。定量化前の既存エントリを移行中だけは `--allow-missing-reaction` を追加してWARNINGとして扱えますが、ERRORが無いことを確認します。`rising` / `falling` / `flat` / `peak` は同じセッション・ペルソナ内の既読場面からハーネスが導出します。数値やtraceの内容はチャットには返しません。
+新規の定量化セッションでは終了コード0を確認してから完了します。定量化前の既存エントリを移行中だけは `--allow-missing-reaction` を追加してWARNINGとして扱えますが、ERRORが無いことを確認します。移行前のルート直下journalだけは `--legacy-root` を追加して一時的に検査できます。`rising` / `falling` / `flat` / `peak` は同じセッション・ペルソナ内の既読場面からハーネスが導出します。数値やtraceの内容はチャットには返しません。
 
 ---
 

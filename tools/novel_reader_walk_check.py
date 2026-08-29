@@ -82,6 +82,15 @@ class Issue:
     message: str
 
 
+@dataclass(frozen=True)
+class TargetResolution:
+    """A checker target and the session scope inferred from its path."""
+
+    journal: Path
+    expected_session_id: str | None
+    legacy_root: bool
+
+
 def _issue(level: str, line_number: int, message: str) -> Issue:
     return Issue(level=level, line_number=line_number, message=message)
 
@@ -325,20 +334,79 @@ def build_trace(entries: list[ReactionEntry]) -> list[dict[str, Any]]:
     return trace
 
 
-def validate_file(path: Path, *, allow_missing_reaction: bool = False) -> tuple[list[ReactionEntry], list[Issue]]:
+def _validate_session_scope(
+    entries: list[ReactionEntry],
+    *,
+    expected_session_id: str | None,
+) -> list[Issue]:
+    """Enforce the one-session/one-persona boundary of a session directory."""
+    if not entries:
+        return []
+
+    issues: list[Issue] = []
+    session_ids = {entry.session_id for entry in entries}
+    persona_ids = {entry.persona_id for entry in entries}
+
+    if len(session_ids) > 1:
+        first = next(entry for entry in entries if entry.session_id != entries[0].session_id)
+        issues.append(_issue("ERROR", first.line_number, "1つのセッションディレクトリに複数のsession_idを混在させないでください"))
+    if len(persona_ids) > 1:
+        first = next(entry for entry in entries if entry.persona_id != entries[0].persona_id)
+        issues.append(_issue("ERROR", first.line_number, "1つのセッションディレクトリに複数のpersona_idを混在させないでください"))
+    if expected_session_id is not None:
+        for entry in entries:
+            if entry.session_id != expected_session_id:
+                issues.append(
+                    _issue(
+                        "ERROR",
+                        entry.line_number,
+                        f"ディレクトリ名とsession_idが一致しません（期待: {expected_session_id}, 実際: {entry.session_id}）",
+                    )
+                )
+    return issues
+
+
+def validate_file(
+    path: Path,
+    *,
+    allow_missing_reaction: bool = False,
+    expected_session_id: str | None = None,
+) -> tuple[list[ReactionEntry], list[Issue]]:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         return [], [_issue("ERROR", 1, f"ファイルを読み込めません: {exc}")]
     except UnicodeError as exc:
         return [], [_issue("ERROR", 1, f"UTF-8として読み込めません: {exc}")]
-    return parse_journal(text, allow_missing_reaction=allow_missing_reaction)
+    entries, issues = parse_journal(text, allow_missing_reaction=allow_missing_reaction)
+    issues.extend(_validate_session_scope(entries, expected_session_id=expected_session_id))
+    return entries, issues
 
 
-def _resolve_journal(target: Path) -> Path:
+def _resolve_target(target: Path, *, allow_legacy_root: bool) -> tuple[TargetResolution | None, Issue | None]:
+    """Resolve a session directory or journal and reject the old root layout by default."""
     if target.is_dir():
-        return target / "journal.md"
-    return target
+        legacy_root = target.name.casefold() == "walk"
+        journal = target / "journal.md"
+        expected_session_id = None if legacy_root else target.name
+    else:
+        legacy_root = target.parent.name.casefold() == "walk"
+        journal = target
+        expected_session_id = None if legacy_root else target.parent.name
+
+    if legacy_root and not allow_legacy_root:
+        return None, _issue(
+            "ERROR",
+            1,
+            "walk直下のjournal.mdは移行前専用です。移行確認には --legacy-root を指定してください",
+        )
+    if expected_session_id is not None and not _ID_RE.fullmatch(expected_session_id):
+        return None, _issue(
+            "ERROR",
+            1,
+            f"セッションディレクトリ名がID形式ではありません: {expected_session_id!r}",
+        )
+    return TargetResolution(journal, expected_session_id, legacy_root), None
 
 
 def _print_issues(issues: list[Issue]) -> None:
@@ -360,6 +428,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="反応ブロックのない既存エントリをWARNINGとして許容する",
     )
     parser.add_argument(
+        "--legacy-root",
+        action="store_true",
+        help="移行前のwalk/journal.mdを一時的に検査する",
+    )
+    parser.add_argument(
         "--trace-output",
         type=Path,
         help="検証成功後にreaction trace JSONを書き出すパス",
@@ -370,12 +443,25 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    journal = _resolve_journal(args.target)
+    resolution, resolution_issue = _resolve_target(args.target, allow_legacy_root=args.legacy_root)
+    if resolution_issue is not None:
+        if args.json:
+            print(json.dumps({"journal": str(args.target), "entries": 0, "errors": 1, "warnings": 0, "trace_entries": 0}, ensure_ascii=False, indent=2))
+        else:
+            print(f"{resolution_issue.level}: {resolution_issue.message}", file=sys.stderr)
+        return 1
+
+    assert resolution is not None
+    journal = resolution.journal
     if not journal.is_file():
         print(f"ERROR: 対象journal.mdが見つかりません: {journal}", file=sys.stderr)
         return 3
 
-    entries, issues = validate_file(journal, allow_missing_reaction=args.allow_missing_reaction)
+    entries, issues = validate_file(
+        journal,
+        allow_missing_reaction=args.allow_missing_reaction,
+        expected_session_id=resolution.expected_session_id,
+    )
     errors = [issue for issue in issues if issue.level == "ERROR"]
     warnings = [issue for issue in issues if issue.level == "WARNING"]
     trace = build_trace(entries) if not errors else []

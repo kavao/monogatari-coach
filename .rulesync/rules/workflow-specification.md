@@ -662,7 +662,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 
 - First Reader の書評は `novels/<作品>/_reader/YYYYMMDD_HHMM.md` に保存する。
 - Interest Check の結果は `novels/<作品>/_reader/interest_YYYYMMDD.md` に保存する。
-- Reader Walk の感想正本は `novels/<作品>/_reader/walk/journal.md`、到達位置は既定ペルソナの `_reader/walk/state.md` とする。追加ペルソナの状態は `_reader/walk/state/<persona_id>.md` に分ける。定量化を有効にした場合は、評価点ではない反応メタデータを `journal.md` に追記し、完了前に `tools/novel_reader_walk_check.py` で検証する。`reaction_trace.*` は生成物とする。
+- Reader Walk は一つのセッションにつき `novels/<作品>/_reader/walk/<session_id>/` を作り、その中の `journal.md` を感想正本、`state.md` を到達位置とする。定量化を有効にした場合は、評価点ではない反応メタデータを同じ `journal.md` に追記し、完了前に `tools/novel_reader_walk_check.py` で検証する。`reaction_trace.*` はセッションディレクトリ内の生成物とする。`walk/` 直下の旧形式は移行時だけ `--legacy-root` で扱う。
 - チャットには判定、短い理由、改善ポイントの要約だけを返す。**ただし Reader Walk は除く。** Reader Walk は進めた範囲と通しの感想要約だけを返し、判定・点数・改善ポイントは出さない。
 - 書評観点は `_how_to/reader.md`、興味判定のペルソナ・第一印象は `_how_to/standard_reader.md`、読み進みの書き方は `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）を参照する。
 - 保存したファイルパスをチャットで明示してから完了扱いにする。
@@ -694,7 +694,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 | Editor Score | `_how_to/editor_score.md`（予定） | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（深掘り用） | 足切り通過後・推敲後 |
 | Consistency Audit | `_how_to/consistency_audit.md`（予定） | `_reader/consistency_YYYYMMDD.md` | なし（表形式） | 複数章完成後 |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
-| Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/journal.md`（状態は `walk/state.md`、追加ペルソナは `walk/state/<persona_id>.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
+| Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/<session_id>/journal.md`（状態は同じセッションディレクトリの `state.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
 
 必須:
 
@@ -1499,13 +1499,15 @@ flowchart TD
 ### 2.10 Reader Walk Mode（読み進み感想）
 横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。指定ペルソナ（指定が無い場合は `readers/000_default/reader_preferences.md`）の一般読者として、本文を場面単位で読み、その時点の感想と突っ込みだけを残す。**既定は対象ペルソナにとって未読の残り全部**。章やプロローグなど範囲の指定があればその領域だけ進める。採点・足切り・設定資料による訂正はしない。指定範囲の外は読まない。
 
-感想正本は **`novels/<作品>/_reader/walk/journal.md`**、既定ペルソナの到達位置は **`_reader/walk/state.md`**、追加ペルソナは **`_reader/walk/state/<persona_id>.md`** とする。チャットには進めた範囲と通しの要約だけを返す。
+感想正本は **`novels/<作品>/_reader/walk/<session_id>/journal.md`**、到達位置は同じセッションディレクトリの **`state.md`** とする。一つのセッションディレクトリには一つの `session_id` と `persona_id` だけを置き、同じペルソナの再読は新しいセッションディレクトリへ分ける。チャットには進めた範囲と通しの要約だけを返す。
+
+新規セッションのIDはJSTの `YYYYMMDD_HHMM_<persona_id>` とし、同じ分の衝突には `_2` 以降の連番を付ける。セッションIDまたはディレクトリを明示した場合はその既存セッションだけを再開し、指定が無い場合は対象ペルソナの読了未の最新セッションを再開する。該当セッションが無ければ新規発行する。`walk/` 直下の `journal.md` は移行前専用で、検査時だけ `--legacy-root` を付ける。
 
 定量化モードでは、各エントリの感想本文の後ろへ `scene_id` / `persona_id` / `session_id` / `reaction_intensity`（0〜5）/ `reaction_valence` / `reaction_tags`（固定語彙のJSON配列1〜3個）/ `continuation_pull`（0〜5）を固定順で追記する。これは作品評価点ではなくペルソナ反応であり、`reaction_intensity` は感情の大きさ、`continuation_pull` は次を開く強さを示す。場面IDは本文アンカーを優先し、無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付ける。キーは `(session_id, persona_id, scene_id)` とし、再読時はセッションIDを変えて旧エントリを保持する。
 
 `rising` / `falling` / `flat` / `peak` は `tools/novel_reader_walk_check.py` が同じセッション・ペルソナ内の場面順から導出する。差分が `+1以上` / `-1以下` / `0` をそれぞれ rising / falling / flat とし、peak は強度4以上で利用可能な前後以上の局所最大、同点の連続は先頭とする。場面IDは本文アンカーの `chNN-MMM` またはアンカー無しの `source_file_stem-sNNN` に限定する。生成する `reaction_trace.*` は副本で、`journal.md` が正本である。定量化前の既存ジャーナルは同ツールの `--allow-missing-reaction` で警告扱いにできる。
 
-書き方は `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）、手順はスキル **`novel-reader-walk`**、ブロック検査と trace 生成は **`tools/novel_reader_walk_check.py`** を参照する。
+書き方は `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）、手順はスキル **`novel-reader-walk`**、ブロック検査と trace 生成は **`tools/novel_reader_walk_check.py`** を参照する。checkerはセッションディレクトリ名と `session_id` の一致、セッション・ペルソナの混在、旧ルート形式を検査する。
 
 ---
 

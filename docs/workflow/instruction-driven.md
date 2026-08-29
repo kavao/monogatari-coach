@@ -350,7 +350,7 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 **このように動きます:**
 1. 指定ペルソナ（指定がなければ `readers/000_default/reader_preferences.md`）の一般読者として、指定範囲（なければ対象ペルソナにとって未読の残り全部）を場面ごとに読む
-2. 感想を `novels/<作品>/_reader/walk/journal.md` へ場面ごとに追記し、到達位置を対象ペルソナの状態ファイル（既定は `walk/state.md`、追加ペルソナは `walk/state/<persona_id>.md`）に残す
+2. 新規セッションではJSTの `YYYYMMDD_HHMM_<persona_id>` 形式でセッションIDを発行し、感想を `novels/<作品>/_reader/walk/<session_id>/journal.md` へ場面ごとに追記する。到達位置は同じセッションディレクトリの `state.md` に残す。セッションIDまたはセッションディレクトリを指定した場合はそのセッションだけを再開し、指定がない場合は対象ペルソナの読了が未の最新セッションを再開する。該当セッションがなければ新規発行し、「新規セッション」「別の読者として」などの明示時も必ず新規発行する
 3. チャットには進めた範囲と通しの要約だけを返す
 
 作品評価の点数は付きません。反応定量化を有効にした場合だけ、感想本文の後ろへペルソナ反応の固定ブロックを記録できます。数値は `journal.md` と生成traceの検証に使い、チャットには出しません。詳しい保存先と形式は [Reader Output](reader-output.md) を参照してください。

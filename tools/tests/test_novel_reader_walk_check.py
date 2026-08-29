@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from novel_reader_walk_check import build_trace, main, parse_journal  # noqa: E402
 
 FIXTURE = ROOT / "tools" / "tests" / "fixtures" / "reader_walk" / "reaction_sample.md"
+SESSION_FIXTURE = ROOT / "tools" / "tests" / "fixtures" / "reader_walk" / "session_s1"
 
 
 def _block(
@@ -41,6 +42,19 @@ def _block(
             f"- **continuation_pull**: `{pull}`",
         ]
     )
+
+
+def _write_session_journal(tmp_path: Path, session_id: str, *blocks: str) -> tuple[Path, Path]:
+    session_dir = tmp_path / session_id
+    session_dir.mkdir()
+    journal = session_dir / "journal.md"
+    journal.write_text(
+        "# Reader Walk ジャーナル\n\n"
+        + "\n\n".join(f"## scene {index}\n\n{block}" for index, block in enumerate(blocks, start=1))
+        + "\n",
+        encoding="utf-8",
+    )
+    return session_dir, journal
 
 
 def test_parse_and_trace_separate_personas_and_sessions() -> None:
@@ -159,14 +173,14 @@ def test_peak_boundary_rules(values: list[int], expected_peaks: list[bool]) -> N
 def test_cli_json_and_trace_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     trace_path = tmp_path / "reaction_trace.json"
 
-    exit_code = main([str(FIXTURE), "--trace-output", str(trace_path), "--json"])
+    exit_code = main([str(SESSION_FIXTURE), "--trace-output", str(trace_path), "--json"])
 
     assert exit_code == 0
     summary = json.loads(capsys.readouterr().out)
-    assert summary["entries"] == 5
+    assert summary["entries"] == 4
     assert summary["errors"] == 0
     assert summary["warnings"] == 0
-    assert summary["trace_entries"] == 5
+    assert summary["trace_entries"] == 4
     assert summary["trace_output"] == str(trace_path)
     trace = json.loads(trace_path.read_text(encoding="utf-8"))
     assert trace[1]["trend"] == "rising"
@@ -179,7 +193,7 @@ def test_cli_process_returns_zero_and_writes_trace(tmp_path: Path) -> None:
         [
             sys.executable,
             str(ROOT / "tools" / "novel_reader_walk_check.py"),
-            str(FIXTURE),
+            str(SESSION_FIXTURE),
             "--trace-output",
             str(trace_path),
             "--json",
@@ -191,7 +205,7 @@ def test_cli_process_returns_zero_and_writes_trace(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     output = result.stdout.decode(locale.getpreferredencoding(False))
-    assert json.loads(output)["trace_entries"] == 5
+    assert json.loads(output)["trace_entries"] == 4
     assert trace_path.is_file()
 
 
@@ -229,3 +243,95 @@ def test_cli_missing_target_exit_code(tmp_path: Path, capsys: pytest.CaptureFixt
 
     assert exit_code == 3
     assert "対象journal.mdが見つかりません" in capsys.readouterr().err
+
+
+def test_session_directory_and_journal_targets_are_supported(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    session_dir, journal = _write_session_journal(
+        tmp_path,
+        "s1",
+        _block("ch01-001", "000_default", "s1", 3),
+    )
+
+    assert main([str(session_dir), "--json"]) == 0
+    directory_summary = json.loads(capsys.readouterr().out)
+    assert directory_summary["entries"] == 1
+
+    assert main([str(journal), "--json"]) == 0
+    journal_summary = json.loads(capsys.readouterr().out)
+    assert journal_summary["entries"] == 1
+
+
+def test_session_directory_name_must_match_session_id(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    session_dir, _ = _write_session_journal(
+        tmp_path,
+        "s1",
+        _block("ch01-001", "000_default", "s2", 3),
+    )
+
+    assert main([str(session_dir)]) == 1
+    assert "ディレクトリ名とsession_idが一致しません" in capsys.readouterr().out
+
+
+def test_multiple_sessions_in_one_directory_are_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    session_dir, _ = _write_session_journal(
+        tmp_path,
+        "s1",
+        _block("ch01-001", "000_default", "s1", 3),
+        _block("ch01-002", "000_default", "s2", 4),
+    )
+
+    assert main([str(session_dir)]) == 1
+    assert "複数のsession_id" in capsys.readouterr().out
+
+
+def test_multiple_personas_in_one_directory_are_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    session_dir, _ = _write_session_journal(
+        tmp_path,
+        "s1",
+        _block("ch01-001", "000_default", "s1", 3),
+        _block("ch01-002", "001_calm", "s1", 4),
+    )
+
+    assert main([str(session_dir)]) == 1
+    assert "複数のpersona_id" in capsys.readouterr().out
+
+
+def test_legacy_root_requires_explicit_flag(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    walk_dir = tmp_path / "walk"
+    walk_dir.mkdir()
+    journal = walk_dir / "journal.md"
+    journal.write_text(
+        "# Reader Walk ジャーナル\n\n## scene one\n\n"
+        + _block("ch01-001", "000_default", "s1", 3)
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main([str(walk_dir)]) == 1
+    assert "--legacy-root" in capsys.readouterr().err
+
+    assert main([str(walk_dir), "--legacy-root", "--json"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["entries"] == 1
+
+
+def test_adjacent_session_directories_are_not_merged(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    walk_dir = tmp_path / "walk"
+    first_dir = walk_dir / "s1"
+    second_dir = walk_dir / "s2"
+    first_dir.mkdir(parents=True)
+    second_dir.mkdir()
+    for session_dir, session_id in ((first_dir, "s1"), (second_dir, "s2")):
+        (session_dir / "journal.md").write_text(
+            "# Reader Walk ジャーナル\n\n## scene one\n\n"
+            + _block("ch01-001", "000_default", session_id, 3)
+            + "\n",
+            encoding="utf-8",
+        )
+    trace_path = first_dir / "reaction_trace.json"
+
+    assert main([str(first_dir), "--trace-output", str(trace_path), "--json"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    trace = json.loads(trace_path.read_text(encoding="utf-8"))
+    assert summary["entries"] == 1
+    assert [row["session_id"] for row in trace] == ["s1"]

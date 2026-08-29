@@ -21,14 +21,19 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 
 | 役割 | パス |
 |------|------|
-| 感想正本（追記専用） | `novels/<作品>/_reader/walk/journal.md` |
-| 到達位置・次に読む箇所 | `novels/<作品>/_reader/walk/state.md` |
-| 追加ペルソナの状態 | `novels/<作品>/_reader/walk/state/<persona_id>.md` |
+| セッションディレクトリ | `novels/<作品>/_reader/walk/<session_id>/` |
+| 感想正本（追記専用） | `novels/<作品>/_reader/walk/<session_id>/journal.md` |
+| 到達位置・次に読む箇所 | `novels/<作品>/_reader/walk/<session_id>/state.md` |
+| 反応trace（生成物） | `novels/<作品>/_reader/walk/<session_id>/reaction_trace.json` |
 
 - `_reader/walk/` が無ければ作成する。
+- 一つの読み進みセッションにつき一つの `<session_id>/` を作成し、その中に `journal.md` と `state.md` を置く。定量化時だけ `reaction_trace.json` を生成する。
+- 新規セッションの `session_id` は JST の `YYYYMMDD_HHMM_<persona_id>` とする。同じ分に同じペルソナで発行する場合は `_2`、`_3` のような連番を付け、既存ディレクトリと衝突させない。098移行の `20260830_000_default` のような既存値は保持する。
+- `session_id` またはセッションディレクトリが明示された場合は、その既存セッションだけを再開する。存在しない指定はエラーとし、新規発行に読み替えない。「新規セッション」「別の読者として」などの明示がある場合は新しく発行する。指定が無い場合は、対象ペルソナの読了が未の最新セッションを再開し、無ければ新規発行する。
+- 自動再開時の最新判定は、ディレクトリ名に含まれる発行日時を第一キーとする。旧形式の既存値は移行時の互換値として扱う。
 - First Reader の `_reader/YYYYMMDD_HHMM.md` や Interest Check とファイルを混ぜない。
 - チャットに感想を出しただけでは完了ではない。
-- `state.md` は既定ペルソナまたは現在のアクティブ状態として後方互換で残す。追加ペルソナの状態は `state/<persona_id>.md` に分け、別ペルソナの到達位置を上書きしない。
+- `walk/` 直下の `journal.md`、`state.md`、`reaction_trace.json`、`state/<persona_id>.md` は正本にしない。旧ルート形式は移行時だけ扱う。
 
 ## 反応メタデータ（定量化モード）
 
@@ -52,7 +57,7 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 - `reaction_tags`: 固定語彙から1〜3個をJSON配列で記録する。順序は `curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` とする。`reaction_valence` とタグの組み合わせは独立項目として許容する。
 - `continuation_pull`: 次を読みたい強さ。0〜5の整数で、0は止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。感情の強さとは分けて記録する。
 
-定量化モードでは7項目を必須とする。既存の定量化前ジャーナルを検査するときだけ `python tools/novel_reader_walk_check.py <journal.md> --allow-missing-reaction` で反応ブロックの無い旧エントリをWARNINGとして許容できる。
+定量化モードでは7項目を必須とする。既存の定量化前ジャーナルを検査するときだけ `python tools/novel_reader_walk_check.py <session_dir> --allow-missing-reaction` で反応ブロックの無い旧エントリをWARNINGとして許容できる。移行前の `walk/journal.md` を検査する場合は、さらに `--legacy-root` を付ける。
 
 `rising` / `falling` / `flat` / `peak` は本文へ手で書かず、`tools/novel_reader_walk_check.py` が同じ `(session_id, persona_id)` のジャーナル出現順から生成する。`rising` は直前との差分が+1以上、`falling` は-1以下、`flat` は0。`peak` は強度4以上で利用可能な前後の場面以上の局所最大とし、同点の連続は先頭だけを採用する。先頭の推移は `null`、末尾や1場面だけの範囲は利用可能な近傍だけで判定する。生成した trace は `reaction_trace.json` などの副本であり、`journal.md` が正本である。
 
@@ -64,17 +69,16 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 
 最初に対象ペルソナを決める。指定が無ければ `000_default` とし、追加ペルソナが明示された場合はそのIDを使う。対象ペルソナに応じて状態ファイルを次のように固定する。
 
-- `000_default`: `walk/state.md`
-- 追加ペルソナ: `walk/state/<persona_id>.md`
+- 新規または再開するセッションを決め、`walk/<session_id>/state.md` を使う。ペルソナにかかわらず状態ファイルはセッションディレクトリ内に一つだけ置く。
 
-範囲指定が無く、対象ペルソナの状態ファイルが無い場合は、既定ペルソナの終端状態を引き継がず、本文の最初の未読場面から開始する。これにより、既定ペルソナが読了済みでも新しいペルソナの読み進み位置を独立して持てる。
+新規発行したセッションに状態ファイルが無い場合は、他のセッションの終端状態を引き継がず、本文の最初の場面から開始する。追加ペルソナや別セッションも、既存セッションの到達位置を上書きしない。
 
 次の順で読む。
 
-1. 対象ペルソナの状態ファイル（無ければ初回として扱う）
-2. `walk/journal.md` の対象ペルソナに属する最新エントリ（前回の口調と未回収の疑問）
+1. `walk/<session_id>/state.md`（無ければ初回として扱う）
+2. `walk/<session_id>/journal.md` の最新エントリ（前回の口調と未回収の疑問）
 3. 対象ペルソナの `reader_preferences.md`
-4. 対象範囲の本文。範囲指定がなければ対象ペルソナの状態ファイルの「次に読む箇所」から最終ファイルまで。状態ファイルが無い初回は本文の最初から読む。指定があればその領域だけ。
+4. 対象範囲の本文。範囲指定がなければセッション状態の「次に読む箇所」から最終ファイルまで。新規セッションは本文の最初から読む。指定があればその領域だけ。
 
 場面の単位は、本文の `<!-- scene: chNN-MMM -->` を優先する。無いときは章内の場所・時間・視点の切れ目を1単位とし、対象ペルソナの状態ファイルに「次はどこから」を残す。
 
@@ -82,8 +86,8 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 
 ### 追記
 
-1. `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）に従い、進めた各場面を `journal.md` へ1エントリずつ追記する。
-2. 範囲の最後で対象ペルソナの状態ファイルの到達場面・次に読む箇所・今の気分・未回収の疑問を更新する。既定ペルソナは `state.md`、追加ペルソナは `state/<persona_id>.md` とする。初回なら次の雛形で作成する。
+1. `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）に従い、進めた各場面を `walk/<session_id>/journal.md` へ1エントリずつ追記する。
+2. 範囲の最後で `walk/<session_id>/state.md` の到達場面・次に読む箇所・今の気分・未回収の疑問を更新する。初回なら次の雛形で作成する。
 
 ```markdown
 # Reader Walk 状態
@@ -101,11 +105,11 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 4. 反応メタデータを1つでも追記した定量化モードでは、`Read` の後にcheckerを実行する。
 
 ```bash
-python tools/novel_reader_walk_check.py <walk_dir>/journal.md \
-  --trace-output <walk_dir>/reaction_trace.json
+python tools/novel_reader_walk_check.py <walk_dir>/<session_id> \
+  --trace-output <walk_dir>/<session_id>/reaction_trace.json
 ```
 
-checkerのERRORが0であることを確認してから完了とする。定量化前の旧エントリを移行する場合だけ `--allow-missing-reaction` を付け、WARNINGが残る移行途中であることを記録する。定量化を新規に始めたセッションでは、`--allow-missing-reaction` なしで終了コード0になることを完了条件とする。
+checkerのERRORが0であることを確認してから完了とする。定量化前の旧エントリを移行する場合だけ `--allow-missing-reaction` を付け、WARNINGが残る移行途中であることを記録する。定量化を新規に始めたセッションでは、`--allow-missing-reaction` なしで終了コード0になることを完了条件とする。旧ルート形式の確認に使う `--legacy-root` は通常の完了条件に使わない。
 
 定量化モードでは、同じ `(session_id, persona_id, scene_id)` を二度登録しない。同じペルソナの再読は `session_id` を変え、旧エントリを保持する。
 
@@ -113,15 +117,15 @@ checkerのERRORが0であることを確認してから完了とする。定量�
 
 - 進めた範囲（開始場面〜終了場面、件数）
 - 通しの感想要約 2〜6行
-- 保存先パス（`walk/journal.md` と対象ペルソナの状態ファイル。既定は `walk/state.md`、追加ペルソナは `walk/state/<persona_id>.md`）
-- 定量化モードでtraceを生成した場合は `walk/reaction_trace.json` の保存先
+- 保存先パス（`walk/<session_id>/journal.md` と `walk/<session_id>/state.md`）
+- 定量化モードでtraceを生成した場合は `walk/<session_id>/reaction_trace.json` の保存先
 - 範囲指定で途中停止した場合のみ「続きの範囲を指定するか、残り全部を読むか」
 
 ジャーナル全文はチャットに出さない。点数・改善点リストは出さない。
 
 ### 読了
 
-指定範囲の最終場面を追記したあと、対象ペルソナが作品本文の最終場面まで到達していれば、そのペルソナの状態ファイルの **読了** を完了にする。既定ペルソナは `state.md`、追加ペルソナは `state/<persona_id>.md` へ記録する。途中範囲で止めた場合は読了にしない。
+指定範囲の最終場面を追記したあと、対象セッションが作品本文の最終場面まで到達していれば、`walk/<session_id>/state.md` の **読了** を完了にする。途中範囲で止めた場合は読了にしない。
 
 ## 禁止
 

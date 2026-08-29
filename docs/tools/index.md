@@ -313,21 +313,25 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
 
 ### `novel_reader_walk_check.py` — Reader Walk 反応ブロック検証・山谷trace生成
 
-Reader Walk の `journal.md` にある反応メタデータを、必須キー・固定順・値域・タグ語彙・重複キーについて検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
+Reader Walk のセッションディレクトリにある `journal.md` の反応メタデータを、必須キー・固定順・値域・タグ語彙・重複キー・セッション境界について検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
 
 ```bash
-# journal.mdを検証する
-python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md
+# セッションディレクトリを検証する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id>
 
-# 検証済みのtraceを生成する
-python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md \
-  --trace-output novels/NNN_作品名/_reader/walk/reaction_trace.json
+# 検証済みのtraceを同じセッションディレクトリへ生成する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> \
+  --trace-output novels/NNN_作品名/_reader/walk/<session_id>/reaction_trace.json
 
-# 定量化前の旧エントリをWARNINGとして許容する
-python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md --allow-missing-reaction
+# 定量化前の既存エントリをWARNINGとして許容する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> --allow-missing-reaction
+
+# 移行前のルート直下journalを一時的に検証する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk \
+  --legacy-root --allow-missing-reaction
 ```
 
-`journal.md` が正本で、`reaction_trace.json` は生成物です。終了コードは 0（OK）/ 1（ERROR）/ 2（WARNING）/ 3（対象なし）です。
+`<session_id>/journal.md` が正本で、`<session_id>/reaction_trace.json` は生成物です。終了コードは 0（OK）/ 1（ERROR）/ 2（WARNING）/ 3（対象なし）です。`walk/` を指定して複数セッションを一つのtraceへ統合することはできません。
 
 ### `novel_evaluation_prepare.py` — 評価セッション準備
 
