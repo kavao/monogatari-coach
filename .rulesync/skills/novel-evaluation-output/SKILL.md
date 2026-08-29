@@ -178,5 +178,6 @@ Editor Score 実施後は、作品 `_meta.md` の「評価・足切り履歴」�
 
 - 横断正本: `.rulesync/rules/workflow-specification.md`（評価ファイル命名と役割・住み分け・長文閾値）
 - 足切りスキル: `.rulesync/skills/novel-reader-output/SKILL.md`
+- 読み進み感想: `.rulesync/skills/novel-reader-walk/SKILL.md`
 - 詳細仕様: `.rulesync/rules/workflow-specification.md`（Editor Score / Consistency Audit）
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

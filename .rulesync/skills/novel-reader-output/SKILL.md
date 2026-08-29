@@ -150,4 +150,5 @@ G3（全文）評価で全文一括読み込みが困難な場合（目安: **�
 
 - 概念正本: `.rulesync/rules/workflow-specification.md`（評価出力の保存先）
 - 詳細仕様: `.rulesync/rules/workflow-specification.md`（First Reader / Interest Check）
+- 読み進み感想: **`novel-reader-walk`**
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

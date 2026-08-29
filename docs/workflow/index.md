@@ -28,7 +28,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **出版準備（Phase 1）**: [Publishing Package](publishing-package.md) — 本文・付属原稿・挿絵・権利・奥付を点検し、入稿入力を lockfile で凍結する
 - **表紙合成・題字（Phase 1.5）**: [表紙合成・題字ロゴ](cover-composition.md) — 題字方針（組版／logo_asset）→ `cover.yaml` → review → proof へ
 - **紙書籍 proof（Phase 2A）**: [紙書籍 proof PDF](paper-proof-export.md) — lock済み入力から縦書き本文PDF（`bunko` / `jis_b5`）を生成・検査する
-- **評価（足切り・Editor Score・一貫性監査）**: [Reader Output](reader-output.md) — 下読み・足切り・Editor Score・Consistency Audit・Synopsis の保存先・操作ツール一覧
+- **評価（足切り・読み進み・Editor Score・一貫性監査）**: [Reader Output](reader-output.md) — 下読み・足切り・Reader Walk・Editor Score・Consistency Audit・Synopsis の保存先・操作ツール一覧
 - **運用の骨格**: [自己発展型ルールガバナンス](self-evolving-governance.md)
 
 運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。

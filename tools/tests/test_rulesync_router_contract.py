@@ -67,6 +67,7 @@ def test_workflow_specification_keeps_relocated_mode_contracts() -> None:
         "First Reader Mode",
         "Editor Score Mode",
         "Consistency Audit Mode",
+        "Reader Walk Mode",
         "画像生成（txt2img）の事前確認",
     )
     missing = [heading for heading in required_headings if heading not in specification]

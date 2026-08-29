@@ -311,6 +311,24 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
 
 詳しい評価フローは [Reader Output](../workflow/reader-output.md) を参照してください。
 
+### `novel_reader_walk_check.py` — Reader Walk 反応ブロック検証・山谷trace生成
+
+Reader Walk の `journal.md` にある反応メタデータを、必須キー・固定順・値域・タグ語彙・重複キーについて検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
+
+```bash
+# journal.mdを検証する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md
+
+# 検証済みのtraceを生成する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md \
+  --trace-output novels/NNN_作品名/_reader/walk/reaction_trace.json
+
+# 定量化前の旧エントリをWARNINGとして許容する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/journal.md --allow-missing-reaction
+```
+
+`journal.md` が正本で、`reaction_trace.json` は生成物です。終了コードは 0（OK）/ 1（ERROR）/ 2（WARNING）/ 3（対象なし）です。
+
 ### `novel_evaluation_prepare.py` — 評価セッション準備
 
 評価を始める前に、章別文字数・既存評価ファイルの一覧・frontmatter テンプレートを表示します。

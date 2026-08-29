@@ -22,6 +22,7 @@
 | `novel_synopsis_for_review.md` | 長文評価前処理用の客観的あらすじ（400字・ネタバレ可。30,000字超作品で推奨） |
 | `consistency_audit.md` | 複数章の設定・口調・時系列の一貫性監査（表形式。スキル: `novel-evaluation-output`） |
 | `standard_reader.md` | 一般読者視点の興味判定軸 |
+| `reader_walk.md` | 読み進み感想の書き方（一人称・既読のみ・作品評価点なし。任意のペルソナ反応メタデータを含む。スキル: `novel-reader-walk`） |
 | `meta.md` | メタデータ管理のフォーマット（§II 評価・足切り履歴を含む） |
 
 **入れないもの**: ツールのコマンド・プロバイダ設定・環境変数などの運用情報（→ `docs/` へ）

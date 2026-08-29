@@ -39,6 +39,8 @@
    - First Reader Modeの記述を参考にする。ログの出力も必ず行う。
 9. standard_reader.md
    - 一般読者の「興味」と「第一印象」を判定するためのプロンプト。ペルソナに基づき、冒頭の掴みや読み飛ばしの有無をシビアに評価する。
+9.5. reader_walk.md
+   - 一般読者ペルソナが場面ごとに感想と突っ込みを残す。既定は未読の残り全部。作品評価は採点せず、必要時だけペルソナ反応メタデータを記録する。スキル **novel-reader-walk**。
 10. tag.md
    - キャラクターごとの画像タグを作成する。新規運用ではスキル **manga-prompt-ir** を優先し、`tag/characters/<character_id>.yaml` を人間編集用の正本、`tag/<romaji>.md` を既存バッチ互換出力として扱う
    - `tag/<romaji>.md` の見出し・**Danbooru Tags** 行の置き方は、Forge 一括生成（`tools/image_provider_novel_tag_batch.py`）と整合させるため、同ファイル内「Markdown ファイル形式（機械抽出と整合）」およびスキル **novel-tag-md-format** を参照

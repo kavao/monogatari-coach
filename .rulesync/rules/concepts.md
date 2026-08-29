@@ -22,6 +22,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。
+- 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/` へ追記してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。
 
 ## Plan Mode の完了
 
@@ -42,5 +43,5 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | --- | --- |
 | Plan / Source Material / Writing / Refinement | 該当スキルと `workflow-specification.md` |
 | Tag / Manga / Illustration / Cover / Publishing | 該当スキルと `workflow-specification.md` |
-| Reader / Editor Score / Consistency Audit | `novel-reader-output` / `novel-evaluation-output` |
+| Reader / Editor Score / Consistency Audit / Reader Walk | `novel-reader-output` / `novel-evaluation-output` / `novel-reader-walk` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |

@@ -37,7 +37,7 @@
 - [紙書籍 proof PDF（Phase 2A）](workflow/paper-proof-export.md)
   lock 済みの出版入力から縦書き本文 proof（`bunko` / `jis_b5`）を生成し、PDF を機械検査する手順
 - [Reader Output](workflow/reader-output.md)
-  下読み・書評・興味判定の保存先とチャット要約の扱い
+  下読み・書評・興味判定・読み進み感想の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
   リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)
