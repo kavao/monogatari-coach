@@ -128,3 +128,4 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 - 本文保存: `.rulesync/skills/novel-text-file-output/SKILL.md`
 - 操作説明: `docs/workflow/planning.md`
 - 受け入れ条件: `docs/developer-verification.md`（Plan Mode Gate A / Gate B）
+- 任意参照（完了条件ではない）: 説得力の配分は `_how_to.example/episode/general/episode_reality.md`、失敗の許容は `episode_hindrance.md`（作業用があれば `_how_to/episode/general/`）

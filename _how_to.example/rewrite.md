@@ -94,3 +94,5 @@
 
 - 追記
 文字数については、UTF-8の全角文字を基準に考えること。ex. "四字熟語" は4文字です
+
+説明の力みや場面密度のずれを疑うときは、任意で `_how_to.example/episode/general/episode_reality.md` の診断を参照してよい。

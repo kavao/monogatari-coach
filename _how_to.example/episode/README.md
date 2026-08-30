@@ -4,8 +4,15 @@
 
 | 系統 | 入口 | 用途 |
 |------|------|------|
-| general | [general/episode_.md](general/episode_.md) | 型・職業・対話フレーム |
+| general | [general/episode_.md](general/episode_.md) | 型・職業・対話・設計診断 |
 | common | [common/epsode_common.md](common/epsode_common.md) | 恋愛・親愛・描写の厚み（**抜粋版**） |
+
+general の設計技法（抽選 JSON の対象外）:
+
+- [序盤／中盤／終盤／多人数テンポ](general/episode_tempo_ensemble.md)
+- [展開エンジン／運用カード](general/episode_engine_map.md)
+- [リアリティの設計](general/episode_reality.md)
+- [足を引っ張るキャラクターの設計](general/episode_hindrance.md)
 
 初回セットアップ例:
 

@@ -1,6 +1,6 @@
 # episode_（一般エピソード技法・索引）
 
-キャラクター設計・ジャンル型・職業群像・対話技法の正本は、役割ごとに次の5ファイルへ分割しました（`episode_.md` 単体の再整備・2026-06-29）。**本文の欠落は意図していません。** 旧来の1ファイル参照は、この索引から該当カテゴリーを開いてください。
+一般エピソード技法の正本は、役割ごとの分割ファイルで管理しています（`episode_.md` 単体の再整備・2026-06-29）。**本文の欠落は意図していません。** 旧来の1ファイル参照は、この索引から該当カテゴリーを開いてください。
 
 | 記号 | ファイル | 内容 |
 |------|----------|------|
@@ -12,6 +12,8 @@
 | E | [episode_social.md](episode_social.md) | 社会心理参照（ステレオタイプ注意付き） |
 | F | [episode_tempo_ensemble.md](episode_tempo_ensemble.md) | 序盤／中盤／終盤／多人数テンポ（密度の対になる指針） |
 | G | [episode_engine_map.md](episode_engine_map.md) | 展開エンジン表・運用カード・昭和的勢い展開（E2） |
+| H | [episode_reality.md](episode_reality.md) | リアリティの設計（説得力の配分・帰結払い・力み検出） |
+| I | [episode_hindrance.md](episode_hindrance.md) | 足を引っ張るキャラクターの設計（失敗の許容・ヘイト返済） |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 

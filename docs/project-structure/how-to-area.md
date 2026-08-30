@@ -12,6 +12,8 @@
 |-----------|------|
 | `novelcore.md` | 小説の文法・構成の一般原則 |
 | `novel_structure.md` | 物語構造のパターン集 |
+| `episode/general/episode_reality.md` | リアリティの設計（説得力の配分・帰結払い・力み検出）。雛形は `_how_to.example/episode/general/episode_reality.md` |
+| `episode/general/episode_hindrance.md` | 足を引っ張るキャラクターの設計（失敗の許容・ヘイト返済）。雛形は `_how_to.example/episode/general/episode_hindrance.md` |
 | `manga.md` | 漫画のコマ割り・演出の作法（ツールの検証・バッチ・export のコマンド詳細は [`docs/image-generation/manga-prompt-ir.md`](../image-generation/manga-prompt-ir.md)、互換 Step 長文テンプレは [`manga-tag-generation.md`](../image-generation/manga-tag-generation.md)） |
 | `manga_tag.md` | 漫画タグ生成のルール・形式（英語タグ語彙・置き換え。Step1／`prompt_tags` 中心） |
 | `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |

@@ -83,3 +83,4 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 - 画像生成の計画・承認・完了検証: **`image-provider（旧 forge-txt2img）`**
 - 完了条件の横断正本: **`.rulesync/rules/concepts.md`**
 - プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode と画像生成の事前確認
+- 任意参照（完了条件ではない）: 場面密度・力みは `_how_to.example/episode/general/episode_reality.md`、失敗の許容は `episode_hindrance.md`
