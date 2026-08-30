@@ -137,21 +137,26 @@ G3（全文）で合計30,000字超の場合は、Synopsis を先行してから
 
 ### 反応メタデータを記録する場合
 
-ペルソナごとの反応を比較したいときは、感想本文の後ろに次の7項目を固定順で記録します。これは作品の良し悪しを採点する点数ではなく、その場面でのペルソナ反応です。
+ペルソナごとの反応を比較したいときは、`journal.md` に反応メタデータを記録します。これは作品の良し悪しを採点する点数ではなく、その場面でのペルソナ反応です。
+
+`persona_id` と `session_id` は1つの `journal.md`（＝1セッションディレクトリ）内で常に同じ値なので、ファイル冒頭に1回だけ書きます。
 
 ```markdown
-- **scene_id**: `ch01-003`
+# Reader Walk ジャーナル
+
 - **persona_id**: `000_default`
 - **session_id**: `20260830_000_default`
-- **reaction_intensity**: `4`
-- **reaction_valence**: `mixed`
-- **reaction_tags**: `["curiosity", "tension"]`
-- **continuation_pull**: `5`
 ```
 
-`reaction_intensity` は感情の大きさ、`continuation_pull` は次を開きたい強さで、どちらも0〜5です。`reaction_valence` は `positive` / `negative` / `mixed` / `neutral`、タグは `curiosity` / `tension` / `surprise` / `joy` / `relief` / `sadness` / `anger` / `fear` / `confusion` / `boredom` / `admiration` から1〜3個をJSON配列で選び、記載順に並べます。場面アンカーは `<!-- scene: chNN-MMM -->` の形式を使い、本文に無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付けます。
+各場面には、感想本文の後ろへ1行だけの反応行を残します。
 
-ブロックの必須項目・順序・値域を検査し、既読範囲の山谷を生成するには、セッションディレクトリを指定して次を実行します。`journal.md` が正本で、trace JSONは同じセッションディレクトリの生成物です。
+```markdown
+反応: scene=ch01-003 / intensity=4 / valence=mixed / tags=curiosity,tension / pull=5
+```
+
+`intensity` は感情の大きさ、`pull` は次を開きたい強さで、どちらも0〜5です。`valence` は `positive` / `negative` / `mixed` / `neutral`、`tags` は `curiosity` / `tension` / `surprise` / `joy` / `relief` / `sadness` / `anger` / `fear` / `confusion` / `boredom` / `admiration` から1〜3個をカンマ区切り（角括弧・引用符無し）で選び、記載順に並べます。場面アンカーは `<!-- scene: chNN-MMM -->` の形式を使い、本文に無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付けます。
+
+ヘッダと反応行の必須項目・順序・値域を検査し、既読範囲の山谷を生成するには、セッションディレクトリを指定して次を実行します。`journal.md` が正本で、trace JSONは同じセッションディレクトリの生成物です。
 
 ```bash
 python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> \

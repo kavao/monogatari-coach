@@ -311,9 +311,9 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
 
 詳しい評価フローは [Reader Output](../workflow/reader-output.md) を参照してください。
 
-### `novel_reader_walk_check.py` — Reader Walk 反応ブロック検証・山谷trace生成
+### `novel_reader_walk_check.py` — Reader Walk 反応行検証・山谷trace生成
 
-Reader Walk のセッションディレクトリにある `journal.md` の反応メタデータを、必須キー・固定順・値域・タグ語彙・重複キー・セッション境界について検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
+Reader Walk のセッションディレクトリにある `journal.md` の反応メタデータ（冒頭ヘッダの `persona_id`/`session_id` と場面ごとの反応行）を、必須項目・固定順・値域・タグ語彙・`scene_id` 重複・セッション境界について検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
 
 ```bash
 # セッションディレクトリを検証する

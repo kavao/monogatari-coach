@@ -1503,11 +1503,11 @@ flowchart TD
 
 新規セッションのIDはJSTの `YYYYMMDD_HHMM_<persona_id>` とし、同じ分の衝突には `_2` 以降の連番を付ける。セッションIDまたはディレクトリを明示した場合はその既存セッションだけを再開し、指定が無い場合は対象ペルソナの読了未の最新セッションを再開する。該当セッションが無ければ新規発行する。`walk/` 直下の `journal.md` は移行前専用で、検査時だけ `--legacy-root` を付ける。
 
-定量化モードでは、各エントリの感想本文の後ろへ `scene_id` / `persona_id` / `session_id` / `reaction_intensity`（0〜5）/ `reaction_valence` / `reaction_tags`（固定語彙のJSON配列1〜3個）/ `continuation_pull`（0〜5）を固定順で追記する。これは作品評価点ではなくペルソナ反応であり、`reaction_intensity` は感情の大きさ、`continuation_pull` は次を開く強さを示す。場面IDは本文アンカーを優先し、無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付ける。キーは `(session_id, persona_id, scene_id)` とし、再読時はセッションIDを変えて旧エントリを保持する。
+定量化モードでは、`persona_id` / `session_id` を `journal.md` 冒頭のヘッダに1回だけ書く（1ファイル＝1セッション＝1ペルソナであり、場面ごとに繰り返さない）。各場面では感想本文の後ろへ、`scene` / `intensity`（0〜5）/ `valence` / `tags`（固定語彙のカンマ区切り1〜3個）/ `pull`（0〜5）を固定順で1行にまとめた反応行（`反応: scene=... / intensity=... / valence=... / tags=... / pull=...`）を追記する。これは作品評価点ではなくペルソナ反応であり、`intensity`（`reaction_intensity`）は感情の大きさ、`pull`（`continuation_pull`）は次を開く強さを示す。場面IDは本文アンカーを優先し、無い場合は入力ファイル名と場面出現順から `source_file_stem-sNNN` を決定的に付ける。重複検出は同一ファイル内の `scene_id` を対象とし、再読時はセッションIDを変えて旧エントリを保持する。
 
-`rising` / `falling` / `flat` / `peak` は `tools/novel_reader_walk_check.py` が同じセッション・ペルソナ内の場面順から導出する。差分が `+1以上` / `-1以下` / `0` をそれぞれ rising / falling / flat とし、peak は強度4以上で利用可能な前後以上の局所最大、同点の連続は先頭とする。場面IDは本文アンカーの `chNN-MMM` またはアンカー無しの `source_file_stem-sNNN` に限定する。生成する `reaction_trace.*` は副本で、`journal.md` が正本である。定量化前の既存ジャーナルは同ツールの `--allow-missing-reaction` で警告扱いにできる。
+`rising` / `falling` / `flat` / `peak` は `tools/novel_reader_walk_check.py` がヘッダの `(session_id, persona_id)` に紐づく場面順から導出する。差分が `+1以上` / `-1以下` / `0` をそれぞれ rising / falling / flat とし、peak は強度4以上で利用可能な前後以上の局所最大、同点の連続は先頭とする。場面IDは本文アンカーの `chNN-MMM` またはアンカー無しの `source_file_stem-sNNN` に限定する。生成する `reaction_trace.*` は副本で、`journal.md` が正本である。定量化前の既存ジャーナルは同ツールの `--allow-missing-reaction` で警告扱いにできる。
 
-書き方は `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）、手順はスキル **`novel-reader-walk`**、ブロック検査と trace 生成は **`tools/novel_reader_walk_check.py`** を参照する。checkerはセッションディレクトリ名と `session_id` の一致、セッション・ペルソナの混在、旧ルート形式を検査する。
+書き方は `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）、手順はスキル **`novel-reader-walk`**、ヘッダ・反応行の検査と trace 生成は **`tools/novel_reader_walk_check.py`** を参照する。checkerはセッションディレクトリ名とヘッダの `session_id` の一致、ファイル内の `scene_id` 重複、旧ルート形式を検査する。
 
 ---
 

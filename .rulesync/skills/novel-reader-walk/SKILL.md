@@ -37,29 +37,32 @@ Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にし
 
 ## 反応メタデータ（定量化モード）
 
-ペルソナ差を比較したいときは、感想本文の直後に次の固定順・固定キーのブロックを追記する。これは作品の評価点ではなく、**そのペルソナが既読場面で受けた反応の記録**である。通常の Reader Walk と同様、数値をチャットへ出さない。
+ペルソナ差を比較したいときは、`journal.md` に反応メタデータを記録する。これは作品の評価点ではなく、**そのペルソナが既読場面で受けた反応の記録**である。通常の Reader Walk と同様、数値をチャットへ出さない。
+
+`persona_id` と `session_id` は1つの `journal.md`（＝1セッションディレクトリ）内で常に同一値なので、**ファイル冒頭に1回だけ**書く。
 
 ```markdown
-- **scene_id**: `ch01-003`
+# Reader Walk ジャーナル
+
 - **persona_id**: `000_default`
 - **session_id**: `20260830_000_default`
-- **reaction_intensity**: `4`
-- **reaction_valence**: `mixed`
-- **reaction_tags**: `["curiosity", "tension"]`
-- **continuation_pull**: `5`
 ```
 
-- `scene_id`: `<!-- scene: chNN-MMM -->` のアンカー値を優先する。アンカー値は `chNN-MMM` の形式にする。無い場合は、入力本文のファイル名（拡張子を除き、ID許可文字以外を `_` に置換）と場面出現順をつないだ `source_file_stem-sNNN`（例: `novel_text01-s001`）とする。見出し文言を集計キーにしない。
-- `persona_id`: `readers/` のペルソナID。
-- `session_id`: 一つの読み進みセッションを識別する。同じペルソナの再読は新しい値にする。
-- `reaction_intensity`: 感情の大きさ。0〜5の整数で、0はほぼ無反応、3は感情の動きが明確、5は強い感情のピーク。怒り・不安・悲しみも含む。
-- `reaction_valence`: `positive` / `negative` / `mixed` / `neutral` のいずれか。
-- `reaction_tags`: 固定語彙から1〜3個をJSON配列で記録する。順序は `curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` とする。`reaction_valence` とタグの組み合わせは独立項目として許容する。
-- `continuation_pull`: 次を読みたい強さ。0〜5の整数で、0は止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。感情の強さとは分けて記録する。
+各場面では、感想本文の後ろに**1行だけ**の反応行を置く。
 
-定量化モードでは7項目を必須とする。既存の定量化前ジャーナルを検査するときだけ `python tools/novel_reader_walk_check.py <session_dir> --allow-missing-reaction` で反応ブロックの無い旧エントリをWARNINGとして許容できる。移行前の `walk/journal.md` を検査する場合は、さらに `--legacy-root` を付ける。
+```markdown
+反応: scene=ch01-003 / intensity=4 / valence=mixed / tags=curiosity,tension / pull=5
+```
 
-`rising` / `falling` / `flat` / `peak` は本文へ手で書かず、`tools/novel_reader_walk_check.py` が同じ `(session_id, persona_id)` のジャーナル出現順から生成する。`rising` は直前との差分が+1以上、`falling` は-1以下、`flat` は0。`peak` は強度4以上で利用可能な前後の場面以上の局所最大とし、同点の連続は先頭だけを採用する。先頭の推移は `null`、末尾や1場面だけの範囲は利用可能な近傍だけで判定する。生成した trace は `reaction_trace.json` などの副本であり、`journal.md` が正本である。
+- `scene`: `<!-- scene: chNN-MMM -->` のアンカー値を優先する。アンカー値は `chNN-MMM` の形式にする。無い場合は、入力本文のファイル名（拡張子を除き、ID許可文字以外を `_` に置換）と場面出現順をつないだ `source_file_stem-sNNN`（例: `novel_text01-s001`）とする。見出し文言を集計キーにしない。
+- `intensity`（`reaction_intensity`）: 感情の大きさ。0〜5の整数で、0はほぼ無反応、3は感情の動きが明確、5は強い感情のピーク。怒り・不安・悲しみも含む。
+- `valence`（`reaction_valence`）: `positive` / `negative` / `mixed` / `neutral` のいずれか。
+- `tags`（`reaction_tags`）: 固定語彙から1〜3個をカンマ区切り（角括弧・引用符無し）で記録する。順序は `curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` とする。`valence` とタグの組み合わせは独立項目として許容する。
+- `pull`（`continuation_pull`）: 次を読みたい強さ。0〜5の整数で、0は止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。感情の強さとは分けて記録する。
+
+フィールド順は `scene` → `intensity` → `valence` → `tags` → `pull` で固定し、` / ` 区切りの1行に収める。定量化モードでは、ヘッダ2項目とこの反応行を必須とする。既存の定量化前ジャーナルを検査するときだけ `python tools/novel_reader_walk_check.py <session_dir> --allow-missing-reaction` で反応行の無い旧エントリをWARNINGとして許容できる。移行前の `walk/journal.md` を検査する場合は、さらに `--legacy-root` を付ける。
+
+`rising` / `falling` / `flat` / `peak` は本文へ手で書かず、`tools/novel_reader_walk_check.py` がヘッダの `(session_id, persona_id)` に紐づくジャーナル出現順から生成する。`rising` は直前との差分が+1以上、`falling` は-1以下、`flat` は0。`peak` は強度4以上で利用可能な前後の場面以上の局所最大とし、同点の連続は先頭だけを採用する。先頭の推移は `null`、末尾や1場面だけの範囲は利用可能な近傍だけで判定する。生成した trace は `reaction_trace.json` などの副本であり、`journal.md` が正本である。
 
 ## セッション手順
 
@@ -111,7 +114,7 @@ python tools/novel_reader_walk_check.py <walk_dir>/<session_id> \
 
 checkerのERRORが0であることを確認してから完了とする。定量化前の旧エントリを移行する場合だけ `--allow-missing-reaction` を付け、WARNINGが残る移行途中であることを記録する。定量化を新規に始めたセッションでは、`--allow-missing-reaction` なしで終了コード0になることを完了条件とする。旧ルート形式の確認に使う `--legacy-root` は通常の完了条件に使わない。
 
-定量化モードでは、同じ `(session_id, persona_id, scene_id)` を二度登録しない。同じペルソナの再読は `session_id` を変え、旧エントリを保持する。
+定量化モードでは、同じファイル（＝同じ `session_id`・`persona_id`）内で同じ `scene_id` を二度登録しない。同じペルソナの再読は `session_id` を変えて新しいセッションディレクトリに追記し、旧エントリを保持する。
 
 ### チャットで返すもの
 

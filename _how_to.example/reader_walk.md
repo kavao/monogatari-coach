@@ -46,26 +46,29 @@
 
 # 反応メタデータ（定量化を有効にした場合）
 
-感想本文の後ろに、次の固定順・固定キーの反応ブロックを置く。これは作品の評価点ではなく、**そのペルソナがその場面で受けた反応の記録**である。チャットには出さず、`journal.md` の機械検証対象として保存する。
+`persona_id` と `session_id` は1つの `journal.md`（＝1セッションディレクトリ）内で常に同一値なので、**ファイル冒頭に1回だけ**書く。
 
 ```markdown
-- **scene_id**: `ch01-003`
+# Reader Walk ジャーナル
+
 - **persona_id**: `000_default`
 - **session_id**: `20260830_000_default`
-- **reaction_intensity**: `4`
-- **reaction_valence**: `mixed`
-- **reaction_tags**: `["curiosity", "tension"]`
-- **continuation_pull**: `5`
 ```
 
-- `scene_id`: 本文の `scene` アンカー（`chNN-MMM`形式）を優先する。アンカーが無い場合は `source_file_stem-sNNN`（ファイル名と3桁の場面出現順）を使い、見出し文言をIDにしない。
-- `persona_id`: `readers/` のペルソナIDを使う。同じ場面でもペルソナが違えば別の値を記録する。
-- `session_id`: 読み進みセッションを識別する。同じペルソナの再読は新しいセッションIDにする。
-- `reaction_intensity`: 感情の大きさ。0〜5の整数で、0はほぼ無反応、3は感情の動きが明確、5は強い感情のピーク。怒り・不安・悲しみも含む。
-- `reaction_valence`: `positive` / `negative` / `mixed` / `neutral` から1つ選ぶ。
-- `reaction_tags`: 固定語彙から1〜3個を選び、`curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` の順でJSON配列にする。空配列・未知語・重複・順序違反は許可しない。`reaction_valence` とタグの組み合わせは独立項目として許容する。
-- `continuation_pull`: 次を読みたい強さ。0〜5の整数で、0は読むのを止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。
+各場面では、感想本文の後ろに**1行だけ**の反応行を置く。これは作品の評価点ではなく、**そのペルソナがその場面で受けた反応の記録**である。チャットには出さず、`journal.md` の機械検証対象として保存する。
 
-`reaction_intensity` の `rising` / `falling` / `flat` / `peak` は本文へ手で書かず、検証ハーネスが同じ `session_id`・`persona_id` 内のジャーナル出現順から導出する。差分が `+1以上` / `-1以下` / `0` を rising / falling / flat とし、先頭は `null`。peak は強度4以上で利用可能な前後以上の局所最大、同点の連続は先頭、末尾は利用可能な近傍だけ、1場面だけならその場面を判定対象とする。
+```markdown
+反応: scene=ch01-003 / intensity=4 / valence=mixed / tags=curiosity,tension / pull=5
+```
+
+- `scene`: 本文の `scene` アンカー（`chNN-MMM`形式）を優先する。アンカーが無い場合は `source_file_stem-sNNN`（ファイル名と3桁の場面出現順）を使い、見出し文言をIDにしない。
+- `intensity`（`reaction_intensity`）: 感情の大きさ。0〜5の整数で、0はほぼ無反応、3は感情の動きが明確、5は強い感情のピーク。怒り・不安・悲しみも含む。
+- `valence`（`reaction_valence`）: `positive` / `negative` / `mixed` / `neutral` から1つ選ぶ。
+- `tags`（`reaction_tags`）: 固定語彙から1〜3個を選び、`curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` の順でカンマ区切り（角括弧・引用符無し）にする。空・未知語・重複・順序違反は許可しない。`valence` とタグの組み合わせは独立項目として許容する。
+- `pull`（`continuation_pull`）: 次を読みたい強さ。0〜5の整数で、0は読むのを止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。
+
+フィールド順は `scene` → `intensity` → `valence` → `tags` → `pull` で固定し、` / ` 区切りの1行に収める。同じペルソナが同じ場面を再読するときは、旧エントリを消さず新しいセッションディレクトリ（新しい `session_id` のヘッダを持つ `journal.md`）へ追記する。
+
+`reaction_intensity` の `rising` / `falling` / `flat` / `peak` は本文へ手で書かず、検証ハーネスがヘッダの `session_id`・`persona_id` に紐づくジャーナル出現順から導出する。差分が `+1以上` / `-1以下` / `0` を rising / falling / flat とし、先頭は `null`。peak は強度4以上で利用可能な前後以上の局所最大、同点の連続は先頭、末尾は利用可能な近傍だけ、1場面だけならその場面を判定対象とする。
 
 `walk/` 直下の `journal.md`、`state.md`、`reaction_trace.json` は移行前の旧形式であり、新規の保存先には使わない。

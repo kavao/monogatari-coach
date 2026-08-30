@@ -1,11 +1,11 @@
 # Reader Walk ジャーナル
 
 - **persona_id**: `000_default`
-- **session_id**: `s1`
+- **session_id**: `session_s1`
 
 ## scene one
 
-一人称の感想。
+セッションディレクトリ fixture の感想。
 
 反応: scene=ch01-001 / intensity=2 / valence=mixed / tags=curiosity / pull=4
 
