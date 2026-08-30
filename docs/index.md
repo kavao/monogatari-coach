@@ -14,6 +14,8 @@
   固定版バイナリの取得、ルール生成、整合確認
 - [開発者向け検証コマンド](developer-verification.md)
   変更種別ごとの確認、コミット前の総合ゲート、実クライアント観測
+- [METRON 技術詳細](architecture/metron.md)
+  Beat 単位の本文計測、失敗判定、V1 局所修復の技術仕様
 - [Image Generation](image-generation/index.md)
   Forge / NovelAI / Grok の使い分け、既定値、バッチ生成
 - [Manga prompt IR / パイプライン](image-generation/manga-prompt-ir.md)

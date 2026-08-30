@@ -24,6 +24,12 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
 
+## METRON V1 修復不変条件
+
+- METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`、`BeatThin` は別統計の `beat_thin_ratio` と構造予算で判定する。両方の閾値を同じ値にしない。
+- Expand は現在の出来事・結末・視点を変更せず、元文残存率が `expand_retention_threshold` 未満の候補を適用しない。同一 Beat の試行は2回を上限とする。
+- Beat 修復後は、Beat マーカーを保持した結合校正を最大1回行い、校正後に再計測する。既存の `FINAL.md` は上書きせず、採用稿から Beat / fact マーカーを除去して保存する。
+
 ## Plan Mode の完了
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。

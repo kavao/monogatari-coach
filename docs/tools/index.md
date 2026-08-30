@@ -8,6 +8,77 @@
 
 ## テキスト・プロジェクト管理
 
+### `metron_cli.py` — METRON V0/V1 の計測と局所修復計画
+
+METRON は Scene を Beat に分け、本文の構造予算を計測してレポートします。V1 の判定・修復処理は provider 呼び出しを直接行わず、注入可能な生成境界として提供します。
+
+まず契約と BeatPlan を検証します。
+
+```bash
+python tools/metron_cli.py validate \
+  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml
+```
+
+マーカー付き draft を解析し、run ごとの `draft.NNN.md`、`spans.NNN.yaml`、`metrics.NNN.yaml`、`regression.NNN.yaml` を保存します。既存 run のファイルは上書きしません。
+
+```bash
+python tools/metron_cli.py analyze \
+  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --draft novels/NNN_作品名/_metron/ch03-002/marked.md \
+  --output-dir novels/NNN_作品名/_metron/ch03-002 \
+  --run 1 --model <model-id>
+```
+
+解析結果から著者向けレポートを作成します。
+
+```bash
+python tools/metron_cli.py report \
+  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --output novels/NNN_作品名/_metron/ch03-002/report.001.md
+```
+
+キャリブレーションは、課金や外部生成を伴わない dry-run を先に確認します。dry-run は計画だけを表示し、本番生成を行いません。
+
+```bash
+python tools/metron_cli.py calibrate --model <model-id> --dry-run
+```
+
+承認済みのローカル fixture を集計するときは `--samples` を指定します。`--write` を付けた場合だけ `config/metron_models.yaml` を更新します。
+
+```bash
+python tools/metron_cli.py calibrate --model <model-id> \
+  --samples _metron-fixtures/calibration.yaml \
+  --config config/metron_models.yaml \
+  --expand-retention-threshold 0.8 --approve --write
+```
+
+`--expand-retention-threshold` は、Expand 候補に残す元文の最低残存率を設定します。`--approve` は、承認済みの本番キャリブレーション結果を反映するときだけ指定します。承認なしの集計出力・書込みでは、モデル設定の `calibrated: false` を変更しません。
+
+キャリブレーション済みモデルの V1 判定と生成単位計画を確認できます。
+
+```bash
+python tools/metron_cli.py classify \
+  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --spans novels/NNN_作品名/_metron/ch03-002/spans.001.yaml \
+  --config config/metron_models.yaml --model <model-id>
+
+python tools/metron_cli.py plan \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --config config/metron_models.yaml --model <model-id>
+```
+
+判定で修復対象になった場合の provider 呼び出しは、アプリケーション側から `repair_scene()` のコールバックへ接続します。採用稿を保存するときは、Beat / fact コメントを除去してから `FINAL.md` へ書き出します。
+
+```bash
+python tools/metron_cli.py finalize \
+  --draft novels/NNN_作品名/_metron/ch03-002/draft.002.md \
+  --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
+```
+
 ### `book_review.py` / `book_lock.py` / `book_diff.py` — 出版パッケージ Phase 1
 
 作品フォルダ内の `book.yaml` と `rights.yaml` を基に、本文・付属原稿・挿絵・権利・奥付を検証し、入稿用入力一式を lockfile で管理します。PDF / EPUB の組版は行いません。

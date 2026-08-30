@@ -1,0 +1,12 @@
+# METRON のモデル別キャリブレーション。実測・承認前は値を有効化しない。
+models:
+  "<model-id>":
+    calibrated: false
+    calibrated_at: null
+    reliable_span_chars: null
+    missing_span_ratio: null
+    beat_thin_ratio: null
+    ending_rush_threshold: null
+    too_short_ratio: null
+    expand_retention_threshold: null
+    samples: 0
