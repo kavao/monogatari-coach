@@ -1,0 +1,43 @@
+samples:
+  # 102 第1稿（metrics.001）。span_ratios は chars/chars_hint。
+  # budget_ratios は min(段落下限比, 会話下限比)。同じリストを複製しない。
+  - model: local-writer
+    chars_hint: 4000
+    observed_chars: 4941
+    span_ratios: [1.229, 1.272, 1.23, 1.206]
+    budget_ratios: [2.333, 2.25, 4.0, 3.833]
+    head_tail_ratio: 0.9740103958416634
+    scene_ratio: 1.23525
+    finish_reason: null
+  - model: local-writer
+    chars_hint: 4000
+    observed_chars: 4362
+    span_ratios: [1.005, 0.983, 1.344, 1.026]
+    budget_ratios: [2.333, 3.0, 2.75, 3.333]
+    head_tail_ratio: 1.1921529175050303
+    scene_ratio: 1.0905
+    finish_reason: null
+  - model: local-writer
+    chars_hint: 4000
+    observed_chars: 3041
+    span_ratios: [0.773, 0.747, 0.667, 0.85]
+    budget_ratios: [1.333, 2.0, 2.0, 3.167]
+    head_tail_ratio: 0.9980263157894737
+    scene_ratio: 0.76025
+    finish_reason: null
+  - model: local-writer
+    chars_hint: 4000
+    observed_chars: 3238
+    span_ratios: [0.753, 0.894, 0.901, 0.686]
+    budget_ratios: [2.0, 2.333, 1.75, 2.5]
+    head_tail_ratio: 0.9635701275045537
+    scene_ratio: 0.8095
+    finish_reason: null
+  - model: local-writer
+    chars_hint: 4000
+    observed_chars: 2755
+    span_ratios: [0.7, 0.581, 0.629, 0.841]
+    budget_ratios: [2.0, 1.333, 1.333, 2.25]
+    head_tail_ratio: 1.1475409836065575
+    scene_ratio: 0.68875
+    finish_reason: null

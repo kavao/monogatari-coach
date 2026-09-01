@@ -1,6 +1,5 @@
-# METRON のモデル別キャリブレーション。実測・承認前は値を有効化しない。
 models:
-  "<model-id>":
+  <model-id>:
     calibrated: false
     calibrated_at: null
     reliable_span_chars: null
@@ -10,3 +9,13 @@ models:
     too_short_ratio: null
     expand_retention_threshold: null
     samples: 0
+  local-writer:
+    calibrated: true
+    calibrated_at: '2026-09-02'
+    reliable_span_chars: 4000
+    missing_span_ratio: 0.35
+    beat_thin_ratio: 2.0
+    ending_rush_threshold: 0.9740103958416634
+    too_short_ratio: 0.76025
+    expand_retention_threshold: 0.8
+    samples: 5

@@ -14,6 +14,23 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 _SCENE_ID_PATTERN = r"^ch\d{2,}-\d{3,}$"
 _BEAT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9_-]*$"
 
+DEFAULT_SCENE_CHARS_FLOOR = 4000
+INSTRUCTION_OVERSHOOT = 1.15
+
+
+def instruction_target_chars(
+    floor: int,
+    *,
+    overshoot: float = INSTRUCTION_OVERSHOOT,
+) -> int:
+    """検査の床より多めの指示目標を返す。生成は控えめで足りなくなるため。"""
+
+    if floor < 1:
+        raise ValueError("floor must be positive")
+    if overshoot < 1:
+        raise ValueError("overshoot must be at least 1")
+    return max(floor, round(floor * overshoot))
+
 
 class StrictModel(BaseModel):
     """未知キーを黙って捨てず、契約の typo を検出する基底モデル。"""
@@ -79,13 +96,21 @@ class BeatBudget(StrictModel):
 
 
 class PromptBudget(StrictModel):
-    """Writer に渡す離散要素予算。計測専用 chars_hint は意図的に持たない。"""
+    """Writer に渡す離散要素予算と分量の床・指示目標。"""
 
     paragraphs: tuple[int, int | None]
     dialogue_turns: tuple[int, int | None]
     sensory: int = Field(ge=0)
     interiority: int = Field(ge=0)
     new_facts: int = Field(ge=0)
+    chars_floor: int = Field(gt=0)
+    chars_instruction: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_instruction_at_least_floor(self) -> "PromptBudget":
+        if self.chars_instruction < self.chars_floor:
+            raise ValueError("chars_instruction must be at least chars_floor")
+        return self
 
 
 class Beat(StrictModel):
@@ -99,6 +124,7 @@ class Beat(StrictModel):
 
 class GenerationSpec(StrictModel):
     granularity: Literal["scene", "beat", "auto"] = "auto"
+    chars_floor: int = Field(default=DEFAULT_SCENE_CHARS_FLOOR, ge=1)
 
 
 class BeatPlan(StrictModel):

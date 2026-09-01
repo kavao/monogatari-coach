@@ -32,6 +32,7 @@ def render_report(metrics: MetricsDocument, beat_plan: BeatPlan) -> str:
         "## 場面集計",
         "",
         f"- 本文文字数: {payload.scene.chars}",
+        f"- 分量下限（chars_floor）: {beat_plan.generation.chars_floor}",
         f"- 全体比（本文 / 全 Beat の `chars_hint` 合計）: {_ratio_text(payload.scene.overall_budget_ratio)}",
         f"- Beat coverage: {'充足' if payload.scene.coverage else '未充足'}",
         f"- `head_tail_ratio`: {_ratio_text(payload.scene.head_tail_ratio)}",
@@ -54,7 +55,7 @@ def render_report(metrics: MetricsDocument, beat_plan: BeatPlan) -> str:
             lines.extend([f"### {item.id}", "", "- 計画に存在しないmetrics項目", ""])
             continue
         findings: list[str] = [
-            f"- 文字数: {item.chars}（budget ratio: {_ratio_text(item.budget_ratio)}）",
+            f"- 文字数: {item.chars}（下限 {beat.budget.chars_hint} / budget ratio: {_ratio_text(item.budget_ratio)}）",
             f"- 段落: {item.paragraphs} / 会話往復: {item.dialogue_turns}",
             f"- 感覚描写: {item.sensory} / 内面描写: {item.interiority}",
         ]

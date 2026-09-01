@@ -17,10 +17,10 @@ METRON の V1 自動修復を使うときは、次の順序を守る。
 
 1. `SceneContract`、`BeatPlan`、本文アンカーと `_metron/<scene_id>/` の対応を確認する。
 2. `config/metron_models.yaml` の対象モデルが `calibrated: true` で、`span_ratios` と `budget_ratios` を分離した承認済み閾値を持つことを確認する。未承認の設定で V1 判定へ進まない。
-3. マーカー付き draft を `analyze` し、`metrics` / `spans` / `regression` を保存してから `classify` する。`TooShort` と `GenerationTruncated` は自動修復しない。
+3. マーカー付き draft を `analyze` し、`metrics` / `spans` / `regression` を保存してから `classify` する。`GenerationTruncated` は自動修復しない。`TooShort` は分量バー（シーン `chars_floor`、Beat `chars_hint`）の未達であり、Deepen のみで自動修復する。
 4. provider を接続する場合は、ユーザー承認済みのコールバックだけを `repair_scene()` へ注入する。METRON が認証情報を読み込んだり、承認なしに外部送信したりしない。
-5. `BeatMissing` は単独再生成、`BeatThin` は Expand、`EndingRush` は末尾 Beat の単独再生成とし、EndingRush の末尾へ先に Expand を適用しない。
-6. 修復後は Beat マーカーを保持した連結校正を1回だけ行い、校正後の本文を再計測する。元文残存率未達、校正による短縮、マーカー破損は適用せず著者提示へ戻す。
+5. `BeatMissing` は単独再生成、`BeatThin` と `TooShort` は Expand / Deepen、`EndingRush` は末尾 Beat の単独再生成とする。EndingRush の末尾へ先に Expand を適用しない。`TooShort` を末尾再生成の根拠にしない。指示目標は床より多めに出す。
+6. 修復後は Beat マーカーを保持した連結校正を1回だけ行い、校正後の正規化本文を再計測する。元文残存率未達、校正による短縮、マーカー破損、Beat 順の入れ替え、同一本文の Deepen、新規文の同義反復は適用せず著者提示へ戻す。シーン `TooShort` は床に届くまで複数 Beat を Deepen する。
 7. 採用稿を `FINAL.md` へ保存するときは Beat / fact マーカーを除去し、既存の `FINAL.md` を上書きしない。本文正本 `_novel_text` へ反映する場合は、本文出力スキルの完了条件を別途満たす。
 
 ## 自己発展型ルールガバナンス

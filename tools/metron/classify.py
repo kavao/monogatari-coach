@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import Field
 
 from .calibrate import ModelCalibration
-from .models import BeatPlan, Failure, MetricsDocument, SpansDocument, StrictModel
+from .models import Beat, BeatMetrics, BeatPlan, Failure, MetricsDocument, SpansDocument, StrictModel
 from .storage import load_yaml
 
 
@@ -76,7 +76,24 @@ def require_calibration(calibration: ModelCalibration) -> ModelCalibration:
         raise CalibrationNotReady(
             "calibration is missing required values: " + ", ".join(missing)
         )
+    if calibration.missing_span_ratio == calibration.beat_thin_ratio:
+        raise CalibrationNotReady(
+            "missing_span_ratio and beat_thin_ratio must be independent values"
+        )
     return calibration
+
+
+def structural_budget_ratio(item: BeatMetrics, beat: Beat) -> float:
+    """段落・会話の下限に対する充足率。文字数比（TooShort）とは混ぜない。"""
+
+    para_low, _ = beat.budget.paragraphs
+    dlg_low, _ = beat.budget.dialogue_turns
+    ratios: list[float] = []
+    if para_low:
+        ratios.append(item.paragraphs / para_low)
+    if dlg_low:
+        ratios.append(item.dialogue_turns / dlg_low)
+    return min(ratios) if ratios else 1.0
 
 
 def _span_counts(spans: SpansDocument | None) -> dict[str, int]:
@@ -147,7 +164,8 @@ def classify_metrics(
             continue
 
         thin_reasons: list[str] = []
-        if item.budget_ratio < thin_threshold:
+        observed_structural = structural_budget_ratio(item, beat)
+        if observed_structural < thin_threshold:
             thin_reasons.append("budget_ratio")
         lower_paragraphs, _ = beat.budget.paragraphs
         lower_dialogue, _ = beat.budget.dialogue_turns
@@ -160,29 +178,38 @@ def classify_metrics(
                 Finding(
                     failure=Failure.BEAT_THIN,
                     beat_id=beat.id,
-                    observed=item.budget_ratio,
+                    observed=observed_structural,
                     threshold=thin_threshold,
                     auto_repair=True,
                     reason="structural budget under target: " + ", ".join(thin_reasons),
                 )
             )
+        if item.chars < beat.budget.chars_hint:
+            findings.append(
+                Finding(
+                    failure=Failure.TOO_SHORT,
+                    beat_id=beat.id,
+                    observed=float(item.chars),
+                    threshold=float(beat.budget.chars_hint),
+                    auto_repair=True,
+                    reason="beat is below the chars_hint length floor; deepen nuance",
+                )
+            )
 
     if not truncated:
-        too_short = thresholds.too_short_ratio
         ending_threshold = thresholds.ending_rush_threshold
-        assert too_short is not None
         assert ending_threshold is not None
-        if payload.scene.coverage and payload.scene.overall_budget_ratio is not None:
-            if payload.scene.overall_budget_ratio < too_short:
-                findings.append(
-                    Finding(
-                        failure=Failure.TOO_SHORT,
-                        observed=payload.scene.overall_budget_ratio,
-                        threshold=too_short,
-                        auto_repair=False,
-                        reason="scene is short despite complete Beat coverage",
-                    )
+        scene_floor = beat_plan.generation.chars_floor
+        if payload.scene.coverage and payload.scene.chars < scene_floor:
+            findings.append(
+                Finding(
+                    failure=Failure.TOO_SHORT,
+                    observed=float(payload.scene.chars),
+                    threshold=float(scene_floor),
+                    auto_repair=True,
+                    reason="scene is below the chars_floor; deepen nuance without changing events",
                 )
+            )
         if (
             payload.scene.head_tail_ratio is not None
             and payload.scene.head_tail_ratio < ending_threshold

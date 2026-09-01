@@ -47,11 +47,21 @@ def load_samples(path: str | Path) -> CalibrationSamples:
     return CalibrationSamples.model_validate(load_yaml(path))
 
 
-def _lower_quartile(values: list[float]) -> float | None:
+# BeatMissing は極端な短さの床。典型的な不足は TooShort / BeatThin。
+MISSING_SPAN_RATIO_CAP = 0.35
+
+
+def _lower_percentile(values: list[float], quantile: float) -> float | None:
     if not values:
         return None
+    if not 0 <= quantile <= 1:
+        raise ValueError("quantile must be between 0 and 1")
     ordered = sorted(values)
-    return ordered[max(0, floor((len(ordered) - 1) * 0.25))]
+    return ordered[max(0, floor((len(ordered) - 1) * quantile))]
+
+
+def _lower_quartile(values: list[float]) -> float | None:
+    return _lower_percentile(values, 0.25)
 
 
 def _reliable_span(samples: list[CalibrationSample]) -> int | None:
@@ -81,6 +91,12 @@ def calibrate_samples(
     if not valid:
         raise ValueError(f"no usable calibration samples for model {model_id!r}")
 
+    for sample in valid:
+        if sample.span_ratios and sample.span_ratios == sample.budget_ratios:
+            raise ValueError(
+                "span_ratios and budget_ratios must be independent measurements; "
+                f"sample for {sample.model!r} copied the same list"
+            )
     span_ratios = [ratio for sample in valid for ratio in sample.span_ratios]
     beat_ratios = [ratio for sample in valid for ratio in sample.budget_ratios]
     scene_ratios = [
@@ -95,12 +111,21 @@ def calibrate_samples(
         if sample.head_tail_ratio is not None
     ]
     reliable = _reliable_span(valid)
+    missing = _lower_percentile(span_ratios, 0.10)
+    if missing is not None:
+        missing = min(missing, MISSING_SPAN_RATIO_CAP)
+    thin = _lower_quartile(beat_ratios)
+    if missing is not None and thin is not None and missing == thin:
+        raise ValueError(
+            "missing_span_ratio and beat_thin_ratio must differ; "
+            "supply independent span_ratios and budget_ratios"
+        )
     return ModelCalibration(
         calibrated=reliable is not None and bool(span_ratios) and bool(beat_ratios),
         calibrated_at=calibrated_at or date.today(),
         reliable_span_chars=reliable,
-        missing_span_ratio=_lower_quartile(span_ratios),
-        beat_thin_ratio=_lower_quartile(beat_ratios),
+        missing_span_ratio=missing,
+        beat_thin_ratio=thin,
         ending_rush_threshold=_lower_quartile(tail_ratios),
         too_short_ratio=_lower_quartile(scene_ratios),
         expand_retention_threshold=expand_retention_threshold,

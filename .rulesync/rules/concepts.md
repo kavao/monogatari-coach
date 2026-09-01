@@ -26,9 +26,11 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## METRON V1 修復不変条件
 
-- METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`、`BeatThin` は別統計の `beat_thin_ratio` と構造予算で判定する。両方の閾値を同じ値にしない。
-- Expand は現在の出来事・結末・視点を変更せず、元文残存率が `expand_retention_threshold` 未満の候補を適用しない。同一 Beat の試行は2回を上限とする。
-- Beat 修復後は、Beat マーカーを保持した結合校正を最大1回行い、校正後に再計測する。既存の `FINAL.md` は上書きせず、採用稿から Beat / fact マーカーを除去して保存する。
+- METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`（文字数比の極端な短さ）、`BeatThin` は別統計の `beat_thin_ratio`（段落・会話の充足率）と構造予算で判定する。両方の閾値を同じ値にしない。
+- 分量バーは構造バーと別に置く。シーンは `generation.chars_floor`（既定 4000字）、Beat は `chars_hint` を床とする。未達は `TooShort` とし、Deepen（ニュアンス深化）のみで自動修復する。末尾再生成には使わない。
+- Writer / Deepen 指示は床より多めの指示目標を出す。水増しは禁止する。深化の対象は手順・制度・選択に加え、感情の変化と身体の変化、感覚・内面・会話とする。すでに書いた内容の言い換えは対象にしない。
+- Expand / Deepen は現在の出来事・結末・視点を変更せず、元文残存率が `expand_retention_threshold` 未満の候補、同一本文、文字数が増えていない候補、新規文が既存文または他の新規文と高類似の候補を適用しない。同一 Beat の試行は2回を上限とする。
+- Beat 修復後は、Beat マーカーを保持した結合校正を最大1回行い、BeatPlan 順を変えた候補は棄却する。校正後は正規化済み本文で再計測し、シーン床未達なら他 Beat も Deepen する。既存の `FINAL.md` は上書きせず、採用稿から Beat / fact マーカーを除去して保存する。
 
 ## Plan Mode の完了
 
@@ -50,4 +52,5 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | Plan / Source Material / Writing / Refinement | 該当スキルと `workflow-specification.md` |
 | Tag / Manga / Illustration / Cover / Publishing | 該当スキルと `workflow-specification.md` |
 | Reader / Editor Score / Consistency Audit / Reader Walk | `novel-reader-output` / `novel-evaluation-output` / `novel-reader-walk` |
+| METRON | `workflow-specification.md` と `docs/architecture/metron.md` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |

@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
-from .models import Beat, BeatBudget, PromptBudget
+from novel_char_count import count_chars
+
+from .models import Beat, BeatBudget, PromptBudget, instruction_target_chars
 
 
 def to_prompt_budget(budget: BeatBudget) -> PromptBudget:
-    """検査専用の ``chars_hint`` を除いた予算境界を作る。"""
+    """構造予算に、分量の床と多めの指示目標を付けて渡す。"""
 
+    floor = budget.chars_hint
     return PromptBudget(
         paragraphs=budget.paragraphs,
         dialogue_turns=budget.dialogue_turns,
         sensory=budget.sensory,
         interiority=budget.interiority,
         new_facts=budget.new_facts,
+        chars_floor=floor,
+        chars_instruction=instruction_target_chars(floor),
     )
 
 
@@ -27,7 +32,7 @@ def build_beat_prompt(
     *,
     previous_context: str | None = None,
 ) -> str:
-    """Beatの意図と離散要素予算だけを含むWriter向け指示を作る。"""
+    """Beatの意図・構造予算・分量下限を含む Writer 向け指示を作る。"""
 
     budget = to_prompt_budget(beat.budget)
     lines = [
@@ -39,6 +44,9 @@ def build_beat_prompt(
         f"会話の往復数: {_range_text(budget.dialogue_turns)}",
         f"感覚描写: 少なくとも {budget.sensory} 箇所",
         f"内面描写: 少なくとも {budget.interiority} 箇所",
+        f"本文下限: {budget.chars_floor}字（検査の床。これ未満は不足）",
+        f"指示目標: {budget.chars_instruction}字（下限より多めに書く。控えめで足りなくなるため）",
+        "水増し禁止。出来事を増やさず、手順・制度・選択に加え、感情の変化と身体の変化、感覚・内面・会話を、すでに書いた内容の言い換えではなく固有の情報で深めて下限に届ける。",
         "Beatの冒頭で状況を再説明せず、直前の文脈から続ける。",
         "指定した出来事と結末を変更しない。",
     ]
@@ -65,3 +73,7 @@ def build_beat_prompt(
         ]
     )
     return "\n".join(lines)
+
+
+def current_beat_chars(text: str) -> int:
+    return count_chars(text, strip_fm=False)
