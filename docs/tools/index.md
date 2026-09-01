@@ -79,6 +79,33 @@ python tools/metron_cli.py finalize \
   --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
 ```
 
+### `chronos_cli.py` — CHRONOS P0 の順序検査
+
+CHRONOS は物語内部の出来事順を YAML で持ち、循環だけを機械的に検出します。日付は省略できます。外部 provider は呼びません。
+
+作品フォルダへ `chronos/` 雛形を置く前に、作成予定パスを確認します。`--dry-run` ではファイルを書きません。
+
+```bash
+# 確認（dry-run）— 作成予定のパスを表示する
+python tools/chronos_cli.py init novels/NNN_作品名 --dry-run
+
+# 本番 — 空の chronos/ を作成する
+python tools/chronos_cli.py init novels/NNN_作品名
+```
+
+実行後、`novels/NNN_作品名/chronos/` に設定と空のイベントファイルができます。既にある場合は失敗します。
+
+順序の矛盾を検査します。問題がなければ `ok`、循環があれば `CHR001` とイベント ID が出ます。
+
+```bash
+python tools/chronos_cli.py check novels/NNN_作品名
+python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
+```
+
+`view` で循環があるときは CHR001 を標準エラーへ出し、終了コードは 1 です。表示順は制約順として信用しません。
+
+技術背景は [CHRONOS 技術詳細](../architecture/chronos.md) を参照してください。
+
 ### `book_review.py` / `book_lock.py` / `book_diff.py` — 出版パッケージ Phase 1
 
 作品フォルダ内の `book.yaml` と `rights.yaml` を基に、本文・付属原稿・挿絵・権利・奥付を検証し、入稿用入力一式を lockfile で管理します。PDF / EPUB の組版は行いません。

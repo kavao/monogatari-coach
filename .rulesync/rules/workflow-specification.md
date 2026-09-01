@@ -23,6 +23,16 @@ METRON の V1 自動修復を使うときは、次の順序を守る。
 6. 修復後は Beat マーカーを保持した連結校正を1回だけ行い、校正後の正規化本文を再計測する。元文残存率未達、校正による短縮、マーカー破損、Beat 順の入れ替え、同一本文の Deepen、新規文の同義反復は適用せず著者提示へ戻す。シーン `TooShort` は床に届くまで複数 Beat を Deepen する。
 7. 採用稿を `FINAL.md` へ保存するときは Beat / fact マーカーを除去し、既存の `FINAL.md` を上書きしない。本文正本 `_novel_text` へ反映する場合は、本文出力スキルの完了条件を別途満たす。
 
+## CHRONOS P0 検査手順
+
+CHRONOS の順序検査を使うときは、次を守る。
+
+1. 作品フォルダに `chronos/` を置く（`python tools/chronos_cli.py init <作品>`）。既存の `chronos/` は上書きしない。
+2. イベントは章単位 YAML に複数件収容する。必須は `id` と `title` のみ。日付は省略してよい。
+3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM は呼ばない。
+4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。
+5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` 接続も後続とする。
+
 ## 自己発展型ルールガバナンス
 
 定義:

@@ -55,3 +55,6 @@ tools_temp/*
 
 # MCP サーバー接続時に自動生成されるツールスキーマキャッシュ
 mcps/
+
+# CHRONOS 導出キャッシュ（削除しても再計算できる）
+**/chronos/.cache/

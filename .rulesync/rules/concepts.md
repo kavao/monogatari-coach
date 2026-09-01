@@ -32,6 +32,13 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - Expand / Deepen は現在の出来事・結末・視点を変更せず、元文残存率が `expand_retention_threshold` 未満の候補、同一本文、文字数が増えていない候補、新規文が既存文または他の新規文と高類似の候補を適用しない。同一 Beat の試行は2回を上限とする。
 - Beat 修復後は、Beat マーカーを保持した結合校正を最大1回行い、BeatPlan 順を変えた候補は棄却する。校正後は正規化済み本文で再計測し、シーン床未達なら他 Beat も Deepen する。既存の `FINAL.md` は上書きせず、採用稿から Beat / fact マーカーを除去して保存する。
 
+## CHRONOS P0 不変条件
+
+- 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
+- 検査は決定的コード（P0 は CHR001）で行い、LLM に判定を委ねない。
+- `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
+- 執筆完了ゲートにはしない。METRON の本文計測とも自動接続しない。
+
 ## Plan Mode の完了
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
@@ -52,5 +59,5 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | Plan / Source Material / Writing / Refinement | 該当スキルと `workflow-specification.md` |
 | Tag / Manga / Illustration / Cover / Publishing | 該当スキルと `workflow-specification.md` |
 | Reader / Editor Score / Consistency Audit / Reader Walk | `novel-reader-output` / `novel-evaluation-output` / `novel-reader-walk` |
-| METRON | `workflow-specification.md` と `docs/architecture/metron.md` |
+| METRON / CHRONOS | `workflow-specification.md` と `docs/architecture/` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |
