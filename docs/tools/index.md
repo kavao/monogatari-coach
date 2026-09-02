@@ -219,6 +219,32 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 
 ---
 
+### `novel_punctuation_metrics.py` — 句読点指標の集計と任意ゲート
+
+本文の読点密度・一文あたり読点数・平均文長・接続助詞後読点率・句点誤配置を集計します。地の文と会話文はカギ括弧で分離します。付けない場合は計測だけで、終了コードは 0 です。
+
+ユーザーが作品フォルダや `--all` を指定すると、Monogatari Coach は章ファイルを読み、指標表と要約を表示します。`--json` を付けると、比較や回帰用の JSON が標準出力に出ます。
+
+執筆の初稿・場面追記では、同じスクリプトに `--gate` を付けて合否を確認できます。地の文の読点密度が高く、かつ平均文長が短いときだけ終了コード 1 になります。片方だけの逸脱は通ります。閾値はスクリプト内の定数です。
+
+```bash
+# 1作品（章別 + 要約）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名
+
+# 全作品を作品単位で比較する
+python tools/novel_punctuation_metrics.py --all --by-novel
+
+# JSON（比較・回帰用）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名 --json
+
+# 執筆完了前の合否（短文かつ高密度なら終了コード 1）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名/_novel_text/novel_text01.md --gate
+```
+
+実行後、コンソールに読点密度（地の文1000字あたり）と一文あたり読点の分布が出ます。`--gate` を付けたときは、続けて各ファイルの pass / fail / skip が出ます。
+
+---
+
 ### `novel_project_check.py` — 必須ファイル確認
 
 執筆開始前に、作品フォルダの必須ファイル・ディレクトリが揃っているかを確認します。終了コード 0 で「問題なし」です。**既定で `character.md` の構造 lint（`plan` profile）も実行**されます。
