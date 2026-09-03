@@ -27,6 +27,7 @@ import novel_code_allocate as nca  # noqa: E402
 import novel_character_md_check as ncmc  # noqa: E402
 import novel_image_layout as nil  # noqa: E402
 import novel_text_rewrite_lint as ntrl  # noqa: E402
+import inspection_flags as iflags  # noqa: E402
 
 
 # overview.md「小説ファイル」に基づく執筆開始前の必須（本文ファイルは未作成でもよい）
@@ -256,6 +257,40 @@ def _needs_cover_plan(work: Path) -> bool:
     return False
 
 
+def _check_inspection_layers(work: Path) -> dict[str, Any]:
+    """作品フラグと検査レイヤの保存先を確認する（WARN はゲートにしない）。"""
+
+    config_path = work / "config.md"
+    try:
+        flags = iflags.load_inspection_flags(config_path)
+    except iflags.InspectionConfigError as error:
+        return {
+            "ok": False,
+            "config_path": str(config_path),
+            "error": str(error),
+            "flags": None,
+            "warnings": [],
+        }
+
+    warnings: list[str] = []
+    layer_dirs = {
+        "METRON": work / "_metron",
+        "CHRONOS": work / "chronos",
+    }
+    for key, path in layer_dirs.items():
+        if flags.value_for(key) is iflags.InspectionFlag.ON and not path.is_dir():
+            warnings.append(
+                f"検査レイヤ {key} がONですが保存先がありません: {path.name}/"
+            )
+
+    return {
+        "ok": True,
+        "config_path": str(config_path),
+        "flags": flags.as_dict(),
+        "warnings": warnings,
+    }
+
+
 def check_novel_project(
     work: Path,
     *,
@@ -273,6 +308,7 @@ def check_novel_project(
     require_slush_g3: bool = False,
     check_story_sync: bool = False,
     strict_story_sync: bool = False,
+    check_inspection_layers: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -454,6 +490,17 @@ def check_novel_project(
             else:
                 out["warnings"].append(f"本文・設計書同期: {w}")
 
+    if check_inspection_layers:
+        inspection_result = _check_inspection_layers(work)
+        out["optional"]["inspection_layers"] = inspection_result
+        if not inspection_result["ok"]:
+            out["ok"] = False
+            out["issues"].append(
+                f"検査レイヤ設定: {inspection_result.get('error', '設定エラー')}"
+            )
+        else:
+            out["warnings"].extend(inspection_result.get("warnings") or [])
+
     return out
 
 
@@ -563,6 +610,11 @@ def main(argv: list[str] | None = None) -> int:
         help="--check-story-sync の食い違いを WARNING ではなく NG（失敗）扱いにする",
     )
     p.add_argument(
+        "--check-inspection-layers",
+        action="store_true",
+        help="config.md の METRON / CHRONOS フラグと保存先を確認する（欠落は WARN）",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
@@ -605,6 +657,7 @@ def main(argv: list[str] | None = None) -> int:
         require_slush_g3=args.require_slush_g3,
         check_story_sync=args.check_story_sync or args.strict_story_sync,
         strict_story_sync=args.strict_story_sync,
+        check_inspection_layers=args.check_inspection_layers,
     )
 
     if args.check_image_layout:
@@ -730,6 +783,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         for w in ss_warns:
             print(f"      - {w}")
+
+    if args.check_inspection_layers:
+        il = opt.get("inspection_layers") or {}
+        if il.get("ok"):
+            flags = il.get("flags") or {}
+            print(
+                "    検査レイヤ: "
+                f"METRON={flags.get('METRON', 'OFF')}, "
+                f"CHRONOS={flags.get('CHRONOS', 'OFF')}"
+            )
+        else:
+            print(f"    検査レイヤ: 設定エラー — {il.get('error', '設定エラー')}")
 
     if result.get("warnings"):
         print("\n  警告（WARNING・NG ではない）:")

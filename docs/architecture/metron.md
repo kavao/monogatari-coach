@@ -23,6 +23,18 @@ config/metron_models.yaml
 
 `SceneContract`、`BeatPlan`、`Spans`、`Metrics` は Pydantic v2 のモデルを実行時の正とし、YAML は保存形式として扱います。`scene.id` は `chNN-MMM` 形式で、`_metron/<scene_id>/` と一致させます。V0 では `chronos_span` を省略できます。
 
+## 作品単位の有効化
+
+作品ごとに METRON の自動ワークフローを使う場合は、作品の `config.md` の「## 基本情報」表に次の行を追加します。
+
+```markdown
+| METRON | ON |
+```
+
+行なしまたは `OFF` なら、自動ワークフローは METRON の成果物作成・計測を行いません。`ON` でも本文保存の完了ゲートにはならず、契約・Beat・マーカー不足や CLI 失敗は `未計測／要対応` として本文保存と分けて報告します。明示的に `metron_cli.py` を実行した場合は、このフラグを理由に拒否しません。
+
+フラグの値は `ON` / `OFF` のみです。未知値・重複キー・既存 `config.md` の読込失敗は設定エラーとして扱います。V1 の Deepen / 再生成や provider 呼び出しは、承認済み設定とユーザー承認が別途必要です。
+
 ## 計測と判定
 
 本文は NFC に正規化し、Beat マーカーを除去した本文上のコードポイント半開区間として `spans` に記録します。`Beat coverage` は BeatPlan の全 ID に正しい開閉マーカーのスパンが 1 件ずつある状態です。

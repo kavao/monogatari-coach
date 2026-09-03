@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from novel_project_check import check_novel_project  # noqa: E402
+from novel_project_check import main  # noqa: E402
 
 _REQUIRED_FILES = (
     "proposal.md",
@@ -76,6 +77,88 @@ def test_meta_yaml_absent_does_not_fail_default_check(tmp_path: Path) -> None:
     assert meta_yaml_issues == [], f"_meta.yaml 由来のエラーが出ている: {meta_yaml_issues}"
     assert result["optional"]["meta_yaml_exists"] is False
 
+
+def test_inspection_layers_read_flags_and_warn_only_for_missing_enabled_dirs(
+    tmp_path: Path,
+) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n"
+        "## 基本情報\n\n"
+        "| 項目 | 内容 |\n"
+        "|------|------|\n"
+        "| novel_ID | 001 |\n"
+        "| METRON | ON |\n"
+        "| CHRONOS | OFF |\n",
+        encoding="utf-8",
+    )
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert inspection["ok"] is True
+    assert inspection["flags"]["METRON"] == "ON"
+    assert inspection["flags"]["CHRONOS"] == "OFF"
+    assert len(result["warnings"]) == 1
+    assert "_metron/" in result["warnings"][0]
+    assert result["ok"] is True  # WARN のみでは readiness check を失敗させない
+
+
+def test_inspection_layer_config_error_is_an_issue(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n"
+        "## 基本情報\n\n"
+        "| 項目 | 内容 |\n"
+        "|------|------|\n"
+        "| novel_ID | 001 |\n"
+        "| METRON | yes |\n",
+        encoding="utf-8",
+    )
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert inspection["ok"] is False
+    assert any("検査レイヤ設定" in issue for issue in result["issues"])
+
+
+def test_inspection_layer_warning_exit_code_is_zero(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n",
+        encoding="utf-8",
+    )
+
+    assert main([str(work), "--no-character-structure", "--check-inspection-layers"]) == 0
+
+
+def test_inspection_layer_config_error_exit_code_is_one(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| CHRONOS | maybe |\n",
+        encoding="utf-8",
+    )
+
+    assert main([str(work), "--no-character-structure", "--check-inspection-layers"]) == 1
 
 def test_require_meta_yaml_fails_when_absent(tmp_path: Path) -> None:
     """--require-meta-yaml 指定時、_meta.yaml がなければ NG になる。"""

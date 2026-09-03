@@ -271,6 +271,9 @@ python tools/novel_project_check.py novels/NNN_作品名 --check-story-sync
 # ズレを NG（失敗）扱いにしたい場合
 python tools/novel_project_check.py novels/NNN_作品名 --strict-story-sync
 
+# METRON / CHRONOS のフラグと成果物の対応を確認（欠落は WARN）
+python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
+
 # _meta.yaml 等を不足分だけ作成してからチェック
 python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 ```
@@ -283,6 +286,8 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 - 前半・後半（項）に分割した本文ファイル（例: `novel_text01_1.md`）があるのに、設計書側に分割の記載が見当たらない。
 
 本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。
+
+`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` を読みます。行なしまたは `OFF` は対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）、未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
 
 ---
 

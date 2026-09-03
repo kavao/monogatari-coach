@@ -38,7 +38,14 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
 - 検査は決定的コード（P0 は CHR001）で行い、LLM に判定を委ねない。
 - `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
-- 執筆完了ゲートにはしない。METRON の本文計測とも自動接続しない。
+- 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。
+
+## 作品単位の METRON / CHRONOS フラグ
+
+- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS は独立した ON / OFF 値として読む。
+- config.md または対象行がない場合は OFF。未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って OFF にしない。
+- フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py はフラグで拒否しない。
+- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。
 
 ## Plan Mode の完了
 

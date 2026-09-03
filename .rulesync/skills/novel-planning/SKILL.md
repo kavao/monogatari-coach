@@ -28,7 +28,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 |----------|------|
 | `proposal.md` | 作品名、ログライン、ターゲット層、あらすじ、キャラクター紹介、魅力 |
 | `design_specification.md` | テーマ、コンセプト、章構成（厚さは Gate B）、ストーリー相関図、執筆スケジュール |
-| `config.md` | novel_ID、writer_code、作品名、作者名、ジャンル、キーワード |
+| `config.md` | novel_ID、writer_code、作品名、作者名、ジャンル、キーワード、METRON / CHRONOS の ON / OFF |
 | `character.md` | 登場人物のプロフィール、課題、目的、口調、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術、組織 |
 | `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録**、外部投稿用情報 |
@@ -56,12 +56,15 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 4. `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` と `references/novelai/` 等を揃える。
 5. `python tools/novel_character_md_check.py novels/<作品> --profile plan`
 6. `python tools/novel_project_check.py novels/<作品>`（不足時は `--bootstrap` 可。character 構造は既定で有効）
+7. `config.md` 初回作成時は METRON / CHRONOS を両方 `OFF` とし、Gate B で検査レイヤを使うか確認する。明示的に決めない限り `ON` にしない。
+8. METRON / CHRONOS を `ON` にした作品では `python tools/novel_project_check.py novels/<作品> --check-inspection-layers` を追加実行する。保存先不足の WARN は終了コード 0、設定エラーは終了コード 1 とする。
 
 ### 既存作品の洗練
 
 1. **再採番しない。** 対象フォルダと `config.md` の整合を `novel_code_allocate.py verify` 等で確認する。
 2. 必須資料の有無を確認し、不足・薄いものだけ更新する。
 3. character lint と `novel_project_check` を実行する（上記と同じコマンド）。
+   既存作品のフラグ行がない場合は `OFF` として扱う。検査レイヤを使うと決めた作品だけ `config.md` の基本情報表へ記録する。
 
 ## Gate B（知識ゲート）
 

@@ -33,6 +33,14 @@ CHRONOS の順序検査を使うときは、次を守る。
 4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。
 5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` 接続も後続とする。
 
+## 作品単位の METRON / CHRONOS フラグ
+
+作品の config.md の「## 基本情報」表に METRON / CHRONOS 行を置き、値は大文字の ON / OFF だけにする。行なしは OFF、未知値・重複・読込失敗は設定エラーとする。
+
+フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
+
+METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。
+
 ## 自己発展型ルールガバナンス
 
 定義:
