@@ -33,13 +33,13 @@ CHRONOS の順序検査を使うときは、次を守る。
 4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。
 5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` 接続も後続とする。
 
-## 作品単位の METRON / CHRONOS フラグ
+## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS 行を置き、値は大文字の ON / OFF だけにする。行なしは OFF、未知値・重複・読込失敗は設定エラーとする。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。
 
-フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
+フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
 
-METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。
+METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。
 
 ## 自己発展型ルールガバナンス
 
@@ -1584,7 +1584,7 @@ flowchart TD
 トピック計画のファイル名は **`YYYYMMDD_<slug>.md`**（作成日8桁＋アンダースコア）。命名の例外・例は **`_workingspace/plans/README.md`**「ファイル命名」を正とする。
 
 ### 査証ログ
-作業事実は **`_workingspace/log/YYYYMM.md`** に追記する。既存行の削除・上書き・並べ替えは行わない。厳密な追記方法、ファイル形式、CLI はスキル **`workspace-audit-log`** を正とする。
+作業事実は **`_workingspace/log/YYYYMM.md`** に追記する。既存行の削除・上書き・並べ替えは行わない。対象作品の config.md に `AUDIT_LOG | OFF` があるときは自動追記しない。厳密な追記方法、ファイル形式、CLI はスキル **`workspace-audit-log`** を正とする。
 
 ### 日記（横断ナレッジ）
 次回以降も効く判断理由・好み・ツール運用の知見は **`_workingspace/diary/YYYYMM.md`** に追記する。査証ログは「何をしたか」、日記は「なぜそうするか・このリポジトリでは何を正とするか」を残す。厳密な追記方法、ファイル形式、CLI はスキル **`workspace-diary`** を正とする。

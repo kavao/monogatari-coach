@@ -55,9 +55,15 @@ description: >-
 8. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。
    - **部分加筆・シーンの途中挿入**でも手順 3〜7 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
 
+## 作品単位のフラグ
+
+- **METRON / CHRONOS**: 清書では自動の再計測・イベント更新を起動しない。ユーザーが明示したときだけ実行する。
+- **AUDIT_LOG**: 対象作品の `config.md` が `OFF` なら査証ログを追記しない。行なしは ON。
+
 ## 査証・メタ
 
 - `_meta.md` や `_workingspace/log/` に文字数を書くときは **`novel_char_count.py` の集計値**を根拠にする。
+- `AUDIT_LOG | OFF` のときは査証ログへ書かない。
 
 ## 関連
 

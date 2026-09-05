@@ -392,7 +392,8 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 ```bash
 # 査証ログ（セッションの作業記録）を追記 ※ 自動呼び出し
-python tools/workspace_audit_log.py append "作業内容"
+# 作品作業では --novel を付ける。AUDIT_LOG=OFF の抑止は --novel があるときだけ有効
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 "作業内容"
 
 # 横断ナレッジ日記を追記 ※ 自動呼び出し
 python tools/workspace_audit_log.py diary append "学びや判断の記録"

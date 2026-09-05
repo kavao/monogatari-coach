@@ -1,4 +1,4 @@
-"""作品単位の METRON / CHRONOS 起動フラグを読む。"""
+"""作品単位の METRON / CHRONOS / AUDIT_LOG フラグを読む。"""
 
 from __future__ import annotations
 
@@ -17,7 +17,9 @@ class InspectionFlag(str, Enum):
     OFF = "OFF"
 
 
-FLAG_KEYS = ("METRON", "CHRONOS")
+DEFAULT_OFF_KEYS = ("METRON", "CHRONOS")
+DEFAULT_ON_KEYS = ("AUDIT_LOG",)
+FLAG_KEYS = DEFAULT_OFF_KEYS + DEFAULT_ON_KEYS
 _BASIC_INFO_HEADING_RE = re.compile(r"^##[ \t]+基本情報[ \t]*$")
 _ANY_HEADING_RE = re.compile(r"^#{1,6}(?:[ \t]+|$)")
 _SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
@@ -25,10 +27,11 @@ _SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
 
 @dataclass(frozen=True)
 class InspectionFlags:
-    """作品の検査レイヤ状態と、表に明示されたキーを保持する。"""
+    """作品の検査・記録フラグと、表に明示されたキーを保持する。"""
 
     metron: InspectionFlag = InspectionFlag.OFF
     chronos: InspectionFlag = InspectionFlag.OFF
+    audit_log: InspectionFlag = InspectionFlag.ON
     explicit: frozenset[str] = field(default_factory=frozenset)
     source: str = "implicit"
 
@@ -37,6 +40,8 @@ class InspectionFlags:
             return self.metron
         if key == "CHRONOS":
             return self.chronos
+        if key == "AUDIT_LOG":
+            return self.audit_log
         raise KeyError(key)
 
     def is_explicit(self, key: str) -> bool:
@@ -46,13 +51,20 @@ class InspectionFlags:
         return {
             "METRON": self.metron.value,
             "CHRONOS": self.chronos.value,
+            "AUDIT_LOG": self.audit_log.value,
             "explicit": sorted(self.explicit),
             "source": self.source,
         }
 
 
+def should_append_audit_log(config_path: str | Path) -> bool:
+    """対象作品の査証ログを自動追記してよいか。行なしは ON。"""
+
+    return load_inspection_flags(config_path).audit_log is InspectionFlag.ON
+
+
 def load_inspection_flags(config_path: str | Path) -> InspectionFlags:
-    """config.md からフラグを読む。ファイルまたは行がなければ OFF を返す。"""
+    """config.md からフラグを読む。ファイルまたは行がなければ METRON / CHRONOS は OFF、AUDIT_LOG は ON。"""
 
     path = Path(config_path)
     if not path.exists():
@@ -99,6 +111,7 @@ def parse_inspection_flags(text: str, *, source: str = "config.md") -> Inspectio
     return InspectionFlags(
         metron=values.get("METRON", InspectionFlag.OFF),
         chronos=values.get("CHRONOS", InspectionFlag.OFF),
+        audit_log=values.get("AUDIT_LOG", InspectionFlag.ON),
         explicit=frozenset(values),
         source=source if values else "implicit:no-flag-row",
     )

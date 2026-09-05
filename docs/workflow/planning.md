@@ -43,7 +43,7 @@ Monogatari Coach は、企画を **Gate A（骨格）** と **Gate B（知識・
 |----------|------|
 | `proposal.md` | 作品名、ログライン、ターゲット層、あらすじ、魅力 |
 | `design_specification.md` | テーマ、コンセプト、章構成、相関図 |
-| `config.md` | novel_ID、writer_code、ジャンル、キーワード、METRON / CHRONOS の ON / OFF |
+| `config.md` | novel_ID、writer_code、ジャンル、キーワード、METRON / CHRONOS / AUDIT_LOG の ON / OFF |
 | `character.md` | 登場人物のプロフィール、課題、目的、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術 |
 | `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録** |
@@ -67,7 +67,7 @@ python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-laye
 
 新規は採番から、既存作品の洗練では再採番しません。合否はコマンドの終了コードを正とします。
 
-`--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS と保存先を確認します。行なしまたは `OFF` は対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
+`--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS / AUDIT_LOG と保存先を確認します。METRON / CHRONOS は行なしまたは `OFF` が対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。AUDIT_LOG は行なしが ON です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
 
 ### Gate B（知識・厚さ）
 

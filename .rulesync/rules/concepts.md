@@ -22,7 +22,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
 - 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。
-- 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。
+- 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。対象作品の config.md に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
 
 ## METRON V1 修復不変条件
@@ -40,11 +40,12 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
 - 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。
 
-## 作品単位の METRON / CHRONOS フラグ
+## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS は独立した ON / OFF 値として読む。
-- config.md または対象行がない場合は OFF。未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って OFF にしない。
-- フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py はフラグで拒否しない。
+- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は独立した ON / OFF 値として読む。
+- METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
+- 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
+- フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
 - ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。
 
 ## Plan Mode の完了
@@ -67,5 +68,5 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | Plan / Source Material / Writing / Refinement | 該当スキルと `workflow-specification.md` |
 | Tag / Manga / Illustration / Cover / Publishing | 該当スキルと `workflow-specification.md` |
 | Reader / Editor Score / Consistency Audit / Reader Walk | `novel-reader-output` / `novel-evaluation-output` / `novel-reader-walk` |
-| METRON / CHRONOS | `workflow-specification.md` と `docs/architecture/` |
+| METRON / CHRONOS / AUDIT_LOG | `workflow-specification.md` と `docs/architecture/` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |

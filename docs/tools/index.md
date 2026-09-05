@@ -55,7 +55,7 @@ python tools/metron_cli.py calibrate --model <model-id> \
   --expand-retention-threshold 0.8 --approve --write
 ```
 
-`--expand-retention-threshold` は、Expand 候補に残す元文の最低残存率を設定します。`--approve` は、承認済みの本番キャリブレーション結果を反映するときだけ指定します。承認なしの集計出力・書込みでは、モデル設定の `calibrated: false` を変更しません。
+`--expand-retention-threshold` は、Expand 候補に残す元文の最低残存率を設定します。`--approve` は、承認済みの本番キャリブレーション結果を反映するときだけ指定します。承認なしの集計出力・書込みでは、モデル設定の `calibrated: false` を変更しません。`cursor-direct` の数値は `config/calibration_samples.yaml` の現行13件を再集計した未承認値です。V1 判定には使いません。
 
 キャリブレーション済みモデルの V1 判定と生成単位計画を確認できます。
 
@@ -287,7 +287,7 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 
 本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。
 
-`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` を読みます。行なしまたは `OFF` は対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）、未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
 
 ---
 
@@ -812,8 +812,11 @@ python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 `_workingspace/log/(YYYYMM).md` にセッションの作業記録を、`_workingspace/diary/(YYYYMM).md` に横断ナレッジを追記します。既存行の上書き・削除は行いません。
 
 ```bash
-# 査証ログに追記
-python tools/workspace_audit_log.py append "作業内容の説明"
+# 査証ログに追記（作品の AUDIT_LOG=OFF ならスキップ）
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 "作業内容の説明"
+
+# AUDIT_LOG=OFF でも明示的に追記する
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 --force "作業内容の説明"
 
 # 日記（横断ナレッジ）に追記
 python tools/workspace_audit_log.py diary append "学びや判断の記録"
@@ -827,7 +830,7 @@ python tools/workspace_audit_log.py verify
 python tools/workspace_audit_log.py diary verify
 ```
 
-査証ログは「何をしたか」の事実、日記は「なぜそうするか・次回以降も使う判断理由」を残す場所です。
+査証ログは「何をしたか」の事実、日記は「なぜそうするか・次回以降も使う判断理由」を残す場所です。作品の `config.md` に `AUDIT_LOG | OFF` があるときは、`--novel` 付きの自動追記をスキップします。`--novel` を付けない従来形式は、対象作品がない横断作業向けで、引き続き追記します。`config.md` が未作成の作品は既定 ON として追記します。日記はこのフラグの対象外です。
 
 ---
 

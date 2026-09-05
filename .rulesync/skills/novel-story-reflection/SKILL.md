@@ -43,7 +43,7 @@ targets: ["*"]
 機械的なズレ検出には `python tools/novel_project_check.py <作品> --check-story-sync` を補助として使える（本文章数と設計書スケジュールの食い違いを WARNING 表示）。ツールは補助であり、本命は本チェックリストの実施である。
 
 ### 4. 査証ログへの記録
-- 文字数と同期内容を `_workingspace/log/YYYYMM.md` に追記する（スキル **`workspace-audit-log`**）。
+- 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは追記しない。行なしまたは ON のときだけ、文字数と同期内容を `_workingspace/log/YYYYMM.md` に追記する（スキル **`workspace-audit-log`**）。`--novel novels/<作品>` を付ける。
 
 ### 5. 挿絵・表紙・出版メタの同期（該当時）
 

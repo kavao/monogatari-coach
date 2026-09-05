@@ -97,6 +97,7 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 
 - 進捗や文字数を **`_workingspace/log/`** や **`_meta.md`** に書くときは、**ファイルに存在する内容**に基づく（会話の記憶だけに頼らない）。
 - 「執筆した」「◯文字」を査証ログに書く場合は、可能なら **`novel_char_count.py` の集計値**または **Read で読み取った事実**を根拠に含める。
+- 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
 
 ## 関連
 

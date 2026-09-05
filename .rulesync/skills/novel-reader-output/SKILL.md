@@ -144,7 +144,7 @@ G3（全文）評価で全文一括読み込みが困難な場合（目安: **�
 
 - `_reader/` は評価本文の正本。
 - `_workingspace/log/` は「評価を実施し、どのファイルへ保存したか」という作業事実だけを追記する。
-- 査証ログの追記はスキル **`workspace-audit-log`** と `tools/workspace_audit_log.py append` に従う。
+- 査証ログの追記はスキル **`workspace-audit-log`** と `tools/workspace_audit_log.py append --novel novels/<作品>` に従う。
 
 ## 関連
 

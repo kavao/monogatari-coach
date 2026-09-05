@@ -612,7 +612,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--check-inspection-layers",
         action="store_true",
-        help="config.md の METRON / CHRONOS フラグと保存先を確認する（欠落は WARN）",
+        help="config.md の METRON / CHRONOS / AUDIT_LOG フラグと保存先を確認する（欠落は WARN）",
     )
     p.add_argument(
         "--bootstrap",
@@ -791,7 +791,8 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 "    検査レイヤ: "
                 f"METRON={flags.get('METRON', 'OFF')}, "
-                f"CHRONOS={flags.get('CHRONOS', 'OFF')}"
+                f"CHRONOS={flags.get('CHRONOS', 'OFF')}, "
+                f"AUDIT_LOG={flags.get('AUDIT_LOG', 'ON')}"
             )
         else:
             print(f"    検査レイヤ: 設定エラー — {il.get('error', '設定エラー')}")

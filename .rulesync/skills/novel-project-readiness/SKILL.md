@@ -54,7 +54,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 | `--character-profile NAME` | `character.md` 構造 lint の profile（既定 `plan`） |
 | `--character-strict` | 表形式などの移行猶予 WARN を ERROR 扱いにする |
 | `--character-suggest` | `--json` 出力に不足項目追記案・表形式変換案を含める |
-| `--check-inspection-layers` | `config.md` の METRON / CHRONOS フラグと保存先を確認（WARN は終了コード 0） |
+| `--check-inspection-layers` | `config.md` の METRON / CHRONOS / AUDIT_LOG フラグと保存先を確認（WARN は終了コード 0） |
 
 ## 不足時の典型対処
 

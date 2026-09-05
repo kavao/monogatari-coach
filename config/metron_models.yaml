@@ -19,3 +19,16 @@ models:
     too_short_ratio: 0.76025
     expand_retention_threshold: 0.8
     samples: 5
+  # 未承認。config/calibration_samples.yaml の cursor-direct 13件を
+  # metron_cli.py calibrate（--approve なし）で再集計した下位四分位。
+  # ending_rush_threshold / too_short_ratio の旧値は個別サンプルの転記だった。
+  cursor-direct:
+    calibrated: false
+    calibrated_at: '2026-09-05'
+    reliable_span_chars: 4000
+    missing_span_ratio: 0.35
+    beat_thin_ratio: 1.0
+    ending_rush_threshold: 0.8622075328133916
+    too_short_ratio: 1.1565
+    expand_retention_threshold: 0.8
+    samples: 13

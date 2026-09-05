@@ -160,8 +160,60 @@ def parse_at(s: str) -> datetime:
     )
 
 
+def resolve_novel_config(novel: str | Path, *, root: Path | None = None) -> Path:
+    """作品フォルダまたは config.md パスから config.md を解決する。未作成でもパスだけ返す。"""
+
+    base = root or repo_root()
+    raw = Path(novel)
+    candidates = [raw] if raw.is_absolute() else [base / raw, raw]
+    for candidate in candidates:
+        if candidate.is_file() and candidate.name == "config.md":
+            return candidate.resolve()
+        if candidate.is_dir():
+            return (candidate / "config.md").resolve()
+        if candidate.name == "config.md":
+            return candidate.resolve()
+    first = candidates[0]
+    return first.resolve() if first.name == "config.md" else (first / "config.md").resolve()
+
+
+def _maybe_skip_audit_log(args: argparse.Namespace, *, root: Path) -> dict[str, object] | None:
+    novel = getattr(args, "novel", None)
+    if not novel or getattr(args, "force", False):
+        return None
+
+    from inspection_flags import InspectionConfigError, load_inspection_flags
+
+    config_path = resolve_novel_config(novel, root=root)
+    try:
+        flags = load_inspection_flags(config_path)
+    except InspectionConfigError as error:
+        raise ValueError(str(error)) from error
+    if flags.audit_log.value == "ON":
+        return None
+    return {
+        "skipped": True,
+        "reason": "AUDIT_LOG=OFF",
+        "config_path": str(config_path),
+        "path": "",
+        "line": "",
+    }
+
+
 def _run_append_cmd(args: argparse.Namespace, *, target: MonthlyTarget) -> int:
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    if target is MonthlyTarget.AUDIT:
+        try:
+            skipped = _maybe_skip_audit_log(args, root=root)
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 1
+        if skipped is not None:
+            if args.json:
+                print(json.dumps(skipped, ensure_ascii=False, indent=2))
+            else:
+                print(f"査証ログをスキップしました: {skipped['reason']}")
+            return 0
     if args.message is not None:
         message = args.message
     else:
@@ -390,6 +442,17 @@ def main(argv: list[str] | None = None) -> int:
 
     pa = sub.add_parser("append", help="査証ログに1行追記")
     _add_append_flags(pa)
+    pa.add_argument(
+        "--novel",
+        type=str,
+        default=None,
+        help="対象作品フォルダまたは config.md。AUDIT_LOG=OFF なら追記しない",
+    )
+    pa.add_argument(
+        "--force",
+        action="store_true",
+        help="AUDIT_LOG=OFF でも追記する（ユーザー明示時）",
+    )
     pa.set_defaults(func=cmd_append)
 
     pp = sub.add_parser("path", help="指定月の査証ログファイルの絶対パスを表示")

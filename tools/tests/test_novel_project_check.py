@@ -106,6 +106,7 @@ def test_inspection_layers_read_flags_and_warn_only_for_missing_enabled_dirs(
     assert inspection["ok"] is True
     assert inspection["flags"]["METRON"] == "ON"
     assert inspection["flags"]["CHRONOS"] == "OFF"
+    assert inspection["flags"]["AUDIT_LOG"] == "ON"
     assert len(result["warnings"]) == 1
     assert "_metron/" in result["warnings"][0]
     assert result["ok"] is True  # WARN のみでは readiness check を失敗させない

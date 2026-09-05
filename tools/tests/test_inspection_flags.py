@@ -13,6 +13,7 @@ from inspection_flags import (  # noqa: E402
     InspectionFlag,
     load_inspection_flags,
     parse_inspection_flags,
+    should_append_audit_log,
 )
 
 
@@ -33,17 +34,19 @@ def test_missing_rows_are_implicit_off() -> None:
 
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
+    assert flags.audit_log is InspectionFlag.ON
     assert flags.explicit == frozenset()
 
 
 def test_reads_independent_flags_from_basic_info_table() -> None:
     flags = parse_inspection_flags(
-        _config("| METRON | ON |\n| CHRONOS | OFF |")
+        _config("| METRON | ON |\n| CHRONOS | OFF |\n| AUDIT_LOG | OFF |")
     )
 
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.OFF
-    assert flags.explicit == frozenset({"METRON", "CHRONOS"})
+    assert flags.audit_log is InspectionFlag.OFF
+    assert flags.explicit == frozenset({"METRON", "CHRONOS", "AUDIT_LOG"})
 
 
 def test_ignores_flag_text_outside_basic_info_table() -> None:
@@ -62,6 +65,7 @@ def test_missing_basic_info_heading_is_implicit_off() -> None:
 
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
+    assert flags.audit_log is InspectionFlag.ON
     assert flags.explicit == frozenset()
 
 
@@ -104,7 +108,23 @@ def test_missing_config_file_is_implicit_off(tmp_path: Path) -> None:
     flags = load_inspection_flags(tmp_path / "config.md")
 
     assert flags.metron is InspectionFlag.OFF
+    assert flags.audit_log is InspectionFlag.ON
     assert flags.source == "implicit:missing-config"
+
+
+def test_audit_log_defaults_on_when_only_inspection_flags_are_set() -> None:
+    flags = parse_inspection_flags(_config("| METRON | ON |\n| CHRONOS | ON |"))
+
+    assert flags.audit_log is InspectionFlag.ON
+    assert flags.is_explicit("AUDIT_LOG") is False
+
+
+def test_should_append_audit_log_follows_explicit_off(tmp_path: Path) -> None:
+    config = tmp_path / "config.md"
+    config.write_text(_config("| AUDIT_LOG | OFF |"), encoding="utf-8")
+
+    assert should_append_audit_log(config) is False
+    assert should_append_audit_log(tmp_path / "missing.md") is True
 
 
 def test_existing_non_file_config_is_an_error(tmp_path: Path) -> None:
