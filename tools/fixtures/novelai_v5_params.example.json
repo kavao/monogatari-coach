@@ -17,6 +17,6 @@
   "reference_strength_multiple": [],
   "normalize_reference_strength_multiple": true,
   "output_dir": "outputs/novelai",
-  "file_prefix": "novelai",
+  "file_prefix": "novelai_v5",
   "count": 1
 }

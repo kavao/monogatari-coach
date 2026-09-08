@@ -1,8 +1,8 @@
 {
   "provider": "novelai",
-  "prompt": "1girl, fantasy, detailed",
+  "prompt": "classroom interior, afternoon light | 1girl, red hair, school uniform | 1boy, blue hair, school uniform",
   "negative_prompt": "lowres, blurry, bad hands",
-  "seed": 123456789,
+  "seed": 123456791,
   "width": 1024,
   "height": 1024,
   "steps": 28,
@@ -12,11 +12,17 @@
   "uc_preset": 4,
   "quality_toggle": true,
   "quality_preset": "standard",
+  "split_pipe_characters": true,
+  "use_coords": true,
+  "centers": [
+    {"x": 0.3, "y": 0.5},
+    {"x": 0.7, "y": 0.5}
+  ],
   "reference_image_paths": [],
   "reference_information_extracted_multiple": [],
   "reference_strength_multiple": [],
   "normalize_reference_strength_multiple": true,
   "output_dir": "outputs/novelai",
-  "file_prefix": "novelai",
+  "file_prefix": "novelai_v5_chars",
   "count": 1
 }

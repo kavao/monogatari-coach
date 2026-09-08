@@ -26,7 +26,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 | provider | モデル | 主な用途 |
 |----------|--------|---------|
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
-| `novelai` | `nai-diffusion-4-5-full` など | コマ生成（クラウド） |
+| `novelai` | 既定 `nai-diffusion-5-full`。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
 | `grok` | `grok-imagine-image`（standard） | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
 | `grok_pro` | `grok-imagine-image-quality` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵の高品質生成 |
 | `openai` | `gpt-image-1.5` など | ページ生成の代替 |
@@ -119,6 +119,8 @@ NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 
 `tools/image_provider_generate.py` の NovelAI provider は、Vibe Transfer / ポーション用に `reference_image_paths` または `reference_image_multiple` を受け付けます。
 
+Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。通常のコマ生成（参照なし）の既定は `nai-diffusion-5-full` です。
+
 - `reference_image_paths`: PNG / JPEG / WEBP / `.naiv4vibe` / `.naiv4vibeBundle` のパス配列。`.naiv4vibe` / `.naiv4vibeBundle` は、ファイル内の `encodings.*.encoding` を優先して NovelAI API へ渡します。画像を含む形式なら画像も読み込みます。
 - `reference_image_multiple`: 画像をbase64化した文字列配列。`data:image/...;base64,` 付きでも受け付けます。
 - `reference_information_extracted_multiple`: 各参照の Information Extracted。**スカラー**のときはバンドル内 `importInfo` への乗数（省略時 `1.0`）。**配列**のときはスロットごとの絶対値。
@@ -196,6 +198,12 @@ python tools/image_provider_generate.py --params path\to\novelai_vibe_params.jso
 - スロットごとに絶対値を直接指定したいときは params JSON で配列 `[0.45, 0.6]` を渡す（乗数モードではない）。
 - 係数は `0.01`〜`1.0` の範囲に自動 clamp されます。`0` を渡しても `0.01` として送信されます（API の不定挙動を回避するための下限）。
 
+#### 困ったとき
+
+- 「Vibe Transfer は NovelAI V5 では未提供」と出るときは、参照画像付きジョブに V5 を明示しています。`model` を `v4-5-full` にするか、参照を外します。
+- 通常のコマ生成で V4.5 に戻したいときは、params または CLI で `model` を `v4-5-full` にします。
+- HTTP 500 だけが返るときは、`uc_preset` を 4（Heavy）以上にし、`v4_prompt` が付いているか `--dry-run` で確認します。
+
 ### xAI / Grok
 
 `provider=grok` または `provider=grok_pro` を使う場合は、`.env` の `XAI_API_KEY` に xAI Console の API キーを入れます。
@@ -245,6 +253,8 @@ python tools/env_check.py
 | `background_brief` | 背景資料生成 | `Environment / Camera / Lighting / Mood` |
 
 挿絵/表紙バッチでは `--prompt-formatter` で一時上書きできます。Grok / OpenAI 系では `negative_prompt` を API に送らず、`Do not include:` セクションへ統合します。
+
+`novelai_pipe` の既定は `input` への連結です。params に `split_pipe_characters: true` を付けると、左側が `base_caption`、右側以降が `char_captions` になります。位置は `centers` または `character_prompts[].center`（0–1、または A1–E5）で指定します。漫画 YAML には座標フィールドを足していません。例は `tools/fixtures/novelai_v5_chars_params.example.json` です。
 
 ---
 

@@ -1,8 +1,8 @@
 {
   "provider": "novelai",
-  "prompt": "1girl, fantasy, detailed",
+  "prompt": "1girl, standing, simple background, transparent background, has alpha",
   "negative_prompt": "lowres, blurry, bad hands",
-  "seed": 123456789,
+  "seed": 123456790,
   "width": 1024,
   "height": 1024,
   "steps": 28,
@@ -12,11 +12,13 @@
   "uc_preset": 4,
   "quality_toggle": true,
   "quality_preset": "standard",
+  "straight_alpha": true,
+  "tag_hint_transparent_background": true,
   "reference_image_paths": [],
   "reference_information_extracted_multiple": [],
   "reference_strength_multiple": [],
   "normalize_reference_strength_multiple": true,
   "output_dir": "outputs/novelai",
-  "file_prefix": "novelai",
+  "file_prefix": "novelai_v5_optin",
   "count": 1
 }

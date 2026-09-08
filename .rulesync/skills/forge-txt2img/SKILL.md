@@ -156,6 +156,9 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/workflo
 
 - `.env.example` を `.env` にコピーし、**`NOVELAI_ACCESS_TOKEN`** を記入する。初回セットアップでは `howto_init.py` / `init.bat` が未作成時に自動コピーする。
 - 設定は **`config/image_generation.json`** の `providers.novelai`。既定の通信先は `https://image.novelai.net/ai/generate-image`。
+- 既定モデルは **`nai-diffusion-5-full`**。Curated は `v5-curated`。V4.5 に戻すときは `v4-5-full`。
+- **Vibe Transfer / ポーション**（`reference_image_paths` または `reference_image_multiple`）は V5 未提供。`model` 未指定なら自動で **`nai-diffusion-4-5-full`**（`vibe_model`）。V5 を明示したまま参照を付けるとエラー。
+- ページ生成の既定 provider は **`grok_pro` のまま**（NovelAI には切り替えない）。
 - params JSON か CLI で **`provider=novelai`** を選ぶ。
 - 画像設定（steps / guidance / sampler など）の意味は NovelAI 公式ドキュメントの Image Generation 節に揃える。REST の詳細は公開仕様が薄いため、エンドポイントや追加フィールドが変わった場合は **config 側で吸収**する前提で運用する。
 - **ベース | キャラクター（`|` 区切り）**: NovelAI のプロンプトで `|` を挟むと左をシーン・画風寄り、右をキャラ固長寄りに振りやすい。`tools/image_provider_generate.py` はプロンプトに `|` が含まれるとき **左側だけ**へ品質接尾辞（例: `rating:general`）を付与する。`tools/image_provider_novel_manga_batch.py` は **`provider=novelai` かつ YAML・`--source step1-panels`** のとき、漫画ページ IR から **`ベースタグ | キャラタグ`** を自動組み立てする（オフは `--no-novelai-pipe-character-tags`）。
@@ -256,12 +259,12 @@ python tools/codex_builtin_image_archive.py \
 
 ## パラメータ JSON（公開スキーマ）
 
-`tools/fixtures/forge_params.example.json`・`forge_params.flux.example.json`・`novelai_params.example.json`・`grok_params.example.json` を基準にする。
+`tools/fixtures/forge_params.example.json`・`forge_params.flux.example.json`・`novelai_params.example.json`・`novelai_v5_params.example.json`・`novelai_v5_chars_params.example.json`・`grok_params.example.json` を基準にする。
 
 - **必須**: `provider`, `prompt`, `output_dir`
 - **共通の任意**: `negative_prompt`, `seed`, `width`, `height`, `steps`, `cfg_scale`, `sampler_name`, `file_prefix`, `count`（1〜`max_count`）
 - **Forge の任意**: `scheduler`, `distilled_cfg_scale`, `aspect_ratio_preset`
-- **NovelAI の任意**: `model`, `action`, `uc_preset`, `quality_toggle`, `params_version`, `sm`, `sm_dyn`
+- **NovelAI の任意**: `model`（`v5-full` 等の alias 可）, `action`, `uc_preset`, `quality_toggle`, `quality_preset`（`standard` / `light`。V5 のみ接尾辞が変わる）, `params_version`, `sm`, `sm_dyn`, `straight_alpha`, `tag_hint_transparent_background`, `upscaled_enhance`（前二者は txt2img の opt-in。`upscaled_enhance` は img2img 専用で、`action=generate` では送ると HTTP 400）, `split_pipe_characters`（opt-in。`ベース | キャラ` を `char_captions` へ分割。既定は off で pipe を `input` 連結のまま）, `character_prompts`（明示リスト。pipe 分割より優先）, `centers`（0–1 の `{x,y}` 配列。件数はキャラ数と一致。未指定の `use_coords` は True になる）, `use_coords`
 - **Grok の任意**: `model`, `response_format`, `aspect_ratio`, `aspect_ratio_preset`, `resolution`
 - **OpenAI の任意**: `model`, `size`, `quality`, `background`, `output_format`, `response_format`, `moderation`
 
@@ -292,6 +295,10 @@ EOF
 
 ```bash
 python tools/image_provider_generate.py --params tools/fixtures/novelai_params.example.json --dry-run
+```
+
+```bash
+python tools/image_provider_generate.py --params tools/fixtures/novelai_v5_params.example.json --dry-run
 ```
 
 ```bash
@@ -395,7 +402,8 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - `logs/image_provider_generate.log` に要約を追記。
 - **HTTP 404**（`{"detail":"Not Found"}`）→ **REST API 未登録**。`--api` 付きで Forge を再起動し、`--probe` で `/sdapi/v1/samplers` が 200 になるか確認。
 - **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/image_provider_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
-- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → `nai-diffusion-4*` 系は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
+- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → V4 / V4.5 / V5 は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
+- **NovelAI で「Vibe Transfer は NovelAI V5 では未提供」** → 参照画像付きジョブに V5 を明示している。`model` を `v4-5-full` にするか、参照を外す。`model` 未指定なら自動で V4.5 に残る。
 - **Grok が HTTP 400（プロンプト上限超過）** → xAI API はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。`config/image_generation.json` の `providers.grok.max_prompt_bytes`（既定 `7800`）が設定されていれば `tools/image_provider_novel_manga_batch.py` が自動圧縮する。設定が **未設定**の場合は `7800` を追加してから再実行する（詳細は「Grok プロンプト上限と自動圧縮」節）。
 - **Grok の URL 応答が期限切れ** → xAI docs でも生成 URL は一時的。`response_format: "b64_json"` を優先し、即保存する。
 - HTTP その他 4xx/5xx → レスポンス先頭を stderr に表示。
@@ -407,5 +415,5 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - タグ一括: `tools/image_provider_novel_tag_batch.py`（`tag/characters/*.yaml` の `prompt_variants` を YAML 直読みして連続 txt2img）
 - 漫画一括: `tools/image_provider_novel_manga_batch.py`（`manga/manga_*.md` の step1 内 `tag:` ブロックをコマ順に txt2img）
 - 設定: `config/image_generation.json`, `.env`
-- 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/grok_params.example.json`
+- 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/novelai_v5_params.example.json`, `tools/fixtures/grok_params.example.json`
 - タグルール: `_how_to/tag.md`, `_how_to/manga_tag.md`, `_how_to/manga.md`

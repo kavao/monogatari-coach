@@ -21,7 +21,12 @@ from image_provider_generate import (  # noqa: E402
 
 # merge_provider_defaults(provider="novelai", ...) に必要な最低限のフィールド
 _NOVELAI_MIN_CFG: dict = {
-    "default_model": "nai-diffusion-4-5-full",
+    "default_model": "nai-diffusion-5-full",
+    "vibe_model": "nai-diffusion-4-5-full",
+    "model_aliases": {
+        "v5-full": "nai-diffusion-5-full",
+        "v4-5-full": "nai-diffusion-4-5-full",
+    },
     "default_width": 1024,
     "default_height": 1024,
     "default_steps": 28,
@@ -193,3 +198,55 @@ def test_flat2_bundle_matches_novelai_export(tmp_path: Path) -> None:
     assert strengths == pytest.approx([0.22, 0.2])
     assert ies == pytest.approx([0.4, 0.37])
     assert normalize is False
+
+
+def test_vibe_refs_pin_unspecified_model_to_v45(tmp_path: Path) -> None:
+    merged = merge_provider_defaults(
+        "novelai",
+        _NOVELAI_MIN_CFG,
+        {"prompt": "test", "reference_image_multiple": [_FAKE_B64]},
+        root=tmp_path,
+    )
+    assert merged["model"] == "nai-diffusion-4-5-full"
+
+
+def test_vibe_refs_keep_explicit_v45(tmp_path: Path) -> None:
+    merged = merge_provider_defaults(
+        "novelai",
+        _NOVELAI_MIN_CFG,
+        {
+            "prompt": "test",
+            "model": "v4-5-full",
+            "reference_image_multiple": [_FAKE_B64],
+        },
+        root=tmp_path,
+    )
+    assert merged["model"] == "nai-diffusion-4-5-full"
+
+
+def test_vibe_refs_reject_explicit_v5(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Vibe Transfer"):
+        merge_provider_defaults(
+            "novelai",
+            _NOVELAI_MIN_CFG,
+            {
+                "prompt": "test",
+                "model": "v5-full",
+                "reference_image_multiple": [_FAKE_B64],
+            },
+            root=tmp_path,
+        )
+
+
+def test_vibe_refs_reject_explicit_v5_inpainting(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Vibe Transfer"):
+        merge_provider_defaults(
+            "novelai",
+            _NOVELAI_MIN_CFG,
+            {
+                "prompt": "test",
+                "model": "nai-diffusion-5-full-inpainting",
+                "reference_image_multiple": [_FAKE_B64],
+            },
+            root=tmp_path,
+        )

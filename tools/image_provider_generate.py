@@ -57,7 +57,8 @@ def missing_auth_message(auth_env: str) -> str:
     )
 
 
-# NovelAI nai-diffusion-4 / 4.5 系の UC プリセット文字列（参考用）。
+# NovelAI nai-diffusion-4 / 4.5 / 5 系の UC プリセット文字列（公式 Undesired Content 表）。
+# 番号は Web UI の None=3 / Heavy=4 / Light=5 / Human Focus=6 / Furry Focus=7 に合わせる。
 _UC_V45_CURATED: dict[int, str] = {
     3: "",
     4: (
@@ -125,20 +126,101 @@ _UC_V4_FULL: dict[int, str] = {
         "very displeasing, white blank page, blank page"
     ),
 }
+# V5 Full / Curated は公式表で同一文面。Light だけ V4.5 と違う。
+_UC_V5: dict[int, str] = {
+    3: "",
+    4: _UC_V45_FULL[4],
+    5: (
+        "lowres, bad hands, bad anatomy, artistic error, sepia, white haze, "
+        "worst quality, very displeasing, jpeg artifacts, 0::ai-generated::"
+    ),
+    6: _UC_V45_FULL[6],
+    7: _UC_V45_CURATED[7],
+}
+_V5_QUALITY_STANDARD = ", very aesthetic, masterpiece, no text"
+_V5_QUALITY_LIGHT = ", very aesthetic, amazing quality, no text"
+# 公式に確認した model ID だけ v4_prompt 経路へ載せる。部分一致は使わない。
+_NOVELAI_V4_CONDITION_IDS = frozenset(
+    {
+        "nai-diffusion-4",
+        "nai-diffusion-4-full",
+        "nai-diffusion-4-curated",
+        "nai-diffusion-4-curated-preview",
+        "nai-diffusion-4-5-full",
+        "nai-diffusion-4-5-curated",
+        "nai-diffusion-5-full",
+        "nai-diffusion-5-curated",
+    }
+)
+_NOVELAI_V5_IDS = frozenset({"nai-diffusion-5-full", "nai-diffusion-5-curated"})
+_NOVELAI_V4_CONDITION_OPTIONAL_SUFFIX = "-inpainting"
+
+
+def _novelai_model_base(model_id: str) -> str:
+    mid = str(model_id).strip()
+    suffix = _NOVELAI_V4_CONDITION_OPTIONAL_SUFFIX
+    if mid.endswith(suffix):
+        return mid[: -len(suffix)]
+    return mid
+
+
+def _novelai_uses_v4_condition(model_id: str) -> bool:
+    """V4 / V4.5 / V5 の正式 ID（と -inpainting）だけ v4_prompt を使う。"""
+    return _novelai_model_base(model_id) in _NOVELAI_V4_CONDITION_IDS
+
+
+def _novelai_is_v5_model(model_id: str) -> bool:
+    """V5 Full / Curated およびその ``-inpainting`` を V5 として扱う。"""
+    return _novelai_model_base(model_id) in _NOVELAI_V5_IDS
+
+
+def _novelai_apply_vibe_model_pin(
+    *,
+    model_id: str,
+    model_explicit: bool,
+    has_refs: bool,
+    provider_cfg: dict[str, Any],
+) -> str:
+    """Vibe / 参照画像があるとき、未指定モデルを V4.5 に残す。V5 明示は拒否。"""
+    if not has_refs:
+        return model_id
+    vibe_raw = provider_cfg.get("vibe_model", "nai-diffusion-4-5-full")
+    vibe_model = str(
+        resolve_named_value(vibe_raw, provider_cfg.get("model_aliases"))
+    )
+    if model_explicit:
+        if _novelai_is_v5_model(model_id):
+            raise ValueError(
+                "Vibe Transfer は NovelAI V5 では未提供です。"
+                " model を v4-5-full にするか、reference_image_paths を外してください。"
+            )
+        return model_id
+    return vibe_model
 
 
 def _novelai_is_diffusion_v4_family(model_id: str) -> bool:
-    return "nai-diffusion-4" in model_id
+    return _novelai_uses_v4_condition(model_id)
+
+
+def _novelai_is_diffusion_v5(model_id: str) -> bool:
+    return _novelai_model_base(model_id) in _NOVELAI_V5_IDS
 
 
 def _novelai_uc_table(model_id: str) -> dict[int, str]:
-    if "nai-diffusion-4-5-curated" in model_id:
+    base = _novelai_model_base(model_id)
+    if base in _NOVELAI_V5_IDS:
+        return _UC_V5
+    if base == "nai-diffusion-4-5-curated":
         return _UC_V45_CURATED
-    if "nai-diffusion-4-5-full" in model_id:
+    if base == "nai-diffusion-4-5-full":
         return _UC_V45_FULL
-    if "nai-diffusion-4-full" in model_id:
+    if base == "nai-diffusion-4-full":
         return _UC_V4_FULL
-    if "nai-diffusion-4" in model_id:
+    if base in {
+        "nai-diffusion-4",
+        "nai-diffusion-4-curated",
+        "nai-diffusion-4-curated-preview",
+    }:
         return _UC_V4_CURATED
     return {}
 
@@ -168,36 +250,190 @@ def _novelai_combine_uc(model_id: str, uc_preset: int, user_negative: str) -> st
     return base or user
 
 
-def _novelai_augment_prompt(model_id: str, prompt: str) -> str:
+def _novelai_augment_prompt(
+    model_id: str,
+    prompt: str,
+    *,
+    quality_toggle: bool = True,
+    quality_preset: str = "standard",
+) -> str:
     """novelai_api HighLevel.generate_image に合わせた品質接尾辞。
 
     プロンプトに区切り記号 ``|`` が含まれる場合は NovelAI の
     「ベース | キャラ …」構造として**最初の ``|`` の左**（ベース）のみへ追接尾する。
     （``ベース | キャラA | キャラB`` のような複数区切りでも同様）
+    ``quality_toggle=False`` のときは接尾しない（吹き出し試験向け）。
     """
+    if not quality_toggle:
+        return prompt
     pipe_split = "|" in prompt
     if pipe_split:
         left, sep, right = prompt.partition("|")
-        left_augmented = _novelai_augment_prompt_segment(model_id, left.strip())
+        left_augmented = _novelai_augment_prompt_segment(
+            model_id, left.strip(), quality_preset=quality_preset
+        )
         return f"{left_augmented}{sep}{right}" if sep else left_augmented
-    return _novelai_augment_prompt_segment(model_id, prompt)
+    return _novelai_augment_prompt_segment(
+        model_id, prompt, quality_preset=quality_preset
+    )
 
 
-def _novelai_augment_prompt_segment(model_id: str, segment: str) -> str:
+def _novelai_augment_prompt_segment(
+    model_id: str,
+    segment: str,
+    *,
+    quality_preset: str = "standard",
+) -> str:
     """単一セグメントへ品質接尾辞を付与（pipe 分割後の左または全体）。"""
     prompt = segment
-    if "nai-diffusion-4-5-curated" in model_id:
+    base = _novelai_model_base(model_id)
+    if base in _NOVELAI_V5_IDS:
+        suffix = (
+            _V5_QUALITY_LIGHT
+            if quality_preset == "light"
+            else _V5_QUALITY_STANDARD
+        )
+        return f"{prompt}{suffix}"
+    if base == "nai-diffusion-4-5-curated":
         return (
             f"{prompt}, very aesthetic, location, masterpiece, no text, "
             f"-0.8::feet::, rating:general"
         )
-    if "nai-diffusion-4-5-full" in model_id:
+    if base == "nai-diffusion-4-5-full":
         return f"{prompt}, location, very aesthetic, masterpiece, no text"
-    if "nai-diffusion-4-full" in model_id:
+    if base == "nai-diffusion-4-full":
         return f"{prompt}, no text, best quality, very aesthetic, absurdres"
-    if _novelai_is_diffusion_v4_family(model_id):
+    if _novelai_uses_v4_condition(model_id):
         return f"{prompt}, rating:general, best quality, very aesthetic, absurdres"
     return prompt
+
+
+_NOVELAI_DEFAULT_CENTER = {"x": 0.5, "y": 0.5}
+_NOVELAI_GRID_COLS = "ABCDE"
+
+
+def _novelai_validate_xy(x: float, y: float) -> dict[str, float]:
+    if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+        raise ValueError(f"center は 0〜1 です: x={x}, y={y}")
+    return {"x": x, "y": y}
+
+
+def _novelai_parse_center(raw: Any) -> dict[str, float]:
+    """V5 の自由座標（0–1）または V4 互換グリッド A1〜E5 を {x, y} にする。"""
+    if raw is None:
+        return dict(_NOVELAI_DEFAULT_CENTER)
+    if isinstance(raw, str):
+        token = raw.strip().upper()
+        if len(token) == 2 and token[0] in _NOVELAI_GRID_COLS and token[1] in "12345":
+            col = _NOVELAI_GRID_COLS.index(token[0])
+            row = int(token[1]) - 1
+            return {"x": (col + 0.5) / 5.0, "y": (row + 0.5) / 5.0}
+        raise ValueError(f"center のグリッド指定は A1〜E5 です: {raw!r}")
+    if isinstance(raw, (list, tuple)) and len(raw) == 2:
+        return _novelai_validate_xy(float(raw[0]), float(raw[1]))
+    if isinstance(raw, dict) and "x" in raw and "y" in raw:
+        return _novelai_validate_xy(float(raw["x"]), float(raw["y"]))
+    raise ValueError(f"center の形式が不正です: {raw!r}")
+
+
+def _novelai_split_pipe_segments(prompt: str) -> tuple[str, list[str]]:
+    parts = [p.strip() for p in str(prompt).split("|")]
+    if not parts:
+        return "", []
+    return parts[0], [p for p in parts[1:] if p]
+
+
+def _novelai_item_center_raw(item: dict[str, Any]) -> Any:
+    if "center" in item:
+        return item["center"]
+    if "centers" in item:
+        raw_c = item["centers"]
+        if isinstance(raw_c, list) and raw_c:
+            return raw_c[0]
+        return raw_c
+    return None
+
+
+def _novelai_bind_character_centers(
+    prompts: list[str],
+    ucs: list[str],
+    item_centers: list[Any],
+    merged: dict[str, Any],
+) -> list[dict[str, Any]]:
+    top_centers = merged.get("centers")
+    if top_centers is not None:
+        if not isinstance(top_centers, list):
+            raise ValueError("centers は配列である必要があります")
+        if len(top_centers) != len(prompts):
+            raise ValueError(
+                f"centers の件数({len(top_centers)})がキャラ数({len(prompts)})と一致しません"
+            )
+    entries: list[dict[str, Any]] = []
+    for i, prompt in enumerate(prompts):
+        raw_center = item_centers[i]
+        if raw_center is None and top_centers is not None:
+            raw_center = top_centers[i]
+        entries.append(
+            {
+                "prompt": prompt,
+                "uc": ucs[i],
+                "center": _novelai_parse_center(raw_center),
+            }
+        )
+    return entries
+
+
+def _novelai_resolve_character_entries(
+    merged: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """characterPrompts / char_captions 用エントリ。
+
+    優先: ``character_prompts`` 明示 > ``split_pipe_characters`` による pipe 分割。
+    どちらも無ければ空（現行の ``input`` 連結）。
+    """
+    explicit = merged.get("character_prompts")
+    if isinstance(explicit, list) and explicit:
+        prompts: list[str] = []
+        ucs: list[str] = []
+        item_centers: list[Any] = []
+        for i, item in enumerate(explicit):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"character_prompts[{i}] はオブジェクトである必要があります"
+                )
+            prompt = str(
+                item.get("prompt") or item.get("char_caption") or ""
+            ).strip()
+            if not prompt:
+                raise ValueError(f"character_prompts[{i}].prompt が空です")
+            prompts.append(prompt)
+            ucs.append(str(item.get("uc") or item.get("negative") or "").strip())
+            item_centers.append(_novelai_item_center_raw(item))
+        return _novelai_bind_character_centers(prompts, ucs, item_centers, merged)
+
+    if not merged.get("split_pipe_characters"):
+        return []
+    _base, chars = _novelai_split_pipe_segments(str(merged.get("prompt", "")))
+    if not chars:
+        return []
+    return _novelai_bind_character_centers(
+        chars, [""] * len(chars), [None] * len(chars), merged
+    )
+
+
+def _novelai_resolve_use_coords(merged: dict[str, Any]) -> bool:
+    """centers または character の center を明示したとき、未指定なら use_coords を True。"""
+    if merged.get("_use_coords_explicit"):
+        return bool(merged["use_coords"])
+    if merged.get("centers") is not None:
+        return True
+    explicit = merged.get("character_prompts") or []
+    if any(
+        isinstance(item, dict) and ("center" in item or "centers" in item)
+        for item in explicit
+    ):
+        return True
+    return bool(merged.get("use_coords", False))
 
 
 API_404_HINT = """\
@@ -899,7 +1135,10 @@ def merge_provider_defaults(
         return out
 
     if provider == "novelai":
-        out["model"] = params.get("model", provider_cfg["default_model"])
+        raw_model = params.get("model", provider_cfg["default_model"])
+        out["model"] = str(
+            resolve_named_value(raw_model, provider_cfg.get("model_aliases"))
+        )
         out["action"] = params.get("action", provider_cfg.get("default_action", "generate"))
         out["uc_preset"] = int(
             params.get("uc_preset", provider_cfg.get("default_uc_preset", 0))
@@ -952,6 +1191,24 @@ def merge_provider_defaults(
         out["use_coords"] = bool(
             params.get("use_coords", provider_cfg.get("default_use_coords", False))
         )
+        if "use_coords" in params:
+            out["_use_coords_explicit"] = True
+        out["split_pipe_characters"] = bool(
+            params.get(
+                "split_pipe_characters",
+                provider_cfg.get("default_split_pipe_characters", False),
+            )
+        )
+        if "character_prompts" in params:
+            raw_chars = params["character_prompts"]
+            if raw_chars is None:
+                out["character_prompts"] = []
+            elif not isinstance(raw_chars, list):
+                raise ValueError("character_prompts は配列である必要があります")
+            else:
+                out["character_prompts"] = raw_chars
+        if "centers" in params:
+            out["centers"] = params["centers"]
         out["legacy"] = bool(
             params.get("legacy", provider_cfg.get("default_legacy", False))
         )
@@ -978,6 +1235,24 @@ def merge_provider_defaults(
             out["prefer_brownian"] = bool(params["prefer_brownian"])
         if "v4_use_coords" in params:
             out["v4_use_coords"] = bool(params["v4_use_coords"])
+            out["_v4_use_coords_explicit"] = True
+        if "quality_preset" in params:
+            preset = str(params["quality_preset"]).strip().lower()
+            if preset not in {"standard", "light"}:
+                raise ValueError(
+                    f"quality_preset は standard / light のみです: {params['quality_preset']!r}"
+                )
+            out["quality_preset"] = preset
+        for opt_bool in (
+            "straight_alpha",
+            "tag_hint_transparent_background",
+            "upscaled_enhance",
+        ):
+            if opt_bool in params:
+                out[opt_bool] = bool(params[opt_bool])
+        for opt_int in ("tag_hint_qt", "tag_hint_uc_preset"):
+            if opt_int in params:
+                out[opt_int] = int(params[opt_int])
         root_path = root or repo_root()
         refs = load_novelai_reference_images(params, root_path)
         if refs:
@@ -1055,6 +1330,12 @@ def merge_provider_defaults(
                     )
                 else:
                     out["normalize_reference_strength_multiple"] = normalize
+        out["model"] = _novelai_apply_vibe_model_pin(
+            model_id=str(out["model"]),
+            model_explicit="model" in params,
+            has_refs=bool(out.get("reference_image_multiple")),
+            provider_cfg=provider_cfg,
+        )
         return out
 
     if provider in _GROK_FAMILY:
@@ -1197,30 +1478,87 @@ def build_novelai_payload(
     }
     if "extra_noise_seed" in merged:
         parameters["extra_noise_seed"] = merged["extra_noise_seed"]
+    action = str(merged.get("action", "generate"))
+    if merged.get("upscaled_enhance") and action == "generate":
+        raise ValueError(
+            "upscaled_enhance は img2img 専用です。txt2img（action=generate）では送れません。"
+        )
+    for opt_bool in (
+        "straight_alpha",
+        "tag_hint_transparent_background",
+        "upscaled_enhance",
+    ):
+        if opt_bool in merged:
+            parameters[opt_bool] = bool(merged[opt_bool])
+    for opt_int in ("tag_hint_qt", "tag_hint_uc_preset"):
+        if opt_int in merged:
+            parameters[opt_int] = int(merged[opt_int])
 
     input_text = str(merged["prompt"])
-    if _novelai_is_diffusion_v4_family(model_id):
+    if _novelai_uses_v4_condition(model_id):
         combined_uc = _novelai_combine_uc(model_id, uc_eff, str(merged["negative_prompt"]))
         parameters["negative_prompt"] = combined_uc
         parameters["uc"] = combined_uc
-        # v4.5 既定 preset は karras（novelai_api presets_v45）。config が native のままだと 500 になり得る。
+        # v4.5 / v5 既定 preset は karras（novelai_api presets_v45）。config が native のままだと 500 になり得る。
         _ns = str(merged.get("noise_schedule", "karras"))
         if _ns == "native":
             _ns = "karras"
         parameters["noise_schedule"] = _ns
         parameters["prefer_brownian"] = bool(merged.get("prefer_brownian", True))
-        augmented = _novelai_augment_prompt(model_id, str(merged["prompt"]))
+        entries = _novelai_resolve_character_entries(merged)
+        raw_prompt = str(merged["prompt"])
+        if entries:
+            if "|" in raw_prompt:
+                prompt_for_augment, _ = _novelai_split_pipe_segments(raw_prompt)
+            else:
+                prompt_for_augment = raw_prompt
+        else:
+            prompt_for_augment = raw_prompt
+        augmented = _novelai_augment_prompt(
+            model_id,
+            prompt_for_augment,
+            quality_toggle=bool(merged.get("quality_toggle", True)),
+            quality_preset=str(merged.get("quality_preset", "standard")),
+        )
         input_text = augmented
+        use_coords = _novelai_resolve_use_coords(merged)
+        if merged.get("_v4_use_coords_explicit"):
+            v4_use_coords = bool(merged["v4_use_coords"])
+        else:
+            v4_use_coords = use_coords
+        parameters["use_coords"] = use_coords
+        char_captions: list[dict[str, Any]] = []
+        neg_char_captions: list[dict[str, Any]] = []
+        character_prompts: list[dict[str, Any]] = []
+        for entry in entries:
+            center = entry["center"]
+            char_captions.append(
+                {"char_caption": entry["prompt"], "centers": [center]}
+            )
+            neg_char_captions.append(
+                {"char_caption": entry["uc"], "centers": [center]}
+            )
+            character_prompts.append(
+                {
+                    "prompt": entry["prompt"],
+                    "uc": entry["uc"],
+                    "center": center,
+                }
+            )
+        parameters["characterPrompts"] = character_prompts
         parameters["v4_prompt"] = {
             "caption": {
                 "base_caption": augmented,
-                "char_captions": [],
+                "char_captions": char_captions,
             },
-            "use_coords": bool(merged.get("v4_use_coords", merged["use_coords"])),
+            "use_coords": v4_use_coords,
             "use_order": True,
         }
         parameters["v4_negative_prompt"] = {
-            "caption": {"base_caption": combined_uc, "char_captions": []}
+            "caption": {
+                "base_caption": combined_uc,
+                "char_captions": neg_char_captions,
+            }
         }
 
     return {
