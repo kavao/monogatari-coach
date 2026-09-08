@@ -17,7 +17,10 @@ _YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 def load_yaml(path: str | Path) -> dict[str, Any]:
     source = Path(path)
-    data = yaml.load(source.read_text(encoding="utf-8"), Loader=_YAML_LOADER)
+    try:
+        data = yaml.load(source.read_text(encoding="utf-8"), Loader=_YAML_LOADER)
+    except yaml.YAMLError as error:
+        raise ValueError(f"invalid YAML: {source}: {error}") from error
     if data is None:
         return {}
     if not isinstance(data, dict):
@@ -31,12 +34,42 @@ def load_model(path: str | Path, model_type: type[ModelT]) -> ModelT:
 
 def model_to_yaml(model: BaseModel) -> str:
     data = model.model_dump(mode="json", exclude_none=True, by_alias=True)
+    _omit_empty_state_containers(data)
     return yaml.safe_dump(
         data,
         allow_unicode=True,
         sort_keys=False,
         default_flow_style=False,
     )
+
+
+def _omit_empty_state_containers(data: Any) -> None:
+    """状態未使用時に空の character_state / effects_on などを増やさない。"""
+
+    if not isinstance(data, dict):
+        return
+    character_state = data.get("character_state")
+    if isinstance(character_state, dict):
+        if not character_state.get("dimensions") and not character_state.get("transitions") and not character_state.get(
+            "illustration_bind"
+        ):
+            del data["character_state"]
+        else:
+            if not character_state.get("transitions"):
+                character_state.pop("transitions", None)
+            if not character_state.get("illustration_bind"):
+                character_state.pop("illustration_bind", None)
+    for event in data.get("events") or []:
+        if not isinstance(event, dict):
+            continue
+        if event.get("effects_on") == {}:
+            event.pop("effects_on", None)
+        source = event.get("source")
+        if isinstance(source, dict) and source.get("illustrations") == []:
+            source.pop("illustrations", None)
+    for character in data.get("characters") or []:
+        if isinstance(character, dict) and character.get("initial_state") == {}:
+            character.pop("initial_state", None)
 
 
 def atomic_write_text(path: str | Path, text: str) -> None:

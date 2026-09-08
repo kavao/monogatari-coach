@@ -79,11 +79,11 @@ python tools/metron_cli.py finalize \
   --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
 ```
 
-### `chronos_cli.py` — CHRONOS P0 の順序検査
+### `chronos_cli.py` — CHRONOS の順序検査と人物状態
 
-CHRONOS は物語内部の出来事順を YAML で持ち、循環だけを機械的に検出します。日付は省略できます。外部 provider は呼びません。
+CHRONOS は物語内部の出来事順を YAML で持ち、循環を機械的に検出します。日付は省略できます。作品が `character_state.dimensions` を書いたときだけ、人物の次元値も畳み込み検査します。外部 provider は呼びません。
 
-作品フォルダへ `chronos/` 雛形を置く前に、作成予定パスを確認します。`--dry-run` ではファイルを書きません。
+作品フォルダへ `chronos/` 雛形を置く前に、作成予定パスを確認します。`--dry-run` ではファイルを書きません。雛形は次元なしです。
 
 ```bash
 # 確認（dry-run）— 作成予定のパスを表示する
@@ -95,14 +95,14 @@ python tools/chronos_cli.py init novels/NNN_作品名
 
 実行後、`novels/NNN_作品名/chronos/` に設定と空のイベントファイルができます。既にある場合は失敗します。
 
-順序の矛盾を検査します。問題がなければ `ok`、循環があれば `CHR001` とイベント ID が出ます。
+順序の矛盾を検査します。問題がなければ `ok`、循環があれば `CHR001` とイベント ID が出ます。状態を使う作品では CHR010〜013 も出ます。warning だけのときは終了コード 0、error は 1、入力エラーは 2 です。
 
 ```bash
 python tools/chronos_cli.py check novels/NNN_作品名
 python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
 ```
 
-`view` で循環があるときは CHR001 を標準エラーへ出し、終了コードは 1 です。表示順は制約順として信用しません。
+`view` で循環があるときは CHR001 を標準エラーへ出し、終了コードは 1 です。表示順は制約順として信用しません。`--actor` かつ状態ありの作品では、各イベントの before / after を表示します。
 
 技術背景は [CHRONOS 技術詳細](../architecture/chronos.md) を参照してください。
 

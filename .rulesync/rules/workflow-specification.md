@@ -30,8 +30,10 @@ CHRONOS の順序検査を使うときは、次を守る。
 1. 作品フォルダに `chronos/` を置く（`python tools/chronos_cli.py init <作品>`）。既存の `chronos/` は上書きしない。
 2. イベントは章単位 YAML に複数件収容する。必須は `id` と `title` のみ。日付は省略してよい。
 3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM は呼ばない。
-4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。
+4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。挿絵・タグ YAML も書き換えない。
 5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` 接続も後続とする。
+6. 人物状態を使う作品だけ `chronos.config.yaml` の `character_state.dimensions` を宣言する。次元名と値は作品が付ける。`init` 雛形は次元なしのままにする。
+7. 状態ありの check は CHR010（非法遷移）・CHR011（所在観測）・CHR013（未確定順序）を報告する。CHR012（挿絵 variant）は `rules.CHR012` と `illustration_bind` が揃ったときだけ走る。循環や CHR013 ではその人物の状態を捏造しない。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 

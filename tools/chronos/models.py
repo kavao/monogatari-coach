@@ -2,14 +2,17 @@
 
 Pydantic モデルを実行時の契約とし、YAML は ``storage.py`` 経由で保存する。
 必須は Event の ``id`` と ``title`` のみ。日付は省略できる（原則 A）。
+追加フィールドは省略可能で、schema: 1 の既存入力を受け付ける。
 """
 
 from __future__ import annotations
 
 from enum import Enum
+from pathlib import Path
 from re import fullmatch
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 
 _EVENT_ID_PATTERN = r"^EVT-\d{4,}$"
@@ -18,6 +21,7 @@ _LOCATION_ID_PATTERN = r"^LOC-[A-Za-z0-9_-]+$"
 # METRON の scene.id（chNN-MMM）と計画書の SCN-XXXX の両方を受け付ける。
 _SCENE_ID_PATTERN = r"^(SCN-\d{4,}|ch\d{2,}-\d{3,})$"
 _RULE_ID_PATTERN = r"^CHR\d{3}$"
+_DIMENSION_NAME_PATTERN = r"^[A-Za-z][A-Za-z0-9_]*$"
 
 SCHEMA_VERSION = 1
 
@@ -69,6 +73,32 @@ class Severity(str, Enum):
     OFF = "off"
 
 
+class DimensionType(str, Enum):
+    ENUM = "enum"
+    BOOL = "bool"
+    LOC_REF = "loc_ref"
+
+
+class Canon(str, Enum):
+    ILLUSTRATION = "illustration"
+    WORLD = "world"
+    TEXT = "text"
+
+
+class StateAt(str, Enum):
+    BEFORE = "before"
+    AFTER = "after"
+
+
+RULE_SEVERITY_DEFAULTS: dict[str, Severity] = {
+    "CHR001": Severity.ERROR,
+    "CHR010": Severity.ERROR,
+    "CHR011": Severity.WARNING,
+    "CHR012": Severity.OFF,
+    "CHR013": Severity.ERROR,
+}
+
+
 class IgnoreRule(StrictModel):
     rule: str = Field(pattern=_RULE_ID_PATTERN)
     reason: str = Field(min_length=1)
@@ -102,10 +132,43 @@ class EventTime(StrictModel):
         return value
 
 
+class IllustrationRef(StrictModel):
+    path: str = Field(min_length=1)
+    character_id: str = Field(min_length=1)
+    state_at: StateAt = StateAt.AFTER
+
+    @field_validator("path")
+    @classmethod
+    def _illustration_path(cls, value: str) -> str:
+        normalized = value.replace("\\", "/").strip()
+        if not normalized:
+            raise ValueError("illustration path must not be empty")
+        if normalized.startswith("/") or (len(normalized) >= 2 and normalized[1] == ":"):
+            raise ValueError("illustration path must be work-root relative")
+        parts = Path(normalized).parts
+        if ".." in parts:
+            raise ValueError("illustration path must not contain '..'")
+        if not normalized.startswith("illustrations/pages/"):
+            raise ValueError("illustration path must be under illustrations/pages/")
+        if not normalized.endswith(".yaml"):
+            raise ValueError("illustration path must end with .yaml")
+        if Path(normalized).name.startswith("."):
+            raise ValueError("illustration path must not be a hidden file")
+        return normalized
+
+
 class EventSource(StrictModel):
     scene: str | None = Field(default=None, pattern=_SCENE_ID_PATTERN)
     span: tuple[int, int] | None = None
     digest: str | None = None
+    illustrations: list[IllustrationRef] | None = None
+
+    @field_validator("illustrations", mode="before")
+    @classmethod
+    def _empty_illustrations(cls, value: object) -> object:
+        if value == []:
+            return None
+        return value
 
     @model_validator(mode="after")
     def _span_order(self) -> EventSource:
@@ -127,6 +190,7 @@ class Event(StrictModel):
     source: EventSource | None = None
     review: ReviewStatus = ReviewStatus.APPROVED
     locked_fields: list[str] = Field(default_factory=list)
+    effects_on: dict[str, dict[str, Any]] | None = None
     chronos: ChronosMeta | None = None
 
     @field_validator("actors")
@@ -145,6 +209,24 @@ class Event(StrictModel):
                 raise ValueError(f"invalid event id: {item}")
         return value
 
+    @field_validator("effects_on", mode="before")
+    @classmethod
+    def _effects_on_shape(cls, value: object) -> object:
+        if value == {}:
+            return None
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise ValueError("effects_on must be a mapping of character id to dimension diffs")
+        for actor, diffs in value.items():
+            if not isinstance(actor, str) or not _matches(_CHARACTER_ID_PATTERN, actor):
+                raise ValueError(f"invalid character id in effects_on: {actor}")
+            if not isinstance(diffs, dict):
+                raise ValueError(f"effects_on.{actor} must be a mapping")
+            if any(item is None for item in diffs.values()):
+                raise ValueError(f"effects_on.{actor} values cannot be null")
+        return value
+
     def ignored_rules(self) -> set[str]:
         if self.chronos is None:
             return set()
@@ -158,6 +240,20 @@ class EventFile(StrictModel):
 class Character(StrictModel):
     id: str = Field(pattern=_CHARACTER_ID_PATTERN)
     name: str = Field(min_length=1)
+    initial_state: dict[str, Any] | None = None
+
+    @field_validator("initial_state", mode="before")
+    @classmethod
+    def _initial_state_shape(cls, value: object) -> object:
+        if value == {}:
+            return None
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise ValueError("initial_state must be a mapping")
+        if any(item is None for item in value.values()):
+            raise ValueError("initial_state values cannot be null")
+        return value
 
 
 class Location(StrictModel):
@@ -203,11 +299,99 @@ class TravelRule(StrictModel):
     min: str = Field(min_length=1)
 
 
+class DimensionSpec(StrictModel):
+    type: DimensionType
+    values: list[str] | None = None
+    default: StrictBool | str | None = None
+    canon: Canon = Canon.WORLD
+
+    @field_validator("default", mode="before")
+    @classmethod
+    def _reject_numeric_default(cls, value: object) -> object:
+        if isinstance(value, bool) or value is None:
+            return value
+        if isinstance(value, int):
+            raise ValueError("default must be a boolean or string, not an integer")
+        return value
+
+    @model_validator(mode="after")
+    def _shape(self) -> DimensionSpec:
+        if "default" in self.model_fields_set and self.default is None:
+            raise ValueError("default cannot be null; omit the key instead")
+        if self.type is DimensionType.ENUM:
+            if not self.values:
+                raise ValueError("enum dimension requires non-empty values")
+            if any(not item for item in self.values):
+                raise ValueError("enum values must be non-empty strings")
+            if len(self.values) != len(set(self.values)):
+                raise ValueError("enum values must be unique")
+            if self.default is not None:
+                if not isinstance(self.default, str) or self.default not in self.values:
+                    raise ValueError("enum default must be one of values")
+        else:
+            if self.values is not None:
+                raise ValueError("values are only allowed on enum dimensions")
+        if self.type is DimensionType.BOOL and self.default is not None:
+            if not isinstance(self.default, bool):
+                raise ValueError("bool default must be a boolean")
+        if self.type is DimensionType.LOC_REF and self.default is not None:
+            if not isinstance(self.default, str) or not _matches(_LOCATION_ID_PATTERN, self.default):
+                raise ValueError("loc_ref default must be a LOC-* id")
+        return self
+
+
+class TransitionRule(StrictModel):
+    dimension: str = Field(min_length=1)
+    from_value: StrictBool | str = Field(alias="from")
+    to: StrictBool | str
+
+    @field_validator("from_value", "to", mode="before")
+    @classmethod
+    def _reject_numeric_endpoint(cls, value: object) -> object:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int):
+            raise ValueError("transition endpoints must be boolean or string, not an integer")
+        return value
+
+
+class IllustrationBind(StrictModel):
+    actor: str = Field(pattern=_CHARACTER_ID_PATTERN)
+    character_id: str = Field(min_length=1)
+    dimension: str = Field(min_length=1)
+    value: str = Field(min_length=1)
+    variant_ids: list[str] = Field(min_length=1)
+
+    @field_validator("variant_ids")
+    @classmethod
+    def _variant_ids(cls, value: list[str]) -> list[str]:
+        if any(not item for item in value):
+            raise ValueError("variant_ids must be non-empty strings")
+        if len(value) != len(set(value)):
+            raise ValueError("variant_ids must be unique")
+        return value
+
+
+class CharacterStateConfig(StrictModel):
+    dimensions: dict[str, DimensionSpec] = Field(default_factory=dict)
+    transitions: list[TransitionRule] = Field(default_factory=list)
+    illustration_bind: list[IllustrationBind] = Field(default_factory=list)
+
+    @field_validator("dimensions")
+    @classmethod
+    def _dimension_names(cls, value: dict[str, DimensionSpec]) -> dict[str, DimensionSpec]:
+        for name in value:
+            if not _matches(_DIMENSION_NAME_PATTERN, name):
+                raise ValueError(f"invalid dimension name: {name}")
+        return value
+
+
 class ChronosConfig(StrictModel):
     schema_version: int = Field(default=SCHEMA_VERSION, alias="schema")
     rules: dict[str, Severity] = Field(default_factory=dict)
     travel: list[TravelRule] = Field(default_factory=list)
     disclosure_distance_threshold: int = Field(default=40000, ge=1)
+    character_state: CharacterStateConfig | None = None
 
     @field_validator("rules")
     @classmethod
@@ -217,8 +401,15 @@ class ChronosConfig(StrictModel):
                 raise ValueError(f"invalid rule id: {key}")
         return value
 
-    def severity_for(self, rule_id: str, default: Severity = Severity.ERROR) -> Severity:
-        return self.rules.get(rule_id, default)
+    def severity_for(self, rule_id: str, default: Severity | None = None) -> Severity:
+        if rule_id in self.rules:
+            return self.rules[rule_id]
+        if default is not None:
+            return default
+        return RULE_SEVERITY_DEFAULTS.get(rule_id, Severity.ERROR)
+
+    def state_enabled(self) -> bool:
+        return self.character_state is not None and bool(self.character_state.dimensions)
 
 
 class Finding(StrictModel):
@@ -230,3 +421,11 @@ class Finding(StrictModel):
 
 def _matches(pattern: str, value: str) -> bool:
     return fullmatch(pattern, value) is not None
+
+
+def is_character_id(value: str) -> bool:
+    return _matches(_CHARACTER_ID_PATTERN, value)
+
+
+def is_location_id(value: str) -> bool:
+    return _matches(_LOCATION_ID_PATTERN, value)

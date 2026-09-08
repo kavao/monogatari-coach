@@ -36,9 +36,15 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 ## CHRONOS P0 不変条件
 
 - 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
-- 検査は決定的コード（P0 は CHR001）で行い、LLM に判定を委ねない。
+- 検査は決定的コード（P0 は CHR001、人物状態は CHR010〜013）で行い、LLM に判定を委ねない。
 - `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
 - 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。
+
+## CHRONOS 人物状態（P0.5）
+
+- 作品が `character_state.dimensions` で `enum` / `bool` / `loc_ref` を宣言したときだけ状態検査が有効になる。コアはジャンル語を持たない。
+- 循環または同一人物の未確定順序では状態を捏造しない。CHR012 は `rules.CHR012` と bind が揃った作品だけの opt-in である。
+- 検査は挿絵・タグ YAML を読取専用とし、本文や挿絵を書き換えない。執筆完了ゲートにはしない。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 

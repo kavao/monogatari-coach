@@ -136,6 +136,47 @@ def topological_order(graph: OrderGraph, preferred: list[str]) -> list[str]:
     return ordered + leftover
 
 
+def reachable_from(graph: OrderGraph, start: str) -> set[str]:
+    """``start`` から到達できる後続（自身は含めない）。"""
+
+    seen: set[str] = set()
+    queue: deque[str] = deque([start])
+    while queue:
+        node = queue.popleft()
+        for nxt in graph.successors.get(node, []):
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(nxt)
+    seen.discard(start)
+    return seen
+
+
+def incomparable_pairs(graph: OrderGraph, event_ids: list[str]) -> list[tuple[str, str]]:
+    """到達可能性で前後を比較できない組。ID 昇順で安定化する。"""
+
+    ids = sorted(set(event_ids))
+    reach = {event_id: reachable_from(graph, event_id) for event_id in ids}
+    pairs: list[tuple[str, str]] = []
+    for index, earlier in enumerate(ids):
+        for later in ids[index + 1 :]:
+            if later not in reach[earlier] and earlier not in reach[later]:
+                pairs.append((earlier, later))
+    return pairs
+
+
+def order_by_reachability(graph: OrderGraph, event_ids: list[str]) -> list[str]:
+    """互いに比較可能なイベントを、到達数の多い（より先の）順に並べる。"""
+
+    ids = list(dict.fromkeys(event_ids))
+    reach = {event_id: reachable_from(graph, event_id) for event_id in ids}
+    id_set = set(ids)
+
+    def score(event_id: str) -> tuple[int, str]:
+        return (-sum(1 for other in id_set if other in reach[event_id]), event_id)
+
+    return sorted(ids, key=score)
+
+
 def events_for_actor(events: list[Event], actor_id: str) -> list[Event]:
     return [event for event in events if actor_id in event.actors]
 

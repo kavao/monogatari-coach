@@ -1,15 +1,20 @@
-"""CHRONOS の静的検査。P0 は CHR001（時系列矛盾）のみ。"""
+"""CHRONOS の静的検査。順序循環と、有効時の人物状態。"""
 
 from __future__ import annotations
 
 from .graph import build_order_graph, find_cycles
+from .illustration import check_chr012
 from .models import Finding, Severity
+from .state import findings_from_resolution, resolve_states
 from .store import ChronosStore
 
 
 def check_store(store: ChronosStore) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(_check_chr001(store))
+    resolution = resolve_states(store)
+    findings.extend(findings_from_resolution(store, resolution))
+    findings.extend(check_chr012(store, resolution))
     return [item for item in findings if item.severity is not Severity.OFF]
 
 

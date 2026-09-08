@@ -25,7 +25,7 @@ _README = """# CHRONOS
 このフォルダは物語内部時間の正本です。日付は省略できます。順序は `time.after` / `time.before` で書きます。
 
 - `events/` は章単位 YAML に複数イベントを収容します。未配置は `unplaced.yaml` です。
-- `check` は決定的 lint です。LLM は呼びません。
+- `check` は決定的 lint です。LLM は呼びません。人物状態は `character_state.dimensions` を書いた作品だけ検査します。
 - `world.md` や `_novel_text` は検査の副作用では書き換えません。
 - `.cache/` は導出物です。P1 以降で使います。削除しても再計算できます。
 """
