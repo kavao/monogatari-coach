@@ -12,7 +12,7 @@ import unicodedata
 from novel_char_count import count_chars
 
 from .markers import embed_beat_markers, parse_markers
-from .analyze import analyze_marked_text
+from .analyze import analyze_marked_text, _body_lines, _dialogue_turns
 from .calibrate import ModelCalibration
 from .classify import ClassificationResult, Finding, classify_metrics
 from .models import Beat, BeatPlan, Failure, MetricsDocument, SpansDocument
@@ -28,6 +28,7 @@ _NGRAM_STRIP_RE = re.compile(r"[\s　。、．，！？!?…・「」『』（�
 DEEPEN_PARAPHRASE_MIN_CHARS = 20
 DEEPEN_PARAPHRASE_NGRAM = 2
 DEEPEN_PARAPHRASE_JACCARD = 0.62
+SCENE_FLOOR_TOKEN = "__scene_floor__"
 
 
 def split_sentences(text: str) -> list[str]:
@@ -53,14 +54,22 @@ def build_expand_prompt(beat: Beat, current_text: str) -> str:
 
     budget = to_prompt_budget(beat.budget)
     current = current_beat_chars(current_text)
+    para_low, para_high = beat.budget.paragraphs
+    dlg_low, dlg_high = beat.budget.dialogue_turns
+    observed_para, observed_dlg = _axis_observed(current_text)
     return (
         build_beat_prompt(beat)
         + "\n現在の Beat 本文:\n"
         + current_text
         + "\n\nDeepen 指示:\n"
         + f"現在 {current}字。下限 {budget.chars_floor}字。指示目標 {budget.chars_instruction}字。"
+        + f"段落下限 {para_low}、会話往復下限 {dlg_low}。"
+        + f"段落の残余裕 {_axis_room_label(observed_para, (para_low, para_high))}、"
+        + f"会話の残余裕 {_axis_room_label(observed_dlg, (dlg_low, dlg_high))}。"
         + "現在の出来事・結末・視点を変更せず、現在の本文を残したまま、"
         + "不足している手順・制度・選択、感情の変化と身体の変化、感覚・内面・会話を、言い換えではなく固有の情報で深めて下限を超えること。"
+        + "字数だけを同一段落へ足しても、段落数・会話往復の不足は解消しない。"
+        + "段落が下限未満なら空行で段落を増やし、会話往復が下限未満なら往復を足す。"
         + "同じ内容の反復や埋草は禁止。書き直し、要約、既存文の削除は禁止する。"
     )
 
@@ -234,6 +243,7 @@ class SceneRepairResult:
     escalated_beats: tuple[str, ...]
     verification_metrics: MetricsDocument
     verification_classification: ClassificationResult
+    notes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -349,6 +359,94 @@ def _finding_beats(findings: list[Finding], failure: Failure) -> list[str]:
     ]
 
 
+def _axis_observed(text: str) -> tuple[int, int]:
+    lines = _body_lines(text)
+    return len(lines), _dialogue_turns(lines)
+
+
+def _axis_saturated(observed: int, bounds: tuple[int, int | None]) -> bool:
+    upper = bounds[1]
+    return upper is not None and observed >= upper
+
+
+def _axis_room_label(observed: int, bounds: tuple[int, int | None]) -> str:
+    upper = bounds[1]
+    if upper is None:
+        return "無制限"
+    return str(max(0, upper - observed))
+
+
+def beat_has_headroom(beat: Beat, paragraphs: int, dialogue_turns: int) -> bool:
+    if beat.expandable is False:
+        return False
+    para_open = not _axis_saturated(paragraphs, beat.budget.paragraphs)
+    dialogue_open = not _axis_saturated(dialogue_turns, beat.budget.dialogue_turns)
+    return para_open or dialogue_open
+
+
+def _beat_eligible(beat: Beat, text: str, taken: set[str]) -> bool:
+    if beat.id in taken:
+        return False
+    paragraphs, dialogue_turns = _axis_observed(text)
+    return beat_has_headroom(beat, paragraphs, dialogue_turns)
+
+
+def _skip_reason(beat: Beat, text: str) -> str:
+    if beat.expandable is False:
+        return f"{beat.id}: expandable=false"
+    paragraphs, dialogue_turns = _axis_observed(text)
+    para_u = beat.budget.paragraphs[1]
+    dlg_u = beat.budget.dialogue_turns[1]
+    return (
+        f"{beat.id}: saturated "
+        f"(paragraphs {paragraphs}>={para_u}, dialogue {dialogue_turns}>={dlg_u})"
+    )
+
+
+def select_scene_floor_extras(
+    beat_plan: BeatPlan,
+    beat_texts: dict[str, str],
+    taken: set[str],
+) -> list[str]:
+    """シーン床不足の追加候補。適格 Beat を seed 字数順＋隣接で一度だけ選ぶ。"""
+
+    beats = beat_plan.beats
+    index_of = {beat.id: index for index, beat in enumerate(beats)}
+    seeds = sorted(
+        beats,
+        key=lambda beat: (current_beat_chars(beat_texts.get(beat.id, "")), index_of[beat.id]),
+    )
+    selected: list[str] = []
+    selected_set: set[str] = set()
+    blocked = set(taken)
+    for seed in seeds:
+        if seed.id in selected_set:
+            continue
+        pick = None
+        if _beat_eligible(seed, beat_texts.get(seed.id, ""), blocked | selected_set):
+            pick = seed
+        else:
+            index = index_of[seed.id]
+            for distance in range(1, len(beats)):
+                for candidate_index in (index - distance, index + distance):
+                    if 0 <= candidate_index < len(beats):
+                        candidate = beats[candidate_index]
+                        if _beat_eligible(
+                            candidate,
+                            beat_texts.get(candidate.id, ""),
+                            blocked | selected_set,
+                        ):
+                            pick = candidate
+                            break
+                if pick is not None:
+                    break
+        if pick is None:
+            continue
+        selected.append(pick.id)
+        selected_set.add(pick.id)
+    return selected
+
+
 def _repair_scene_impl(
     metrics: MetricsDocument,
     beat_plan: BeatPlan,
@@ -411,17 +509,19 @@ def _repair_scene_impl(
     )
     required_deepen = list(dict.fromkeys([*thin_ids, *too_short_beat_ids]))
     deepen_ids = list(required_deepen)
+    extra_ids: list[str] = []
+    notes: list[str] = []
     if scene_too_short:
         already = set(deepen_ids) | missing_set
         if ending_beat_id is not None:
             already.add(ending_beat_id)
-        extras = [
-            beat
-            for beat in beat_plan.beats
-            if beat.id not in already
-        ]
-        extras.sort(key=lambda beat: current_beat_chars(beat_texts.get(beat.id, "")))
-        deepen_ids.extend(beat.id for beat in extras)
+        extra_ids = select_scene_floor_extras(beat_plan, beat_texts, already)
+        deepen_ids.extend(extra_ids)
+        extra_set = set(extra_ids)
+        for beat in beat_plan.beats:
+            if beat.id in already or beat.id in extra_set:
+                continue
+            notes.append("SCENE_FLOOR_SKIPPED: " + _skip_reason(beat, beat_texts.get(beat.id, "")))
     if truncated:
         for finding in classification.findings:
             if finding.failure == Failure.BEAT_MISSING and finding.beat_id:
@@ -453,6 +553,7 @@ def _repair_scene_impl(
             escalated.add(beat_id)
 
     required_deepen_set = set(required_deepen)
+    extra_set = set(extra_ids)
     scene_floor = beat_plan.generation.chars_floor
     for beat_id in deepen_ids:
         if (
@@ -492,8 +593,11 @@ def _repair_scene_impl(
         else:
             escalated.add(final_beat.id)
 
+    # Scene-floor no-op: no required repair and no eligible extras.
+    # Skip seam so the first repair-next is already terminal.
+    skip_noop_scene_floor_seam = scene_too_short and not needs_generation
     seam_applied = False
-    if seam_corrector is not None and not truncated:
+    if seam_corrector is not None and not truncated and not skip_noop_scene_floor_seam:
         seam = run_marked_seam_correction(
             beat_plan, beat_texts,
             (lambda prompt: dispatch("seam", None, prompt)) if dispatch else seam_corrector,
@@ -509,6 +613,8 @@ def _repair_scene_impl(
             break
         if _scene_chars(beat_plan, beat_texts) >= scene_floor:
             break
+        if beat.id not in required_deepen_set and beat.id not in extra_set:
+            continue
         previous = expansions.get(beat.id)
         remaining = 2 - (previous.attempts if previous else 0)
         if remaining <= 0 or expander is None or beat.id in regenerated:
@@ -531,6 +637,30 @@ def _repair_scene_impl(
             escalated=result.escalated,
             checks=(previous.checks if previous else ()) + result.checks,
         )
+    ending_set = {ending_beat_id} if ending_beat_id else set()
+    leftover_ids = [
+        beat.id
+        for beat in beat_plan.beats
+        if beat.id not in (missing_set | required_deepen_set | ending_set)
+    ]
+    if (
+        scene_too_short
+        and not truncated
+        and leftover_ids
+        and _scene_chars(beat_plan, beat_texts) < scene_floor
+    ):
+        remaining_eligible = [
+            beat.id
+            for beat in beat_plan.beats
+            if _beat_eligible(
+                beat,
+                beat_texts.get(beat.id, ""),
+                missing_set | extra_set | required_deepen_set | ending_set,
+            )
+        ]
+        if not remaining_eligible:
+            escalated.add(SCENE_FLOOR_TOKEN)
+            notes.append("SCENE_FLOOR_NO_ELIGIBLE: no expandable extra beats remain")
     joined = assemble_beat_texts(beat_plan, beat_texts)
     if checkpoint:
         checkpoint(dict(beat_texts))
@@ -548,6 +678,7 @@ def _repair_scene_impl(
         regenerated_beats=tuple(dict.fromkeys(regenerated)),
         seam_correction_applied=seam_applied,
         escalated_beats=tuple(sorted(escalated)),
+        notes=tuple(notes),
         verification_metrics=verification.metrics,
         verification_classification=classify_metrics(
             verification.metrics,

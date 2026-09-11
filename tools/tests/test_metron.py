@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+import os
 import subprocess
 import sys
 
@@ -26,6 +27,7 @@ from metron.classify import (
 )
 from metron.markers import embed_beat_markers, fact_marker, parse_markers
 from metron.models import (
+    INSTRUCTION_OVERSHOOT,
     Beat,
     BeatBudget,
     BeatPlan,
@@ -39,6 +41,7 @@ from metron.regression import build_regression_observation
 from metron.repair import (
     DEEPEN_PARAPHRASE_JACCARD,
     build_beat_continuation_context,
+    build_expand_prompt,
     find_deepen_paraphrase,
     normalize_novel_body,
     original_retention_ratio,
@@ -64,6 +67,7 @@ def _beat(
     dialogue_turns: tuple[int, int | None] = (0, None),
     weight: str = "normal",
     isolated: bool = False,
+    expandable: bool = True,
 ) -> Beat:
     return Beat(
         id=beat_id,
@@ -71,6 +75,7 @@ def _beat(
         intent="検証用の意図",
         weight=weight,  # type: ignore[arg-type]
         isolated=isolated,
+        expandable=expandable,
         budget=BeatBudget(
             paragraphs=paragraphs,
             dialogue_turns=dialogue_turns,
@@ -105,6 +110,19 @@ def _calibration(**overrides: object) -> ModelCalibration:
     return ModelCalibration.model_validate(values)
 
 
+def _run_metron_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    return subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "metron_cli.py"), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+    )
+
+
 def test_models_marker_offsets_prompt_boundary() -> None:
     plan = _plan(*[_beat(f"b{i}") for i in range(1, 5)])
     text = embed_beat_markers(
@@ -120,6 +138,11 @@ def test_models_marker_offsets_prompt_boundary() -> None:
 
     prompt = build_beat_prompt(plan.beats[0], previous_context="直前の文。")
     budget = to_prompt_budget(plan.beats[0].budget)
+    assert INSTRUCTION_OVERSHOOT == 1.4
+    assert instruction_target_chars(10) == 14
+    assert instruction_target_chars(4000) == 5600
+    assert instruction_target_chars(1) == 1
+    assert instruction_target_chars(2) == 3
     assert budget.chars_floor == 10
     assert budget.chars_instruction == instruction_target_chars(10)
     assert budget.chars_instruction > budget.chars_floor
@@ -174,6 +197,52 @@ def test_analysis_report_and_classification() -> None:
         item.failure.value == "TooShort" and item.beat_id == "b1" and item.auto_repair
         for item in result.findings
     )
+    thin = next(item for item in result.findings if item.failure.value == "BeatThin")
+    assert thin.auto_repair
+    assert "paragraphs" in thin.reason
+
+
+def test_beat_thin_typical_gap_is_advisory() -> None:
+    plan = _plan(
+        _beat("b1", paragraphs=(2, None), dialogue_turns=(2, None), chars_hint=1),
+        _beat("b2", chars_hint=1),
+        _beat("b3", chars_hint=1),
+        _beat("b4", chars_hint=1),
+    )
+    analyzed = analyze_marked_text(
+        embed_beat_markers(
+            [
+                ("b1", "「はい」\n\n「そう」"),
+                ("b2", "普通の本文です。"),
+                ("b3", "普通の本文です。"),
+                ("b4", "終わり。"),
+            ]
+        ),
+        plan,
+        run=1,
+    )
+    result = classify_metrics(
+        analyzed.metrics,
+        plan,
+        _calibration(beat_thin_ratio=2.0, ending_rush_threshold=0.0),
+        spans=analyzed.spans,
+    )
+    thin = [
+        item
+        for item in result.findings
+        if item.failure.value == "BeatThin" and item.beat_id == "b1"
+    ]
+    assert len(thin) == 1
+    assert thin[0].auto_repair is False
+    assert "not auto-repaired" in thin[0].reason
+    assert not result.repair_findings
+
+
+def test_expand_prompt_names_structure_floors() -> None:
+    prompt = build_expand_prompt(_beat("b1", paragraphs=(2, None), dialogue_turns=(2, None)), "短い。")
+    assert "段落下限 2" in prompt
+    assert "会話往復下限 2" in prompt
+    assert "字数だけを同一段落へ足しても" in prompt
 
 
 def test_truncation_suppresses_length_and_too_short_is_repairable() -> None:
@@ -629,44 +698,37 @@ def test_cli_analyze_report_and_classify(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     output_dir = tmp_path / contract.scene.id
-    command = [
-        sys.executable,
-        str(ROOT / "tools" / "metron_cli.py"),
-        "analyze",
-        "--contract",
-        str(contract_path),
-        "--beats",
-        str(beats_path),
-        "--draft",
-        str(draft_path),
-        "--output-dir",
-        str(output_dir),
-        "--run",
-        "1",
-        "--model",
-        "m",
-    ]
-    analyzed = subprocess.run(command, capture_output=True, text=True)
+    analyzed = _run_metron_cli(
+        [
+            "analyze",
+            "--contract",
+            str(contract_path),
+            "--beats",
+            str(beats_path),
+            "--draft",
+            str(draft_path),
+            "--output-dir",
+            str(output_dir),
+            "--run",
+            "1",
+            "--model",
+            "m",
+        ]
+    )
     assert analyzed.returncode == 0, analyzed.stderr
     assert (output_dir / "metrics.001.yaml").exists()
-    report = subprocess.run(
+    report = _run_metron_cli(
         [
-            sys.executable,
-            str(ROOT / "tools" / "metron_cli.py"),
             "report",
             "--metrics",
             str(output_dir / "metrics.001.yaml"),
             "--beats",
             str(beats_path),
-        ],
-        capture_output=True,
-        text=True,
+        ]
     )
     assert report.returncode == 0 and "METRON V0" in report.stdout
-    classified = subprocess.run(
+    classified = _run_metron_cli(
         [
-            sys.executable,
-            str(ROOT / "tools" / "metron_cli.py"),
             "classify",
             "--metrics",
             str(output_dir / "metrics.001.yaml"),
@@ -678,16 +740,12 @@ def test_cli_analyze_report_and_classify(tmp_path: Path) -> None:
             str(config_path),
             "--model",
             "m",
-        ],
-        capture_output=True,
-        text=True,
+        ]
     )
     assert classified.returncode == 0, classified.stderr
 
-    blocked = subprocess.run(
+    blocked = _run_metron_cli(
         [
-            sys.executable,
-            str(ROOT / "tools" / "metron_cli.py"),
             "classify",
             "--metrics",
             str(output_dir / "metrics.001.yaml"),
@@ -697,9 +755,151 @@ def test_cli_analyze_report_and_classify(tmp_path: Path) -> None:
             str(ROOT / "config" / "metron_models.yaml"),
             "--model",
             "<model-id>",
-        ],
-        capture_output=True,
-        text=True,
+        ]
     )
     assert blocked.returncode == 2
     assert "not approved" in blocked.stderr
+
+
+def test_scene_floor_extras_skip_saturated_picks_neighbor() -> None:
+    plan = _plan(
+        _beat("act_sat", paragraphs=(1, 1), dialogue_turns=(0, 0), chars_hint=5),
+        _beat(
+            "talk_open",
+            type="dialogue",
+            paragraphs=(1, None),
+            dialogue_turns=(0, None),
+            chars_hint=5,
+        ),
+        _beat("act_mid", paragraphs=(1, None), dialogue_turns=(0, 0), chars_hint=5),
+        chars_floor=80,
+    )
+    short = "短い動作。"
+    talk = "「確認する」\n\n「分かった」隣の伸びしろ。"
+    mid = "中間の動作を少し書く。"
+    analyzed = analyze_marked_text(
+        embed_beat_markers(
+            [("act_sat", short), ("talk_open", talk), ("act_mid", mid)]
+        ),
+        plan,
+        run=1,
+    )
+    seen: list[str] = []
+
+    def expand(prompt: str) -> str:
+        if "短い動作" in prompt:
+            seen.append("act_sat")
+            return short + "追記。" * 20
+        if "確認する" in prompt:
+            seen.append("talk_open")
+            return talk + "追記。" * 20
+        seen.append("act_mid")
+        return mid + "追記。" * 20
+
+    repaired = repair_scene(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        expander=expand,
+        regenerator=lambda prompt: prompt,
+        seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
+    )
+    assert "act_sat" not in repaired.expansions
+    assert "act_sat" not in seen
+    assert "talk_open" in repaired.expansions
+    assert seen.count("talk_open") <= 2
+    assert "SCENE_FLOOR_SKIPPED: act_sat" in " ".join(repaired.notes)
+
+
+def test_required_beat_thin_on_unexpandable_still_deepens() -> None:
+    plan = _plan(
+        _beat("thin_closed", paragraphs=(2, None), chars_hint=5, expandable=False),
+        _beat("ok_open", chars_hint=5),
+        chars_floor=1,
+    )
+    analyzed = analyze_marked_text(
+        embed_beat_markers(
+            [("thin_closed", "一段だけ。"), ("ok_open", "十分な本文である。")]
+        ),
+        plan,
+        run=1,
+    )
+    repaired = repair_scene(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        expander=lambda prompt: "一段だけ。\n\n二段目を足した。" + "追記。" * 4,
+        regenerator=lambda prompt: prompt,
+        seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
+    )
+    assert "thin_closed" in repaired.expansions
+
+
+def test_no_eligible_extras_adds_scene_floor_token() -> None:
+    from metron.repair import SCENE_FLOOR_TOKEN
+
+    plan = _plan(
+        _beat("a", paragraphs=(1, 1), dialogue_turns=(0, 0), chars_hint=3),
+        _beat("b", paragraphs=(1, 1), dialogue_turns=(0, 0), chars_hint=3),
+        chars_floor=200,
+    )
+    body = "下限を満たす本文。"
+    analyzed = analyze_marked_text(
+        embed_beat_markers([("a", body), ("b", body)]),
+        plan,
+        run=1,
+    )
+    calls = {"expand": 0, "seam": 0}
+
+    def expander(prompt: str) -> str:
+        calls["expand"] += 1
+        return body + "足した。"
+
+    def seam_corrector(prompt: str) -> str:
+        calls["seam"] += 1
+        return prompt.split("結合稿:\n", 1)[1]
+
+    repaired = repair_scene(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        expander=expander,
+        regenerator=lambda prompt: prompt,
+        seam_corrector=seam_corrector,
+    )
+    assert SCENE_FLOOR_TOKEN in repaired.escalated_beats
+    assert not repaired.expansions
+    assert not repaired.seam_correction_applied
+    assert calls == {"expand": 0, "seam": 0}
+    assert any(note.startswith("SCENE_FLOOR_NO_ELIGIBLE") for note in repaired.notes)
+
+
+def test_validate_equal_chars_hint_is_warning_only(tmp_path: Path) -> None:
+    contract = tmp_path / "contract.yaml"
+    beats = tmp_path / "beats.yaml"
+    contract.write_text(
+        Path(
+            ROOT / "tools/fixtures/writing_bridge/ok_ch01_001/work/_metron/ch01-001/contract.yaml"
+        ).read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    beats.write_text(
+        "generation:\n  granularity: auto\n  chars_floor: 80\n"
+        "beats:\n"
+        "  - id: a\n    type: action\n    intent: 一\n    budget: {paragraphs: [1, 2], dialogue_turns: [0, 0], sensory: 0, interiority: 0, new_facts: 0, chars_hint: 40}\n"
+        "  - id: b\n    type: action\n    intent: 二\n    budget: {paragraphs: [1, 2], dialogue_turns: [0, 0], sensory: 0, interiority: 0, new_facts: 0, chars_hint: 40}\n"
+        "  - id: c\n    type: action\n    intent: 三\n    budget: {paragraphs: [1, 2], dialogue_turns: [0, 0], sensory: 0, interiority: 0, new_facts: 0, chars_hint: 40}\n",
+        encoding="utf-8",
+    )
+    result = _run_metron_cli(
+        ["validate", "--contract", str(contract), "--beats", str(beats)]
+    )
+    assert result.returncode == 0
+    assert "valid: ch01-001" in result.stdout
+    assert "warning: equal_chars_hint scene=ch01-001 beats=3" in result.stderr

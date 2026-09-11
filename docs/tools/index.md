@@ -108,7 +108,7 @@ python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
 
 ### `writing_bridge_cli.py` — METRON / CHRONOS の執筆接続
 
-Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。
+Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
 
 両方 OFF のときは run を作りません。契約とマーカー稿は従来どおり `_metron/` に置きます。
 
@@ -157,7 +157,7 @@ python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-0001
 ```
 
-正本へ書くときは、保存の明示依頼があるときだけ、最初から `--allow-publish` 付きの run を用意します。起草用 run に後から権限は付きません。上の起草レシピを実行済みなら、保存用 `prepare` は別の `run_id` を返します。その id で `receive` / `inspect` をやり直してから `publish` します。起草用の `run-0001` へ `publish` すると `PERMISSION_DENIED` です。実行後の `prepared: .../run-XXXX` を、次の `--run-id` に使います。候補が無い保存用 run へ `publish` すると失敗します。
+正本へ書くときは `--allow-publish` 付きの run が必要です。METRON ON の場面作業では、執筆や Deepen の依頼だけで保存用 run まで進みます。起草用 run に後から権限は付きません。上の起草レシピを実行済みなら、保存用 `prepare` は別の `run_id` を返します。その id で `receive` / `inspect` をやり直してから `publish` します。起草用の `run-0001` へ `publish` すると `PERMISSION_DENIED` です。実行後の `prepared: .../run-XXXX` を、次の `--run-id` に使います。候補が無い保存用 run へ `publish` すると失敗します。
 
 ```bash
 # 確認（dry-run）— 作成予定の保存用 run パスだけを表示する

@@ -8,7 +8,7 @@ from .models import Beat, BeatBudget, PromptBudget, instruction_target_chars
 
 
 def to_prompt_budget(budget: BeatBudget) -> PromptBudget:
-    """構造予算に、分量の床と多めの指示目標を付けて渡す。"""
+    """構造予算に、分量の床と床以上の指示目標を付けて渡す。"""
 
     floor = budget.chars_hint
     return PromptBudget(
@@ -45,7 +45,7 @@ def build_beat_prompt(
         f"感覚描写: 少なくとも {budget.sensory} 箇所",
         f"内面描写: 少なくとも {budget.interiority} 箇所",
         f"本文下限: {budget.chars_floor}字（検査の床。これ未満は不足）",
-        f"指示目標: {budget.chars_instruction}字（下限より多めに書く。控えめで足りなくなるため）",
+        f"指示目標: {budget.chars_instruction}字（下限以上に書く。控えめで足りなくなるため）",
         "水増し禁止。出来事を増やさず、手順・制度・選択に加え、感情の変化と身体の変化、感覚・内面・会話を、すでに書いた内容の言い換えではなく固有の情報で深めて下限に届ける。",
         "Beatの冒頭で状況を再説明せず、直前の文脈から続ける。",
         "指定した出来事と結末を変更しない。",

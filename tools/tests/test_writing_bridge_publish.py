@@ -16,12 +16,35 @@ from writing_bridge.models import (
     ReportDocument,
     RequestDocument,
 )
-from writing_bridge.publish import compose_published, publish, replacement_span
+from writing_bridge.publish import (
+    _clean_scene_body,
+    compose_published,
+    publish,
+    read_publish_state,
+    replacement_span,
+)
 from writing_bridge.storage import load_json_model, load_model
 
 
 AUTH = "test-only fixture publish"
 OBS = FIXTURE / "ok_ch01_001" / "work" / "_writing" / "ch01-001" / "run-0001" / "observations.json"
+
+
+def test_clean_scene_body_collapses_beat_boundary_blanks() -> None:
+    marked = (
+        "# 第十二章　題\n\n"
+        "<!--beat:one-->\n"
+        "　一段。\n"
+        "<!--/beat:one-->\n"
+        "\n\n\n"
+        "<!--beat:two-->\n"
+        "　二段。\n"
+        "<!--/beat:two-->\n"
+    )
+    cleaned = _clean_scene_body(marked)
+    assert "<!--beat:" not in cleaned
+    assert "\n\n\n" not in cleaned
+    assert cleaned == "# 第十二章　題\n\n　一段。\n\n　二段。\n"
 
 
 def _ready(tmp_path: Path, *, allow_publish: bool = True):
@@ -229,6 +252,7 @@ def test_publish_keeps_other_scene(tmp_path: Path) -> None:
         run_id="run-0001",
         authorization=AUTH,
         repo_root=ROOT,
+        observations_path=OBS,
     )
     body = text.read_text(encoding="utf-8")
     assert "<!-- scene: ch01-002 -->" in body
@@ -268,7 +292,7 @@ def test_publish_resume_after_inspect_crash(tmp_path: Path, monkeypatch: pytest.
 
     def boom(*args, **kwargs):
         calls["n"] += 1
-        if calls["n"] == 1:
+        if calls["n"] == 2:
             raise OSError("simulated crash")
         return real(*args, **kwargs)
 
@@ -280,6 +304,7 @@ def test_publish_resume_after_inspect_crash(tmp_path: Path, monkeypatch: pytest.
             run_id="run-0001",
             authorization=AUTH,
             repo_root=ROOT,
+            observations_path=OBS,
         )
     written = (work / "_novel_text" / "novel_text01.md").read_text(encoding="utf-8")
     assert "<!--beat:" not in written
@@ -512,3 +537,25 @@ def test_inspect_marked_must_match_received_candidate(tmp_path: Path) -> None:
     )
     report = load_json_model(run / "report.json", ReportDocument)
     assert report.text_save.value == "success"
+
+
+def test_publish_refuses_unverified_c1(tmp_path: Path) -> None:
+    work = _ready(tmp_path)
+    original = (work / "_novel_text" / "novel_text01.md").read_bytes()
+    with pytest.raises(BridgeError) as caught:
+        publish(
+            work,
+            scene_id="ch01-001",
+            run_id="run-0001",
+            authorization=AUTH,
+            repo_root=ROOT,
+        )
+    assert caught.value.code == "TEXT_STATE_UNVERIFIED"
+    assert (work / "_novel_text" / "novel_text01.md").read_bytes() == original
+    run = work / "_writing" / "ch01-001" / "run-0001"
+    state_path = run / "publish_state.json"
+    if state_path.is_file():
+        assert read_publish_state(state_path).status != "completed"
+    if (run / "report.json").is_file():
+        report = load_json_model(run / "report.json", ReportDocument)
+        assert report.text_save.value != "success"

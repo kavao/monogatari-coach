@@ -163,17 +163,15 @@ def classify_metrics(
         if item is None or truncated:
             continue
 
-        thin_reasons: list[str] = []
-        observed_structural = structural_budget_ratio(item, beat)
-        if observed_structural < thin_threshold:
-            thin_reasons.append("budget_ratio")
         lower_paragraphs, _ = beat.budget.paragraphs
         lower_dialogue, _ = beat.budget.dialogue_turns
+        floor_reasons: list[str] = []
         if item.paragraphs < lower_paragraphs:
-            thin_reasons.append("paragraphs")
+            floor_reasons.append("paragraphs")
         if item.dialogue_turns < lower_dialogue:
-            thin_reasons.append("dialogue_turns")
-        if thin_reasons:
+            floor_reasons.append("dialogue_turns")
+        observed_structural = structural_budget_ratio(item, beat)
+        if floor_reasons:
             findings.append(
                 Finding(
                     failure=Failure.BEAT_THIN,
@@ -181,7 +179,21 @@ def classify_metrics(
                     observed=observed_structural,
                     threshold=thin_threshold,
                     auto_repair=True,
-                    reason="structural budget under target: " + ", ".join(thin_reasons),
+                    reason="structural budget under target: " + ", ".join(floor_reasons),
+                )
+            )
+        elif observed_structural < thin_threshold:
+            findings.append(
+                Finding(
+                    failure=Failure.BEAT_THIN,
+                    beat_id=beat.id,
+                    observed=observed_structural,
+                    threshold=thin_threshold,
+                    auto_repair=False,
+                    reason=(
+                        "structural budget under calibrated typical: budget_ratio "
+                        "(plan floor met; not auto-repaired)"
+                    ),
                 )
             )
         if item.chars < beat.budget.chars_hint:

@@ -208,6 +208,7 @@ class ContextDocument(StrictModel):
     beats: list[dict[str, Any]] = Field(default_factory=list)
     forbidden: list[str] = Field(default_factory=list)
     instruction_chars: int | None = None
+    chars_floor: int | None = None
     states: list[dict[str, Any]] = Field(default_factory=list)
     unresolved: list[dict[str, Any]] = Field(default_factory=list)
     prose_start_end: dict[str, Any] | None = None
@@ -258,6 +259,7 @@ class ObservationsDocument(StrictModel):
 class ReportFinding(StrictModel):
     code: str | None = None
     note: str = Field(min_length=1)
+    auto_repair: bool | None = None
 
 
 class ReportDocument(StrictModel):

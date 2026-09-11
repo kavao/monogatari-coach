@@ -18,12 +18,15 @@ if str(TOOLS) not in sys.path:
 
 from writing_bridge.commands import inspect, prepare, receive, status
 from writing_bridge.errors import BridgeError
-from writing_bridge.hashes import EMPTY_RAW_SHA256, read_normalized, text_sha256
+from writing_bridge.hashes import EMPTY_RAW_SHA256, read_normalized, text_sha256, raw_sha256
 from writing_bridge.models import RequestKind, Selector, SelectorKind
-from writing_bridge.storage import load_json_model, load_model
+from writing_bridge.storage import load_json_model, load_model, read_journal
+from metron.models import instruction_target_chars
+from metron.storage import load_yaml
 from writing_bridge.models import (
     ArtifactRefsDocument,
     ContextDocument,
+    JournalAction,
     ObservationsDocument,
     ReportDocument,
     RequestDocument,
@@ -783,3 +786,336 @@ def test_receive_recovers_from_corrupted_candidate_history(tmp_path: Path) -> No
     assert code == 0, message
     report = load_json_model(run / "report.json", ReportDocument)
     assert report.text_state.value == "success"
+
+
+def _ok_observations() -> Path:
+    return (
+        FIXTURE
+        / "ok_ch01_001"
+        / "work"
+        / "_writing"
+        / "ch01-001"
+        / "run-0001"
+        / "observations.json"
+    )
+
+
+def test_inspect_reuses_metrics_for_same_source(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    run = _prepare_ok(work)
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron" / "ch01-001" / "marked.md",
+        request_id=None,
+    )
+    metron = work / "_metron" / "ch01-001"
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    first = sorted(path.name for path in metron.glob("metrics.*.yaml"))
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    second = sorted(path.name for path in metron.glob("metrics.*.yaml"))
+    assert first == second
+    status_code, status_text = status(work, scene_id="ch01-001", run_id="run-0001")
+    assert status_code == 0
+    report = load_json_model(run / "report.json", ReportDocument)
+    auto_flags = [item.auto_repair for item in report.findings if item.auto_repair is not None]
+    if auto_flags:
+        expected = "metron_auto_repair: pending" if any(auto_flags) else "metron_auto_repair: none"
+        assert expected in status_text
+
+
+def test_inspect_from_run_reuses_matching_observations(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    _prepare_ok(work)
+    marked = work / "_metron" / "ch01-001" / "marked.md"
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+        allow_publish=True,
+    )
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0002",
+        candidate=marked,
+        request_id=None,
+    )
+    code, message = inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0002",
+        observations_path=None,
+        marked_path=None,
+        repo_root=ROOT,
+        from_run="run-0001",
+    )
+    assert code == 0, message
+    report = load_json_model(
+        work / "_writing" / "ch01-001" / "run-0002" / "report.json",
+        ReportDocument,
+    )
+    assert report.text_state.value == "success"
+
+
+def test_inspect_from_run_stale_when_text_differs(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    _prepare_ok(work)
+    marked = work / "_metron" / "ch01-001" / "marked.md"
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+        allow_publish=True,
+    )
+    other = tmp_path / "other.md"
+    other.write_text(
+        marked.read_text(encoding="utf-8").replace("旅行用の上着", "通学用の上着"),
+        encoding="utf-8",
+    )
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0002",
+        candidate=other,
+        request_id=None,
+    )
+    with pytest.raises(BridgeError) as caught:
+        inspect(
+            work,
+            scene_id="ch01-001",
+            run_id="run-0002",
+            observations_path=None,
+            marked_path=None,
+            repo_root=ROOT,
+            from_run="run-0001",
+        )
+    assert caught.value.code == "STALE_EVIDENCE"
+
+
+def test_inspect_from_run_missing_observations_is_unknown_ref(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    _prepare_ok(work)
+    marked = work / "_metron" / "ch01-001" / "marked.md"
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+        allow_publish=True,
+    )
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0002",
+        candidate=marked,
+        request_id=None,
+    )
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0002",
+        observations_path=_ok_observations(),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    (work / "_writing" / "ch01-001" / "run-0001" / "observations.json").unlink()
+    with pytest.raises(BridgeError) as caught:
+        inspect(
+            work,
+            scene_id="ch01-001",
+            run_id="run-0002",
+            observations_path=None,
+            marked_path=None,
+            repo_root=ROOT,
+            from_run="run-0001",
+        )
+    assert caught.value.code == "UNKNOWN_REF"
+    report = load_json_model(
+        work / "_writing" / "ch01-001" / "run-0002" / "report.json",
+        ReportDocument,
+    )
+    assert report.text_state.value == "success"
+
+
+def test_inspect_from_run_rejects_invalid_id(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    _prepare_ok(work)
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron" / "ch01-001" / "marked.md",
+        request_id=None,
+    )
+    with pytest.raises(BridgeError) as caught:
+        inspect(
+            work,
+            scene_id="ch01-001",
+            run_id="run-0001",
+            observations_path=None,
+            marked_path=None,
+            repo_root=ROOT,
+            from_run="..\\..\\..\\outside",
+        )
+    assert caught.value.code == "BAD_ID"
+
+
+def test_prepare_context_shows_advisory_targets(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    run = _prepare_ok(work)
+    context = load_json_model(run / "context.json", ContextDocument)
+    md = (run / "context.md").read_text(encoding="utf-8")
+    assert context.chars_floor == 80
+    assert context.instruction_chars == instruction_target_chars(80) == 112
+    by_id = {item["id"]: item for item in context.beats}
+    pack = by_id["pack_bag"]
+    assert pack["chars_hint"] == pack["chars_floor"] == 40
+    assert pack["chars_instruction"] == instruction_target_chars(40) == 56
+    assert pack["paragraphs"] == [1, 2]
+    assert pack["advisory"] is True
+    assert by_id["say_goodbye"]["dialogue_turns"] == [1, 2]
+    assert "助言" in md
+    assert "下限40" in md
+    assert "目標56（助言）" in md
+    assert "床ちょうどは狙わない" in md
+    beats_hash = next(
+        item.raw_sha256 for item in context.input_hashes if item.path.endswith("beats.yaml")
+    )
+    assert beats_hash == raw_sha256(work / "_metron" / "ch01-001" / "beats.yaml")
+    assert all("overshoot" not in item.path.lower() for item in context.input_hashes)
+
+
+def test_old_context_without_chars_floor_still_loads() -> None:
+    context = load_json_model(
+        FIXTURE / "ok_ch01_001" / "work" / "_writing" / "ch01-001" / "run-0001" / "context.json",
+        ContextDocument,
+    )
+    assert context.chars_floor is None
+    assert context.instruction_chars == 92
+
+
+def test_inspect_floor_met_below_instruction_is_not_tooshort(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    run = _prepare_ok(work)
+    context = load_json_model(run / "context.json", ContextDocument)
+    marked = tmp_path / "floor_met.md"
+    marked.write_text(
+        "<!--beat:pack_bag-->\n"
+        "　朝の玄関で、兄は旅行用の上着に袖を通した。母が時刻表を一度だけ確かめてうなずく。\n"
+        "<!--/beat:pack_bag-->\n"
+        "\n"
+        "<!--beat:say_goodbye-->\n"
+        "「定期は入れた？」\n"
+        "\n"
+        "「入れた。改札の前で切符を買うよ」\n"
+        "<!--/beat:say_goodbye-->\n"
+        "\n"
+        "<!--beat:reach_station-->\n"
+        "　二人は家を出て、駅の券売機の前に立った。改札側へ進む。\n"
+        "<!--/beat:reach_station-->\n",
+        encoding="utf-8",
+    )
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=None,
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    journal = read_journal(run / "journal.jsonl")
+    assert sum(1 for item in journal if item.action is JournalAction.RECEIVE) == 1
+    report = load_json_model(run / "report.json", ReportDocument)
+    assert all(item.code != "TooShort" for item in report.findings)
+    refs = load_json_model(run / "artifact_refs.json", ArtifactRefsDocument)
+    assert refs.metron is not None
+    metrics = load_yaml(work / refs.metron["metrics"].path)
+    scene_chars = metrics["metrics"]["scene"]["chars"]
+    hints = {"pack_bag": 40, "say_goodbye": 30, "reach_station": 30}
+    by_id = {item["id"]: item for item in metrics["metrics"]["beats"]}
+    assert scene_chars >= 80
+    assert scene_chars < context.instruction_chars
+    for beat_id, hint in hints.items():
+        assert by_id[beat_id]["chars"] >= hint

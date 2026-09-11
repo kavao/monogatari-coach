@@ -15,7 +15,7 @@ _SCENE_ID_PATTERN = r"^ch\d{2,}-\d{3,}$"
 _BEAT_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9_-]*$"
 
 DEFAULT_SCENE_CHARS_FLOOR = 4000
-INSTRUCTION_OVERSHOOT = 1.15
+INSTRUCTION_OVERSHOOT = 1.4
 
 
 def instruction_target_chars(
@@ -23,7 +23,10 @@ def instruction_target_chars(
     *,
     overshoot: float = INSTRUCTION_OVERSHOOT,
 ) -> int:
-    """検査の床より多めの指示目標を返す。生成は控えめで足りなくなるため。"""
+    """検査の床以上の指示目標を返す。生成は控えめで足りなくなるため。
+
+    ``round(floor * 1.4)`` が床と同じになる極小床（例: 1）では床そのものを返す。
+    """
 
     if floor < 1:
         raise ValueError("floor must be positive")
@@ -119,6 +122,7 @@ class Beat(StrictModel):
     intent: str = Field(min_length=1)
     weight: Literal["light", "normal", "heavy"] = "normal"
     isolated: bool = False
+    expandable: bool = True
     budget: BeatBudget
 
 

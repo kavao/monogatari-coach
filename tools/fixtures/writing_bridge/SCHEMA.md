@@ -22,7 +22,7 @@ R1（Phase 2）:
 | --- | --- |
 | `prepare` | 依頼と入力ハッシュを確定し、context / links 候補を出す。本文を書き換えない。`--allow-publish` で `permissions.publish` を true にする |
 | `receive` | 起草候補を依頼 ID と本文ハッシュで取り込む。版別に保存し、同一ハッシュは既存版を再利用する。`--finish-reason` でその版の生成来歴を記録できる |
-| `inspect` | 同じ受領候補へ METRON 計測と C1 本文根拠を走らせる。`--marked` は受領候補と同一 raw hash のパスだけ。不一致は `STALE_EVIDENCE`。候補が無いときだけ既存 `_novel_text`。未作成の新章は候補必須 |
+| `inspect` | 同じ受領候補へ METRON 計測と C1 本文根拠を走らせる。`--marked` は受領候補と同一 raw hash のパスだけ。不一致は `STALE_EVIDENCE`。`--from-run` は `run-\d{4,}` のみ。指定元の `observations.json` が無ければ `UNKNOWN_REF`（保存先の旧根拠へフォールバックしない）。`--observations` が無いとき、指定元の observations を本文 hash 一致なら流用する。不一致は `STALE_EVIDENCE`。同一 `source_raw_sha256` の metrics / spans は版を増やさない。候補が無いときだけ既存 `_novel_text`。未作成の新章は候補必須 |
 | `status` | run の journal と各項目状態を表示する |
 
 R2（Phase 3〜4）:
@@ -32,7 +32,7 @@ R2（Phase 3〜4）:
 | `repair-begin` | `begin_repair` |
 | `repair-next` | `next_job`（ジョブ／完了／要確認を返して即終了） |
 | `repair-submit` | `submit_result` |
-| `publish` | 受領済み候補を `_novel_text` へ場面単位で反映する。`FINAL.md` は完了扱いしない |
+| `publish` | 受領済み候補を `_novel_text` へ場面単位で反映する。CHRONOS ON では C1 成功前に正本を書かず `completed` にしない。`FINAL.md` は完了扱いしない |
 
 CLI が LLM を起動したことにはしない。
 
@@ -97,13 +97,13 @@ R1: 既存本文スキルが保存したあと `text_sha256` が inspect 対象�
 | --- | --- | --- |
 | `deepen` | 同一 Beat 最大 2 | 現行 `run_expand_loop` |
 | `regenerate` | 同一 Beat 最大 1 | 現行 `repair_scene` はコールバック 1 回。2 には増やさない |
-| `seam` | run 全体で最大 1 | 現行の結合校正 |
+| `seam` | run 全体で最大 1 | 現行の結合校正。必須修復も追加候補も無い no-op では出さない |
 
 失敗・空出力も 1 試行。job 発行時に枠を予約する。`repair-next` の再取得は同じ `pending` job を返す。同一 job の同一結果の再 submit は冪等。異なる候補の再 submit は `JOB_CONFLICT`。
 
 ### Phase 3 永続契約（実装済み）
 
-- `repair_state.json`: 内部版 `version: 1`。request/input/calibrationのハッシュ、修復依頼の出典、元稿と出力版参照、`session`、`status: active|completed` を保持する。モデルは `tools/writing_bridge/repair.py` の `BridgeRepair`、セッションは `tools/metron/repair_steps.py` の `RepairSession` が正。
+- `repair_state.json`: 内部版 `version: 1`。request/input/calibrationのハッシュ、修復依頼の出典、元稿と出力版参照、`session`、`status: active|completed|escalated` を保持する。`escalated` は適格追加候補が無くシーン床を止められないときだけ。旧ファイルは `active|completed` のまま読める。任意の `notes` にスキップ理由を残してよい。モデルは `tools/writing_bridge/repair.py` の `BridgeRepair`、セッションは `tools/metron/repair_steps.py` の `RepairSession` が正。`completed` / `escalated` の同一 run へ新ハッシュの `receive` は `JOB_CONFLICT`。新候補は新 run。
 - `jobs/JOB-NNNN.json`: `schema: 1`、run_id、`status: pending` と `RepairJob` の全フィールド。operation/beat_id/attempt/model/prompt、input_hash/context_hash/prompt_hashを保持。input_hashは修復直前のBeat本文（seamは全BeatのJSON）、prompt_hashは実際のprompt全体。発行済みファイルは予約時のスナップショットであり、完了状態はsession.historyを参照する。
 - 結果はcandidateまたはerrorのいずれかと、実際のmodel、`review: confirmed|unverified|rejected`。CLIと `submit_result` は両方の同時指定を拒否する。意味レビュー未確認・拒否は適用せず履歴へ記録。同一結果の定義は候補全文・error・reviewがすべて同じこと。
 - `session.history` は確定結果を保持し、決定的な再投入で次ジョブを再現する。過去のprovider呼出しはない。pendingは予約済みの未確定枠。原子的な状態保存とsceneのOSロックを使う。
@@ -114,12 +114,12 @@ R1: 既存本文スキルが保存したあと `text_sha256` が inspect 対象�
 
 ### Phase 4 永続契約（実装済み・受入済み）
 
-- `publish` は `permissions.publish` と `--authorization` を必要とする。prepare の `--allow-publish` が無い run は `PERMISSION_DENIED`。active な repair がある run は `JOB_CONFLICT`。既存の非空本文を `request_kind=new` で反映するときは selector、当該場面の `<!-- scene: chNN-MMM -->`、または `append` が必要。無い場合はファイル全体を置換しない。
+- `publish` は `permissions.publish` と `--authorization` を必要とする。prepare の `--allow-publish` が無い run は `PERMISSION_DENIED`。active な repair がある run は `JOB_CONFLICT`。既存の非空本文を `request_kind=new` で反映するときは selector、当該場面の `<!-- scene: chNN-MMM -->`、または `append` が必要。無い場合はファイル全体を置換しない。METRON ON の場面作業はエージェントが反映依頼済みと扱う。CLI の `--allow-publish` は技術ゲートとして残す。
 - 反映直前と `publish_state.json` 保存後に、正本の存在と raw hash を再確認する。新規のはずのファイルが外部作成された、既存ファイルが削除された、hash が変わった場合は上書きせず `STALE_EVIDENCE`。対象外本文（prefix/suffix）の変化も `STALE_EVIDENCE`。
 - publish 開始後の同じ run への `receive` は `JOB_CONFLICT`。inspect は公開済み候補と現在候補の hash が一致するときだけ `text_save=success` を継承する。`--marked` の raw hash が受領候補と違うときは検査せず `STALE_EVIDENCE`。同一バイトの別パスは許可する。
 - 既存ファイルは `_novel_text_backup/<元ファイル名>_vNNN.md` へ退避してから `_novel_text` を置換する。未作成の新規は退避しない。`FINAL.md` は作らない。採用したマーカー稿は `_metron/<scene>/adopted.<run_id>.md` に残す。
 - 範囲: `request_kind=append` は末尾追加。本文の `<!-- scene: chNN-MMM -->` があればその場面本体。なければ selector（heading / html_comment / offset の `start:end`）またはファイル全体。
-- Beat / fact マーカーは正本へ残さない。残っていたら `JOB_CONFLICT`。
+- Beat / fact マーカーは正本へ残さない。残っていたら `JOB_CONFLICT`。マーカー除去後の連続空行（Beat境界の隙間）は `normalize_novel_body` で段落1つ分に畳む。
 - `publish_state.json`: 内部版 `version: 1`。`status: active|completed`、`stage: backup|write|inspect|done`、候補と意図した本文の hash、退避パス、prefix/suffix。途中失敗は候補と旧稿を残し、同じ authorization で再開する。本文反映済みなら inspect から再開し、二重退避しない。
 - 保存後に文字数（`novel_char_count`）と句読点ゲートを記録する。句読点 fail でも本文は戻さない。`text_save` は `success`、指摘は findings。清書 `--fix` と `_meta.md` のストーリー反映は CLI では行わず、既存スキルへ委ねる。
 - 完了後に正本が意図した hash と違えば `STALE_EVIDENCE`。同一内容の再 publish は冪等。
@@ -214,9 +214,9 @@ CHRONOS ON の `input_hashes` は状態解決と links に使う入力全体を�
 
 `inspect` の前に `input_hashes` を再計算する。ずれていれば context を再構築する。再構築の前後とも prepare と同じ `validate_links()` を通し、現在の CHRONOS と run の `links.yaml` の整合を確認する。対象本文の存在状態（`base_exists`）が変わっていても `STALE_EVIDENCE`。最新の受領候補（`artifact_refs.candidate`）の `raw_sha256` が読み直したファイルと違っても、欠落していても `STALE_EVIDENCE` とし、明示的な再受領を求める。`inspect --marked` で明示した本文も同じ raw hash と照合し、不一致なら計測せず `STALE_EVIDENCE`。同一バイトの別パスは許可する。過去履歴の破損だけでは最新版の検査を止めない。
 
-任意: `beats`, `forbidden`, `instruction_chars`, `states`, `unresolved`, `prose_start_end`（`SceneContract` の散文。CHRONOS 値へ変換しない）。
+任意: `beats`, `forbidden`, `instruction_chars`, `chars_floor`（シーンの検査床。任意）, `states`, `unresolved`, `prose_start_end`（`SceneContract` の散文。CHRONOS 値へ変換しない）。`beats[]` の任意キーに `chars_floor`（= `chars_hint`）、`chars_instruction`（hint×1.4 の助言）、`paragraphs`、`dialogue_turns`、`advisory`、`expandable` を足してよい。必須キーは増やさない。倍率は `input_hashes` に入れない。
 
-`context.md` は人間向け副本。機械判定は json を正とする。
+`context.md` は人間向け副本。機械判定は json を正とする。指示目標は助言であり、検査の床ではない。
 
 ### artifact_refs.json
 
@@ -244,6 +244,7 @@ METRON OFF: `_writing/<scene>/<run>/candidates/candidate.NNN.md` への参照。
 必須: `schema`, `request_id`, `run_id`, `target_text_sha256`。  
 必須の項目状態: `text_save`, `metron`, `chronos_registered`, `text_state`（いずれも `item_status`）。  
 任意: `findings[]`, `repair_history[]`, `open_issues[]`。
+`findings[]` の `code` / `auto_repair` は任意。`auto_repair` は METRON 指摘が自動修復対象かどうか。必須キー追加はしない。
 
 ### journal.jsonl
 

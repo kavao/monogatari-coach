@@ -77,9 +77,10 @@ targets: ["*"]
 
 対象場面に `_writing/<scene_id>/<run_id>/` の active run があり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するとき。入口は `python tools/writing_bridge_cli.py`。ディレクトリがあるだけでは切り替えない。`prepare` 前は従来経路。
 
+- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。inspect 後の機械 Deepen は床未達だけ。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
 - **検査**: `inspect`（必要なら先に `receive`）。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
-- **修復**: ユーザーが Deepen / 局所修復を依頼し、METRON ON なら `repair-begin` / `repair-next` / `repair-submit`。この間は正本を触らない。
-- **正本反映**: 同じ run に `permissions.publish` があり、ユーザーが反映を依頼したときだけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。保存するときは `--allow-publish` の新 run で `receive` / `inspect` をやり直す。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
+- **修復**: ユーザーが Deepen / 局所修復を依頼し、METRON ON なら `repair-begin` / `repair-next` / `repair-submit`。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。
+- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が `completed` で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` / `inspect --from-run <起草run>` をやり直す。`--from-run` の observations 欠落は UNKNOWN_REF。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
 - **句読点**: `report.json` を確認し、本スキルで `--gate` を重ねない。
 - **ストーリー反映**: 正本が更新された直後に `novel-story-reflection`。
 

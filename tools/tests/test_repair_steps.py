@@ -237,7 +237,7 @@ def test_cli_process_handoff(tmp_path):
     job = read_state(run / "repair_state.json").session.pending
     response = _run_cli("repair-submit", *common, "--job-id", job.job_id,
                         "--model", "fixture-writer", "--error", "explicit failure")
-    assert response.returncode in (0, 1), response.stderr
+    assert response.returncode == 0, response.stderr
     assert len(read_state(run / "repair_state.json").session.history) == 1
     resumed = _run_cli("repair-next", *common)
     assert resumed.returncode == 0, resumed.stderr
@@ -569,3 +569,138 @@ def test_seam_reordering_keeps_previous_texts():
     assert "reordered" in state.history[0].rejection
     result = next_job(state)
     assert result.beat_texts == original
+
+
+def test_repair_active_submit_defers_unverified_c1(tmp_path):
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    job = read_state(run / "repair_state.json").session.pending
+    code, message = _submit(work, repo, job, error="lost")
+    assert code == 0, message
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert any(item.get("code") == "TEXT_STATE_UNVERIFIED" for item in report["findings"])
+    assert read_state(run / "repair_state.json").status == "active"
+
+
+def test_repair_completed_without_observations_exits_one(tmp_path):
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    last_code = None
+    for _ in range(12):
+        state = read_state(run / "repair_state.json")
+        if state.status in {"completed", "escalated"}:
+            break
+        job = state.session.pending
+        last_code, message = _submit(work, repo, job, error="lost")
+        assert "TEXT_STATE_UNVERIFIED" in (run / "report.json").read_text(encoding="utf-8")
+        del message
+    else:
+        pytest.fail("repair did not terminate within its attempt limits")
+    assert last_code == 1
+    code, _ = inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=None,
+        marked_path=None,
+        repo_root=repo,
+    )
+    assert code == 1
+
+
+def test_terminal_repair_rejects_new_hash_and_keeps_state(tmp_path):
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    for _ in range(16):
+        state = read_state(run / "repair_state.json")
+        if state.status == "completed":
+            break
+        job = state.session.pending
+        candidate = tmp_path / "response.md"
+        body = (
+            state.session.working_texts[job.beat_id] + "風を感じた。" * 40
+            if job.operation == "deepen"
+            else job.prompt.split("結合稿:\n", 1)[1]
+        )
+        candidate.write_text(body, encoding="utf-8")
+        _submit(work, repo, job, candidate=candidate)
+    else:
+        pytest.fail("repair did not terminate")
+    before = (run / "repair_state.json").read_text(encoding="utf-8")
+    state = read_state(run / "repair_state.json")
+    assert state.status == "completed"
+    other = tmp_path / "new-draft.md"
+    other.write_text("まったく別の新候補である。\n", encoding="utf-8")
+    with pytest.raises(BridgeError) as caught:
+        receive(
+            work,
+            scene_id="ch01-001",
+            run_id="run-0001",
+            candidate=other,
+            request_id=None,
+        )
+    assert caught.value.code == "JOB_CONFLICT"
+    assert "terminal" in str(caught.value)
+    assert (run / "repair_state.json").read_text(encoding="utf-8") == before
+
+
+def test_escalated_scene_floor_does_not_issue_jobs(tmp_path):
+    work = _copy_ok(tmp_path)
+    repo = tmp_path / "repo"
+    (repo / "config").mkdir(parents=True)
+    calibration = _calibration(
+        calibrated=True,
+        missing_span_ratio=0.0,
+        beat_thin_ratio=0.01,
+        ending_rush_threshold=0.0,
+    )
+    (repo / "config" / "metron_models.yaml").write_text(
+        yaml.safe_dump({"models": {"fixture-writer": calibration.model_dump(mode="json")}}),
+        encoding="utf-8",
+    )
+    beats = work / "_metron/ch01-001/beats.yaml"
+    data = yaml.safe_load(beats.read_text(encoding="utf-8"))
+    data["generation"]["chars_floor"] = 500
+    for beat in data["beats"]:
+        beat["expandable"] = False
+        beat["budget"]["chars_hint"] = 1
+    beats.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="fixture-writer",
+        selector=None,
+        links_path=None,
+        repo_root=repo,
+    )
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron/ch01-001/marked.md",
+        request_id=None,
+    )
+    run = work / "_writing/ch01-001/run-0001"
+    _begin(work, repo)
+    code, message = _next(work, repo)
+    state = read_state(run / "repair_state.json")
+    assert state.status == "escalated"
+    assert state.session.pending is None
+    assert any(item.startswith("SCENE_FLOOR_NO_ELIGIBLE") for item in state.notes)
+    jobs_dir = run / "jobs"
+    jobs = list(jobs_dir.glob("JOB-*.json")) if jobs_dir.is_dir() else []
+    assert jobs == []
+    _next(work, repo)
+    again = list(jobs_dir.glob("JOB-*.json")) if jobs_dir.is_dir() else []
+    assert again == []
+    assert "escalated" in message
+    other = tmp_path / "another.md"
+    other.write_text("新run向けの別稿。\n", encoding="utf-8")
+    with pytest.raises(BridgeError) as caught:
+        receive(work, scene_id="ch01-001", run_id="run-0001", candidate=other, request_id=None)
+    assert caught.value.code == "JOB_CONFLICT"

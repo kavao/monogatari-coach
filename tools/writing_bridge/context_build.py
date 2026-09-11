@@ -8,7 +8,7 @@ from typing import Any
 from chronos.state import format_state_value, is_unknown, resolve_states
 from chronos.store import ChronosStore
 from metron.contract import load_beat_plan, load_scene_contract
-from metron.models import instruction_target_chars
+from metron.models import Beat, instruction_target_chars
 
 from .errors import BridgeError
 from .hashes import raw_sha256
@@ -100,6 +100,7 @@ def build_context(
     beats: list[dict[str, Any]] = []
     forbidden: list[str] = []
     instruction = None
+    chars_floor = None
     prose = None
 
     if request.flags.metron.value == "ON":
@@ -125,15 +126,8 @@ def build_context(
             )
         forbidden = list(contract.scene.forbidden)
         instruction = instruction_target_chars(plan.generation.chars_floor)
-        beats = [
-            {
-                "id": beat.id,
-                "type": beat.type,
-                "intent": beat.intent,
-                "chars_hint": beat.budget.chars_hint,
-            }
-            for beat in plan.beats
-        ]
+        chars_floor = plan.generation.chars_floor
+        beats = [_beat_context_entry(beat) for beat in plan.beats]
         start = contract.scene.start_state
         end = contract.scene.end_state
         if start or end:
@@ -224,6 +218,7 @@ def build_context(
         beats=beats,
         forbidden=forbidden,
         instruction_chars=instruction,
+        chars_floor=chars_floor,
         states=states,
         unresolved=unresolved,
         prose_start_end=prose,
@@ -246,20 +241,65 @@ def _json_value(value: object) -> object:
     return str(value)
 
 
+def _budget_bounds(bounds: tuple[int, int | None]) -> list[int | None]:
+    return [bounds[0], bounds[1]]
+
+
+def _range_text(bounds: list[int | None] | tuple[int, int | None]) -> str:
+    lower, upper = bounds[0], bounds[1]
+    if upper is None:
+        return f"{lower}-無制限"
+    return f"{lower}-{upper}"
+
+
+def _beat_context_entry(beat: Beat) -> dict[str, Any]:
+    hint = beat.budget.chars_hint
+    return {
+        "id": beat.id,
+        "type": beat.type,
+        "intent": beat.intent,
+        "chars_hint": hint,
+        "chars_floor": hint,
+        "chars_instruction": instruction_target_chars(hint),
+        "paragraphs": _budget_bounds(beat.budget.paragraphs),
+        "dialogue_turns": _budget_bounds(beat.budget.dialogue_turns),
+        "advisory": True,
+        "expandable": beat.expandable,
+    }
+
+
 def render_context_md(context: ContextDocument) -> str:
     lines = [
         f"# context {context.request_id}",
         "",
-        f"instruction_chars: {context.instruction_chars}",
-        f"expected_checks: {len(context.expected_checks)}",
-        f"unresolved: {len(context.unresolved)}",
-        "",
     ]
+    if context.chars_floor is not None:
+        lines.append(f"chars_floor: {context.chars_floor}")
+    lines.append(f"instruction_chars: {context.instruction_chars}")
+    if context.instruction_chars is not None:
+        lines.append("instruction_chars は助言（検査床ではない）。初稿は指示目標以上を1回で書く。床ちょうどは狙わない。")
+    lines.extend(
+        [
+            f"expected_checks: {len(context.expected_checks)}",
+            f"unresolved: {len(context.unresolved)}",
+            "",
+        ]
+    )
     if context.forbidden:
         lines.append("forbidden: " + ", ".join(context.forbidden))
         lines.append("")
     for beat in context.beats:
-        lines.append(f"- beat {beat.get('id')}: {beat.get('intent')}")
+        intent = beat.get("intent")
+        floor = beat.get("chars_floor", beat.get("chars_hint"))
+        target = beat.get("chars_instruction")
+        paragraphs = _range_text(beat["paragraphs"]) if beat.get("paragraphs") else "-"
+        dialogue = _range_text(beat["dialogue_turns"]) if beat.get("dialogue_turns") else "-"
+        if target is not None:
+            lines.append(
+                f"- beat {beat.get('id')}: {intent} / 下限{floor} / 目標{target}（助言） / 段落{paragraphs} / 会話{dialogue}"
+            )
+        else:
+            lines.append(f"- beat {beat.get('id')}: {intent}")
     if context.prose_start_end:
         lines.append("")
         lines.append("prose_start_end は CHRONOS 値ではない。")

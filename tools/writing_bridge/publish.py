@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from metron.repair import strip_generation_markers
+from metron.repair import normalize_novel_body, strip_generation_markers
 from metron.repair_steps import StepModel
 from metron.storage import atomic_write_text
 
@@ -18,6 +18,7 @@ from .hashes import EMPTY_RAW_SHA256, format_sha256, normalize_body, raw_sha256,
 from .locking import locked_scene
 from .models import (
     ArtifactRefsDocument,
+    FlagValue,
     ItemStatus,
     JournalAction,
     JournalEntry,
@@ -111,12 +112,12 @@ def _lf(text: str) -> str:
 
 
 def _clean_scene_body(marked: str) -> str:
+    """マーカーを除き、Beat境界に残った連続空行を段落1つ分へ畳む。"""
+
     body = normalize_body(strip_generation_markers(marked))
     if _BEAT_LEFT.search(body):
         raise BridgeError("JOB_CONFLICT", "published body still contains Beat/fact markers")
-    if body and not body.endswith("\n"):
-        body += "\n"
-    return body
+    return normalize_novel_body(body)
 
 
 def scene_anchor_span(text: str, scene_id: str) -> tuple[int, int] | None:
@@ -322,6 +323,50 @@ def _record_counts(state: BridgePublish, published: str) -> None:
     state.punctuation_note = gate["reason"]
 
 
+def _c1_ready(report: ReportDocument) -> bool:
+    return report.text_state in {ItemStatus.SUCCESS, ItemStatus.SKIPPED}
+
+
+def _c1_refusal_code(report: ReportDocument) -> str:
+    for item in report.findings:
+        if item.code in {
+            "TEXT_STATE_UNVERIFIED",
+            "TEXT_STATE_MISMATCH",
+            "RANGE_MISMATCH",
+            "UNKNOWN_REF",
+        }:
+            return item.code
+    return "TEXT_STATE_UNVERIFIED"
+
+
+def _refuse_if_c1_not_ready(
+    root: Path,
+    dest: Path,
+    request: RequestDocument,
+    repo_root: Path,
+    observations_path: Path | None,
+    marked: Path,
+) -> None:
+    if request.flags.chronos is not FlagValue.ON:
+        return
+    commands.inspect(
+        root,
+        scene_id=request.scene_id,
+        run_id=request.run_id,
+        observations_path=observations_path,
+        marked_path=marked,
+        repo_root=repo_root,
+    )
+    report = load_json_model(dest / "report.json", ReportDocument)
+    if _c1_ready(report):
+        return
+    raise BridgeError(
+        _c1_refusal_code(report),
+        "C1 must succeed before publish",
+        refs={"text_state": report.text_state.value},
+    )
+
+
 def _follow_inspect(
     root: Path,
     dest: Path,
@@ -343,8 +388,11 @@ def _follow_inspect(
     report = load_json_model(report_path, ReportDocument)
     published = resolve_work_path(root, request.target.text_path)
     published_sha = text_sha256(published.read_text(encoding="utf-8"))
-    report.text_save = ItemStatus.SUCCESS
     report.target_text_sha256 = published_sha
+    if _c1_ready(report):
+        report.text_save = ItemStatus.SUCCESS
+    else:
+        report.text_save = ItemStatus.UNRESOLVED
     findings = list(report.findings)
     if text_sha256(marked.read_text(encoding="utf-8")) != published_sha:
         findings.append(
@@ -448,6 +496,7 @@ def publish(
     composed = _assemble(state, scene_body, request.request_kind)
 
     if state.stage in {"backup", "write"} and state.status != "completed":
+        _refuse_if_c1_not_ready(root, dest, request, repo_root, observations_path, candidate)
         _assert_canonical_for_write(state, text_file)
         if text_file.is_file() and state.stage == "backup":
             now = _lf(text_file.read_text(encoding="utf-8"))
@@ -510,6 +559,9 @@ def publish(
         code, message = _follow_inspect(
             root, dest, request, repo_root, observations_path, candidate, state
         )
+        report = load_json_model(dest / "report.json", ReportDocument)
+        if not _c1_ready(report):
+            return 1, f"canonical text written; C1 incomplete: {text_file}; {message}"
         state.status = "completed"
         state.stage = "done"
         _save(dest, state)

@@ -13,7 +13,7 @@ from chronos.store import ChronosLoadError, ChronosStore, load_store
 from metron.analyze import analyze_marked_text
 from metron.classify import CalibrationNotReady, classify_metrics, load_model_calibration
 from metron.contract import load_beat_plan
-from metron.models import GeneratorInfo, MetricsDocument
+from metron.models import GeneratorInfo, MetricsDocument, SpansDocument
 from metron.regression import build_regression_observation
 from metron.storage import atomic_write_model, atomic_write_text, load_model as load_metron_model
 
@@ -284,6 +284,7 @@ def receive(
         raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
     _refuse_receive_after_publish(dest)
     incoming = raw_sha256(candidate)
+    _refuse_receive_after_terminal_repair(dest, incoming)
     refs_path = dest / "artifact_refs.json"
     refs = (
         load_json_model(refs_path, ArtifactRefsDocument)
@@ -366,6 +367,8 @@ def inspect(
     observations_path: Path | None,
     marked_path: Path | None,
     repo_root: Path,
+    from_run: str | None = None,
+    defer_c1: bool = False,
 ) -> tuple[int, str]:
     root = work_root_of(work_root)
     dest = run_dir(root, scene_id, run_id)
@@ -375,6 +378,10 @@ def inspect(
     inspect_path, normalized, inspect_sha = _resolve_inspect_edition(
         root, request, dest, marked_path
     )
+    if from_run:
+        inherited = _observations_from_run(root, scene_id, from_run)
+        if observations_path is None:
+            observations_path = inherited
     context, refreshed = _refresh_context_if_stale(root, dest, request)
     errors: list[ErrorItem] = []
     metron_status = ItemStatus.SKIPPED
@@ -472,6 +479,11 @@ def inspect(
         from metron.repair_steps import history_summary
         repair = read_state(repair_path)
         report.repair_history = history_summary(repair.session)
+        for note in repair.notes:
+            code, _, detail = note.partition(": ")
+            report.findings.append(
+                ReportFinding(code=code or "REPAIR_NOTE", note=detail or note)
+            )
     write_model(dest / "report.json", report, json_format=True)
     write_text(dest / "report.md", _render_report_md(report))
     if errors:
@@ -487,8 +499,16 @@ def inspect(
             note="context rebuilt: input_hashes changed" if refreshed else None,
         ),
     )
-    if any(item.severity is Severity.ERROR for item in errors):
+    blocking = [
+        item
+        for item in errors
+        if item.severity is Severity.ERROR
+        and not (defer_c1 and item.code == "TEXT_STATE_UNVERIFIED")
+    ]
+    if blocking:
         return 1, f"inspect findings: {dest / 'report.json'}"
+    if defer_c1 and any(item.code == "TEXT_STATE_UNVERIFIED" for item in errors):
+        return 0, f"inspected (C1 deferred while repair active): {dest / 'report.json'}"
     return 0, f"inspected: {dest / 'report.json'}"
 
 
@@ -505,6 +525,11 @@ def status(work_root: Path, *, scene_id: str, run_id: str) -> tuple[int, str]:
         lines.append(f"metron: {report.metron.value}")
         lines.append(f"chronos_registered: {report.chronos_registered.value}")
         lines.append(f"text_state: {report.text_state.value}")
+        auto_flags = [item.auto_repair for item in report.findings if item.auto_repair is not None]
+        if auto_flags:
+            lines.append(
+                "metron_auto_repair: pending" if any(auto_flags) else "metron_auto_repair: none"
+            )
     journal = read_journal(dest / "journal.jsonl")
     if (dest / "repair_state.json").is_file():
         from .repair import read_state
@@ -539,27 +564,35 @@ def _inspect_metron(
             refs={"path": str(marked)},
         )
     beats = load_beat_plan(metron / "beats.yaml")
-    next_run = _next_metron_run(metron)
-    result = analyze_marked_text(
-        marked.read_text(encoding="utf-8"),
-        beats,
-        run=next_run,
-        generator=GeneratorInfo(model=request.model.id, granularity="auto"),
-    )
-    inherited = _edition_finish_reason(root, dest, marked, result.metrics)
-    if inherited:
-        result.metrics.metrics.finish_reason = inherited
-    result.metrics.metrics.source_raw_sha256 = raw_sha256(marked)
-    result.metrics.metrics.source_text_sha256 = text_sha256(
-        marked.read_text(encoding="utf-8")
-    )
-    atomic_write_text(metron / f"draft.{next_run:03d}.md", result.clean_text)
-    atomic_write_model(metron / f"spans.{next_run:03d}.yaml", result.spans)
-    atomic_write_model(metron / f"metrics.{next_run:03d}.yaml", result.metrics)
-    atomic_write_model(
-        metron / f"regression.{next_run:03d}.yaml",
-        build_regression_observation(result.metrics, beats),
-    )
+    source_hash = raw_sha256(marked)
+    reused = _matching_metron_edition(metron, source_hash)
+    if reused is None:
+        next_run = _next_metron_run(metron)
+        result = analyze_marked_text(
+            marked.read_text(encoding="utf-8"),
+            beats,
+            run=next_run,
+            generator=GeneratorInfo(model=request.model.id, granularity="auto"),
+        )
+        inherited = _edition_finish_reason(root, dest, marked, result.metrics)
+        if inherited:
+            result.metrics.metrics.finish_reason = inherited
+        result.metrics.metrics.source_raw_sha256 = source_hash
+        result.metrics.metrics.source_text_sha256 = text_sha256(
+            marked.read_text(encoding="utf-8")
+        )
+        atomic_write_text(metron / f"draft.{next_run:03d}.md", result.clean_text)
+        atomic_write_model(metron / f"spans.{next_run:03d}.yaml", result.spans)
+        atomic_write_model(metron / f"metrics.{next_run:03d}.yaml", result.metrics)
+        atomic_write_model(
+            metron / f"regression.{next_run:03d}.yaml",
+            build_regression_observation(result.metrics, beats),
+        )
+        metrics = result.metrics
+        spans = result.spans
+        edition = next_run
+    else:
+        edition, metrics, spans = reused
     refs_path = dest / "artifact_refs.json"
     refs = (
         load_json_model(refs_path, ArtifactRefsDocument)
@@ -568,8 +601,8 @@ def _inspect_metron(
     )
     refs.metron = refs.metron or {}
     for key, name in (
-        ("metrics", f"metrics.{next_run:03d}.yaml"),
-        ("spans", f"spans.{next_run:03d}.yaml"),
+        ("metrics", f"metrics.{edition:03d}.yaml"),
+        ("spans", f"spans.{edition:03d}.yaml"),
     ):
         path = metron / name
         refs.metron[key] = ArtifactRef(path=_rel(root, path), raw_sha256=raw_sha256(path))
@@ -587,12 +620,33 @@ def _inspect_metron(
             [],
             [ReportFinding(code="MODEL_UNCALIBRATED", note="V1 classify skipped; V0 metrics kept")],
         )
-    classified = classify_metrics(result.metrics, beats, calibration, spans=result.spans)
+    classified = classify_metrics(metrics, beats, calibration, spans=spans)
     notes = [
-        ReportFinding(code=finding.failure.value, note=finding.reason)
+        ReportFinding(
+            code=finding.failure.value,
+            note=finding.reason,
+            auto_repair=finding.auto_repair,
+        )
         for finding in classified.findings
     ]
     return ItemStatus.FINDINGS if classified.findings else ItemStatus.SUCCESS, [], notes
+
+
+def _refuse_receive_after_terminal_repair(dest: Path, incoming: str) -> None:
+    path = dest / "repair_state.json"
+    if not path.is_file():
+        return
+    from .repair import read_state
+    state = read_state(path)
+    if state.status not in {"completed", "escalated"}:
+        return
+    allowed = {state.source_hash, *state.output_hashes}
+    if incoming in allowed:
+        return
+    raise BridgeError(
+        "JOB_CONFLICT",
+        "repair session is terminal; start a new run",
+    )
 
 
 def _refuse_receive_after_publish(dest: Path) -> None:
@@ -985,6 +1039,18 @@ def _edition_intact(root: Path, item: ArtifactRef, incoming: str) -> bool:
     return path.is_file() and raw_sha256(path) == incoming
 
 
+def _observations_from_run(root: Path, scene_id: str, from_run: str) -> Path:
+    if not re.fullmatch(r"run-\d{4,}", from_run):
+        raise BridgeError("BAD_ID", "invalid from-run")
+    source = resolve_work_path(root, f"_writing/{scene_id}/{from_run}", field="from-run")
+    if not source.is_dir():
+        raise BridgeError("UNKNOWN_REF", f"from-run not found: {source}")
+    inherited = source / "observations.json"
+    if not inherited.is_file():
+        raise BridgeError("UNKNOWN_REF", "from-run has no observations.json")
+    return inherited
+
+
 def _next_metron_run(metron: Path) -> int:
     numbers: list[int] = []
     for path in metron.glob("metrics.*.yaml"):
@@ -992,6 +1058,30 @@ def _next_metron_run(metron: Path) -> int:
         if part.isdigit():
             numbers.append(int(part))
     return next_index(numbers)
+
+
+def _matching_metron_edition(
+    metron: Path, source_hash: str
+) -> tuple[int, MetricsDocument, SpansDocument] | None:
+    matches: list[tuple[int, Path]] = []
+    for path in metron.glob("metrics.*.yaml"):
+        part = path.name.removeprefix("metrics.").removesuffix(".yaml")
+        if not part.isdigit():
+            continue
+        stored = load_metron_model(path, MetricsDocument)
+        if stored.metrics.source_raw_sha256 == source_hash:
+            matches.append((int(part), path))
+    if not matches:
+        return None
+    edition, metrics_path = max(matches, key=lambda item: item[0])
+    spans_path = metron / f"spans.{edition:03d}.yaml"
+    if not spans_path.is_file():
+        return None
+    return (
+        edition,
+        load_metron_model(metrics_path, MetricsDocument),
+        load_metron_model(spans_path, SpansDocument),
+    )
 
 
 def _validate_selector(normalized: str, selector: Selector) -> None:

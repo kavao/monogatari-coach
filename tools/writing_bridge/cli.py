@@ -54,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="path to the same received candidate bytes (hash must match artifact_refs)",
     )
+    ins.add_argument(
+        "--from-run",
+        help="reuse observations.json from another run when text hashes match",
+    )
     ins.add_argument("--repo-root", type=Path, default=Path.cwd())
 
     st = sub.add_parser("status", help="show run journal and report")
@@ -128,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
                 observations_path=args.observations,
                 marked_path=args.marked,
                 repo_root=args.repo_root,
+                from_run=args.from_run,
             )
         elif args.command == "publish":
             code, message = publish(

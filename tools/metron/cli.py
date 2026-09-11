@@ -60,9 +60,16 @@ def _add_contract_args(parser: argparse.ArgumentParser) -> None:
 
 def _handle_validate(args: argparse.Namespace) -> int:
     contract = load_scene_contract(args.contract)
-    load_beat_plan(args.beats)
+    beat_plan = load_beat_plan(args.beats)
     validate_contract(contract, expected_scene_id=args.scene_id)
     print(f"valid: {contract.scene.id}")
+    hints = [beat.budget.chars_hint for beat in beat_plan.beats]
+    if len(hints) >= 3 and len(set(hints)) == 1:
+        print(
+            f"warning: equal_chars_hint scene={contract.scene.id} "
+            f"beats={len(hints)} (advisory; not an error)",
+            file=sys.stderr,
+        )
     return 0
 
 

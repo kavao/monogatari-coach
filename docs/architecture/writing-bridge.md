@@ -8,8 +8,8 @@
 2. **チャットへの指示文** — これだけで動きます。
    - `第1章を執筆してください。`
    - `この場面をDeepenしてください。`
-   - `当該場面を保存してください。`
-3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら `prepare` → 候補の `receive` / `inspect`。Deepen は `repair-*`。正本反映は `--allow-publish` の run だけ `publish --dry-run` のあと `publish`。その後 `_meta.md` のストーリー反映は別スキルです。
+   - `当該場面を保存してください。`（METRON ON では省略できます）
+3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら `prepare` → 候補の `receive` / `inspect`。Deepen は `repair-*`。METRON ON の場面作業では、修復が床到達したら `--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。止めたいときはその旨を書いてください。CHRONOS ON だけでは正本へ書きません。その後 `_meta.md` のストーリー反映は別スキルです。
 4. **ユーザーが確認できるもの** — `_writing/<scene>/<run>/` の `report.json`、`jobs/` のプロンプト、`_metron/<scene>/` の計測、反映後の `_novel_text` と `_novel_text_backup`。
 
 清書（rewrite.md）は従来どおり別手順です。明示した `metron_cli.py` / `chronos_cli.py` はフラグ OFF でも拒否しません。
@@ -23,6 +23,8 @@
 ## 操作手順
 
 先に通常の `prepare → receive → inspect` を実行します。正本へ反映する run は `prepare --allow-publish` が必要です。両検査がONならCHRONOSの文脈も取り込みます。METRON OFFでは修復を開始できません。本文を既に正本へ保存して初期ハッシュが変わったrunは再利用せず、新runを準備します。
+
+`prepare` が書く `context.md` には、シーンと Beat の検査下限と、床以上の指示目標が並びます。指示目標は助言であり、未達だけでは検査を `TooShort` にしません。この表示は新しい `prepare` から有効です。既存 run の古い `instruction_chars` は現行の倍率ではありません。
 
 以下はコマンドの書式例です。`MODEL_ID` は実際の生成元と一致する校正済みモデルIDへ置き換えます。`--authorization` は既存の修復依頼の出典・対象範囲を記録する欄で、文字列を指定するだけで外部課金や正本更新を許可するものではありません。
 
@@ -65,11 +67,11 @@ python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 --scene-id c
 python tools/writing_bridge_cli.py status novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001
 ```
 
-`repair: completed` は修復の試行が終了した意味です。METRON・C1の成功や本文保存を意味しません。`text_save` は `skipped` のままです。残る指摘は `report.json`、棄却・生成失敗・意味レビューは `repair_history` と `repair_state.json` で確認できます。
+`repair: completed` は修復の試行が終了した意味です。適格な追加候補が無くシーン床に届かないときは `repair: escalated` になります。必須修復も追加候補も無いときは、初回の `repair-next` から `pending` は空で、結合校正の job も出しません。どちらも METRON・C1 の成功や本文保存を意味しません。このあと新しい稿でやり直すときは、同じ run へ `receive` せず、新しい `prepare` の run を切ります。旧 run の observations や metrics は本文ハッシュが一致するときだけ `--from-run` で流用できます。`text_save` は `skipped` のままです。残る指摘は `report.json`、棄却・生成失敗・意味レビューは `repair_history` と `repair_state.json` で確認できます。修復の途中で C1 根拠がまだ無いときは、`status` に未記録として残りますがコマンドは失敗しません。完了後に根拠が無いときは従来どおり止まります。`status` の `metron_auto_repair: pending` は自動修復の対象が残っているとき、`none` は指摘だけが残っているときです。同じ受領候補を再度 `inspect` しても、計測ファイルの版は増えません。
 
 ## 本文正本への反映
 
-`prepare` で `--allow-publish` を付けた run だけが正本へ書けます。権限の無い起草 run は `PERMISSION_DENIED` です。後から同じ run へ権限は付きません。保存用の新しい run で候補の `receive` / `inspect` をやり直します。`--authorization` は反映依頼の出典を記録する欄で、課金やイベント上書きの許可にはなりません。
+`prepare` で `--allow-publish` を付けた run だけが正本へ書けます。権限の無い起草 run は `PERMISSION_DENIED` です。後から同じ run へ権限は付きません。METRON ON の作品では、執筆や Deepen の依頼だけで保存用 run まで進みます。CLI の `--allow-publish` は技術上の権限分離です。保存用の新しい run で候補の `receive` / `inspect` をやり直します。起草 run の本文 hash が一致する observations は `--from-run run-NNNN` で流用できます。指定元に `observations.json` が無いときは `UNKNOWN_REF` で止まり、保存先の旧根拠は使いません。run ID 以外の値や作品フォルダの外を指す値は拒否します。不一致は `STALE_EVIDENCE` です。CHRONOS が ON のときは C1 が成功するまで正本を書きません。`--authorization` は出典を記録する欄で、課金やイベント上書きの許可にはなりません。
 
 反映内容を dry-run で確認してから実行します。次の `run-XXXX` は、この節の本番 `prepare --allow-publish` が返した id です。
 
@@ -77,14 +79,14 @@ python tools/writing_bridge_cli.py status novels/NNN_作品名 --scene-id ch01-0
 # 保存用 run を用意する。起草用 run の続きではない。
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --selector-kind heading --selector-value "章タイトル" --allow-publish --repo-root .
 python tools/writing_bridge_cli.py receive novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --candidate path/to/marked.md
-python tools/writing_bridge_cli.py inspect novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --observations path/to/observations.json
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --from-run run-0001
 # 正本は書き換えず、対象パスだけを表示する。
 python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --authorization "ユーザー依頼: 第1章の当該場面を保存" --dry-run --repo-root .
 # 旧稿を _novel_text_backup へ退避し、対象場面だけを置換する。
 python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --authorization "ユーザー依頼: 第1章の当該場面を保存" --repo-root .
 ```
 
-Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書き、対象外の場面は残します。既存の非空本文を `new` で反映するときは selector、当該場面の scene アンカー、または `append` が必要です。無い場合はファイル全体を置換しません。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_metron/<scene>/adopted.<run_id>.md` に残ります。
+Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書きます。マーカー行のあいだに残った連続空行は、段落1つ分（空行1つ）まで畳みます。対象外の場面は残します。既存の非空本文を `new` で反映するときは selector、当該場面の scene アンカー、または `append` が必要です。無い場合はファイル全体を置換しません。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_metron/<scene>/adopted.<run_id>.md` に残ります。
 
 保存直後に同じ run で再計測します。`report.json` の `text_save` は `success`、`target_text_sha256` は保存本文です。METRON と C1 は採用した場面稿で測り、保存ファイルとハッシュが違うときは findings に残します。文字数と句読点ゲートも findings に記録します。句読点の失敗で本文は戻しません。`_meta.md` のストーリー反映と rewrite 清書は既存スキルの手順です。同じターンで `_novel_text` の手編集と `publish` は重ねません。
 
@@ -94,12 +96,12 @@ flowchart TD
     Flags -->|OFF| Direct[_novel_textを直接更新]
     Flags -->|ON| Prepare[prepare]
     Prepare --> Receive[receiveとinspect]
-    Receive --> Repair{Deepen依頼}
+    Receive --> Repair{Deepenが必要}
     Repair -->|はい| Jobs[repair-beginからsubmit]
-    Repair -->|いいえ| PublishAsk{正本へ保存するか}
-    Jobs --> PublishAsk
-    PublishAsk -->|はい| Publish[publish dry-runのあと本番]
-    PublishAsk -->|いいえ| Report[report.jsonを確認]
+    Repair -->|いいえ| MetronPub{METRON ONかつ止めなし}
+    Jobs --> MetronPub
+    MetronPub -->|はい| Publish[allow-publish runで publish]
+    MetronPub -->|いいえ| Report[report.jsonを確認]
     Publish --> Meta[_meta.mdを更新]
     Direct --> Meta
 ```

@@ -40,7 +40,8 @@ class BridgeRepair(StepModel):
     source_marked: str
     prefix: str = ""
     suffix: str = ""
-    status: Literal["active", "completed"] = "active"
+    status: Literal["active", "completed", "escalated"] = "active"
+    notes: list[str] = Field(default_factory=list)
     output_path: str | None = None
     output_hash: str | None = None
     output_hashes: list[str] = Field(default_factory=list)
@@ -202,7 +203,12 @@ def _advance(dest, state):
     except ValueError as error:
         raise BridgeError("JOB_CONFLICT", str(error)) from error
     if not isinstance(result, RepairJob):
-        state.status = "completed"
+        from metron.repair import SCENE_FLOOR_TOKEN
+        state.status = (
+            "escalated" if SCENE_FLOOR_TOKEN in result.escalated_beats else "completed"
+        )
+        if result.notes:
+            state.notes = list(result.notes)
     _save(dest, state)  # Reservation is durable BEFORE returning the prompt.
     if isinstance(result, RepairJob):
         jobs = dest / "jobs"
@@ -244,15 +250,29 @@ def _export(root, dest, request, state, repo_root, observations_path=None):
                 atomic_write_text(archive, observed.read_text(encoding="utf-8"))
             old.update(text_sha256=text_sha256(marked), items=[])
             atomic_write_text(observed, json.dumps(old, ensure_ascii=False, indent=2) + "\n")
+    defer_c1 = state.status == "active"
     try:
-        return commands.inspect(root, scene_id=request.scene_id, run_id=request.run_id,
-                                observations_path=observations_path, marked_path=None,
-                                repo_root=repo_root)
+        return commands.inspect(
+            root,
+            scene_id=request.scene_id,
+            run_id=request.run_id,
+            observations_path=observations_path,
+            marked_path=None,
+            repo_root=repo_root,
+            defer_c1=defer_c1,
+        )
     except BridgeError:
         # Even invalid submitted evidence must not leave the previous success report visible.
         if observations_path is not None:
-            commands.inspect(root, scene_id=request.scene_id, run_id=request.run_id,
-                             observations_path=None, marked_path=None, repo_root=repo_root)
+            commands.inspect(
+                root,
+                scene_id=request.scene_id,
+                run_id=request.run_id,
+                observations_path=None,
+                marked_path=None,
+                repo_root=repo_root,
+                defer_c1=defer_c1,
+            )
         raise
 
 
@@ -270,7 +290,8 @@ def repair_next(work_root: Path, *, scene_id: str, run_id: str,
             _export(root, dest, request, state, repo_root)
         return 0, f"pending: {dest / 'jobs' / (result.job_id + '.json')}"
     code, message = _export(root, dest, request, state, repo_root)
-    return code, f"repair completed (unresolved findings may remain); {message}"
+    label = "escalated" if state.status == "escalated" else "completed"
+    return code, f"repair {label} (unresolved findings may remain); {message}"
 
 
 @locked_scene
