@@ -15,6 +15,7 @@
    - general（展開エンジン／運用カード／勢い展開）: [episode/general/episode_engine_map.md](episode/general/episode_engine_map.md)
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
+   - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md

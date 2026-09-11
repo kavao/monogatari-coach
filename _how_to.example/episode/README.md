@@ -13,6 +13,7 @@ general の設計技法（抽選 JSON の対象外）:
 - [展開エンジン／運用カード](general/episode_engine_map.md)
 - [リアリティの設計](general/episode_reality.md)
 - [足を引っ張るキャラクターの設計](general/episode_hindrance.md)
+- [地の文モノローグの設計](general/episode_monolog.md)
 
 初回セットアップ例:
 

@@ -3,7 +3,7 @@
 一般エピソード技法のうち、失敗する人物の許容条件。索引は [episode_.md](episode_.md)。
 
 失敗する人物を、緊張の生成装置として扱うための条件。
-（関連文書：[リアリティの設計](episode_reality.md)／[多人数物語のテンポ設計](episode_tempo_ensemble.md#第iv部多人数物語のテンポ設計)／[物語序盤の設計](episode_tempo_ensemble.md#第i部物語序盤の設計)）
+（関連文書：[リアリティの設計](episode_reality.md)／[多人数物語のテンポ設計](episode_tempo_ensemble.md#第iv部多人数物語のテンポ設計)／[物語序盤の設計](episode_tempo_ensemble.md#第i部物語序盤の設計)／[地の文モノローグの設計](episode_monolog.md)）
 
 ---
 

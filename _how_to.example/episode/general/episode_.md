@@ -14,6 +14,7 @@
 | G | [episode_engine_map.md](episode_engine_map.md) | 展開エンジン表・運用カード・昭和的勢い展開（E2） |
 | H | [episode_reality.md](episode_reality.md) | リアリティの設計（説得力の配分・帰結払い・力み検出） |
 | I | [episode_hindrance.md](episode_hindrance.md) | 足を引っ張るキャラクターの設計（失敗の許容・ヘイト返済） |
+| J | [episode_monolog.md](episode_monolog.md) | 地の文モノローグの設計（思考実況／無自覚ズレ／自覚演技／価値観ズレ） |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 
