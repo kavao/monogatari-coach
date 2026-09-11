@@ -191,6 +191,8 @@ class SceneMetrics(StrictModel):
 class MetricsPayload(StrictModel):
     run: int = Field(ge=1)
     finish_reason: str | None = None
+    source_raw_sha256: str | None = None
+    source_text_sha256: str | None = None
     beats: list[BeatMetrics] = Field(default_factory=list)
     scene: SceneMetrics
 

@@ -156,7 +156,7 @@ def classify_metrics(
                     beat_id=beat.id,
                     observed=float(observed_chars),
                     threshold=missing_threshold * beat.budget.chars_hint,
-                    auto_repair=True,
+                    auto_repair=not truncated,
                     reason="marker/span is missing, duplicated, or below the calibrated span floor",
                 )
             )

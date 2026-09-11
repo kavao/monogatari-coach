@@ -68,3 +68,4 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 - ファイル一覧の意味付け: **`.rulesync/rules/workflow-specification.md`** の「小説ファイル (novels/[novel_code]_[novel_title]/)」
 - 人物プロフィールの構造 lint: スキル **`novel-character-profile`**
 - 本文保存の確認: スキル **`novel-text-file-output`**
+- 検査フラグ: `--check-inspection-layers`。METRON / CHRONOS ON の執筆接続は **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」

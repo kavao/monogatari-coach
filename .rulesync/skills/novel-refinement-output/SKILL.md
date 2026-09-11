@@ -57,7 +57,8 @@ description: >-
 
 ## 作品単位のフラグ
 
-- **METRON / CHRONOS**: 清書では自動の再計測・イベント更新を起動しない。ユーザーが明示したときだけ実行する。
+- **METRON / CHRONOS**: 清書では自動の再計測・イベント更新を起動しない。writing_bridge の `prepare` / `repair-*` / `publish` も起動しない。ユーザーが明示したときだけ実行する。
+- **writing_bridge `publish`**: 既稿退避の採番規則は本スキルと同じ `<元ファイル名>_vNNN.md`。`publish` は rewrite.md 清書を行わない。清書が必要なら本スキルを別途実行する。同一ターンで `publish` と本スキルの正本更新を重ねない。
 - **AUDIT_LOG**: 対象作品の `config.md` が `OFF` なら査証ログを追記しない。行なしは ON。
 
 ## 査証・メタ
@@ -67,7 +68,7 @@ description: >-
 
 ## 関連
 
-- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode / Writing Mode Refinement
+- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode / Writing Mode Refinement と「執筆接続の起動判定」
 - 初稿のファイル出力: **`novel-text-file-output`**
 - 技法: **`_how_to/rewrite.md`**
 - 執筆直後の機械校正・清書後 lint: **`novel-text-rewrite-lint`**

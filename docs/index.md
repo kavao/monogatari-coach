@@ -18,6 +18,8 @@
   Beat 単位の本文計測、失敗判定、V1 局所修復の技術仕様
 - [CHRONOS 技術詳細](architecture/chronos.md)
   物語内部時間のイベント YAML、順序制約、CHR001 の検査
+- [Writing bridge の局所修復と本文反映](architecture/writing-bridge.md)
+  METRON / CHRONOS が ON の作品で、執筆・Deepen・場面保存を同じ本文版へつなぐ
 - [Image Generation](image-generation/index.md)
   Forge / NovelAI / Grok の使い分け、既定値、バッチ生成
 - [Manga prompt IR / パイプライン](image-generation/manga-prompt-ir.md)

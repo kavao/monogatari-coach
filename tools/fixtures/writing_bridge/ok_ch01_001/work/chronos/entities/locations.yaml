@@ -1,0 +1,5 @@
+locations:
+  - id: LOC-home
+    name: 家
+  - id: LOC-station
+    name: 駅

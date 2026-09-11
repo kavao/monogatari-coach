@@ -205,6 +205,20 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 第2章の前半を執筆してください。
 ```
 
+METRON または CHRONOS が ON の作品では、これだけで接続が起動します。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
+
+```text
+この場面をDeepenしてください。
+```
+
+**より詳細に指定したい場合:** Deepen は校正済みモデルの場面修復です。正本へ書くときは、次のように保存を明示します。
+
+```text
+当該場面を保存してください。
+```
+
+保存の明示依頼があるときだけ、最初から `--allow-publish` の run を用意します。起草用 run に後から権限は付きません。手編集と `publish` は重ねません。操作の確認先は [Writing bridge の局所修復と本文反映](../architecture/writing-bridge.md) です。清書は次の「C. 清書」のままです。
+
 **使われるツール:**
 
 ```bash
@@ -216,6 +230,38 @@ python tools/novel_char_count.py novels/NNN_作品名
 
 # 特定ファイルのみ確認する場合
 python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.md
+
+# METRON / CHRONOS が ON のとき（起草・検査。正本は書き換えない）
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new
+# 標準出力の prepared: .../run-XXXX を以降の --run-id に使う
+```
+
+「当該場面を保存してください」と明示したときは、保存用の新しい run です。起草用 run へ `publish` しません。既存の非空本文では selector、当該場面の scene アンカー、または `append` が必要です。無いと `MISSING_FIELD` になります。
+
+```bash
+# 保存用（起草レシピの続きではない。この prepare の run_id を使う）
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --selector-kind heading --selector-value "章タイトル" \
+  --allow-publish --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --selector-kind heading --selector-value "章タイトル" \
+  --allow-publish
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
 ```
 
 ---
@@ -231,6 +277,8 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 2. `_how_to/rewrite.md` のルールを適用して文章を磨き上げる（1.5倍程度の分量が目安）
 3. `novels/<作品>/_novel_text/novel_text01.md` を上書き保存する
 4. 校正前後の文字数を比較して報告する
+
+清書は writing_bridge の `publish` と重ねません。自動の再計測も起動しません。ユーザーが明示した検査 CLI だけを追加実行します。
 
 **使われるツール:**
 

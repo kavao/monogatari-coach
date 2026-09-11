@@ -1,0 +1,9 @@
+characters:
+  - id: CHR-a
+    name: 兄
+    initial_state:
+      outfit: home
+  - id: CHR-b
+    name: 母
+    initial_state:
+      outfit: home

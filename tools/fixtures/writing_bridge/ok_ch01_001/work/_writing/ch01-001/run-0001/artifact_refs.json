@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "request_id": "WRQ-0001",
+  "model": {
+    "id": "local-writer",
+    "calibrated": true
+  },
+  "metron": {
+    "contract": {
+      "path": "_metron/ch01-001/contract.yaml",
+      "raw_sha256": "sha256:ef7f79413f6fec5bd9e1fcb14d68eb6717b8cff22adebcf4e90f99f039bc8c6b"
+    },
+    "beats": {
+      "path": "_metron/ch01-001/beats.yaml",
+      "raw_sha256": "sha256:46bd05e9ceea8a1a70fcb7d66038a4d0a0b4d51d400e54b9607c09dc62ade000"
+    },
+    "marked": {
+      "path": "_metron/ch01-001/marked.md",
+      "raw_sha256": "sha256:4ff9c277859652835c8f5ffa2ea87be0ca075e59f8dd96a0508c86ba9026be41"
+    },
+    "metrics": {
+      "path": "_metron/ch01-001/metrics.001.yaml",
+      "raw_sha256": "sha256:62d35e90b659ca3ed5142f99208d30dda7dc4d2cf9e49a30995b4630d0ae140e"
+    },
+    "spans": {
+      "path": "_metron/ch01-001/spans.001.yaml",
+      "raw_sha256": "sha256:f5d7eb6218246ada18d9b52b507d29e03fdc572c7157e36e701a19c610d76caa"
+    }
+  }
+}

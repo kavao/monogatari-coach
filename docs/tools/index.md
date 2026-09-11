@@ -106,6 +106,104 @@ python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
 
 技術背景は [CHRONOS 技術詳細](../architecture/chronos.md) を参照してください。
 
+### `writing_bridge_cli.py` — METRON / CHRONOS の執筆接続
+
+Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。
+
+両方 OFF のときは run を作りません。契約とマーカー稿は従来どおり `_metron/` に置きます。
+
+接続の対象パスを確認します。`--dry-run` では run も `request.yaml` も作りません。
+
+```bash
+# 確認（dry-run）— 作成予定の run パスだけを表示する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --selector-kind heading \
+  --selector-value "章タイトル" \
+  --dry-run
+
+# 本番 — request.yaml を作り、標準出力の run_id を以降で使う
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --selector-kind heading \
+  --selector-value "章タイトル"
+```
+
+実行後、`_writing/ch01-001/run-0001/` などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
+
+候補を受領し、同じ本文版を検査します。このレシピは正本を書きません。
+
+```bash
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 \
+  --candidate path/to/marked.md
+
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 \
+  --observations path/to/observations.json
+
+python tools/writing_bridge_cli.py status novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001
+
+# 校正済みモデルの局所修復（本文正本は更新しない）
+python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --model MODEL_ID \
+  --authorization "ユーザー依頼: 当該場面をDeepen"
+python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001
+```
+
+正本へ書くときは、保存の明示依頼があるときだけ、最初から `--allow-publish` 付きの run を用意します。起草用 run に後から権限は付きません。上の起草レシピを実行済みなら、保存用 `prepare` は別の `run_id` を返します。その id で `receive` / `inspect` をやり直してから `publish` します。起草用の `run-0001` へ `publish` すると `PERMISSION_DENIED` です。実行後の `prepared: .../run-XXXX` を、次の `--run-id` に使います。候補が無い保存用 run へ `publish` すると失敗します。
+
+```bash
+# 確認（dry-run）— 作成予定の保存用 run パスだけを表示する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --selector-kind heading \
+  --selector-value "章タイトル" \
+  --allow-publish \
+  --dry-run
+
+# 本番 — permissions.publish 付きの run を作る
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --selector-kind heading \
+  --selector-value "章タイトル" \
+  --allow-publish
+
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+
+# 確認（dry-run）— 正本は書き換えず、対象パスだけを表示する
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+
+# 本番 — 旧稿を退避し、対象場面だけを _novel_text へ書く
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
+```
+
+inspect は受領済み候補へ METRON と C1 を同じ本文版でかけます。`--marked` は受領候補と同じ内容のパスだけを指定できます。別内容なら `STALE_EVIDENCE` です。候補が無いときだけ既存の `_novel_text` を見ます。未作成の新章は先に receive が必要です。人物初期値や links など状態解決の入力が変わると context を作り直し、links と CHRONOS の整合も再確認します。受領済みの最新候補を後から書き換えた場合は再受領が必要です。破損した旧版は履歴に残し、新しい受領で差し替えられます。receive は版別に残し、同じハッシュの再受領は既存版を使います。契約の正本は `tools/fixtures/writing_bridge/SCHEMA.md` です。
+
+Phase 3の `repair-begin / repair-next / repair-submit` は、校正済みモデルの局所修復をファイル受け渡しで進めます。試行履歴を保持し、修復後の本文を再計測・C1照合します。結合校正は採用する本文で残存率を見ます。生成打切り（`finish_reason`）は候補本文のハッシュが一致する版だけへ引き継ぎ、欠落Beatがあっても自動修復しません。
+
+正本へ書くときは、先に `--allow-publish` で保存用 run を用意し、その `run_id` で `receive` → `inspect` → `publish --dry-run` → `publish` します。起草用 run へは書けません。[局所修復と本文反映の操作手順](../architecture/writing-bridge.md)を参照してください。
+
 ### `book_review.py` / `book_lock.py` / `book_diff.py` — 出版パッケージ Phase 1
 
 作品フォルダ内の `book.yaml` と `rights.yaml` を基に、本文・付属原稿・挿絵・権利・奥付を検証し、入稿用入力一式を lockfile で管理します。PDF / EPUB の組版は行いません。

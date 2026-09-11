@@ -1,0 +1,7 @@
+scenes:
+  - id: ch01-001
+    chapter: 1
+    order: 1
+    mode: present
+    refs: [EVT-0001, EVT-0002]
+    metron_scene_id: ch01-001

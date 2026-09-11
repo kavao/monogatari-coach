@@ -21,7 +21,7 @@ METRON の V1 自動修復を使うときは、次の順序を守る。
 4. provider を接続する場合は、ユーザー承認済みのコールバックだけを `repair_scene()` へ注入する。METRON が認証情報を読み込んだり、承認なしに外部送信したりしない。
 5. `BeatMissing` は単独再生成、`BeatThin` と `TooShort` は Expand / Deepen、`EndingRush` は末尾 Beat の単独再生成とする。EndingRush の末尾へ先に Expand を適用しない。`TooShort` を末尾再生成の根拠にしない。指示目標は床より多めに出す。
 6. 修復後は Beat マーカーを保持した連結校正を1回だけ行い、校正後の正規化本文を再計測する。元文残存率未達、校正による短縮、マーカー破損、Beat 順の入れ替え、同一本文の Deepen、新規文の同義反復は適用せず著者提示へ戻す。シーン `TooShort` は床に届くまで複数 Beat を Deepen する。
-7. 採用稿を `FINAL.md` へ保存するときは Beat / fact マーカーを除去し、既存の `FINAL.md` を上書きしない。本文正本 `_novel_text` へ反映する場合は、本文出力スキルの完了条件を別途満たす。
+7. 採用稿を `FINAL.md` へ保存するときは Beat / fact マーカーを除去し、既存の `FINAL.md` を上書きしない。`FINAL.md` だけでは本文完了にしない。本文正本へ反映する場合、writing_bridge 経路は `publish`、従来経路は本文出力スキルの完了条件を満たす。
 
 ## CHRONOS P0 検査手順
 
@@ -31,7 +31,7 @@ CHRONOS の順序検査を使うときは、次を守る。
 2. イベントは章単位 YAML に複数件収容する。必須は `id` と `title` のみ。日付は省略してよい。
 3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM は呼ばない。
 4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。挿絵・タグ YAML も書き換えない。
-5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` 接続も後続とする。
+5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` は参考の両端だけとし、執筆接続は `writing_bridge_cli.py` が `links` で明示する。
 6. 人物状態を使う作品だけ `chronos.config.yaml` の `character_state.dimensions` を宣言する。次元名と値は作品が付ける。`init` 雛形は次元なしのままにする。
 7. 状態ありの check は CHR010（非法遷移）・CHR011（所在観測）・CHR013（未確定順序）を報告する。CHR012（挿絵 variant）は `rules.CHR012` と `illustration_bind` が揃ったときだけ走る。循環や CHR013 ではその人物の状態を捏造しない。
 
@@ -41,7 +41,17 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
 
-METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。
+METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
+
+## 執筆接続の起動判定
+
+通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」。
+
+- 両方 OFF: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
+- METRON または CHRONOS が ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- Deepen / 局所修復: METRON ON かつ校正済みモデル。`repair-begin` → `repair-next` → 候補作成 → `repair-submit`。この間は正本を触らない。
+- 正本反映: `--allow-publish` の run と反映依頼があるときだけ `publish --dry-run` のあと `publish`。起草用 run へ後付けしない。保存用は新 run で receive し直す。手編集で置換しない。完了後は `novel-story-reflection`。句読点は `report.json` を正とし、失敗でも本文は戻さない。未達なら完了報告しない。
+- 清書: `novel-refinement-output`。`publish` と重ねない。自動の再計測・イベント更新はしない。
 
 ## 自己発展型ルールガバナンス
 
@@ -1429,6 +1439,7 @@ bunko の reader-proof を出してください。
    - `proposal.md`, `design_specification.md`, `world.md`, `character.md` など
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
+   - **経路は一つ**: METRON / CHRONOS ON の場面作業は「執筆接続の起動判定」に従う。ハッシュ一致の active run があるときは `_novel_text` 直接更新と `publish` を重ねない。
    - **執筆直後（推奨）**: 保存・確認のあと `tools/novel_text_rewrite_lint.py` を **`--profile grammar --fix`** で誤打・体裁を機械校正する（`--fix-dry-run` を先に）。rewrite 清書の代わりにはしない（スキル **`novel-text-rewrite-lint`**・**`novel-text-file-output`**）。
 6. 清書・文章校正では、**先に `_novel_text_backup/` へ旧版退避し、その後 `_novel_text/` 内の同一ファイル名を更新**する（詳細はスキル **`novel-refinement-output`**）。
    - 執筆・清書・追記の完了扱いは **`.rulesync/rules/concepts.md`** の「完了扱い条件」とスキル **`novel-text-file-output`** を正とする。

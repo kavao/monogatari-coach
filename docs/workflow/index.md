@@ -41,6 +41,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - `proposal.md` / `design_specification.md` / `character.md` / `world.md` などを作って、と指示する
 3. **本文を書く（Writing）**
    - `_novel_text/novel_text*.md` に必ずファイル出力して、と指示する
+   - METRON / CHRONOS が ON の作品では、同じ場面を直接編集と `publish` の両方で書かない。接続の操作は [Writing bridge の局所修復と本文反映](../architecture/writing-bridge.md)
 4. **メタを残す（Meta）**
    - `_meta.md` を更新して進捗と引き継ぎを残して、と指示する
 5. **必要になったら派生モードへ**

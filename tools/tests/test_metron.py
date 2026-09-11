@@ -353,7 +353,9 @@ def test_repair_scene_applies_expand_and_seam_once() -> None:
         clean_text=analyzed.clean_text,
         spans=analyzed.spans,
         expander=expand,
-        seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1] + "補正。",
+        seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1].replace(
+            "<!--/beat:b4-->", "補正。<!--/beat:b4-->"
+        ),
     )
     assert repaired.expansions["b1"].accepted
     assert repaired.seam_correction_applied
@@ -425,6 +427,35 @@ def test_marked_seam_rejects_new_repeated_opening() -> None:
     result = run_marked_seam_correction(plan, beat_texts, duplicate_opening)
     assert not result.accepted
     assert "repeated Beat opening" in result.reason
+
+
+def test_marked_seam_rejects_text_moved_outside() -> None:
+    plan = _plan(_beat("b1", chars_hint=1), chars_floor=1)
+    beat_texts = {"b1": "出発した。"}
+
+    def move_outside(_prompt: str) -> str:
+        return "<!--beat:b1--><!--/beat:b1-->出発した。追加。"
+
+    result = run_marked_seam_correction(plan, beat_texts, move_outside)
+    assert not result.accepted
+    assert result.clean_text.strip() == "出発した。"
+    assert any(token in result.reason for token in ("outside", "shortened", "removed"))
+
+
+def test_marked_seam_rejects_text_moved_between_beats() -> None:
+    plan = _plan(_beat("b1"), _beat("b2"))
+    beat_texts = {"b1": "出発した。", "b2": "到着した。"}
+
+    def move_between(_prompt: str) -> str:
+        return (
+            "<!--beat:b1--><!--/beat:b1-->出発した。\n"
+            "<!--beat:b2-->到着した。<!--/beat:b2-->"
+        )
+
+    result = run_marked_seam_correction(plan, beat_texts, move_between)
+    assert not result.accepted
+    assert "出発した。" in result.clean_text
+    assert "到着した。" in result.clean_text
 
 
 def test_marked_seam_rejects_reordered_beats() -> None:

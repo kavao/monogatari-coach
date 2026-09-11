@@ -13,9 +13,14 @@ targets: ["*"]
 
 ## 発動タイミング
 
-- **本文の新規執筆・追記・挿入**（スキル **`novel-text-file-output`**）の直後。
+経路は一つ。`publish` した直後に `_novel_text` を手編集し直してから本スキルを重ねない。
+
+- **本文の新規執筆・追記・挿入**（スキル **`novel-text-file-output`** の従来経路）の直後。
+- **writing_bridge `publish`** で `_novel_text` を更新した直後（CLIは `_meta.md` を書き換えない。句読点は `report.json` を確認済みであること）。
 - **清書・文章校正**（スキル **`novel-refinement-output`**）の直後。
 - セッションの終了時（引き継ぎ準備）。
+
+修復中（`repair-*` のみで正本未更新）は本スキルを起動しない。
 
 ## 同期プロトコル（手順）
 
@@ -59,7 +64,7 @@ targets: ["*"]
 
 ユーザーに「執筆完了」を伝える際には、次の要素が揃っていることを条件とする。
 
-1. 本文が保存・確認されている（`novel-text-file-output`）。
+1. 本文が保存・確認されている（`novel-text-file-output`。`publish` 経路を含む）。
 2. **`_meta.md` が最新の状態に更新されている**（本スキル手順1, 2）。
 3. **`design_specification.md` の同期要否を確認済みである**（本スキル手順3）。実文字数・状態・プロットの同期が必要なら設計書まで更新し、不要と判断した場合は理由を残している。
 4. 次回タスクが明文化されている。
@@ -68,5 +73,6 @@ targets: ["*"]
 
 - 本文保存: **`novel-text-file-output`**
 - 清書・退避: **`novel-refinement-output`**
+- 執筆接続: **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」
 - 査証ログ: **`workspace-audit-log`**
 - 企画・設計: **`novel-planning`**

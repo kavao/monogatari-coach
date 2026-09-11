@@ -21,7 +21,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - ファイル成果物は、正しい正本パスへの書込み後に再読込または対応する検証で確認してから完了と報告する。
 - 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
-- 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。
+- 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。`writing_bridge` の `publish` 後は `report.json` の句読点記録を正とし、失敗でも本文は戻さない。未達なら完了報告しない。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。対象作品の config.md に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
 
@@ -38,7 +38,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
 - 検査は決定的コード（P0 は CHR001、人物状態は CHR010〜013）で行い、LLM に判定を委ねない。
 - `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
-- 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。
+- 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。執筆工程への接続は `writing_bridge` が行う。
 
 ## CHRONOS 人物状態（P0.5）
 
@@ -53,6 +53,13 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
 - ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。
+
+## 執筆接続（writing_bridge）
+
+- METRON / CHRONOS が ON で、対象場面にハッシュ一致の active run があるときは `writing_bridge_cli.py` が検査責任を持つ。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- 正本反映は `permissions.publish` があり、ユーザーが反映を依頼したときだけ `publish` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
+- 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。
+- `_meta.md` のストーリー反映は CLI の外で `novel-story-reflection` が行う。
 
 ## Plan Mode の完了
 
@@ -75,4 +82,5 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | Tag / Manga / Illustration / Cover / Publishing | 該当スキルと `workflow-specification.md` |
 | Reader / Editor Score / Consistency Audit / Reader Walk | `novel-reader-output` / `novel-evaluation-output` / `novel-reader-walk` |
 | METRON / CHRONOS / AUDIT_LOG | `workflow-specification.md` と `docs/architecture/` |
+| 執筆接続 | `writing_bridge` と `docs/architecture/writing-bridge.md` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |

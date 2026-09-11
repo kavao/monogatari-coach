@@ -63,6 +63,7 @@ def test_workflow_specification_keeps_relocated_mode_contracts() -> None:
         "Cover Composition Mode",
         "Publication Package Mode",
         "Writing Mode",
+        "執筆接続の起動判定",
         "Meta Management Mode",
         "First Reader Mode",
         "Editor Score Mode",
@@ -120,7 +121,13 @@ RELOCATED_SECTIONS = (
     "長文評価の閾値と前処理",
 )
 
-KEEP_CONCEPT_SECTIONS = ("完了扱い条件", "正本と副本", "ルールとドキュメント", "詳細仕様の参照先")
+KEEP_CONCEPT_SECTIONS = (
+    "完了扱い条件",
+    "正本と副本",
+    "ルールとドキュメント",
+    "詳細仕様の参照先",
+    "執筆接続（writing_bridge）",
+)
 
 
 def _reference_sources() -> list[Path]:
@@ -201,3 +208,177 @@ def test_workflow_specification_does_not_use_concepts_as_a_tag_source() -> None:
     specification = (RULES / "workflow-specification.md").read_text(encoding="utf-8")
     assert "concepts の一覧" not in specification
     assert "concepts にある" not in specification
+
+
+def test_writing_bridge_routing_is_single_path() -> None:
+    concepts = (RULES / "concepts.md").read_text(encoding="utf-8")
+    workflow = (RULES / "workflow-specification.md").read_text(encoding="utf-8")
+    writing = (ROOT / ".rulesync" / "skills" / "novel-text-file-output" / "SKILL.md").read_text(encoding="utf-8")
+    refinement = (ROOT / ".rulesync" / "skills" / "novel-refinement-output" / "SKILL.md").read_text(encoding="utf-8")
+    reflection = (ROOT / ".rulesync" / "skills" / "novel-story-reflection" / "SKILL.md").read_text(encoding="utf-8")
+    assert "執筆接続（writing_bridge）" in concepts
+    assert "執筆接続の起動判定" in workflow
+    assert "経路を一つ選ぶ" in writing
+    assert "手編集で `_novel_text` を置換しない" in writing
+    assert "同じ版へ `metron_cli.py analyze`" in writing
+    assert "本スキルの正本更新を重ねない" in refinement
+    assert "自動の再計測・イベント更新を起動しない" in refinement
+    assert "CLIは `_meta.md` を書き換えない" in reflection
+    assert "修復中" in reflection
+
+
+def _cli_commands(block: str) -> list[str]:
+    commands: list[str] = []
+    buf = ""
+    for raw in block.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            if buf:
+                commands.append(" ".join(buf.split()))
+                buf = ""
+            continue
+        if line.endswith("\\"):
+            buf += line[:-1].rstrip() + " "
+            continue
+        buf += line
+        commands.append(" ".join(buf.split()))
+        buf = ""
+    if buf:
+        commands.append(" ".join(buf.split()))
+    return commands
+
+
+def _run_id(command: str) -> str | None:
+    match = re.search(r"--run-id\s+(\S+)", command)
+    return match.group(1) if match else None
+
+
+def test_docs_prepare_dry_run_is_not_followed_by_receive() -> None:
+    text = (ROOT / "docs" / "tools" / "index.md").read_text(encoding="utf-8")
+    start = text.index("### `writing_bridge_cli.py`")
+    end = text.index("### `book_review.py`")
+    for block in re.findall(r"```bash\n(.*?)```", text[start:end], re.S):
+        pending_dry = False
+        for command in _cli_commands(block):
+            if "writing_bridge_cli.py prepare" in command and "--dry-run" in command:
+                pending_dry = True
+                continue
+            if not pending_dry:
+                continue
+            if "writing_bridge_cli.py prepare" in command and "--dry-run" not in command:
+                pending_dry = False
+                continue
+            if "writing_bridge_cli.py" in command:
+                raise AssertionError(
+                    "prepare --dry-run の次に本番 prepare 以外の writing_bridge コマンドがある: "
+                    + command
+                )
+
+
+def test_instruction_driven_draft_prepare_omits_allow_publish() -> None:
+    text = (ROOT / "docs" / "workflow" / "instruction-driven.md").read_text(encoding="utf-8")
+    start = text.index("### B. 執筆する")
+    end = text.index("### C. 清書")
+    blocks = re.findall(r"```bash\n(.*?)```", text[start:end], re.S)
+    assert len(blocks) >= 2
+    draft = _cli_commands(blocks[0])
+    save = _cli_commands(blocks[-1])
+    assert all("--allow-publish" not in command for command in draft)
+    assert all("writing_bridge_cli.py publish" not in command for command in draft)
+    assert any(
+        "writing_bridge_cli.py prepare" in command and "--allow-publish" in command
+        for command in save
+    )
+    assert any("writing_bridge_cli.py receive" in command for command in save)
+    assert any("writing_bridge_cli.py inspect" in command for command in save)
+    assert all(
+        "--selector-kind" in command or "--request-kind append" in command
+        for command in save
+        if "writing_bridge_cli.py prepare" in command and "--allow-publish" in command
+    )
+    kinds = []
+    for command in save:
+        if "writing_bridge_cli.py receive" in command:
+            kinds.append("receive")
+        elif "writing_bridge_cli.py inspect" in command:
+            kinds.append("inspect")
+        elif "writing_bridge_cli.py publish" in command:
+            kinds.append("publish")
+    assert kinds.index("receive") < kinds.index("inspect") < kinds.index("publish")
+    publish_ids = {_run_id(command) for command in save if "writing_bridge_cli.py publish" in command}
+    receive_ids = {_run_id(command) for command in save if "writing_bridge_cli.py receive" in command}
+    inspect_ids = {_run_id(command) for command in save if "writing_bridge_cli.py inspect" in command}
+    assert publish_ids and publish_ids <= receive_ids
+    assert inspect_ids == receive_ids
+    assert "run-0001" not in publish_ids
+
+
+def test_docs_publish_recipe_does_not_reuse_draft_run() -> None:
+    pages = (
+        (
+            ROOT / "docs" / "tools" / "index.md",
+            "### `writing_bridge_cli.py`",
+            "### `book_review.py`",
+            "bash",
+        ),
+        (
+            ROOT / "docs" / "workflow" / "instruction-driven.md",
+            "### B. 執筆する",
+            "### C. 清書",
+            "bash",
+        ),
+        (
+            ROOT / "docs" / "architecture" / "writing-bridge.md",
+            "## 本文正本への反映",
+            "## 中断と再開",
+            "powershell",
+        ),
+    )
+    for path, start_mark, end_mark, fence in pages:
+        text = path.read_text(encoding="utf-8")
+        section = text[text.index(start_mark) : text.index(end_mark)]
+        for block in re.findall(rf"```{fence}\n(.*?)```", section, re.S):
+            commands = _cli_commands(block)
+            publishes = [
+                command
+                for command in commands
+                if "writing_bridge_cli.py publish" in command
+            ]
+            if not publishes:
+                assert all("--allow-publish" not in command for command in commands), path
+                continue
+            assert any(
+                "writing_bridge_cli.py prepare" in command
+                and "--allow-publish" in command
+                and "--dry-run" not in command
+                for command in commands
+            ), path
+            assert not any(
+                "writing_bridge_cli.py prepare" in command
+                and "--allow-publish" not in command
+                and "--dry-run" not in command
+                for command in commands
+            ), path
+            assert any("writing_bridge_cli.py receive" in command for command in commands), path
+            assert any("writing_bridge_cli.py inspect" in command for command in commands), path
+            kinds = []
+            for command in commands:
+                if "writing_bridge_cli.py receive" in command:
+                    kinds.append("receive")
+                elif "writing_bridge_cli.py inspect" in command:
+                    kinds.append("inspect")
+                elif "writing_bridge_cli.py publish" in command:
+                    kinds.append("publish")
+            assert kinds.index("receive") < kinds.index("inspect") < kinds.index("publish"), path
+            for command in commands:
+                if "writing_bridge_cli.py prepare" in command and "--allow-publish" in command:
+                    assert "--selector-kind" in command or "--request-kind append" in command, path
+            publish_ids = {_run_id(command) for command in publishes}
+            receive_ids = {
+                _run_id(command)
+                for command in commands
+                if "writing_bridge_cli.py receive" in command
+            }
+            assert publish_ids and None not in publish_ids, path
+            assert publish_ids <= receive_ids, path
+            assert "run-0001" not in publish_ids, path

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "errors": [
+    {
+      "schema": 1,
+      "code": "UNKNOWN_KEY",
+      "severity": "error",
+      "message": "unknown key extra_flag",
+      "refs": {
+        "path": "request.yaml",
+        "key": "extra_flag"
+      }
+    },
+    {
+      "schema": 1,
+      "code": "BAD_ID",
+      "severity": "error",
+      "message": "request_kind must be one of new|append|local_expand|refine",
+      "refs": {
+        "path": "request.yaml",
+        "key": "request_kind",
+        "value": "Yes"
+      }
+    },
+    {
+      "schema": 1,
+      "code": "BAD_HASH",
+      "severity": "error",
+      "message": "base_raw_sha256 must be sha256: plus 64 lowercase hex digits",
+      "refs": {
+        "path": "request.yaml",
+        "key": "target.base_raw_sha256"
+      }
+    }
+  ]
+}

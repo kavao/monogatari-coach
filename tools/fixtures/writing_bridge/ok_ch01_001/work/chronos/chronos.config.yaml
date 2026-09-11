@@ -1,0 +1,11 @@
+schema: 1
+character_state:
+  dimensions:
+    outfit:
+      type: enum
+      values: [home, school, travel]
+      default: home
+      canon: world
+    whereabouts:
+      type: loc_ref
+      canon: world

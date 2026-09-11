@@ -349,7 +349,7 @@ def _finding_beats(findings: list[Finding], failure: Failure) -> list[str]:
     ]
 
 
-def repair_scene(
+def _repair_scene_impl(
     metrics: MetricsDocument,
     beat_plan: BeatPlan,
     calibration: ModelCalibration,
@@ -359,6 +359,8 @@ def repair_scene(
     expander: Callable[[str], str] | None = None,
     regenerator: Callable[[str], str] | None = None,
     seam_corrector: Callable[[str], str] | None = None,
+    dispatch: Callable[[str, str | None, str], str] | None = None,
+    checkpoint: Callable[[dict[str, str]], None] | None = None,
 ) -> SceneRepairResult:
     """判定結果に応じて局所修復を適用する。
 
@@ -368,12 +370,22 @@ def repair_scene(
 
     classification = classify_metrics(metrics, beat_plan, calibration, spans=spans)
     beat_texts = _text_by_beat(clean_text, beat_plan, spans)
+    if checkpoint:
+        checkpoint(dict(beat_texts))
+    if dispatch and checkpoint:
+        original_dispatch = dispatch
+        def dispatch(operation, beat_id, prompt):
+            checkpoint(dict(beat_texts))
+            return original_dispatch(operation, beat_id, prompt)
     by_id = {beat.id: beat for beat in beat_plan.beats}
     index_by_id = {beat.id: index for index, beat in enumerate(beat_plan.beats)}
     expansions: dict[str, RepairResult] = {}
     regenerated: list[str] = []
     escalated: set[str] = set()
 
+    truncated = any(
+        item.failure == Failure.GENERATION_TRUNCATED for item in classification.findings
+    )
     missing_ids = _finding_beats(classification.findings, Failure.BEAT_MISSING)
     missing_set = set(missing_ids)
     ending = any(
@@ -410,6 +422,13 @@ def repair_scene(
         ]
         extras.sort(key=lambda beat: current_beat_chars(beat_texts.get(beat.id, "")))
         deepen_ids.extend(beat.id for beat in extras)
+    if truncated:
+        for finding in classification.findings:
+            if finding.failure == Failure.BEAT_MISSING and finding.beat_id:
+                escalated.add(finding.beat_id)
+        missing_ids = []
+        deepen_ids = []
+        ending = False
     needs_generation = bool(missing_ids or deepen_ids or ending)
     if needs_generation and expander is None and regenerator is None:
         raise ValueError("a generation callback is required for V1 repair findings")
@@ -426,8 +445,12 @@ def repair_scene(
             beat,
             previous_context=_previous_text(index_by_id[beat_id], beat_plan, beat_texts),
         )
-        beat_texts[beat_id] = strip_generation_markers(generator(prompt))
-        regenerated.append(beat_id)
+        candidate = dispatch("regenerate", beat_id, prompt) if dispatch else generator(prompt)
+        if candidate.strip():
+            beat_texts[beat_id] = strip_generation_markers(candidate)
+            regenerated.append(beat_id)
+        else:
+            escalated.add(beat_id)
 
     required_deepen_set = set(required_deepen)
     scene_floor = beat_plan.generation.chars_floor
@@ -445,7 +468,7 @@ def repair_scene(
         result = run_expand_loop(
             beat,
             beat_texts[beat_id],
-            expander,
+            (lambda prompt: dispatch("deepen", beat_id, prompt)) if dispatch else expander,
             retention_threshold=_retention_threshold(calibration),
         )
         expansions[beat_id] = result
@@ -454,7 +477,7 @@ def repair_scene(
         else:
             escalated.add(beat_id)
 
-    if ending:
+    if ending and ending_beat_id not in missing_set:
         final_beat = beat_plan.beats[-1]
         generator = regenerator or expander
         assert generator is not None
@@ -462,16 +485,55 @@ def repair_scene(
             final_beat,
             previous_context=_previous_text(len(beat_plan.beats) - 1, beat_plan, beat_texts),
         )
-        beat_texts[final_beat.id] = strip_generation_markers(generator(prompt))
-        regenerated.append(final_beat.id)
+        candidate = dispatch("regenerate", final_beat.id, prompt) if dispatch else generator(prompt)
+        if candidate.strip():
+            beat_texts[final_beat.id] = strip_generation_markers(candidate)
+            regenerated.append(final_beat.id)
+        else:
+            escalated.add(final_beat.id)
 
     seam_applied = False
-    if seam_corrector is not None:
-        seam = run_marked_seam_correction(beat_plan, beat_texts, seam_corrector)
+    if seam_corrector is not None and not truncated:
+        seam = run_marked_seam_correction(
+            beat_plan, beat_texts,
+            (lambda prompt: dispatch("seam", None, prompt)) if dispatch else seam_corrector,
+        )
         seam_applied = seam.accepted
         if seam.accepted and seam.beat_texts is not None:
             beat_texts = seam.beat_texts
+    # Recheck the normalized joined body, rather than trusting pre-seam metrics.
+    # Visit other Beats first; all Deepen attempts still share the per-Beat cap.
+    post_beats = sorted(beat_plan.beats, key=lambda beat: beat.id in expansions)
+    for beat in post_beats:
+        if not needs_generation or truncated:
+            break
+        if _scene_chars(beat_plan, beat_texts) >= scene_floor:
+            break
+        previous = expansions.get(beat.id)
+        remaining = 2 - (previous.attempts if previous else 0)
+        if remaining <= 0 or expander is None or beat.id in regenerated:
+            continue
+        beat_id = beat.id
+        result = run_expand_loop(
+            beat, beat_texts[beat_id],
+            (lambda prompt: dispatch("deepen", beat_id, prompt)) if dispatch else expander,
+            retention_threshold=_retention_threshold(calibration), max_attempts=remaining,
+        )
+        if result.accepted:
+            beat_texts[beat_id] = result.final_text
+        else:
+            escalated.add(beat_id)
+        expansions[beat_id] = RepairResult(
+            original_text=previous.original_text if previous else result.original_text,
+            final_text=beat_texts[beat_id],
+            accepted=result.accepted or bool(previous and previous.accepted),
+            attempts=result.attempts + (previous.attempts if previous else 0),
+            escalated=result.escalated,
+            checks=(previous.checks if previous else ()) + result.checks,
+        )
     joined = assemble_beat_texts(beat_plan, beat_texts)
+    if checkpoint:
+        checkpoint(dict(beat_texts))
     verification_marked = marked_text_for_measurement(beat_plan, beat_texts)
     verification = analyze_marked_text(
         verification_marked,
@@ -494,6 +556,35 @@ def repair_scene(
             spans=verification.spans,
         ),
     )
+
+
+def repair_scene(
+    metrics: MetricsDocument, beat_plan: BeatPlan, calibration: ModelCalibration, *,
+    clean_text: str, spans: SpansDocument,
+    expander: Callable[[str], str] | None = None,
+    regenerator: Callable[[str], str] | None = None,
+    seam_corrector: Callable[[str], str] | None = None,
+) -> SceneRepairResult:
+    """Compatibility driver for the same non-blocking repair step API."""
+    from .repair_steps import begin_repair, next_job, submit_result, RepairJob
+
+    state = begin_repair(metrics, beat_plan, calibration, clean_text=clean_text,
+                         spans=spans, model="injected-callback",
+                         seam_enabled=seam_corrector is not None,
+                         deepen_enabled=expander is not None,
+                         regenerate_enabled=regenerator is not None)
+    while True:
+        job = next_job(state)
+        if not isinstance(job, RepairJob):
+            return job
+        callback = {"deepen": expander, "regenerate": regenerator or expander,
+                    "seam": seam_corrector}[job.operation]
+        if callback is None:
+            raise ValueError("a generation callback is required for V1 repair findings")
+        if job.operation != "seam" and seam_corrector is None:
+            raise ValueError("a seam correction callback is required for V1 repair")
+        submit_result(state, job_id=job.job_id, model=state.model,
+                      candidate=callback(job.prompt), review="confirmed")
 
 
 def _scene_chars(beat_plan: BeatPlan, texts: dict[str, str]) -> int:
@@ -526,6 +617,16 @@ def normalize_novel_body(text: str) -> str:
     normalized = unicodedata.normalize("NFC", text).replace("\r\n", "\n").replace("\r", "\n")
     collapsed = _MULTI_BLANK_RE.sub("\n\n", normalized)
     return collapsed.strip("\n") + "\n"
+
+
+def _prose_outside_beats(clean_text: str, spans) -> str:
+    covered = [False] * len(clean_text)
+    for span in spans:
+        for index in range(max(span.start, 0), min(span.end, len(covered))):
+            covered[index] = True
+    return "".join(
+        char for index, char in enumerate(clean_text) if not covered[index]
+    )
 
 
 def assemble_beat_texts(
@@ -620,6 +721,15 @@ def run_marked_seam_correction(
             )
         span = beat_spans[0]
         candidate_texts[beat.id] = candidate_clean[span.start : span.end]
+    if _prose_outside_beats(candidate_clean, parsed.spans).strip():
+        return MarkedSeamCorrection(
+            clean_text=source_clean,
+            marked_text=source_marked,
+            accepted=False,
+            reason="seam correction moved prose outside Beat spans",
+            beat_texts=dict(beat_texts),
+        )
+    adopted_clean = assemble_beat_texts(beat_plan, candidate_texts)
     source_counts: Counter[str] = Counter()
     candidate_counts: Counter[str] = Counter()
     for texts, counts in ((beat_texts, source_counts), (candidate_texts, candidate_counts)):
@@ -638,7 +748,7 @@ def run_marked_seam_correction(
             reason="seam correction introduced a repeated Beat opening",
             beat_texts=dict(beat_texts),
         )
-    if count_chars(candidate_clean, strip_fm=False) < count_chars(
+    if count_chars(adopted_clean, strip_fm=False) < count_chars(
         source_clean, strip_fm=False
     ):
         return MarkedSeamCorrection(
@@ -648,7 +758,7 @@ def run_marked_seam_correction(
             reason="seam correction shortened the joined text",
             beat_texts=dict(beat_texts),
         )
-    if original_retention_ratio(source_clean, candidate_clean) < 1.0:
+    if original_retention_ratio(source_clean, adopted_clean) < 1.0:
         return MarkedSeamCorrection(
             clean_text=source_clean,
             marked_text=source_marked,

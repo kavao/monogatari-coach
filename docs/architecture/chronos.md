@@ -164,7 +164,7 @@ effects_on:
 - 絶対時刻の窓計算（STN）、年齢・移動可能性（CHR002 / CHR003）
 - 知識グラフ（CHR004 以降）。最初の知識は作品の bool 次元で足ります
 - 原稿からの自動抽出。再抽出が作者編集を壊さない承認フローは P3 です
-- 執筆完了の自動ゲート。METRON の本文計測ともまだ自動接続しません
+- 執筆完了の自動ゲート。`chronos check` は METRON の本文計測を呼びません。執筆工程への接続は [Writing bridge](writing-bridge.md) が行います
 - `chronos watch` と `.cache/resolved.json`（P1 の日付窓）
 - コアへのジャンル語の埋め込み。次元名と値は作品 YAML に閉じます
 
