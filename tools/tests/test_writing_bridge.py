@@ -185,8 +185,11 @@ def test_missing_observations_are_unverified(tmp_path: Path) -> None:
         repo_root=ROOT,
     )
     assert code == 1
-    report = (work / "_writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
+    report_path = work / "_writing" / "ch01-001" / "run-0001" / "report.json"
+    report = report_path.read_text(encoding="utf-8")
     assert "TEXT_STATE_UNVERIFIED" in report
+    parsed = load_json_model(report_path, ReportDocument)
+    assert parsed.next_action is None
 
 
 def test_invalid_request_unknown_key() -> None:

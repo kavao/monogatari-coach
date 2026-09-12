@@ -17,6 +17,12 @@ from metron.models import GeneratorInfo, MetricsDocument, SpansDocument
 from metron.regression import build_regression_observation
 from metron.storage import atomic_write_model, atomic_write_text, load_model as load_metron_model
 
+from .findings import (
+    finding_codes,
+    metron_auto_repair_label,
+    next_action_for,
+    partition_findings,
+)
 from .context_build import (
     build_candidate_links,
     build_context,
@@ -389,8 +395,9 @@ def inspect(
     text_state = ItemStatus.SKIPPED
 
     metron_notes: list[ReportFinding] = []
+    floor_met: bool | None = None
     if request.flags.metron is FlagValue.ON:
-        metron_status, metro_errors, metron_notes = _inspect_metron(
+        metron_status, metro_errors, metron_notes, floor_met = _inspect_metron(
             root, request, dest, inspect_path, repo_root
         )
         errors.extend(metro_errors)
@@ -472,18 +479,44 @@ def inspect(
             *[ReportFinding(code=item.code, note=item.message) for item in errors],
         ],
         open_issues=[item.model_dump(mode="json", by_alias=True) for item in errors],
+        next_action=None,
     )
+    repair_active = False
     repair_path = dest / "repair_state.json"
     if repair_path.is_file():
         from .repair import read_state
         from metron.repair_steps import history_summary
         repair = read_state(repair_path)
+        repair_active = repair.status == "active"
         report.repair_history = history_summary(repair.session)
+        for skipped in repair.skipped_jobs:
+            report.repair_history.append({
+                "job_id": skipped.job_id,
+                "operation": skipped.operation,
+                "beat_id": skipped.beat_id,
+                "status": "skipped",
+                "reason": skipped.reason,
+                "prompt_hash": skipped.prompt_hash,
+                "candidate_hash": skipped.candidate_hash,
+            })
         for note in repair.notes:
             code, _, detail = note.partition(": ")
             report.findings.append(
                 ReportFinding(code=code or "REPAIR_NOTE", note=detail or note)
             )
+    blocking = [
+        item
+        for item in errors
+        if item.severity is Severity.ERROR
+        and not (defer_c1 and item.code == "TEXT_STATE_UNVERIFIED")
+    ]
+    report.next_action = next_action_for(
+        floor_met=floor_met,
+        findings=report.findings,
+        text_state=report.text_state,
+        blocking=bool(blocking),
+        repair_active=repair_active,
+    )
     write_model(dest / "report.json", report, json_format=True)
     write_text(dest / "report.md", _render_report_md(report))
     if errors:
@@ -499,12 +532,6 @@ def inspect(
             note="context rebuilt: input_hashes changed" if refreshed else None,
         ),
     )
-    blocking = [
-        item
-        for item in errors
-        if item.severity is Severity.ERROR
-        and not (defer_c1 and item.code == "TEXT_STATE_UNVERIFIED")
-    ]
     if blocking:
         return 1, f"inspect findings: {dest / 'report.json'}"
     if defer_c1 and any(item.code == "TEXT_STATE_UNVERIFIED" for item in errors):
@@ -525,11 +552,15 @@ def status(work_root: Path, *, scene_id: str, run_id: str) -> tuple[int, str]:
         lines.append(f"metron: {report.metron.value}")
         lines.append(f"chronos_registered: {report.chronos_registered.value}")
         lines.append(f"text_state: {report.text_state.value}")
-        auto_flags = [item.auto_repair for item in report.findings if item.auto_repair is not None]
-        if auto_flags:
-            lines.append(
-                "metron_auto_repair: pending" if any(auto_flags) else "metron_auto_repair: none"
-            )
+        if report.metron is not ItemStatus.SKIPPED:
+            required, advisory, _other = partition_findings(report.findings)
+            lines.append(f"required_findings: {finding_codes(required)}")
+            lines.append(f"advisory_findings: {finding_codes(advisory)}")
+        repair_label = metron_auto_repair_label(report)
+        if repair_label:
+            lines.append(f"metron_auto_repair: {repair_label}")
+        if report.next_action:
+            lines.append(report.next_action)
     journal = read_journal(dest / "journal.jsonl")
     if (dest / "repair_state.json").is_file():
         from .repair import read_state
@@ -538,6 +569,10 @@ def status(work_root: Path, *, scene_id: str, run_id: str) -> tuple[int, str]:
         lines.append(f"repair_attempts: {len(repair.session.history)}")
         if repair.session.pending:
             lines.append(f"pending_job: {repair.session.pending.job_id}")
+        if repair.skipped_jobs:
+            last = repair.skipped_jobs[-1]
+            lines.append(f"skipped_jobs: {len(repair.skipped_jobs)}")
+            lines.append(f"skipped_reason: {last.reason}")
     if (dest / "publish_state.json").is_file():
         from .publish import read_publish_state
         published = read_publish_state(dest / "publish_state.json")
@@ -555,7 +590,7 @@ def _inspect_metron(
     dest: Path,
     marked: Path,
     repo_root: Path,
-) -> tuple[ItemStatus, list[ErrorItem], list[ReportFinding]]:
+) -> tuple[ItemStatus, list[ErrorItem], list[ReportFinding], bool]:
     metron = root / "_metron" / request.scene_id
     if not marked.is_file():
         raise BridgeError(
@@ -607,8 +642,9 @@ def _inspect_metron(
         path = metron / name
         refs.metron[key] = ArtifactRef(path=_rel(root, path), raw_sha256=raw_sha256(path))
     write_model(refs_path, refs, json_format=True)
+    floor_met = metrics.metrics.scene.chars >= beats.generation.chars_floor
     if not request.model.calibrated:
-        return ItemStatus.FINDINGS, [], []
+        return ItemStatus.FINDINGS, [], [], floor_met
     try:
         calibration = load_model_calibration(
             repo_root / "config" / "metron_models.yaml",
@@ -619,6 +655,7 @@ def _inspect_metron(
             ItemStatus.FINDINGS,
             [],
             [ReportFinding(code="MODEL_UNCALIBRATED", note="V1 classify skipped; V0 metrics kept")],
+            floor_met,
         )
     classified = classify_metrics(metrics, beats, calibration, spans=spans)
     notes = [
@@ -629,7 +666,7 @@ def _inspect_metron(
         )
         for finding in classified.findings
     ]
-    return ItemStatus.FINDINGS if classified.findings else ItemStatus.SUCCESS, [], notes
+    return ItemStatus.FINDINGS if classified.findings else ItemStatus.SUCCESS, [], notes, floor_met
 
 
 def _refuse_receive_after_terminal_repair(dest: Path, incoming: str) -> None:
@@ -1115,10 +1152,32 @@ def _rel(root: Path, path: Path) -> str:
 
 
 def _render_report_md(report: ReportDocument) -> str:
-    return (
-        f"# report {report.run_id}\n\n"
-        f"- 本文保存: {report.text_save.value}\n"
-        f"- METRON計測・判定: {report.metron.value}\n"
-        f"- CHRONOS登録データ検査: {report.chronos_registered.value}\n"
-        f"- 本文状態照合: {report.text_state.value}\n"
-    )
+    required, advisory, other = partition_findings(report.findings)
+    repair_label = metron_auto_repair_label(report)
+    lines = [
+        f"# report {report.run_id}",
+        "",
+        f"- 本文保存: {report.text_save.value}",
+        f"- METRON計測・判定: {report.metron.value}",
+        f"- CHRONOS登録データ検査: {report.chronos_registered.value}",
+        f"- 本文状態照合: {report.text_state.value}",
+    ]
+    if repair_label:
+        lines.append(f"- 自動修復: {repair_label}")
+    if report.next_action:
+        lines.append(f"- 次手: {report.next_action}")
+    lines.extend(["", "## required", "", _render_finding_block(required)])
+    lines.extend(["", "## advisory", "", _render_finding_block(advisory)])
+    if other:
+        lines.extend(["", "## other", "", _render_finding_block(other)])
+    return "\n".join(lines) + "\n"
+
+
+def _render_finding_block(items: list[ReportFinding]) -> str:
+    if not items:
+        return "なし"
+    rendered: list[str] = []
+    for item in items:
+        label = item.code or "note"
+        rendered.append(f"- {label}: {item.note}")
+    return "\n".join(rendered)

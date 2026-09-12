@@ -24,14 +24,16 @@ R1（Phase 2）:
 | `receive` | 起草候補を依頼 ID と本文ハッシュで取り込む。版別に保存し、同一ハッシュは既存版を再利用する。`--finish-reason` でその版の生成来歴を記録できる |
 | `inspect` | 同じ受領候補へ METRON 計測と C1 本文根拠を走らせる。`--marked` は受領候補と同一 raw hash のパスだけ。不一致は `STALE_EVIDENCE`。`--from-run` は `run-\d{4,}` のみ。指定元の `observations.json` が無ければ `UNKNOWN_REF`（保存先の旧根拠へフォールバックしない）。`--observations` が無いとき、指定元の observations を本文 hash 一致なら流用する。不一致は `STALE_EVIDENCE`。同一 `source_raw_sha256` の metrics / spans は版を増やさない。候補が無いときだけ既存 `_novel_text`。未作成の新章は候補必須 |
 | `status` | run の journal と各項目状態を表示する |
+| `locate-quote` | 正規化本文（NFC、マーカー除去）から一意の quote の `start` / `end` / `range_sha256` / `text_sha256` を出す。意味判定はしない。inspect と同じく受領候補の raw hash と正本の base hash を先に検証する。ずれ・欠落は `STALE_EVIDENCE`。0 箇所は `UNKNOWN_REF`。2 箇所以上は推測せず `JOB_CONFLICT`。本文は書き換えない |
 
 R2（Phase 3〜4）:
 
 | 動詞 | 内部 API |
 | --- | --- |
-| `repair-begin` | `begin_repair` |
-| `repair-next` | `next_job`（ジョブ／完了／要確認を返して即終了） |
+| `repair-begin` | `begin_repair`。`--intent auto|explicit_deepen`、`--scope scene|beats`、`--beat-ids`。床到達かつ必須なしの `auto` は `REPAIR_NOT_NEEDED` |
+| `repair-next` | `next_job`（ジョブ／完了／要確認を返して即終了）。床到達かつ必須なしなら新規 job を出さない |
 | `repair-submit` | `submit_result` |
+| `repair-finish` | pending を `skipped_jobs` へ残して terminal にする。`--reason floor_met|author_stop` |
 | `publish` | 受領済み候補を `_novel_text` へ場面単位で反映する。CHRONOS ON では C1 成功前に正本を書かず `completed` にしない。`FINAL.md` は完了扱いしない |
 
 CLI が LLM を起動したことにはしない。
@@ -62,7 +64,7 @@ CLI が LLM を起動したことにはしない。
 | `links_status` | `adopted` / `candidate` / `conflict` |
 | `recorder` | `agent` / `author` / `tool` |
 | `selector.kind` | `heading` / `html_comment` / `offset` |
-| `journal.action` | `prepare` / `request` / `receive` / `validate` / `inspect` / `select` / `publish` / `repair_begin` / `repair_next` / `repair_submit` |
+| `journal.action` | `prepare` / `request` / `receive` / `validate` / `inspect` / `select` / `publish` / `repair_begin` / `repair_next` / `repair_submit` / `repair_finish` |
 | `job.operation` | `deepen` / `regenerate` / `seam` |
 | `job.status` | `pending` / `accepted` / `rejected` / `failed` / `unknown` |
 | `severity` | `error` / `warning` / `info` |
@@ -87,7 +89,7 @@ CLI が LLM を起動したことにはしない。
 
 表記は `sha256:` + 小文字 hex 64 桁。
 
-正規化座標で raw ファイルを直接切らない。原文への反映は、正規化スライスと raw の対応表を別途持つ。対応を再構築できないときは `STALE_EVIDENCE`。
+正規化座標で raw ファイルを直接切らない。原文への反映は、正規化スライスと raw の対応表を別途持つ。対応を再構築できないときは `STALE_EVIDENCE`。`locate-quote` は正規化本文上の一意一致だけを返し、inspect と同じ座標規約と stale 検証を使う。
 
 R1: 既存本文スキルが保存したあと `text_sha256` が inspect 対象と違えば、保存は `success`、計測と C1 は `unresolved`（`STALE_EVIDENCE`）。R1 は自動の追従再計測をしない。`publish`（Phase 4）は保存後に同じ run で再計測し、`report.target_text_sha256` を保存本文へ合わせる。C1/METRON は採用した場面稿（マーカー付き）で測る。保存ファイルと場面稿の正規化ハッシュが違うときは findings に記録し、前版 metrics を流用しない。
 
@@ -103,8 +105,8 @@ R1: 既存本文スキルが保存したあと `text_sha256` が inspect 対象�
 
 ### Phase 3 永続契約（実装済み）
 
-- `repair_state.json`: 内部版 `version: 1`。request/input/calibrationのハッシュ、修復依頼の出典、元稿と出力版参照、`session`、`status: active|completed|escalated` を保持する。`escalated` は適格追加候補が無くシーン床を止められないときだけ。旧ファイルは `active|completed` のまま読める。任意の `notes` にスキップ理由を残してよい。モデルは `tools/writing_bridge/repair.py` の `BridgeRepair`、セッションは `tools/metron/repair_steps.py` の `RepairSession` が正。`completed` / `escalated` の同一 run へ新ハッシュの `receive` は `JOB_CONFLICT`。新候補は新 run。
-- `jobs/JOB-NNNN.json`: `schema: 1`、run_id、`status: pending` と `RepairJob` の全フィールド。operation/beat_id/attempt/model/prompt、input_hash/context_hash/prompt_hashを保持。input_hashは修復直前のBeat本文（seamは全BeatのJSON）、prompt_hashは実際のprompt全体。発行済みファイルは予約時のスナップショットであり、完了状態はsession.historyを参照する。
+- `repair_state.json`: 内部版 `version: 1`。request/input/calibrationのハッシュ、修復依頼の出典、元稿と出力版参照、`session`、`status: active|completed|escalated` を保持する。任意フィールド `intent` / `scope` / `beat_ids` / `skipped_jobs` / `stop_reason` は欠落時デフォルト。`skipped_jobs` は未提出 job の破棄記録であり `session.history` には混ぜない。`skipped_jobs.job_hash` は発行済み `jobs/<job>.json` の raw SHA-256。ファイル欠落は `STALE_EVIDENCE` で止め、`prompt_hash` で代用しない。`scope=beats` は `restrict_beat_ids` で指定外の助言 Deepen を抑止する（`BeatMissing` は範囲外でも必須）。`escalated` は適格追加候補が無くシーン床を止められないとき、床未達の `author_stop`、または `GenerationTruncated` のように job を出せない必須（`REQUIRED_UNREPAIRABLE`）。pending 無し・発行可能な必須なしの `escalated`（`GenerationTruncated` / `SCENE_FLOOR_NO_ELIGIBLE`）は `repair-next` のあと `author_stop` で証跡を付けられ、`skipped_jobs` は空のまま `stop_reason` と journal を残す。旧ファイルは `active|completed` のまま読める。任意の `notes` にスキップ理由を残してよい。モデルは `tools/writing_bridge/repair.py` の `BridgeRepair`、セッションは `tools/metron/repair_steps.py` の `RepairSession` が正。`completed` / `escalated` の同一 run へ新ハッシュの `receive` は `JOB_CONFLICT`。新候補は新 run。
+- `jobs/JOB-NNNN.json`: `schema: 1`、run_id、`status: pending` と `RepairJob` の全フィールド。operation/beat_id/attempt/model/prompt、input_hash/context_hash/prompt_hashを保持。input_hashは修復直前のBeat本文（seamは全BeatのJSON）、prompt_hashは実際のprompt全体。発行済みファイルは予約時のスナップショットであり、完了状態はsession.historyを参照する。finish / guard はファイル存在を必須とし、欠落は `STALE_EVIDENCE`。
 - 結果はcandidateまたはerrorのいずれかと、実際のmodel、`review: confirmed|unverified|rejected`。CLIと `submit_result` は両方の同時指定を拒否する。意味レビュー未確認・拒否は適用せず履歴へ記録。同一結果の定義は候補全文・error・reviewがすべて同じこと。
 - `session.history` は確定結果を保持し、決定的な再投入で次ジョブを再現する。過去のprovider呼出しはない。pendingは予約済みの未確定枠。原子的な状態保存とsceneのOSロックを使う。
 - `_metron/<scene>/repair.<run_id>.<確定件数>.md` は固定出力。通常のreceiveでmarked版へ登録する。`_writing` 側へ別の編集正本は増やさない。
@@ -114,13 +116,13 @@ R1: 既存本文スキルが保存したあと `text_sha256` が inspect 対象�
 
 ### Phase 4 永続契約（実装済み・受入済み）
 
-- `publish` は `permissions.publish` と `--authorization` を必要とする。prepare の `--allow-publish` が無い run は `PERMISSION_DENIED`。active な repair がある run は `JOB_CONFLICT`。既存の非空本文を `request_kind=new` で反映するときは selector、当該場面の `<!-- scene: chNN-MMM -->`、または `append` が必要。無い場合はファイル全体を置換しない。METRON ON の場面作業はエージェントが反映依頼済みと扱う。CLI の `--allow-publish` は技術ゲートとして残す。
+- `publish` は `permissions.publish` と `--authorization` を必要とする。prepare の `--allow-publish` が無い run は `PERMISSION_DENIED`。active な repair がある run は `JOB_CONFLICT`。既存の非空本文を `request_kind=new` で反映するときは selector、当該場面の `<!-- scene: chNN-MMM -->`、または `append` が必要。無い場合はファイル全体を置換しない。METRON ON の場面作業はエージェントが反映依頼済みと扱う。CLI の `--allow-publish` は技術ゲートとして残す。`--dry-run` は `_clean_scene_body()` → `compose_published()` の**保存予定全文**へ既存 `evaluate_gate` をかける。ファイル別メトリクスは合成しない。fail は終了コード 1。表示は `scope=full_text`・`intended_text_sha256`・`intended_raw_sha256`・理由。正本・backup・`publish_state`・journal は書かない。pass / skip は正本を書かない。発行証跡（journal の `canonical text written` かつ `hashes.published == intended_raw_sha256`）を `stage` より先に見る。dry-run と本番は同じ判定を使う。証跡あり + intended は dry-run では `JOB_CONFLICT`、本番は再書込みせず再開する。証跡あり + 元稿またはその他はどちらも `STALE_EVIDENCE`。証跡なしは開始時の存在状態と `original_raw_sha256` に一致するときだけ dry-run の preflight / 本番の書込みを許す。`original_exists=false` で正本が出現し証跡が無いときは同一バイトでも `STALE_EVIDENCE`。本番 `publish` の句読点記録は結合後の全文で、fail でも本文は戻さない。
 - 反映直前と `publish_state.json` 保存後に、正本の存在と raw hash を再確認する。新規のはずのファイルが外部作成された、既存ファイルが削除された、hash が変わった場合は上書きせず `STALE_EVIDENCE`。対象外本文（prefix/suffix）の変化も `STALE_EVIDENCE`。
 - publish 開始後の同じ run への `receive` は `JOB_CONFLICT`。inspect は公開済み候補と現在候補の hash が一致するときだけ `text_save=success` を継承する。`--marked` の raw hash が受領候補と違うときは検査せず `STALE_EVIDENCE`。同一バイトの別パスは許可する。
 - 既存ファイルは `_novel_text_backup/<元ファイル名>_vNNN.md` へ退避してから `_novel_text` を置換する。未作成の新規は退避しない。`FINAL.md` は作らない。採用したマーカー稿は `_metron/<scene>/adopted.<run_id>.md` に残す。
 - 範囲: `request_kind=append` は末尾追加。本文の `<!-- scene: chNN-MMM -->` があればその場面本体。なければ selector（heading / html_comment / offset の `start:end`）またはファイル全体。
 - Beat / fact マーカーは正本へ残さない。残っていたら `JOB_CONFLICT`。マーカー除去後の連続空行（Beat境界の隙間）は `normalize_novel_body` で段落1つ分に畳む。
-- `publish_state.json`: 内部版 `version: 1`。`status: active|completed`、`stage: backup|write|inspect|done`、候補と意図した本文の hash、退避パス、prefix/suffix。途中失敗は候補と旧稿を残し、同じ authorization で再開する。本文反映済みなら inspect から再開し、二重退避しない。
+- `publish_state.json`: 内部版 `version: 1`。`status: active|completed`、`stage: backup|write|inspect|done`、候補と意図した本文の hash、退避パス、prefix/suffix。途中失敗は候補と旧稿を残し、同じ authorization で再開する。本文反映済み（journal に発行証跡があり正本が intended）なら inspect から再開し、二重退避しない。intended 一致だけでは再開しない。
 - 保存後に文字数（`novel_char_count`）と句読点ゲートを記録する。句読点 fail でも本文は戻さない。`text_save` は `success`、指摘は findings。清書 `--fix` と `_meta.md` のストーリー反映は CLI では行わず、既存スキルへ委ねる。
 - 完了後に正本が意図した hash と違えば `STALE_EVIDENCE`。同一内容の再 publish は冪等。
 
@@ -157,6 +159,7 @@ refs:
 | `PERMISSION_DENIED` | 権限表の範囲外 |
 | `MODEL_UNCALIBRATED` | 未校正、または実モデル名と校正名の不一致 |
 | `JOB_CONFLICT` | 二重 submit・失踪 job の自動再送 |
+| `REPAIR_NOT_NEEDED` | 床到達かつ必須修復なしの `repair-begin`（`--intent auto`） |
 | `UNKNOWN_REF` | 未登録の event / actor / beat / path。設定エラーと混同しない |
 | `CONFIG_ERROR` | フラグ未知値など config.md の読込失敗 |
 
@@ -243,8 +246,9 @@ METRON OFF: `_writing/<scene>/<run>/candidates/candidate.NNN.md` への参照。
 
 必須: `schema`, `request_id`, `run_id`, `target_text_sha256`。  
 必須の項目状態: `text_save`, `metron`, `chronos_registered`, `text_state`（いずれも `item_status`）。  
-任意: `findings[]`, `repair_history[]`, `open_issues[]`。
+任意: `findings[]`, `repair_history[]`, `open_issues[]`, `next_action`。
 `findings[]` の `code` / `auto_repair` は任意。`auto_repair` は METRON 指摘が自動修復対象かどうか。必須キー追加はしない。
+`next_action` は床到達かつ必須なし、blocking なし、C1 が `success` または対象外の `skipped`、repair が active でないとき `床到達・必須なし → 保存へ`。C1 未確認と修復中は出さない。`report.md` と `status` は `TooShort` / `BeatThin` / `EndingRush` を advisory、`BeatMissing` / `GenerationTruncated` を required として分ける。
 
 ### journal.jsonl
 

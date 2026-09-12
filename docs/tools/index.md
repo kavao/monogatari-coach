@@ -115,22 +115,18 @@ Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検�
 接続の対象パスを確認します。`--dry-run` では run も `request.yaml` も作りません。
 
 ```bash
-# 確認（dry-run）— 作成予定の run パスだけを表示する
+# 確認（dry-run）— 作成予定の run パスだけを表示する。未作成の新章は selector なし
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 \
   --text-path _novel_text/novel_text01.md \
   --request-kind new \
-  --selector-kind heading \
-  --selector-value "章タイトル" \
   --dry-run
 
 # 本番 — request.yaml を作り、標準出力の run_id を以降で使う
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 \
   --text-path _novel_text/novel_text01.md \
-  --request-kind new \
-  --selector-kind heading \
-  --selector-value "章タイトル"
+  --request-kind new
 ```
 
 実行後、`_writing/ch01-001/run-0001/` などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
@@ -149,36 +145,57 @@ python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
 python tools/writing_bridge_cli.py status novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-0001
 
+# C1 座標の下書き — 一意の quote だけ。重複は推測しない。版ずれは STALE_EVIDENCE
+python tools/writing_bridge_cli.py locate-quote novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --quote "旅行用の上着"
+
 # 校正済みモデルの局所修復（本文正本は更新しない）
 python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-0001 --model MODEL_ID \
   --authorization "ユーザー依頼: 当該場面をDeepen"
 python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-0001
+python tools/writing_bridge_cli.py repair-finish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --reason floor_met \
+  --authorization "ユーザー依頼: Deepenを止める"
 ```
 
 正本へ書くときは `--allow-publish` 付きの run が必要です。METRON ON の場面作業では、執筆や Deepen の依頼だけで保存用 run まで進みます。起草用 run に後から権限は付きません。上の起草レシピを実行済みなら、保存用 `prepare` は別の `run_id` を返します。その id で `receive` / `inspect` をやり直してから `publish` します。起草用の `run-0001` へ `publish` すると `PERMISSION_DENIED` です。実行後の `prepared: .../run-XXXX` を、次の `--run-id` に使います。候補が無い保存用 run へ `publish` すると失敗します。
 
+未作成または空の正本へ新章を保存するときは selector を付けません。既存の非空本文を差し替えるときだけ heading などを付けます。
+
 ```bash
-# 確認（dry-run）— 作成予定の保存用 run パスだけを表示する
+# レシピ1: 未作成または空の正本。selector なし
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 \
   --text-path _novel_text/novel_text01.md \
   --request-kind new \
+  --allow-publish \
+  --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --allow-publish
+
+# レシピ2: 既存の非空本文。heading で当該章だけを置換する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind refine \
   --selector-kind heading \
   --selector-value "章タイトル" \
   --allow-publish \
   --dry-run
-
-# 本番 — permissions.publish 付きの run を作る
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 \
   --text-path _novel_text/novel_text01.md \
-  --request-kind new \
+  --request-kind refine \
   --selector-kind heading \
   --selector-value "章タイトル" \
   --allow-publish
 
+# 以降は両レシピ共通。同じ run-XXXX で receive → inspect → publish
 python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-XXXX \
   --candidate path/to/marked.md
@@ -187,7 +204,7 @@ python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-XXXX \
   --observations path/to/observations.json
 
-# 確認（dry-run）— 正本は書き換えず、対象パスだけを表示する
+# 確認（dry-run）— 正本は書き換えず、保存予定の対象ファイル全体へ句読点予検する。fail なら本番へ進まない。本番後の記録も結合後全文
 python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-XXXX \
   --authorization "ユーザー依頼: 当該場面を保存" --dry-run
@@ -200,7 +217,7 @@ python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
 
 inspect は受領済み候補へ METRON と C1 を同じ本文版でかけます。`--marked` は受領候補と同じ内容のパスだけを指定できます。別内容なら `STALE_EVIDENCE` です。候補が無いときだけ既存の `_novel_text` を見ます。未作成の新章は先に receive が必要です。人物初期値や links など状態解決の入力が変わると context を作り直し、links と CHRONOS の整合も再確認します。受領済みの最新候補を後から書き換えた場合は再受領が必要です。破損した旧版は履歴に残し、新しい受領で差し替えられます。receive は版別に残し、同じハッシュの再受領は既存版を使います。契約の正本は `tools/fixtures/writing_bridge/SCHEMA.md` です。
 
-Phase 3の `repair-begin / repair-next / repair-submit` は、校正済みモデルの局所修復をファイル受け渡しで進めます。試行履歴を保持し、修復後の本文を再計測・C1照合します。結合校正は採用する本文で残存率を見ます。生成打切り（`finish_reason`）は候補本文のハッシュが一致する版だけへ引き継ぎ、欠落Beatがあっても自動修復しません。
+Phase 3の `repair-begin / repair-next / repair-submit / repair-finish` は、校正済みモデルの局所修復をファイル受け渡しで進めます。試行履歴を保持し、修復後の本文を再計測・C1照合します。結合校正の provider 呼び出しは出さず、マーカー異常は機械検証で止めます。生成打切り（`finish_reason`）は候補本文のハッシュが一致する版だけへ引き継ぎ、欠落Beatがあっても自動修復しません。ジョブを出せない必須は `escalated` になり、新しい `prepare` へ切り替えます。`--scope beats` は指定した Beat だけを直します。発行済みジョブ記録が消えているときは止めます。シーン床に届き必須修復も無いときは `repair-begin` を始めず保存へ進みます。明示 Deepen は `--intent explicit_deepen`、未提出 job の破棄は `repair-finish` です。始め方と止め方は [Writing bridge の速度のための運用](../architecture/writing-bridge.md#速度のための運用2026-09-12) を見てください。
 
 正本へ書くときは、先に `--allow-publish` で保存用 run を用意し、その `run_id` で `receive` → `inspect` → `publish --dry-run` → `publish` します。起草用 run へは書けません。[局所修復と本文反映の操作手順](../architecture/writing-bridge.md)を参照してください。
 

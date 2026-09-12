@@ -25,7 +25,7 @@ targets: ["*"]
    - または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、分量を確認する。
 3. **句読点ゲート**（初稿・場面追記の本文ターン。誤打の `grammar --fix` だけなら不要）:
    - 従来経路: `python tools/novel_punctuation_metrics.py <対象ファイル> --gate`
-   - `publish` 経路: `report.json` の句読点記録を正とする。同じターンで `--gate` を重ねない。
+   - `publish` 経路: 先に `publish --dry-run` の句読点予検を見る。fail なら正本を書かず結合して書き直す。本番後は `report.json` の句読点記録を正とする。同じターンで `--gate` を重ねない。
    - 終了コード 0 以外 / 記録が fail は **未完了**。本文は戻さない。短文を結合して書き直し、最大2回まで再実行する。
    - 数値の正はスクリプト側。スキルに閾値を写経しない。
 4. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスク、および `design_specification.md` の実文字数・状態を更新する。`publish` は `_meta.md` を書かない。
@@ -57,7 +57,7 @@ targets: ["*"]
 
 1. **書き込み**: 従来経路では `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）を **新規作成・追記・置換**する。`publish` 経路では CLI が正本を書く。長文をチャットに貼るだけで終えない。
 2. **確認**: **`Read`**（追記は末尾でよい／挿入は追加箇所の前後）または **`python tools/novel_char_count.py`** のいずれかで、保存内容・分量を検証する。
-3. **句読点ゲート**: 従来経路は `python tools/novel_punctuation_metrics.py <対象ファイル> --gate`。`publish` 経路は `report.json` を確認する。失敗なら結合して書き直し（最大2回）。本文は戻さない。
+3. **句読点ゲート**: 従来経路は `python tools/novel_punctuation_metrics.py <対象ファイル> --gate`。`publish` 経路は先に `--dry-run` の予検を見て、本番後は `report.json` を確認する。失敗なら結合して書き直し（最大2回）。本文は戻さない。dry-run fail のときは正本を書かない。
 4. **報告**: ユーザー向け返答に、**更新したファイルのパス**（リポジトリ相対でよい）を明示する。確認 **後** に完了を伝える。
 
 ## 本文の書き方（経路を一つにする）
@@ -77,11 +77,11 @@ targets: ["*"]
 
 対象場面に `_writing/<scene_id>/<run_id>/` の active run があり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するとき。入口は `python tools/writing_bridge_cli.py`。ディレクトリがあるだけでは切り替えない。`prepare` 前は従来経路。
 
-- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。inspect 後の機械 Deepen は床未達だけ。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
-- **検査**: `inspect`（必要なら先に `receive`）。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
-- **修復**: ユーザーが Deepen / 局所修復を依頼し、METRON ON なら `repair-begin` / `repair-next` / `repair-submit`。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。
-- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が `completed` で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` / `inspect --from-run <起草run>` をやり直す。`--from-run` の observations 欠落は UNKNOWN_REF。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
-- **句読点**: `report.json` を確認し、本スキルで `--gate` を重ねない。
+- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
+- **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
+- **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
+- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
+- **句読点**: `publish --dry-run` の予検は保存予定の対象ファイル全体。本番後の `report.json` も結合後全文。本スキルで `--gate` を重ねない。
 - **ストーリー反映**: 正本が更新された直後に `novel-story-reflection`。
 
 ユーザーが明示した CLI はフラグより優先し、個別 CLI は config.md を理由に拒否しない。

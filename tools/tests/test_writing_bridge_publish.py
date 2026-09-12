@@ -146,8 +146,144 @@ def test_publish_dry_run_does_not_write(tmp_path: Path) -> None:
     )
     assert code == 0
     assert "would publish" in message
+    assert "scope=full_text" in message
+    assert "intended_text_sha256=" in message
+    assert "intended_raw_sha256=" in message
     assert (work / "_novel_text" / "novel_text01.md").read_bytes() == before
     assert not (work / "_writing" / "ch01-001" / "run-0001" / "publish_state.json").exists()
+
+
+def _dense_marked() -> str:
+    blob = "あ、あ、あ。" * 140
+    return (
+        "<!--beat:pack_bag-->\n"
+        f"　{blob}\n"
+        "<!--/beat:pack_bag-->\n"
+        "<!--beat:say_goodbye-->\n"
+        "「定期は入れた？」\n\n「入れた」\n"
+        "<!--/beat:say_goodbye-->\n"
+        "<!--beat:reach_station-->\n"
+        "　二人は家を出た。\n"
+        "<!--/beat:reach_station-->\n"
+    )
+
+
+def test_c_dry_run_punctuation_fail_keeps_missing_target(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    target = work / "_novel_text" / "novel_text99.md"
+    assert not target.exists()
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text99.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=None,
+        links_path=None,
+        repo_root=ROOT,
+        allow_publish=True,
+    )
+    marked = tmp_path / "dense.md"
+    marked.write_text(_dense_marked(), encoding="utf-8")
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    code, message = publish(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        authorization=AUTH,
+        repo_root=ROOT,
+        dry_run=True,
+    )
+    assert code == 1
+    assert "punctuation_gate=fail" in message
+    assert "scope=full_text" in message
+    assert "intended_text_sha256=" in message
+    assert "intended_raw_sha256=" in message
+    assert "not published" in message
+    assert not target.exists()
+    run = work / "_writing" / "ch01-001" / "run-0001"
+    assert not (run / "publish_state.json").exists()
+    assert not (work / "_novel_text_backup").exists()
+
+
+def test_c_dry_run_punctuation_fail_keeps_old_bytes(tmp_path: Path) -> None:
+    work = _ready(tmp_path)
+    original = work / "_novel_text" / "novel_text01.md"
+    before = original.read_bytes()
+    marked = tmp_path / "dense.md"
+    marked.write_text(_dense_marked(), encoding="utf-8")
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    code, message = publish(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        authorization=AUTH,
+        repo_root=ROOT,
+        dry_run=True,
+    )
+    assert code == 1
+    assert "punctuation_gate=fail" in message
+    assert "scope=full_text" in message
+    assert original.read_bytes() == before
+    run = work / "_writing" / "ch01-001" / "run-0001"
+    assert not (run / "publish_state.json").exists()
+    backup = work / "_novel_text_backup"
+    assert not backup.exists() or not list(backup.glob("novel_text01_v*.md"))
+
+
+def test_c_live_publish_still_writes_on_punctuation_fail(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    config = work / "config.md"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("| CHRONOS | ON |", "| CHRONOS | OFF |"),
+        encoding="utf-8",
+    )
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+        allow_publish=True,
+    )
+    marked = tmp_path / "dense.md"
+    marked.write_text(_dense_marked(), encoding="utf-8")
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=marked,
+        request_id=None,
+    )
+    original = work / "_novel_text" / "novel_text01.md"
+    code, message = publish(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        authorization=AUTH,
+        repo_root=ROOT,
+    )
+    assert code == 1
+    assert "published with punctuation findings" in message
+    assert "あ、あ、あ。" in original.read_text(encoding="utf-8")
+    state = read_publish_state(work / "_writing" / "ch01-001" / "run-0001" / "publish_state.json")
+    assert state.status == "completed"
+    assert state.punctuation_status == "fail"
 
 
 def test_publish_writes_canonical_and_backup(tmp_path: Path) -> None:

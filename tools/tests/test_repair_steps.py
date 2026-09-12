@@ -18,7 +18,8 @@ from metron.repair_steps import begin_repair, next_job, submit_result, RepairJob
 from metron.repair import repair_scene
 from writing_bridge.commands import prepare, receive, inspect
 from writing_bridge.models import ArtifactRefsDocument, RequestKind
-from writing_bridge.repair import repair_begin, repair_next, repair_submit, read_state
+from writing_bridge.repair import (
+    repair_begin, repair_finish, repair_next, repair_submit, read_state)
 from writing_bridge.errors import BridgeError
 from writing_bridge.hashes import raw_sha256, read_normalized, text_sha256
 from writing_bridge.storage import load_json_model, write_model
@@ -305,6 +306,58 @@ def test_scene_lock_rejects_other_process(tmp_path):
     assert result.returncode == 2
     assert "JOB_CONFLICT" in result.stderr
     assert read_state(run / "repair_state.json").session.pending is None
+
+
+def test_restrict_beat_ids_skips_out_of_scope_too_short():
+    plan = _plan(
+        _beat("b1", chars_hint=30),
+        _beat("b2", chars_hint=30),
+        chars_floor=80,
+    )
+    analyzed = analyze_marked_text(
+        embed_beat_markers([("b1", "短い。"), ("b2", "こちらも短い。")]),
+        plan,
+        run=1,
+    )
+    state = begin_repair(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        model="fixture-writer",
+        force_deepen_ids=["b2"],
+        restrict_beat_ids=["b2"],
+        seam_enabled=False,
+    )
+    job = next_job(state)
+    assert job.operation == "deepen"
+    assert job.beat_id == "b2"
+
+
+def test_force_ending_rush_issues_regenerate():
+    plan = _plan(
+        _beat("b1", chars_hint=1),
+        _beat("b2", type="hook", chars_hint=1),
+        chars_floor=1,
+    )
+    analyzed = analyze_marked_text(
+        embed_beat_markers([("b1", "一二三四五六七八九十。"), ("b2", "終わる。")]),
+        plan,
+        run=1,
+    )
+    state = begin_repair(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01, ending_rush_threshold=0.8),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        model="fixture-writer",
+        force_ending_rush=True,
+    )
+    job = next_job(state)
+    assert job.operation == "regenerate"
+    assert job.beat_id == "b2"
 
 
 def test_truncated_never_generates():
@@ -699,6 +752,12 @@ def test_escalated_scene_floor_does_not_issue_jobs(tmp_path):
     again = list(jobs_dir.glob("JOB-*.json")) if jobs_dir.is_dir() else []
     assert again == []
     assert "escalated" in message
+    repair_finish(
+        work, scene_id="ch01-001", run_id="run-0001",
+        reason="author_stop", authorization="stop no eligible", repo_root=repo)
+    stopped = read_state(run / "repair_state.json")
+    assert stopped.status == "escalated"
+    assert stopped.stop_reason == "author_stop"
     other = tmp_path / "another.md"
     other.write_text("新run向けの別稿。\n", encoding="utf-8")
     with pytest.raises(BridgeError) as caught:

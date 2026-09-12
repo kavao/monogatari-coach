@@ -459,6 +459,9 @@ def _repair_scene_impl(
     seam_corrector: Callable[[str], str] | None = None,
     dispatch: Callable[[str, str | None, str], str] | None = None,
     checkpoint: Callable[[dict[str, str]], None] | None = None,
+    force_deepen_ids: list[str] | None = None,
+    force_ending_rush: bool = False,
+    restrict_beat_ids: list[str] | None = None,
 ) -> SceneRepairResult:
     """判定結果に応じて局所修復を適用する。
 
@@ -489,7 +492,7 @@ def _repair_scene_impl(
     ending = any(
         finding.failure == Failure.ENDING_RUSH and finding.auto_repair
         for finding in classification.findings
-    )
+    ) or force_ending_rush
     ending_beat_id = beat_plan.beats[-1].id if ending else None
     thin_ids = [
         beat_id
@@ -501,6 +504,13 @@ def _repair_scene_impl(
         for beat_id in _finding_beats(classification.findings, Failure.TOO_SHORT)
         if beat_id not in missing_set and beat_id != ending_beat_id
     ]
+    allowed = set(restrict_beat_ids) if restrict_beat_ids else None
+    if allowed is not None:
+        thin_ids = [beat_id for beat_id in thin_ids if beat_id in allowed]
+        too_short_beat_ids = [beat_id for beat_id in too_short_beat_ids if beat_id in allowed]
+        if ending and ending_beat_id not in allowed:
+            ending = False
+            ending_beat_id = None
     scene_too_short = any(
         finding.failure == Failure.TOO_SHORT
         and finding.auto_repair
@@ -508,6 +518,9 @@ def _repair_scene_impl(
         for finding in classification.findings
     )
     required_deepen = list(dict.fromkeys([*thin_ids, *too_short_beat_ids]))
+    for beat_id in force_deepen_ids or []:
+        if beat_id not in required_deepen and beat_id not in missing_set:
+            required_deepen.append(beat_id)
     deepen_ids = list(required_deepen)
     extra_ids: list[str] = []
     notes: list[str] = []
@@ -516,6 +529,8 @@ def _repair_scene_impl(
         if ending_beat_id is not None:
             already.add(ending_beat_id)
         extra_ids = select_scene_floor_extras(beat_plan, beat_texts, already)
+        if allowed is not None:
+            extra_ids = [beat_id for beat_id in extra_ids if beat_id in allowed]
         deepen_ids.extend(extra_ids)
         extra_set = set(extra_ids)
         for beat in beat_plan.beats:
@@ -532,8 +547,6 @@ def _repair_scene_impl(
     needs_generation = bool(missing_ids or deepen_ids or ending)
     if needs_generation and expander is None and regenerator is None:
         raise ValueError("a generation callback is required for V1 repair findings")
-    if needs_generation and seam_corrector is None:
-        raise ValueError("a seam correction callback is required for V1 repair")
     if deepen_ids and expander is None:
         raise ValueError("TooShort / BeatThin Deepen requires an expander callback")
 

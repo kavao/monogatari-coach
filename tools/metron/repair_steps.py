@@ -62,6 +62,9 @@ class RepairSession(StepModel):
     seam_enabled: bool = True
     deepen_enabled: bool = True
     regenerate_enabled: bool = True
+    force_deepen_ids: list[str] = Field(default_factory=list)
+    force_ending_rush: bool = False
+    restrict_beat_ids: list[str] = Field(default_factory=list)
     history: list[SubmittedResult] = Field(default_factory=list)
     pending: RepairJob | None = None
     working_texts: dict[str, str] = Field(default_factory=dict)
@@ -74,14 +77,20 @@ class _AwaitJob(Exception):
 
 def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                  model: str, context: str = "", seam_enabled: bool = True,
-                 deepen_enabled: bool = True, regenerate_enabled: bool = True) -> RepairSession:
+                 deepen_enabled: bool = True, regenerate_enabled: bool = True,
+                 force_deepen_ids: list[str] | None = None,
+                 force_ending_rush: bool = False,
+                 restrict_beat_ids: list[str] | None = None) -> RepairSession:
     require_calibration(calibration)
     if not model:
         raise ValueError("generation model is required")
     return RepairSession(metrics=metrics, beat_plan=beat_plan, calibration=calibration,
                          clean_text=clean_text, spans=spans, model=model,
                          context=context, seam_enabled=seam_enabled,
-                         deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled)
+                         deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled,
+                         force_deepen_ids=list(force_deepen_ids or []),
+                         force_ending_rush=force_ending_rush,
+                         restrict_beat_ids=list(restrict_beat_ids or []))
 
 
 def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
@@ -122,6 +131,9 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
             seam_corrector=callback if state.seam_enabled else None,
             dispatch=dispatch,
             checkpoint=lambda texts: setattr(state, "working_texts", texts),
+            force_deepen_ids=state.force_deepen_ids,
+            force_ending_rush=state.force_ending_rush,
+            restrict_beat_ids=state.restrict_beat_ids,
         )
     except _AwaitJob as waiting:
         return waiting.job

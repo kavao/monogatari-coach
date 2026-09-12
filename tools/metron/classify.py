@@ -121,6 +121,8 @@ def classify_metrics(
     thresholds = require_calibration(calibration)
     payload = metrics.metrics
     findings: list[Finding] = []
+    scene_floor = beat_plan.generation.chars_floor
+    scene_floor_met = bool(payload.scene.coverage and payload.scene.chars >= scene_floor)
     truncated = payload.finish_reason in _TRUNCATION_REASONS
     if truncated:
         findings.append(
@@ -203,7 +205,7 @@ def classify_metrics(
                     beat_id=beat.id,
                     observed=float(item.chars),
                     threshold=float(beat.budget.chars_hint),
-                    auto_repair=True,
+                    auto_repair=not scene_floor_met,
                     reason="beat is below the chars_hint length floor; deepen nuance",
                 )
             )
@@ -211,7 +213,6 @@ def classify_metrics(
     if not truncated:
         ending_threshold = thresholds.ending_rush_threshold
         assert ending_threshold is not None
-        scene_floor = beat_plan.generation.chars_floor
         if payload.scene.coverage and payload.scene.chars < scene_floor:
             findings.append(
                 Finding(
@@ -231,7 +232,7 @@ def classify_metrics(
                     failure=Failure.ENDING_RUSH,
                     observed=payload.scene.head_tail_ratio,
                     threshold=ending_threshold,
-                    auto_repair=True,
+                    auto_repair=not scene_floor_met,
                     reason="tail Beat density is below the calibrated ending threshold",
                 )
             )

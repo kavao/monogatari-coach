@@ -32,7 +32,16 @@ from .models import (
 )
 from .paths import resolve_work_path
 from .repair import read_state
-from .storage import append_journal, load_json_model, load_model, next_index, now_iso, write_model, write_text
+from .storage import (
+    append_journal,
+    load_json_model,
+    load_model,
+    next_index,
+    now_iso,
+    read_journal,
+    write_model,
+    write_text,
+)
 
 _TOOLS = Path(__file__).resolve().parents[1]
 if str(_TOOLS) not in sys.path:
@@ -47,6 +56,7 @@ _SCENE_ANCHOR = re.compile(
 _HEADING = re.compile(r"(?m)^(#{1,6})[ \t]+.+$")
 _OFFSET = re.compile(r"^(\d+):(\d+)$")
 _BEAT_LEFT = re.compile(r"<!--/?beat:|<!--fact:")
+_CANONICAL_WRITTEN = "canonical text written"
 
 
 class BridgePublish(StepModel):
@@ -264,35 +274,48 @@ def _candidate(root: Path, dest: Path) -> Path:
     return path
 
 
-def _assert_canonical_for_write(state: BridgePublish, text_file: Path) -> None:
-    exists = text_file.is_file()
-    if state.original_exists and not exists:
+def _canonical_action(dest: Path, state: BridgePublish, text_file: Path) -> str:
+    """証跡を stage より先に見る。resume=発行済み再開、write=元稿への初回書込み。"""
+
+    evidence = has_canonical_written_evidence(dest, state.intended_raw_sha256)
+    if evidence:
+        if _current_is_intended(state, text_file):
+            return "resume"
         raise BridgeError(
             "STALE_EVIDENCE",
-            "canonical text was deleted during publish",
-            refs={"path": state.published_path},
+            "canonical text changed after publish write",
+            refs={
+                "path": state.published_path,
+                "expected": state.intended_raw_sha256,
+            },
+            exit_code=1,
         )
-    if not exists:
-        return
-    current_raw = raw_sha256(text_file)
-    if current_raw == state.intended_raw_sha256:
-        return
-    if not state.original_exists:
+    if state.stage == "inspect":
+        raise BridgeError(
+            "STALE_EVIDENCE",
+            "inspect stage lacks canonical text written evidence",
+            refs={"path": state.published_path, "stage": state.stage},
+            exit_code=1,
+        )
+    if not state.original_exists and text_file.is_file():
         raise BridgeError(
             "STALE_EVIDENCE",
             "canonical text was created during publish",
             refs={"path": state.published_path},
+            exit_code=1,
         )
-    if current_raw != state.original_raw_sha256:
+    if not _current_is_original(state, text_file):
         raise BridgeError(
             "STALE_EVIDENCE",
             "canonical text changed during publish",
-            refs={
-                "path": state.published_path,
-                "expected": state.original_raw_sha256,
-                "actual": current_raw,
-            },
+            refs={"path": state.published_path},
+            exit_code=1,
         )
+    return "write"
+
+
+def _assert_canonical_for_write(dest: Path, state: BridgePublish, text_file: Path) -> str:
+    return _canonical_action(dest, state, text_file)
 
 
 def _refuse_active_repair(dest: Path) -> None:
@@ -321,6 +344,87 @@ def _record_counts(state: BridgePublish, published: str) -> None:
     gate = evaluate_gate(measure_text(published))
     state.punctuation_status = gate["status"]
     state.punctuation_note = gate["reason"]
+
+
+def composed_raw_sha256(composed: str) -> str:
+    return format_sha256(sha256(composed.encode("utf-8")).digest())
+
+
+def punctuation_scope_line(composed: str) -> str:
+    return (
+        f"scope=full_text intended_text_sha256={text_sha256(composed)} "
+        f"intended_raw_sha256={composed_raw_sha256(composed)}"
+    )
+
+
+def has_canonical_written_evidence(dest: Path, intended_raw: str) -> bool:
+    for entry in read_journal(dest / "journal.jsonl"):
+        if entry.note != _CANONICAL_WRITTEN:
+            continue
+        hashes = entry.hashes or {}
+        if hashes.get("published") == intended_raw:
+            return True
+    return False
+
+
+def _current_is_intended(state: BridgePublish, text_file: Path) -> bool:
+    return text_file.is_file() and raw_sha256(text_file) == state.intended_raw_sha256
+
+
+def _current_is_original(state: BridgePublish, text_file: Path) -> bool:
+    exists = text_file.is_file()
+    if exists != state.original_exists:
+        return False
+    if not exists:
+        return True
+    return raw_sha256(text_file) == state.original_raw_sha256
+
+
+def _assert_assembled_matches_intended(
+    state: BridgePublish,
+    scene_body: str,
+    request_kind: RequestKind,
+) -> str:
+    assembled = _assemble(state, scene_body, request_kind)
+    if (
+        composed_raw_sha256(assembled) != state.intended_raw_sha256
+        or text_sha256(assembled) != state.intended_text_sha256
+    ):
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "assembled text does not match the intended edition",
+            refs={
+                "intended_raw_sha256": state.intended_raw_sha256,
+                "intended_text_sha256": state.intended_text_sha256,
+            },
+        )
+    return assembled
+
+
+def _punctuation_dry_run_result(composed: str, text_file: Path) -> tuple[int, str]:
+    gate = evaluate_gate(measure_text(composed))
+    scope = punctuation_scope_line(composed)
+    if gate["status"] == "fail":
+        return 1, f"punctuation_gate=fail: {gate['reason']}; {scope}; not published"
+    return 0, f"would publish: {text_file}; {scope}"
+
+
+def _dry_run_active_state(
+    dest: Path,
+    request: RequestDocument,
+    state: BridgePublish,
+    scene_body: str,
+    text_file: Path,
+) -> tuple[int, str]:
+    action = _canonical_action(dest, state, text_file)
+    if action == "resume":
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "canonical text already written; resume publish without --dry-run",
+            refs={"path": state.published_path, "stage": state.stage},
+        )
+    assembled = _assert_assembled_matches_intended(state, scene_body, request.request_kind)
+    return _punctuation_dry_run_result(assembled, text_file)
 
 
 def _c1_ready(report: ReportDocument) -> bool:
@@ -441,7 +545,7 @@ def _plan_state(
         candidate_path=candidate.relative_to(root).as_posix(),
         candidate_hash=raw_sha256(candidate),
         published_path=request.target.text_path,
-        intended_raw_sha256=format_sha256(sha256(composed.encode("utf-8")).digest()),
+        intended_raw_sha256=composed_raw_sha256(composed),
         intended_text_sha256=text_sha256(composed),
         original_raw_sha256=raw_sha256(text_file) if text_file.is_file() else EMPTY_RAW_SHA256,
         original_exists=text_file.is_file(),
@@ -483,21 +587,25 @@ def publish(
             if not text_file.is_file() or raw_sha256(text_file) != state.intended_raw_sha256:
                 raise BridgeError("STALE_EVIDENCE", "published text changed after save")
             return 0, f"already published: {text_file}"
+        if dry_run:
+            return _dry_run_active_state(dest, request, state, scene_body, text_file)
     else:
         state = _plan_state(root, request, text_file, candidate, scene_body, authorization)
         if dry_run:
-            return 0, f"would publish: {text_file}"
+            assembled = _assert_assembled_matches_intended(
+                state, scene_body, request.request_kind
+            )
+            return _punctuation_dry_run_result(assembled, text_file)
         _save(dest, state)
         _journal(dest, request, note="publish begun", hashes={"candidate": state.candidate_hash})
 
-    if dry_run:
-        return 0, f"would publish: {text_file}"
-
     composed = _assemble(state, scene_body, request.request_kind)
+    action = _canonical_action(dest, state, text_file)
+    if action == "resume" and state.stage in {"backup", "write"}:
+        state.stage = "inspect"
 
-    if state.stage in {"backup", "write"} and state.status != "completed":
+    if action == "write" and state.stage in {"backup", "write"} and state.status != "completed":
         _refuse_if_c1_not_ready(root, dest, request, repo_root, observations_path, candidate)
-        _assert_canonical_for_write(state, text_file)
         if text_file.is_file() and state.stage == "backup":
             now = _lf(text_file.read_text(encoding="utf-8"))
             if raw_sha256(text_file) == state.original_raw_sha256:
@@ -525,16 +633,12 @@ def publish(
             state.stage = "backup"
             _save(dest, state)
 
-        _assert_canonical_for_write(state, text_file)
-        current_raw = raw_sha256(text_file) if text_file.is_file() else None
-        if current_raw == state.intended_raw_sha256:
-            state.stage = "write"
-        else:
-            text_file.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write_text(text_file, composed)
-            if raw_sha256(text_file) != state.intended_raw_sha256:
-                raise BridgeError("JOB_CONFLICT", "published bytes do not match the intended edition")
-            state.stage = "write"
+        _canonical_action(dest, state, text_file)
+        text_file.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(text_file, composed)
+        if raw_sha256(text_file) != state.intended_raw_sha256:
+            raise BridgeError("JOB_CONFLICT", "published bytes do not match the intended edition")
+        state.stage = "write"
         metron = root / "_metron" / request.scene_id
         metron.mkdir(parents=True, exist_ok=True)
         adopted = metron / f"adopted.{request.run_id}.md"

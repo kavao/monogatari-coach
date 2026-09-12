@@ -241,17 +241,39 @@ python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
 # 標準出力の prepared: .../run-XXXX を以降の --run-id に使う
 ```
 
-「当該場面を保存してください」と明示したときは、保存用の新しい run です。起草用 run へ `publish` しません。既存の非空本文では selector、当該場面の scene アンカー、または `append` が必要です。無いと `MISSING_FIELD` になります。
+「当該場面を保存してください」と明示したときは、保存用の新しい run です。起草用 run へ `publish` しません。未作成または空の正本は selector なしの `new` です。既存の非空本文では selector、当該場面の scene アンカー、または `append` が必要です。無いと `MISSING_FIELD` になります。inspect の結果は required と advisory に分かれます。引用座標は `locate-quote` で下書きできます（一意の quote だけ。重複は推測しません。候補や正本の版がずれたときは止まります）。保存へ進む案内は、床到達・必須なしに加え、C1 が揃っているか対象外で、修復中でないときだけです。`publish --dry-run` が句読点 fail のときは正本を書きません。dry-run の測定は保存予定の対象ファイル全体です。
 
 ```bash
-# 保存用（起草レシピの続きではない。この prepare の run_id を使う）
+# レシピ1: 未作成または空の正本。selector なし
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
-  --request-kind new --selector-kind heading --selector-value "章タイトル" \
+  --request-kind new --allow-publish --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --allow-publish
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
+```
+
+```bash
+# レシピ2: 既存の非空本文。heading で当該章だけを置換する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind refine --selector-kind heading --selector-value "章タイトル" \
   --allow-publish --dry-run
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
-  --request-kind new --selector-kind heading --selector-value "章タイトル" \
+  --request-kind refine --selector-kind heading --selector-value "章タイトル" \
   --allow-publish
 python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-XXXX \
@@ -262,6 +284,9 @@ python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
 python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
   --scene-id ch01-001 --run-id run-XXXX \
   --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
 ```
 
 ---

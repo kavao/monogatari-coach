@@ -88,6 +88,7 @@ class JournalAction(str, Enum):
     REPAIR_BEGIN = "repair_begin"
     REPAIR_NEXT = "repair_next"
     REPAIR_SUBMIT = "repair_submit"
+    REPAIR_FINISH = "repair_finish"
 
 
 class Severity(str, Enum):
@@ -274,6 +275,7 @@ class ReportDocument(StrictModel):
     findings: list[ReportFinding] = Field(default_factory=list)
     repair_history: list[dict[str, Any]] = Field(default_factory=list)
     open_issues: list[dict[str, Any]] = Field(default_factory=list)
+    next_action: str | None = None
 
     @field_validator("schema_version")
     @classmethod

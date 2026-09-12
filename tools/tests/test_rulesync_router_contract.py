@@ -253,6 +253,25 @@ def _run_id(command: str) -> str | None:
     return match.group(1) if match else None
 
 
+def _assert_allow_publish_prepare_selector(command: str, *, path: Path | str = "") -> None:
+    """未作成/空の new は selector なし。既存非空の refine は selector 必須。"""
+    if "writing_bridge_cli.py prepare" not in command or "--allow-publish" not in command:
+        return
+    kind_match = re.search(r"--request-kind\s+(\S+)", command)
+    kind = kind_match.group(1) if kind_match else "new"
+    has_selector = "--selector-kind" in command
+    loc = f" ({path})" if path else ""
+    if kind == "new":
+        assert not has_selector, f"レシピ1の new に selector がある{loc}: {command}"
+        return
+    if kind == "refine":
+        assert has_selector, f"レシピ2の refine に selector が無い{loc}: {command}"
+        return
+    if kind == "append":
+        return
+    raise AssertionError(f"未定義の request-kind {kind}{loc}: {command}")
+
+
 def test_docs_prepare_dry_run_is_not_followed_by_receive() -> None:
     text = (ROOT / "docs" / "tools" / "index.md").read_text(encoding="utf-8")
     start = text.index("### `writing_bridge_cli.py`")
@@ -282,35 +301,34 @@ def test_instruction_driven_draft_prepare_omits_allow_publish() -> None:
     blocks = re.findall(r"```bash\n(.*?)```", text[start:end], re.S)
     assert len(blocks) >= 2
     draft = _cli_commands(blocks[0])
-    save = _cli_commands(blocks[-1])
+    save_blocks = [_cli_commands(block) for block in blocks[1:]]
     assert all("--allow-publish" not in command for command in draft)
     assert all("writing_bridge_cli.py publish" not in command for command in draft)
-    assert any(
-        "writing_bridge_cli.py prepare" in command and "--allow-publish" in command
-        for command in save
-    )
-    assert any("writing_bridge_cli.py receive" in command for command in save)
-    assert any("writing_bridge_cli.py inspect" in command for command in save)
-    assert all(
-        "--selector-kind" in command or "--request-kind append" in command
-        for command in save
-        if "writing_bridge_cli.py prepare" in command and "--allow-publish" in command
-    )
-    kinds = []
-    for command in save:
-        if "writing_bridge_cli.py receive" in command:
-            kinds.append("receive")
-        elif "writing_bridge_cli.py inspect" in command:
-            kinds.append("inspect")
-        elif "writing_bridge_cli.py publish" in command:
-            kinds.append("publish")
-    assert kinds.index("receive") < kinds.index("inspect") < kinds.index("publish")
-    publish_ids = {_run_id(command) for command in save if "writing_bridge_cli.py publish" in command}
-    receive_ids = {_run_id(command) for command in save if "writing_bridge_cli.py receive" in command}
-    inspect_ids = {_run_id(command) for command in save if "writing_bridge_cli.py inspect" in command}
-    assert publish_ids and publish_ids <= receive_ids
-    assert inspect_ids == receive_ids
-    assert "run-0001" not in publish_ids
+    assert save_blocks
+    for save in save_blocks:
+        assert any(
+            "writing_bridge_cli.py prepare" in command and "--allow-publish" in command
+            for command in save
+        )
+        assert any("writing_bridge_cli.py receive" in command for command in save)
+        assert any("writing_bridge_cli.py inspect" in command for command in save)
+        for command in save:
+            _assert_allow_publish_prepare_selector(command)
+        kinds = []
+        for command in save:
+            if "writing_bridge_cli.py receive" in command:
+                kinds.append("receive")
+            elif "writing_bridge_cli.py inspect" in command:
+                kinds.append("inspect")
+            elif "writing_bridge_cli.py publish" in command:
+                kinds.append("publish")
+        assert kinds.index("receive") < kinds.index("inspect") < kinds.index("publish")
+        publish_ids = {_run_id(command) for command in save if "writing_bridge_cli.py publish" in command}
+        receive_ids = {_run_id(command) for command in save if "writing_bridge_cli.py receive" in command}
+        inspect_ids = {_run_id(command) for command in save if "writing_bridge_cli.py inspect" in command}
+        assert publish_ids and publish_ids <= receive_ids
+        assert inspect_ids == receive_ids
+        assert "run-0001" not in publish_ids
 
 
 def test_docs_publish_recipe_does_not_reuse_draft_run() -> None:
@@ -371,8 +389,7 @@ def test_docs_publish_recipe_does_not_reuse_draft_run() -> None:
                     kinds.append("publish")
             assert kinds.index("receive") < kinds.index("inspect") < kinds.index("publish"), path
             for command in commands:
-                if "writing_bridge_cli.py prepare" in command and "--allow-publish" in command:
-                    assert "--selector-kind" in command or "--request-kind append" in command, path
+                _assert_allow_publish_prepare_selector(command, path=path)
             publish_ids = {_run_id(command) for command in publishes}
             receive_ids = {
                 _run_id(command)

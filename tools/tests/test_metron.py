@@ -175,6 +175,7 @@ def test_analysis_report_and_classification() -> None:
         _beat("b2", chars_hint=10),
         _beat("b3", chars_hint=10),
         _beat("b4", chars_hint=10),
+        chars_floor=200,
     )
     analyzed = analyze_marked_text(
         embed_beat_markers(
@@ -246,7 +247,7 @@ def test_expand_prompt_names_structure_floors() -> None:
 
 
 def test_truncation_suppresses_length_and_too_short_is_repairable() -> None:
-    plan = _plan(*[_beat(f"b{i}", chars_hint=100) for i in range(1, 5)])
+    plan = _plan(*[_beat(f"b{i}", chars_hint=100) for i in range(1, 5)], chars_floor=200)
     analyzed = analyze_marked_text(
         embed_beat_markers([(beat.id, "十分な本文です。") for beat in plan.beats]),
         plan,
@@ -276,6 +277,27 @@ def test_truncation_suppresses_length_and_too_short_is_repairable() -> None:
     assert too_short
     assert all(item.auto_repair for item in too_short)
     assert any(item.beat_id is not None for item in too_short)
+
+
+def test_scene_floor_met_makes_beat_length_advisory() -> None:
+    plan = _plan(_beat("b1", chars_hint=80), chars_floor=10)
+    analyzed = analyze_marked_text(
+        embed_beat_markers([("b1", "あいうえおかきくけこさしすせそ。")]),
+        plan,
+        run=1,
+    )
+    result = classify_metrics(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01, ending_rush_threshold=0.0),
+        spans=analyzed.spans,
+    )
+    too_short = [
+        item for item in result.findings
+        if item.failure.value == "TooShort" and item.beat_id == "b1"
+    ]
+    assert too_short
+    assert too_short[0].auto_repair is False
 
 
 def test_scene_chars_floor_too_short_deepens_without_regenerate() -> None:
@@ -472,10 +494,8 @@ def test_ending_rush_skips_final_expand_and_remeasures_after_seam(tmp_path: Path
         seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
     )
     assert not expand_calls
-    assert repaired.regenerated_beats == ("b4",)
+    assert repaired.regenerated_beats == ()
     assert "b4" not in repaired.expansions
-    assert repaired.verification_metrics.metrics.run == 6
-    assert repaired.verification_metrics.metrics.scene.chars > analyzed.metrics.metrics.scene.chars
 
     final_path = tmp_path / "FINAL.md"
     write_final(final_path, "<!--beat:b1-->本文。<!--/beat:b1-->")

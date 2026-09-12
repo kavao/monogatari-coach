@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 
 from .commands import inspect, prepare, receive, status
+from .locate import locate_quote_run
 from .publish import publish
-from .repair import repair_begin, repair_next, repair_submit
+from .repair import repair_begin, repair_next, repair_submit, repair_finish
 from .errors import BridgeError, ErrorDocument
 from .models import RequestKind, Selector, SelectorKind
 
@@ -60,22 +61,43 @@ def main(argv: list[str] | None = None) -> int:
     )
     ins.add_argument("--repo-root", type=Path, default=Path.cwd())
 
+    loc = sub.add_parser(
+        "locate-quote",
+        help="draft C1 coordinates for a unique quote (no meaning check)",
+    )
+    _add_work(loc)
+    loc.add_argument("--scene-id", required=True)
+    loc.add_argument("--run-id", required=True)
+    loc.add_argument("--quote", required=True, help="exact quote in the normalized text")
+    loc.add_argument(
+        "--marked",
+        type=Path,
+        help="path to the same received candidate bytes (hash must match artifact_refs)",
+    )
+
     st = sub.add_parser("status", help="show run journal and report")
     _add_work(st)
     st.add_argument("--scene-id", required=True)
     st.add_argument("--run-id", required=True)
 
-    for name in ("repair-begin", "repair-next", "repair-submit"):
+    for name in ("repair-begin", "repair-next", "repair-submit", "repair-finish"):
         repair = sub.add_parser(name, help="advance one local repair step (no provider)")
         _add_work(repair)
         repair.add_argument("--scene-id", required=True)
         repair.add_argument("--run-id", required=True)
         repair.add_argument("--repo-root", type=Path, default=Path.cwd())
-        if name != "repair-next":
+        if name not in {"repair-next", "repair-finish"}:
             repair.add_argument("--model", required=True)
         if name == "repair-begin":
             repair.add_argument("--authorization", required=True,
                                 help="source of the user's scoped repair request")
+            repair.add_argument("--intent", choices=["auto", "explicit_deepen"], default="auto")
+            repair.add_argument("--scope", choices=["scene", "beats"], default="scene")
+            repair.add_argument("--beat-ids", help="comma-separated Beat IDs for explicit_deepen")
+        if name == "repair-finish":
+            repair.add_argument("--reason", required=True, choices=["floor_met", "author_stop"])
+            repair.add_argument("--authorization", required=True,
+                                help="source of the user's scoped repair stop")
         if name == "repair-submit":
             repair.add_argument("--job-id", required=True)
             result = repair.add_mutually_exclusive_group(required=True)
@@ -144,13 +166,26 @@ def main(argv: list[str] | None = None) -> int:
                 observations_path=args.observations,
                 dry_run=args.dry_run,
             )
+        elif args.command == "locate-quote":
+            code, message = locate_quote_run(
+                Path(args.work),
+                scene_id=args.scene_id,
+                run_id=args.run_id,
+                quote=args.quote,
+                marked_path=args.marked,
+            )
         elif args.command.startswith("repair-"):
             kwargs = dict(scene_id=args.scene_id, run_id=args.run_id, repo_root=args.repo_root)
             if args.command == "repair-begin":
+                beat_ids = [item.strip() for item in (args.beat_ids or "").split(",") if item.strip()]
                 code, message = repair_begin(Path(args.work), model=args.model,
-                    authorization=args.authorization, **kwargs)
+                    authorization=args.authorization, intent=args.intent,
+                    scope=args.scope, beat_ids=beat_ids, **kwargs)
             elif args.command == "repair-next":
                 code, message = repair_next(Path(args.work), **kwargs)
+            elif args.command == "repair-finish":
+                code, message = repair_finish(Path(args.work), reason=args.reason,
+                    authorization=args.authorization, **kwargs)
             else:
                 code, message = repair_submit(Path(args.work), job_id=args.job_id,
                     model=args.model, candidate=args.candidate, error=args.error,
