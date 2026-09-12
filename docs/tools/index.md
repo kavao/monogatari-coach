@@ -400,9 +400,30 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 - ある章の本文ファイルがあるのに、執筆スケジュールがその章を「未着手」等のままにしている。
 - 前半・後半（項）に分割した本文ファイル（例: `novel_text01_1.md`）があるのに、設計書側に分割の記載が見当たらない。
 
-本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。
+本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。出来事リストの意味一致は検査しません。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。確定出来事の同期と lock / journal 操作は `story_reflection_op.py` を使います。
 
 `--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+
+---
+
+### `story_reflection_op.py` — ストーリー反映の lock / journal
+
+本文保存後に `design_specification.md` の確定出来事と `_meta.md` を同期するときの、排他ロックと operation journal を扱います。エージェントが手で lock や journal を書き換えないための機械操作です。終了コード 0 が成功、2 が未完了です。
+
+```bash
+python tools/story_reflection_op.py inspect novels/NNN_作品名
+python tools/story_reflection_op.py resolve novels/NNN_作品名 --text novel_text18.md
+python tools/story_reflection_op.py hash novels/NNN_作品名/design_specification.md
+python tools/story_reflection_op.py begin novels/NNN_作品名 --evidence evidence.json
+python tools/story_reflection_op.py apply-design novels/NNN_作品名 --file intended_design.md
+python tools/story_reflection_op.py apply-meta novels/NNN_作品名 --file intended_meta.md
+python tools/story_reflection_op.py lock-inspect novels/NNN_作品名
+python tools/story_reflection_op.py lock-release novels/NNN_作品名
+```
+
+`lock-inspect` は lock と現行 operation を表示するだけで、ファイルは消しません。`begin` / `apply-design` / `apply-meta` / `fail` / `resume` / `close-orphan` / `lock-release` は、読込から全書込みまで OS 排他を保持します。同じ作品へ同時に走らせると、一方だけが成功し、他方は終了コード 2（`LOCK_HELD`）になります。正式名への公開は既存 lock を上書きしません。解除は正式名が消えるまで排他を保持します。削除に失敗したときは正式名を動かさず、終了コード 2（`LOCK_HELD`）になります。`lock-release` は current と最後の状態遷移が `done` / `failed` で完全一致しているときだけ lock を消します。`lock_released` は削除成功後だけ journal に残します。削除失敗では成功イベントを書きません。進行中や孤児の lock は解除しません。チャットで「ロックを消して」とだけ言われても、Monogatari Coach はこのコマンドの判定を通さずに消しません。`close-orphan` は active の孤児だけを `failed` にできます。`done` / `failed` の terminal は変えません。`resume` も terminal は対象外です。
+
+完了報告の見方は `_meta.md` の `出来事同期` 1行です。`第N章出来事（更新|差分なし|未完了）` が残っているかを後続セッションが参照します。`--check-story-sync` は形式検査だけなので、この1行の代わりにはなりません。
 
 ---
 

@@ -1475,7 +1475,7 @@ flowchart TD
   - `_meta.md` の「外部メタ情報」を作成・更新し、プラットフォーム投稿用のキャッチコピーや紹介文を生成します。
 
 #### 執筆後のストーリー反映（同期）
-本文の保存・清書の直後に、最新の文字数、起きたイベント、次回タスクを `_meta.md` へ反映し、`design_specification.md`（プロット）との整合性を確認します。`_meta.md` の更新だけで完了扱いにせず、**`design_specification.md` の執筆スケジュール（実文字数・状態含む）・章分割・転換点の要約**を本文の実在状況に合わせて同期します（新設定は `world.md` / `character.md` への波及も判定）。機械的なズレ検出には `python tools/novel_project_check.py <作品> --check-story-sync` を補助に使えます。詳細はスキル **`novel-story-reflection`** を参照してください。
+本文の保存・清書の直後に、最新の文字数、起きたイベント、次回タスクを `_meta.md` へ反映します。`_meta.md` の更新だけで完了扱いにせず、対象章を一意に解決したうえで **`design_specification.md` の確定出来事**と実文字数・状態を突き合わせます。結果は `更新` / `差分なし` / `未完了` のいずれかです。解決不能と書込失敗は完了報告しません。テーマ・将来章・CHRONOS / METRON 成果物の自動更新は含めません。機械操作は `python tools/story_reflection_op.py`、形式ズレの補助検出は `python tools/novel_project_check.py <作品> --check-story-sync` です。詳細はスキル **`novel-story-reflection`** を参照してください。
 
 ```mermaid
 flowchart TD
