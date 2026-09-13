@@ -61,6 +61,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 - **`_novel_text/` または `_reader/` が無い**: ディレクトリを作成（空でよい。Git 用に `.gitkeep` を置いてもよい）。
 - **`tag/<romaji>/` 未作成の WARN**: スキル **`novel-image-layout`**（`tools/novel_image_layout.py scaffold`）で作成。
 - **採番 NG**: スキル **`novel-code-allocate`** に従い `config.md` の `| novel_ID |` 表とフォルダ名を揃える。
+- **METRON / CHRONOS ON で保存先なし**: `_metron/` を作り、`python tools/chronos_cli.py init novels/<作品>` する。新規起こしの標準は ON。新規フォルダを作るときは `novel_onboard.py` を入口にし、確認の返答がない場合は `config.md` に「未応答・既定 ON」を記録する（明示 OFF の場合だけ `--metron OFF` / `--chronos OFF`）。
 - **character.md 構造 NG**: スキル **`novel-character-profile`** に従い、必須ラベルの追加や表形式から `- **ラベル**:` 形式への移行を行う。
 
 ## 正本

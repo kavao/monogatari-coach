@@ -56,15 +56,15 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 4. `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` と `references/novelai/` 等を揃える。
 5. `python tools/novel_character_md_check.py novels/<作品> --profile plan`
 6. `python tools/novel_project_check.py novels/<作品>`（不足時は `--bootstrap` 可。character 構造は既定で有効）
-7. `config.md` 初回作成時は METRON / CHRONOS を両方 `OFF` とし、Gate B で検査レイヤを使うか確認する。明示的に決めない限り `ON` にしない。`AUDIT_LOG` 行は省略してよい（行なしは ON）。清書中だけ止めたいときなど、必要な作品にだけ `OFF` を書く。
-8. METRON / CHRONOS を `ON` にした作品では `python tools/novel_project_check.py novels/<作品> --check-inspection-layers` を追加実行する。保存先不足の WARN は終了コード 0、設定エラーは終了コード 1 とする。
+7. `config.md` 初回作成時は METRON / CHRONOS を両方 `ON` とするのが標準。作成時にユーザーへ確認する。ユーザーが OFF を明示したときだけ `OFF` にする。同一ターンで応答が無いときは標準の ON で進め、`config.md` に **「未応答・既定 ON」** と記録する。`AUDIT_LOG` 行は省略してよい（行なしは ON）。清書中だけ止めたいときなど、必要な作品にだけ後から `OFF` を書く。
+8. METRON / CHRONOS を `ON` にした作品では、`chronos/` が無ければ `python tools/chronos_cli.py init novels/<作品>`、`_metron/` が無ければ作成する。そのあと `python tools/novel_project_check.py novels/<作品> --check-inspection-layers` を追加実行する。保存先不足の WARN は終了コード 0、設定エラーは終了コード 1 とする。
 
 ### 既存作品の洗練
 
 1. **再採番しない。** 対象フォルダと `config.md` の整合を `novel_code_allocate.py verify` 等で確認する。
 2. 必須資料の有無を確認し、不足・薄いものだけ更新する。
 3. character lint と `novel_project_check` を実行する（上記と同じコマンド）。
-   既存作品のフラグ行がない場合は `OFF` として扱う。検査レイヤを使うと決めた作品だけ `config.md` の基本情報表へ記録する。
+   既存作品のフラグ行がない場合はパーサ上 `OFF`。新規起こしの既定は表へ ON を書く。既存を ON にするのはユーザー確認後。
 
 ## Gate B（知識ゲート）
 
@@ -112,6 +112,7 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 - タイトル命名: 実施 / 既存記録確認 / 例外理由
 - 洗練前後の確認（初回章項目数目安 → 洗練後、相関図の有無）
 - Gate A で許容した WARN（あれば）
+- 検査レイヤ: 標準 ON で確認済み / ユーザー明示の OFF / 確認未応答で標準 ON
 
 完了報告には、この要約をチャットへ含める。
 

@@ -39,6 +39,16 @@ Monogatari Coach は、原資料を読み、作品フォルダ内の標準ファ
 
 新規作品の場合は、`tools/novel_code_allocate.py` で次の作品番号を確認します。既存作品がある場合は、重複作成せず、更新対象を見極めます。
 
+新規作品は資料を展開する前に、次のオンボーディングを実行します。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録され、`_metron/` と `chronos/` が準備されます。OFF はユーザーが明示したときだけ指定します。
+
+```bash
+python tools/novel_onboard.py novels/NNN_作品名
+# 例: 明示的に両方止める場合
+python tools/novel_onboard.py novels/NNN_作品名 --metron OFF --chronos OFF
+```
+
+既存作品では `novel_onboard.py` を使わず、`novel_scaffold.py` などで不足分だけを補います。既存 `config.md` の METRON / CHRONOS 行なしは従来どおり OFF です。
+
 ## ユーザーが確認できるもの
 
 展開後、主に次のファイルやフォルダが作られます。
@@ -63,8 +73,8 @@ Monogatari Coach は、原資料を読み、作品フォルダ内の標準ファ
 # novel_code と config.md の整合を確認する
 python tools/novel_code_allocate.py verify novels/NNN_作品名
 
-# 執筆前に必要なファイル・ディレクトリの揃いを確認する
-python tools/novel_project_check.py novels/NNN_作品名
+# 執筆前に必要なファイル・ディレクトリと検査レイヤを確認する
+python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
 ```
 
 確認が通ったら、展開済みの `novels/<作品>/` を正として、計画、タグ作成、執筆へ進みます。

@@ -37,7 +37,7 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。新規起こしで行を書くときの既定は ON。作成時に確認し、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示または清書中の一時停止などに限る。
 
 フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
 

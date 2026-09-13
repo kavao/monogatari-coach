@@ -59,13 +59,20 @@ def _run_subprocess(cmd: list) -> tuple[str, str, int]:
     return _decode(result.stdout), _decode(result.stderr), result.returncode
 
 
-def _run_project_check(work_dir: Path) -> dict:
-    stdout, stderr, _ = _run_subprocess([
+def _run_project_check(
+    work_dir: Path,
+    *,
+    check_inspection_layers: bool = False,
+) -> dict:
+    cmd = [
         sys.executable,
         str(_TOOLS_DIR / "novel_project_check.py"),
         str(work_dir),
         "--json",
-    ])
+    ]
+    if check_inspection_layers:
+        cmd.append("--check-inspection-layers")
+    stdout, stderr, _ = _run_subprocess(cmd)
     try:
         return json.loads(stdout)
     except Exception:

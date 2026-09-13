@@ -52,6 +52,10 @@ Monogatari Coach は、企画を **Gate A（骨格）** と **Gate B（知識・
 新規作品では、資料を揃えたあと次を実行します。
 
 ```bash
+# 作品フォルダをまだ作っていない場合は、先にオンボーディングする
+python tools/novel_onboard.py novels/NNN_作品名
+
+# 既に config.md がある場合の不足分補充
 python tools/novel_scaffold.py novels/NNN_作品名
 ```
 
@@ -68,6 +72,10 @@ python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-laye
 新規は採番から、既存作品の洗練では再採番しません。合否はコマンドの終了コードを正とします。
 
 `--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS / AUDIT_LOG と保存先を確認します。METRON / CHRONOS は行なしまたは `OFF` が対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。AUDIT_LOG は行なしが ON です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
+
+新規作品では、Monogatari Coach は METRON / CHRONOS を標準で ON にします。起こしのときに確認し、OFF にしたいときだけ指示します。行が無い既存作品は従来どおり OFF のままです。ON にした作品では `_metron/` と `chronos/` を用意してから上の確認コマンドを実行します。
+
+オンボーディング時に確認への返答がない場合は、**「未応答・既定 ON」** として `config.md` に記録します。明示的に止める場合だけ、`novel_onboard.py` に `--metron OFF` / `--chronos OFF` を指定してください。`--dry-run` では予定フラグと保存先だけを表示し、ファイルは作成しません。
 
 ### Gate B（知識・厚さ）
 

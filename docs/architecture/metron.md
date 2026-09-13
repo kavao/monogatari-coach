@@ -31,6 +31,8 @@ config/metron_models.yaml
 | METRON | ON |
 ```
 
+新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 ON」として行と `_metron/` を記録・準備します。既存作品の行なしは従来どおり OFF です。
+
 行なしまたは `OFF` なら、自動ワークフローは METRON の成果物作成・計測を行いません。`ON` でも本文保存の完了ゲートにはならず、契約・Beat・マーカー不足や CLI 失敗は `未計測／要対応` として本文保存と分けて報告します。明示的に `metron_cli.py` を実行した場合は、このフラグを理由に拒否しません。
 
 フラグの値は `ON` / `OFF` のみです。未知値・重複キー・既存 `config.md` の読込失敗は設定エラーとして扱います。V1 の Deepen / 再生成や provider 呼び出しは、承認済み設定とユーザー承認が別途必要です。執筆工程への接続は [Writing bridge の局所修復と本文反映](writing-bridge.md) です。`chronos check` や `metron_cli.py analyze` を同じ本文版へ重ねません。

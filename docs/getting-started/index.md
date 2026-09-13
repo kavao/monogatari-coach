@@ -163,6 +163,8 @@ python tools/novel_onboard.py "作品タイトル"
 python tools/novel_onboard.py "作品タイトル" --dry-run
 ```
 
+新規作成では METRON / CHRONOS が標準 ON です。確認への返答がない場合も、`config.md` に **「未応答・既定 ON」** と記録して進みます。明示的に OFF にする場合だけ `--metron OFF` / `--chronos OFF` を指定します。
+
 実行後に `[Plan Mode] → 企画書を作成してください（proposal.md から）` と出たら、チャットで「企画書を作成してください」と伝えるだけで制作が始まります。
 
 ---

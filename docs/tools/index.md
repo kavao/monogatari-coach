@@ -293,7 +293,12 @@ python tools/novel_onboard.py novels/067_作品タイトル
 
 # 実行前に採番とフォルダパスだけ確認する
 python tools/novel_onboard.py "作品タイトル" --dry-run
+
+# 検査レイヤを明示的に止める場合（新規作成時のみ）
+python tools/novel_onboard.py "作品タイトル" --metron OFF --chronos OFF
 ```
+
+新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、`_metron/` と `chronos/` を ON の場合だけ準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプションを付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
 
 実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
 
@@ -391,6 +396,9 @@ python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-laye
 
 # _meta.yaml 等を不足分だけ作成してからチェック
 python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
+
+# 未作成の NNN_タイトル を --bootstrap する場合の明示 OFF
+python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OFF --chronos OFF
 ```
 
 `--require-slush-g3` は、`_meta.md` に「足切りステータス: G3合格」が記録されているか、または最新の `_reader/YYYYMMDD_HHMM.md` に「スコア ≥ 55 かつ読むべき」が記録されているかを確認します。投稿前のゲートや校正着手前の確認に使います。
@@ -403,6 +411,8 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
 本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。出来事リストの意味一致は検査しません。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。確定出来事の同期と lock / journal 操作は `story_reflection_op.py` を使います。
 
 `--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+
+未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。既存フォルダの `--bootstrap` は設定行や値を変更しません。
 
 ---
 

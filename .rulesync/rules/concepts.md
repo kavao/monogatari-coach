@@ -51,6 +51,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 - 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は独立した ON / OFF 値として読む。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
+- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
 - ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。

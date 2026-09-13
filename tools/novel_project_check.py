@@ -619,21 +619,68 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
     )
+    p.add_argument(
+        "--metron",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="未作成フォルダを --bootstrap するときの METRON（既定: ON）",
+    )
+    p.add_argument(
+        "--chronos",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="未作成フォルダを --bootstrap するときの CHRONOS（既定: ON）",
+    )
     args = p.parse_args(argv)
 
     if args.bootstrap:
         from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
+        from inspection_bootstrap import (
+            InspectionBootstrapError,
+            initialize_new_layers,
+        )
 
         work = args.work_dir
         if not work.is_absolute():
             work = scaffold_root() / work
         work = work.resolve()
+        was_absent = not work.exists()
         print(f"bootstrap: {work}")
         try:
+            if was_absent and nca.parse_folder_code(work.name) is None:
+                print(
+                    "error: 新規 --bootstrap のフォルダ名は 'NNN_タイトル' 形式が必要です",
+                    file=sys.stderr,
+                )
+                return 2
+            if was_absent:
+                try:
+                    work.mkdir(parents=True, exist_ok=False)
+                except FileExistsError:
+                    # 競合相手が作成した作品は既存作品として扱い、フラグを初期化しない。
+                    was_absent = False
             for rel, status in bootstrap_novel(work, scaffold_root()):
                 print(f"  {rel}: {status}")
+            if was_absent:
+                code = nca.parse_folder_code(work.name)
+                assert code is not None
+                title = work.name.split("_", 1)[1]
+                for rel, status in initialize_new_layers(
+                    work,
+                    code,
+                    title,
+                    metron=args.metron,
+                    chronos=args.chronos,
+                ):
+                    print(f"  {rel}: {status}")
         except FileNotFoundError as e:
             print(f"error: {e}", file=sys.stderr)
+            return 2
+        except InspectionBootstrapError as e:
+            print(f"error: 検査レイヤ初期化失敗: {e}", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"error: 初期ファイル作成失敗: {e}", file=sys.stderr)
             return 2
         print()
 
