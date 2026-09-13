@@ -215,7 +215,7 @@ python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
   --authorization "ユーザー依頼: 当該場面を保存"
 ```
 
-inspect は受領済み候補へ METRON と C1 を同じ本文版でかけます。`--marked` は受領候補と同じ内容のパスだけを指定できます。別内容なら `STALE_EVIDENCE` です。候補が無いときだけ既存の `_novel_text` を見ます。未作成の新章は先に receive が必要です。人物初期値や links など状態解決の入力が変わると context を作り直し、links と CHRONOS の整合も再確認します。受領済みの最新候補を後から書き換えた場合は再受領が必要です。破損した旧版は履歴に残し、新しい受領で差し替えられます。receive は版別に残し、同じハッシュの再受領は既存版を使います。契約の正本は `tools/fixtures/writing_bridge/SCHEMA.md` です。
+inspect は受領済み候補へ METRON と C1 を同じ本文版でかけます。`--marked` は受領候補と同じ内容のパスだけを指定できます。別内容なら `STALE_EVIDENCE` です。候補が無いときだけ既存の `_novel_text` を見ます。未作成の新章は先に receive が必要です。人物初期値や links など状態解決の入力が変わると context を作り直し、links と CHRONOS の整合も再確認します。受領済みの最新候補を後から書き換えた場合は再受領が必要です。破損した旧版は履歴に残し、新しい受領で差し替えられます。receive は版別に残し、同じハッシュの再受領は既存版を使います。`CHRONOS_NO_SCENE_EVENTS` は対象場面にイベントが未登録だったことを示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認します。これは `chronos_registered: success` やイベント検査済みを意味しません。契約の正本は `tools/fixtures/writing_bridge/SCHEMA.md` です。
 
 Phase 3の `repair-begin / repair-next / repair-submit / repair-finish` は、校正済みモデルの局所修復をファイル受け渡しで進めます。試行履歴を保持し、修復後の本文を再計測・C1照合します。結合校正の provider 呼び出しは出さず、マーカー異常は機械検証で止めます。生成打切り（`finish_reason`）は候補本文のハッシュが一致する版だけへ引き継ぎ、欠落Beatがあっても自動修復しません。ジョブを出せない必須は `escalated` になり、新しい `prepare` へ切り替えます。`--scope beats` は指定した Beat だけを直します。発行済みジョブ記録が消えているときは止めます。シーン床に届き必須修復も無いときは `repair-begin` を始めず保存へ進みます。明示 Deepen は `--intent explicit_deepen`、未提出 job の破棄は `repair-finish` です。始め方と止め方は [Writing bridge の速度のための運用](../architecture/writing-bridge.md#速度のための運用2026-09-12) を見てください。
 

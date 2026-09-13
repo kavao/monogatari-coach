@@ -18,7 +18,7 @@
 
 「この場面をDeepenしてください」と対象を指定すると、Monogatari Coach は依頼範囲を確認し、契約・Beat・人物状態を修復文脈へ渡します。現在の生成モデルに承認済みのMETRON校正がある場合に利用できます。校正のないモデルはV0計測までとし、別モデルの校正を借りません。
 
-ユーザーは `_writing/<scene>/<run>/jobs/` のプロンプト、`repair_state.json` の試行履歴、`report.json` の計測・C1結果を確認できます。作業稿と計測結果は `_metron/<scene>/` に残ります。CLIは外部APIを呼びません。
+ユーザーは `_writing/<scene>/<run>/jobs/` のプロンプト、`repair_state.json` の試行履歴、`report.json` の計測・C1結果を確認できます。作業稿と計測結果は `_metron/<scene>/` に残ります。CHRONOS ON でも対象場面のイベントが無い場合、`report.json` は `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残します。この警告は本文保存を止めませんが、`chronos_registered: success` とイベント検査済みを同一視しません。CLIは外部APIを呼びません。
 
 ## 操作手順
 

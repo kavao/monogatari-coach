@@ -248,6 +248,7 @@ METRON OFF: `_writing/<scene>/<run>/candidates/candidate.NNN.md` への参照。
 必須の項目状態: `text_save`, `metron`, `chronos_registered`, `text_state`（いずれも `item_status`）。  
 任意: `findings[]`, `repair_history[]`, `open_issues[]`, `next_action`。
 `findings[]` の `code` / `auto_repair` は任意。`auto_repair` は METRON 指摘が自動修復対象かどうか。必須キー追加はしない。
+CHRONOS ON で対象場面に登録イベントが無いときは、`chronos_registered` を `findings` とし、`findings[]` に `CHRONOS_NO_SCENE_EVENTS` を残す。この警告は非ブロッキングで、本文保存の完了条件や CHRONOS のイベント手入力を自動化しない。
 `next_action` は床到達かつ必須なし、blocking なし、C1 が `success` または対象外の `skipped`、repair が active でないとき `床到達・必須なし → 保存へ`。C1 未確認と修復中は出さない。`report.md` と `status` は `TooShort` / `BeatThin` / `EndingRush` を advisory、`BeatMissing` / `GenerationTruncated` を required として分ける。
 
 ### journal.jsonl

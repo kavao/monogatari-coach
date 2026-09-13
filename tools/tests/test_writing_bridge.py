@@ -19,7 +19,7 @@ if str(TOOLS) not in sys.path:
 from writing_bridge.commands import inspect, prepare, receive, status
 from writing_bridge.errors import BridgeError
 from writing_bridge.hashes import EMPTY_RAW_SHA256, read_normalized, text_sha256, raw_sha256
-from writing_bridge.models import RequestKind, Selector, SelectorKind
+from writing_bridge.models import ItemStatus, RequestKind, Selector, SelectorKind
 from writing_bridge.storage import load_json_model, load_model, read_journal
 from metron.models import instruction_target_chars
 from metron.storage import load_yaml
@@ -129,6 +129,10 @@ def test_prepare_inspect_ok_does_not_rewrite_text(tmp_path: Path) -> None:
     status_code, status_text = status(work, scene_id="ch01-001", run_id="run-0001")
     assert status_code == 0
     assert "text_state: success" in status_text
+    report = load_json_model(run / "report.json", ReportDocument)
+    assert report.chronos_registered is ItemStatus.SUCCESS
+    assert not any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
+    assert report.next_action == "床到達・必須なし → 保存へ"
 
 
 def test_stale_hash_is_detected(tmp_path: Path) -> None:
@@ -393,6 +397,105 @@ def test_chronos_only_skips_metron(tmp_path: Path) -> None:
     assert code == 0
     report = (work / "_writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
     assert '"metron": "skipped"' in report
+
+
+def test_chronos_without_scene_events_is_nonblocking_finding(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    events_dir = work / "chronos" / "events"
+    for path in events_dir.glob("*.yaml"):
+        path.write_text("events: []\n", encoding="utf-8")
+    (work / "chronos" / "scenes.yaml").write_text("scenes: []\n", encoding="utf-8")
+
+    prepare(
+        work,
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+    )
+    run = work / "_writing" / "ch01-001" / "run-0001"
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron" / "ch01-001" / "marked.md",
+        request_id=None,
+    )
+    code, message = inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=None,
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    assert code == 0, message
+    report = load_json_model(run / "report.json", ReportDocument)
+    assert report.chronos_registered is ItemStatus.FINDINGS
+    assert any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
+    assert report.next_action == "床到達・必須なし → 保存へ"
+    status_code, status_text = status(work, scene_id="ch01-001", run_id="run-0001")
+    assert status_code == 0
+    assert "chronos_findings: CHRONOS_NO_SCENE_EVENTS" in status_text
+
+
+def test_chronos_events_in_other_scene_do_not_suppress_warning(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    events_dir = work / "chronos" / "events"
+    (events_dir / "ch01.yaml").write_text("events: []\n", encoding="utf-8")
+    (events_dir / "ch02.yaml").write_text(
+        "events:\n"
+        "  - id: EVT-0099\n"
+        "    title: 別場面の出来事\n"
+        "    type: state_change\n"
+        "    actors: [CHR-a]\n"
+        "    location: LOC-home\n"
+        "    time:\n"
+        "      after: []\n"
+        "    origin: authored\n"
+        "    source:\n"
+        "      scene: ch02-001\n"
+        "    effects_on:\n"
+        "      CHR-a:\n"
+        "        outfit: home\n",
+        encoding="utf-8",
+    )
+    (work / "chronos" / "scenes.yaml").write_text(
+        "scenes:\n"
+        "  - id: ch02-001\n"
+        "    chapter: 2\n"
+        "    order: 1\n"
+        "    mode: present\n"
+        "    refs: [EVT-0099]\n"
+        "    metron_scene_id: ch02-001\n",
+        encoding="utf-8",
+    )
+
+    _prepare_ok(work)
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron" / "ch01-001" / "marked.md",
+        request_id=None,
+    )
+    code, message = inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=None,
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    assert code == 0, message
+    report = load_json_model(
+        work / "_writing" / "ch01-001" / "run-0001" / "report.json", ReportDocument
+    )
+    assert report.chronos_registered is ItemStatus.FINDINGS
+    assert any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
 
 
 def test_normalized_hash_matches_fixture() -> None:

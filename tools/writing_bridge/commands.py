@@ -38,7 +38,7 @@ from .hashes import (
     read_normalized,
     text_sha256,
 )
-from .links import raise_if_errors, validate_links
+from .links import raise_if_errors, union_scene_events, validate_links
 from .locking import locked_scene
 from .models import (
     SCHEMA,
@@ -408,6 +408,7 @@ def inspect(
     text_state = ItemStatus.SKIPPED
 
     metron_notes: list[ReportFinding] = []
+    chronos_notes: list[ReportFinding] = []
     floor_met: bool | None = None
     if request.flags.metron is FlagValue.ON:
         metron_status, metro_errors, metron_notes, floor_met = _inspect_metron(
@@ -420,7 +421,10 @@ def inspect(
             store = load_store(root)
         except ChronosLoadError as error:
             raise BridgeError("UNKNOWN_REF", str(error)) from error
-        _validated_run_links(dest, request, store)
+        run_links = _validated_run_links(dest, request, store)
+        scene_event_ids = union_scene_events(store, request.scene_id)
+        if run_links is not None:
+            scene_event_ids.update(item.event_id for item in run_links.items)
         findings = check_store(store)
         if any(item.severity is ChronosSeverity.ERROR for item in findings):
             chronos_status = ItemStatus.FAILED
@@ -433,10 +437,20 @@ def inspect(
                     refs={"count": len(findings)},
                 )
             )
-        elif findings:
+        elif findings or not scene_event_ids:
             chronos_status = ItemStatus.FINDINGS
         else:
             chronos_status = ItemStatus.SUCCESS
+        if not scene_event_ids:
+            chronos_notes.append(
+                ReportFinding(
+                    code="CHRONOS_NO_SCENE_EVENTS",
+                    note=(
+                        f"CHRONOS has no registered events for scene {request.scene_id}; "
+                        "chronology was not evaluated for this scene (non-blocking)"
+                    ),
+                )
+            )
         observations = None
         source = observations_path or dest / "observations.json"
         if source.is_file():
@@ -489,6 +503,7 @@ def inspect(
         text_state=text_state,
         findings=[
             *metron_notes,
+            *chronos_notes,
             *[ReportFinding(code=item.code, note=item.message) for item in errors],
         ],
         open_issues=[item.model_dump(mode="json", by_alias=True) for item in errors],
@@ -569,6 +584,13 @@ def status(work_root: Path, *, scene_id: str, run_id: str) -> tuple[int, str]:
             required, advisory, _other = partition_findings(report.findings)
             lines.append(f"required_findings: {finding_codes(required)}")
             lines.append(f"advisory_findings: {finding_codes(advisory)}")
+        chronos_findings = [
+            item
+            for item in report.findings
+            if item.code == "CHRONOS_NO_SCENE_EVENTS"
+        ]
+        if chronos_findings:
+            lines.append(f"chronos_findings: {finding_codes(chronos_findings)}")
         repair_label = metron_auto_repair_label(report)
         if repair_label:
             lines.append(f"metron_auto_repair: {repair_label}")
