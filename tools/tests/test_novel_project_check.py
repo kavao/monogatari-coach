@@ -150,6 +150,80 @@ def test_inspection_layer_warning_exit_code_is_zero(tmp_path: Path) -> None:
     assert main([str(work), "--no-character-structure", "--check-inspection-layers"]) == 0
 
 
+def test_inspection_layers_warn_for_empty_metron_and_unmeasured_chapter(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n",
+        encoding="utf-8",
+    )
+    (work / "_novel_text" / "novel_text01.md").write_text(
+        "# 第一章\n\n本文があります。\n", encoding="utf-8"
+    )
+    (work / "_metron").mkdir()
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert result["ok"] is True
+    assert any("_metron/ が空です" in warning for warning in result["warnings"])
+    rows = inspection["unmeasured_chapters"]
+    assert len(rows) == 1
+    assert rows[0]["chapter"] == 1
+    assert rows[0]["text_path"].endswith("_novel_text\\novel_text01.md") or rows[0][
+        "text_path"
+    ].endswith("_novel_text/novel_text01.md")
+    assert rows[0]["missing"] == ["contract.yaml", "beats.yaml", "run"]
+    assert any("contract.yaml" in warning for warning in result["warnings"])
+    assert main([str(work), "--no-character-structure", "--check-inspection-layers"]) == 0
+    output = capsys.readouterr().out
+    assert "未計測 第1章" in output
+    assert "contract.yaml, beats.yaml, run" in output
+
+
+def test_inspection_layers_do_not_mark_chapter_with_contract_beats_and_run(
+    tmp_path: Path,
+) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n",
+        encoding="utf-8",
+    )
+    (work / "_novel_text" / "novel_text01.md").write_text(
+        "# 第一章\n\n本文があります。\n", encoding="utf-8"
+    )
+    scene = work / "_metron" / "ch01-001"
+    scene.mkdir(parents=True)
+    (scene / "contract.yaml").write_text("scene: {}\n", encoding="utf-8")
+    (scene / "beats.yaml").write_text("beats: []\n", encoding="utf-8")
+    (work / "_writing" / "ch01-001" / "run-0001").mkdir(parents=True)
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert inspection["unmeasured_chapters"] == []
+    assert result["warnings"] == []
+
+
 def test_inspection_layer_config_error_exit_code_is_one(tmp_path: Path) -> None:
     work = _make_valid_project(tmp_path)
     (work / "config.md").write_text(

@@ -165,10 +165,6 @@ def prepare(
                 )
     run_id = allocate_run_id(root, scene_id)
     request_id = allocate_request_id(root)
-    dest = run_dir(root, scene_id, run_id)
-    if dry_run:
-        return 0, f"would prepare: {dest}"
-
     request = RequestDocument(
         schema=SCHEMA,
         request_id=request_id,
@@ -202,8 +198,6 @@ def prepare(
             chronos=FlagValue(flags.chronos.value),
         ),
     )
-    dest.mkdir(parents=True, exist_ok=True)
-    write_model(dest / "request.yaml", request)
 
     store = None
     if flags.chronos is InspectionFlag.ON:
@@ -240,17 +234,36 @@ def prepare(
                     metron_on=flags.metron is InspectionFlag.ON,
                 )
             )
-        write_model(dest / "links.yaml", links)
-
     metron_dir = root / "_metron" / scene_id if flags.metron is InspectionFlag.ON else None
     extra = _input_rel_paths(root, request)
+    dest = run_dir(root, scene_id, run_id)
+    if dry_run:
+        # Validate the same contract/Beat/CHRONOS inputs as a real prepare
+        # without creating a run or its links/context files.
+        build_context(
+            root,
+            request,
+            store=store,
+            links=links,
+            metron_root=metron_dir,
+            extra_hashes=extra,
+        )
+        return 0, f"would prepare: {dest}"
+
+    dest.mkdir(parents=True, exist_ok=True)
+    write_model(dest / "request.yaml", request)
+    if links is not None:
+        write_model(dest / "links.yaml", links)
+    # The real run records its generated links file in input_hashes.  It is
+    # intentionally absent from the dry-run preflight because dry-run writes
+    # nothing.
     context = build_context(
         root,
         request,
         store=store,
         links=links,
         metron_root=metron_dir,
-        extra_hashes=extra,
+        extra_hashes=_input_rel_paths(root, request),
     )
     write_model(dest / "context.json", context, json_format=True)
     write_text(dest / "context.md", render_context_md(context))

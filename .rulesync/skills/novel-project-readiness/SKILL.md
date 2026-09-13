@@ -54,7 +54,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 | `--character-profile NAME` | `character.md` 構造 lint の profile（既定 `plan`） |
 | `--character-strict` | 表形式などの移行猶予 WARN を ERROR 扱いにする |
 | `--character-suggest` | `--json` 出力に不足項目追記案・表形式変換案を含める |
-| `--check-inspection-layers` | `config.md` の METRON / CHRONOS / AUDIT_LOG フラグと保存先を確認（WARN は終了コード 0） |
+| `--check-inspection-layers` | `config.md` の METRON / CHRONOS / AUDIT_LOG フラグと保存先、本文がある未計測章を確認（WARN は終了コード 0） |
 
 ## 不足時の典型対処
 
@@ -62,6 +62,7 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 - **`tag/<romaji>/` 未作成の WARN**: スキル **`novel-image-layout`**（`tools/novel_image_layout.py scaffold`）で作成。
 - **採番 NG**: スキル **`novel-code-allocate`** に従い `config.md` の `| novel_ID |` 表とフォルダ名を揃える。
 - **METRON / CHRONOS ON で保存先なし**: `_metron/` を作り、`python tools/chronos_cli.py init novels/<作品>` する。新規起こしの標準は ON。新規フォルダを作るときは `novel_onboard.py` を入口にし、確認の返答がない場合は `config.md` に「未応答・既定 ON」を記録する（明示 OFF の場合だけ `--metron OFF` / `--chronos OFF`）。
+- **METRON ON で `_metron/` が空、または本文のある章に契約・Beat・run がない**: `--check-inspection-layers` の WARN に未計測章と欠落項目が列挙される。契約・Beat を標準値で自動生成せず、章の設計に沿って準備してから `writing_bridge` の `prepare` を実行する。WARN は本文保存の完了ゲートではない。
 - **character.md 構造 NG**: スキル **`novel-character-profile`** に従い、必須ラベルの追加や表形式から `- **ラベル**:` 形式への移行を行う。
 
 ## 正本

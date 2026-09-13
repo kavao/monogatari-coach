@@ -278,9 +278,75 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
         "CHRONOS": work / "chronos",
     }
     for key, path in layer_dirs.items():
-        if flags.value_for(key) is iflags.InspectionFlag.ON and not path.is_dir():
+        if flags.value_for(key) is not iflags.InspectionFlag.ON:
+            continue
+        if not path.is_dir():
             warnings.append(
                 f"検査レイヤ {key} がONですが保存先がありません: {path.name}/"
+            )
+        elif key == "METRON" and not any(child.is_file() for child in path.rglob("*")):
+            warnings.append(f"検査レイヤ METRON がONですが {path.name}/ が空です")
+
+    unmeasured_chapters: list[dict[str, Any]] = []
+    metron_on = flags.value_for("METRON") is iflags.InspectionFlag.ON
+    if metron_on:
+        metron_root = work / "_metron"
+        writing_root = work / "_writing"
+        for text_path in _novel_text_files(work):
+            match = _RE_NOVEL_TEXT.match(text_path.name)
+            if match is None:
+                continue
+            chapter = int(match.group(1))
+            # 項分割は章単位の検査対象へまとめる。代表パスは章ファイルを優先する。
+            if match.group(2) is not None:
+                chapter_text = work / "_novel_text" / f"novel_text{chapter:02d}.md"
+                if chapter_text.is_file():
+                    if text_path != chapter_text:
+                        continue
+                else:
+                    previous = next(
+                        (item for item in unmeasured_chapters if item["chapter"] == chapter),
+                        None,
+                    )
+                    if previous is not None:
+                        continue
+            scene_dirs = (
+                [item for item in metron_root.glob(f"ch{chapter:02d}-*") if item.is_dir()]
+                if metron_root.is_dir()
+                else []
+            )
+            contract_exists = any((scene / "contract.yaml").is_file() for scene in scene_dirs)
+            beats_exists = any((scene / "beats.yaml").is_file() for scene in scene_dirs)
+            run_exists = False
+            if writing_root.is_dir():
+                for scene in writing_root.glob(f"ch{chapter:02d}-*"):
+                    if scene.is_dir() and any(
+                        child.is_dir() and re.fullmatch(r"run-\d+", child.name)
+                        for child in scene.iterdir()
+                    ):
+                        run_exists = True
+                        break
+            missing: list[str] = []
+            if not contract_exists:
+                missing.append("contract.yaml")
+            if not beats_exists:
+                missing.append("beats.yaml")
+            if not run_exists:
+                missing.append("run")
+            if not missing:
+                continue
+            try:
+                display_text = str(text_path.relative_to(work.parent))
+            except ValueError:
+                display_text = str(text_path)
+            item = {
+                "chapter": chapter,
+                "text_path": display_text,
+                "missing": missing,
+            }
+            unmeasured_chapters.append(item)
+            warnings.append(
+                f"本文 {display_text} がありますが METRON 未計測です（欠落: {', '.join(missing)}）"
             )
 
     return {
@@ -288,6 +354,7 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
         "config_path": str(config_path),
         "flags": flags.as_dict(),
         "warnings": warnings,
+        "unmeasured_chapters": unmeasured_chapters,
     }
 
 
@@ -843,6 +910,12 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             print(f"    検査レイヤ: 設定エラー — {il.get('error', '設定エラー')}")
+        for item in il.get("unmeasured_chapters") or []:
+            missing = ", ".join(item.get("missing") or []) or "—"
+            print(
+                f"      - 未計測 第{item.get('chapter')}章: "
+                f"{item.get('text_path')}（欠落: {missing}）"
+            )
 
     if result.get("warnings"):
         print("\n  警告（WARNING・NG ではない）:")

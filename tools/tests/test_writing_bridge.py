@@ -242,6 +242,34 @@ def test_cli_prepare_dry_run(tmp_path: Path) -> None:
     assert not (work / "_writing").exists()
 
 
+@pytest.mark.parametrize("missing_name", ["contract.yaml", "beats.yaml"])
+def test_prepare_dry_run_reports_missing_metron_artifact_like_prepare(
+    tmp_path: Path, missing_name: str
+) -> None:
+    work = _copy_ok(tmp_path)
+    (work / "_metron" / "ch01-001" / missing_name).unlink()
+    kwargs = dict(
+        scene_id="ch01-001",
+        text_path="_novel_text/novel_text01.md",
+        request_kind=RequestKind.NEW,
+        model_id="local-writer",
+        selector=Selector(kind=SelectorKind.HEADING, value="第一章　駅までの道"),
+        links_path=None,
+        repo_root=ROOT,
+    )
+
+    with pytest.raises(BridgeError) as dry_error:
+        prepare(work, **kwargs, dry_run=True)
+    assert dry_error.value.code == "UNKNOWN_REF"
+    assert not (work / "_writing").exists()
+
+    with pytest.raises(BridgeError) as normal_error:
+        prepare(work, **kwargs)
+    assert normal_error.value.code == dry_error.value.code
+    assert str(normal_error.value) == str(dry_error.value)
+    assert normal_error.value.refs == dry_error.value.refs
+
+
 def test_cli_receive_after_prepare_dry_run_fails(tmp_path: Path) -> None:
     work = _copy_ok(tmp_path)
     dry = _run_cli(
