@@ -413,11 +413,14 @@ def test_sequential_chapter_contract_is_explicit() -> None:
     )
     instruction = (ROOT / "docs" / "workflow" / "instruction-driven.md").read_text(encoding="utf-8")
 
-    # F1: 範囲指定でも1章で止めることを概念正本とdocsに示す。
-    assert "第X〜Y章と範囲" in concepts
-    assert "1回の応答で完了報告してよい本文は1章" in concepts
-    assert "最初の未完了章だけを扱い" in instruction
-    assert "次章は完了報告のあと" in instruction
+    # F1: 単一章は停止し、明示範囲・列挙は章ごとに直列継続して終端で止める。
+    assert "第X章だけを指定したときは1章で停止する" in concepts
+    assert "第X〜Y章の明示範囲または複数章の列挙は各章を1章ずつ直列に完了させ" in concepts
+    assert "指定範囲内を1章ずつ順に処理" in instruction
+    assert "範囲の最後で停止" in instruction
+    assert "batch_manifest" in writing
+    assert "各章の完了後に `batch_manifest` の次章へ自動遷移する" in writing
+    assert "バッチ全体を止め" in writing
 
     # F2: 「次」の解決元をチャット記憶にしない。
     assert "_meta.md" in writing
