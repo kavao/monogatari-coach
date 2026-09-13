@@ -12,6 +12,7 @@ description: >-
 
 - **初稿・執筆の正本**は **`_novel_text/novel_text*.md`**（スキル **`novel-text-file-output`**）。
 - **`_how_to/rewrite.md` を適用した清書結果**は、**`_novel_text_backup/` に旧版を退避したうえで** **`_novel_text/`** を更新する（本スキル）。
+- 複数章を範囲指定された清書でも、1回の応答で扱う章は1章に限る。次章は完了報告後、ユーザーの合図で開始し、章境界の詳細は **`novel-text-file-output`** に従う。
 
 ## パス規則（必須）
 

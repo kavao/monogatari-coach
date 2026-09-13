@@ -399,3 +399,48 @@ def test_docs_publish_recipe_does_not_reuse_draft_run() -> None:
             assert publish_ids and None not in publish_ids, path
             assert publish_ids <= receive_ids, path
             assert "run-0001" not in publish_ids, path
+
+
+def test_sequential_chapter_contract_is_explicit() -> None:
+    """複数章依頼の章境界と、次章へ進む根拠を正本・docs間で固定する。"""
+    concepts = (RULES / "concepts.md").read_text(encoding="utf-8")
+    workflow = (RULES / "workflow-specification.md").read_text(encoding="utf-8")
+    writing = (ROOT / ".rulesync" / "skills" / "novel-text-file-output" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    refinement = (ROOT / ".rulesync" / "skills" / "novel-refinement-output" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    instruction = (ROOT / "docs" / "workflow" / "instruction-driven.md").read_text(encoding="utf-8")
+
+    # F1: 範囲指定でも1章で止めることを概念正本とdocsに示す。
+    assert "第X〜Y章と範囲" in concepts
+    assert "1回の応答で完了報告してよい本文は1章" in concepts
+    assert "最初の未完了章だけを扱い" in instruction
+    assert "次章は完了報告のあと" in instruction
+
+    # F2: 「次」の解決元をチャット記憶にしない。
+    assert "_meta.md" in writing
+    assert "完了している最新章" in writing
+    assert "チャットの記憶だけで決めず" in writing
+
+    # F4/F5: 未完了前章と全対象完了の条件を保持する。
+    assert "前章が未完了のまま後続章を指定された場合" in writing
+    assert "分割本文・複数sceneは一覧の全対象が完了するまで章完了にしない" in writing
+    assert "本文と準備を始めず未完了理由" in instruction
+
+    # F9: 章境界と経路の責任分界を別の正本へ向ける。
+    assert "章境界は `concepts.md` の「完了扱い条件」" in workflow
+    assert "経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」" in workflow
+    assert "章境界の詳細は **`novel-text-file-output`**" in refinement
+
+
+def test_sequential_chapter_bridge_grammar_contract_is_explicit() -> None:
+    """F7: bridge候補を受領前に校正し、publish後の正本を直接fixしない。"""
+    writing = (ROOT / ".rulesync" / "skills" / "novel-text-file-output" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    workflow = (RULES / "workflow-specification.md").read_text(encoding="utf-8")
+    assert "`receive` 前に候補へ `grammar --fix-dry-run`" in writing
+    assert "publish後の正本へこの節の `--fix` を直接適用しない" in writing
+    assert "writing_bridge の候補は `receive` 前に校正" in workflow

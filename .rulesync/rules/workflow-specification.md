@@ -45,7 +45,7 @@ METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測�
 
 ## 執筆接続の起動判定
 
-通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」。
+通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。複数章依頼の章境界は `concepts.md` の「完了扱い条件」と本文スキル（清書は `novel-refinement-output` の参照）に従い、経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」に従う。
 
 - 両方 OFF: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
 - METRON または CHRONOS が ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
@@ -1440,7 +1440,7 @@ bunko の reader-proof を出してください。
 5. novel_text.mdの初稿作成
    - 分量（例: 1回8000字以上の目安）を報告するときは、`tools/novel_char_count.py` で対象の `novel_text*.md` を数えた結果に基づく（スキル `novel-char-count` 参照）。
    - **経路は一つ**: METRON / CHRONOS ON の場面作業は「執筆接続の起動判定」に従う。ハッシュ一致の active run があるときは `_novel_text` 直接更新と `publish` を重ねない。
-   - **執筆直後（推奨）**: 保存・確認のあと `tools/novel_text_rewrite_lint.py` を **`--profile grammar --fix`** で誤打・体裁を機械校正する（`--fix-dry-run` を先に）。rewrite 清書の代わりにはしない（スキル **`novel-text-rewrite-lint`**・**`novel-text-file-output`**）。
+   - **執筆直後（従来経路のみ）**: 保存・確認のあと `tools/novel_text_rewrite_lint.py` を **`--profile grammar --fix`** で誤打・体裁を機械校正する（`--fix-dry-run` を先に）。writing_bridge の候補は `receive` 前に校正し、publish後の正本へ直接 `--fix` しない。rewrite 清書の代わりにはしない（スキル **`novel-text-rewrite-lint`**・**`novel-text-file-output`**）。
 6. 清書・文章校正では、**先に `_novel_text_backup/` へ旧版退避し、その後 `_novel_text/` 内の同一ファイル名を更新**する（詳細はスキル **`novel-refinement-output`**）。
    - 執筆・清書・追記の完了扱いは **`.rulesync/rules/concepts.md`** の「完了扱い条件」とスキル **`novel-text-file-output`** を正とする。
    - 分量比較が必要なときは、`tools/novel_char_count.py` の数値を用いる（スキル `novel-char-count` 参照）。

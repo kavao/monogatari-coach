@@ -193,11 +193,13 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 第1章を執筆してください。
 ```
 
+複数章を指定する場合も、Monogatari Coach は1回の応答で最初の未完了章だけを扱い、その章の本文保存・確認・句読点ゲート・ストーリー反映が終わったところで停止します。次章は完了報告のあとに「次」または章番号を指定して開始します。前章が未完了のまま後続章を指定した場合は、本文と準備を始めず未完了理由を報告します。
+
 **このように動きます:**
 1. `writer_profile.md` を参照して作家の文体を確認する
 2. `proposal.md` / `design_specification.md` / `character.md` / `world.md` を参照する
 3. `novels/<作品>/_novel_text/novel_text01.md` に本文を書き出す（4000〜8000字目安）
-4. 書き終えたら `tools/novel_char_count.py` で文字数を集計して報告する
+4. 正本を再確認し、句読点ゲートとストーリー反映を終えてから `tools/novel_char_count.py` で文字数を集計して報告する。文字数の集計だけでは完了になりません
 
 章・項を指定する場合は以下のように補足できます。
 

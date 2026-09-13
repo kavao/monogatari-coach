@@ -15,6 +15,13 @@ targets: ["*"]
 
 横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。このスキルは、小説本文出力でその条件を満たすための実行手順を定める。
 
+## 複数章の依頼でも1章ずつ反復する
+
+- ユーザーが第X〜Y章の範囲を指定しても、1回の応答で新規起草・改稿する本文は1章だけにする。章の正本保存・確認・句読点・story reflectionまで完了報告したら停止し、次章はユーザーの「次」または明示指定を待つ。
+- 「次」はチャットの記憶だけで決めず、対象作品の `_meta.md` の次回タスクと、本文として完了している最新章から次の未完了章を解決する。前章が未完了のまま後続章を指定された場合は本文・prepareを始めず、前章の未完了理由を報告する。前章を飛ばすのはユーザーの明示指示がある場合だけとする。
+- 作業開始時の `target_manifest` はチャット内の一時メモとし、章番号、題名、本文パス、scene ID、設計アンカー、METRON / CHRONOS対象を列挙する。新しいリポジトリファイルや `context.md` の正本にはせず、分割本文・複数sceneは一覧の全対象が完了するまで章完了にしない。
+- 章をまたぐ本文起草、候補受領、修復、publish、story reflectionの並列分担はしない。ツール失敗、stale、`escalated`、ユーザーの停止指示では現在章を未完了として止め、次章へ進まない。
+
 ## 完了の定義（本文出力での適用）
 
 ユーザーに「執筆した」「本文を出した」「ファイルに保存した」などと **完了扱い**で伝えてよいのは、`.rulesync/rules/concepts.md` の「完了扱い条件」を満たしたときに限る。本スキルでは次の順で適用する。経路が writing_bridge のときは、同じターンで `_novel_text` の手編集と `publish` を重ねない。
@@ -45,6 +52,8 @@ targets: ["*"]
 ## ツール予告と応答の継続（宣言のみで終えない）
 
 「まず旧版を退避してから加筆します」「ツールで退避→加筆→確認を行います」など、**これからツールで実行する旨**を述べた場合、**その応答で前置きだけを出して終えない**。
+
+複数章の依頼でも、この実行継続は現在の1章の反復内だけに適用する。章の完了を報告したら次章の保存・検査へ進まず、ユーザーの合図を待つ。
 
 - **同一応答（同一ターン）内**で、可能なら **退避・`_novel_text/` への書き込み・`Read`／`novel_char_count.py`** まで進める。長くなる場合でも、**最低でも退避（バックアップファイルの作成）または正本への書き込みのいずれか一歩**をツールで実行してから区切る。
 - **応答が続く場合**、次のメッセージでは **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
@@ -77,7 +86,10 @@ targets: ["*"]
 
 対象場面に `_writing/<scene_id>/<run_id>/` の active run があり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するとき。入口は `python tools/writing_bridge_cli.py`。ディレクトリがあるだけでは切り替えない。`prepare` 前は従来経路。
 
+起草候補の raw hash と publish 後のマーカー除去・合成済み正本の raw hash は別版として扱う。完了照合は正本最終版と、それを指す publish / story reflection の記録で行い、候補版との raw hash 一致は要求しない。
+
 - **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
+- **候補の校正**: bridge経路では `receive` 前に候補へ `grammar --fix-dry-run` を行い、必要な機械修正も候補だけへ適用する。正本 `_novel_text` を直接校正しない。
 - **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
 - **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 - **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
@@ -103,9 +115,9 @@ targets: ["*"]
 - 従属節や読点の切れ目だけで「。」を打たない。「は、」「を、」の直後だけで文を切らない。
 - 数値目標はここに書かない。合否は句読点ゲートだけを正とする。
 
-## 執筆直後の機械校正（推奨・任意）
+## 従来経路での執筆直後の機械校正（推奨・任意）
 
-上記 1〜4 で **執筆完了**としたあと、同一ターンまたは直後のターンで、誤打・体裁の第一校正として次を実行する（詳細はスキル **`novel-text-rewrite-lint`**）。
+上記 1〜4 で **執筆完了**としたあと、writing_bridge を使わない従来経路に限り、同一ターンまたは直後のターンで誤打・体裁の第一校正として次を実行する（詳細はスキル **`novel-text-rewrite-lint`**）。bridge経路の候補は、上記のとおり `receive` 前に校正する。publish後の正本へこの節の `--fix` を直接適用しない。後から正本を修正する場合は、新しい refine / publish run で再検査する。
 
 ```bash
 python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_textXX.md --profile grammar --fix-dry-run
@@ -127,7 +139,7 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 ## 関連
 
 - 執筆**前**の資料・フォルダ: スキル **`novel-project-readiness`**（`tools/novel_project_check.py`）
-- 執筆直後の誤打・体裁の機械校正: **`novel-text-rewrite-lint`**（`grammar --fix`）
+- 従来経路での執筆直後の誤打・体裁の機械校正: **`novel-text-rewrite-lint`**（`grammar --fix`）。bridge候補は `receive` 前に校正する。
 - **`rewrite.md` による清書・旧版退避と正本更新**: スキル **`novel-refinement-output`**
 - 分量の公式カウント: **`novel-char-count`**（`tools/novel_char_count.py`）
 - 句読点ゲート: **`tools/novel_punctuation_metrics.py --gate`**
