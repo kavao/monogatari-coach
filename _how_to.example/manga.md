@@ -45,6 +45,29 @@ YAML IR では、少なくとも次を分離して持つ。
 **`scene` の英語フィールド（タグ行・txt2img）**
 `location_en` は**必須（非空）**。`time_of_day` / `weather` / `background_notes` を書いたら、対応する `time_of_day_en` / `weather_en` / `background_notes_en` も**必須**（`tools/manga_prompt_ir/schemas/manga_page.py` の `Scene` で検証）。`tools/manga_prompt_ir/scene_prompt.py` は **`*_en` のみ**参照し、日本語の `location` 等にはフォールバックしません。欠けは LLM 側で英語行を補ってから保存する。
 
+**`location_en` には場所だけを書く（体位・進行はコマへ）**
+
+ページの `scene.location_en` は、そのコマに `panels[].scene` が無い限り **全コマのタグ行へ同じ1本として載る**（空白は `_` になる。`background_notes_en` と違いカンマ分割しない）。ページの出来事を `then` でつなぐと、騎乗・持ち上げ・仰向けなどが **まだその体勢でないコマ** にも混ざる。
+
+- **書いてよい**: 部屋・家具・小道具配置など、そのページで共通する場所。例: `bedroom futon, empty pillow unused`
+- **書いてはいけない**: 体位・動作の連鎖、次コマの先読み。例: `cowgirl then lift-and-flip to supine`
+- **体勢の置き場**: そのコマの `panels[].prompt_tags` と `subjects[].pose_action_en`。場所そのものがコマで変わるときだけ `panels[].scene.location_en` で上書きする。
+
+```yaml
+# 悪い例（ページ共通に進行が入る → 全コマへ漏れる）
+scene:
+  location_en: bedroom futon, cowgirl then lift-and-flip to supine, empty pillow unused
+
+# 良い例（場所だけ。体勢はコマ側）
+scene:
+  location_en: bedroom futon, empty pillow unused
+panels:
+  - panel_id: 1
+    prompt_tags: [cowgirl_position]
+  - panel_id: 4
+    prompt_tags: [lift_and_flip, lying_on_back]
+```
+
 `Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
 
 キャラクターの服装・状態差分は、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかで明示する。値は `tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。指定がある場合、画像生成バッチは基本衣装ではなく該当バリアントの `danbooru_tags` を優先して注入する。
@@ -65,6 +88,7 @@ YAML IR では、少なくとも次を分離して持つ。
 - **`subjects[]`**: 引き続き**誰の身体か**（タグ注入の帰属）を示す。腰だけ・手元だけでも、`character_id` と `description` で「誰の・画面に映っている範囲はどこまでか」を明記する。
 - **`prompt_tags`**: **画に実際に写っている見え方**を優先する。部位・画角・質感の例: `slim waist` `midriff` `thighs` `trembling hands` `extreme close-up` `face focus` `parted lips` `sweat` `flushed` など。**フレーム外の要素**（全身コーデ・画面に入っていない髪型の明示など）は無理に足さず、全身向けの人物ラベルだけで埋めない。キャラの固定特徴の注入は **`subjects` とキャラ YAML／スナップショット**が担うので、`prompt_tags` は**そのコマで絵を決める局所的な記述**に寄せる。
 - **`summary` / `description`（日本語）**: 「誰の・どの部位が・どんな状態で」写っているかを部位レベルで書き、`prompt_tags` の英語と矛盾させない。
+- **比喩動作・作品語の直訳禁止**: 本文の「円を描く」「筋を描く」などを `drawing circles` に落とさない。「すべり」「色づく」「漏斗」や `summary_en` の複文もタグ行に直訳しない。置換は **`manga_tag.md` の「追加ルール」**。
 
 語彙の引き出しは `_how_to/manga_tag.md` の部位・体勢の例と併用する。
 

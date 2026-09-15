@@ -313,3 +313,15 @@ sound effects visualization
 # 状態
 - in bathtub
 湯船に入っている場合、in bathtubを追加する。自然に過ごす場合は湯船には座っている等の状態についても考慮する
+
+# 追加ルール
+以下、漫画タグを生成するときの判断基準。置き換えはツールが自動では適用しない。YAML の `pose_action_en` / `focus_en` / `summary_en` と `prompt_tags` へ明示して書く。
+
+- 本文・YAML日本語の「円を描く」「筋を描く」はほぐし／塗布などの**基本運動**。プロフィールや anatomy の日本語はそのまま残す。`pose_action_en` / `focus_en` / `summary_en`（タグ行に乗る）へ `drawing circles` / `drawing tiny circles` / `tiny circles` / `drawing oil lines` と直訳しない（肌や肩に図形が乗る）。
+  - 「円を描く」（ほぐし）→ `massage` / `massaging a shoulder with a tiny palm`（`drawing circles` は外す）
+  - 「筋を描く」（オイル・塗布）→ `spreading oil`（`drawing oil lines` / `paints lines` は外す）
+
+- `pose_action_en` / `focus_en` / `summary_en` は Step1 でタグ行に乗る（空白は `_` になる）。内心・セリフ・and つなぎの複文を置かない（`_and_her_nipples_...` のような偽タグになる）。見た目は短い英語フレーズか `prompt_tags` へ。
+  - 作品語の「すべり」（ワセリンなどの潤滑）→ `vaseline` / `lubrication` / `lotion`（`slip` は下着のスリップや滑落になるので外す）
+  - 「色づく」（乳首など）→ `pink_nipples` など見た目タグ（`begin to color` / `coloring` は塗る工程になるので外す）
+  - 作品語の「漏斗」（内部の形状俗称）→ `vaginal` / `deep penetration` など部位・行為タグ。形状の細目はキャラ正本に残す。`funnel` は物体になるので外す
