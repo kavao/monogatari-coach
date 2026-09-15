@@ -23,6 +23,12 @@ targets: ["*"]
 - 明示範囲や列挙がない「次」は、対象作品の `_meta.md` の次回タスクと、本文として完了している最新章から次の未完了章を1章だけ解決する。チャットの記憶だけで決めず、前章が未完了のまま後続章を指定された場合は本文・prepareを始めず、前章の未完了理由を報告する。前章を飛ばすのはユーザーの明示指示がある場合だけとする。
 - 章をまたぐ本文起草、候補受領、修復、publish、story reflectionの並列分担はしない。各章は `receive` → `inspect` →（必要なら修復）→ `publish` → story reflection の証跡を確認してから完了とし、`prepare` や run 内の `candidate.md` だけでは完了としない。ツール失敗、stale、`escalated`、ユーザーの停止指示では現在章を未完了としてバッチ全体を止め、後続章へ進まない。章ごとの完了は内部チェックポイントと査証ログへ残し、明示バッチの最終報告は終端後に行う。
 
+### 複数章 × METRON ON の遷移ゲート
+
+- `batch_manifest` の各章を開始するときは対象場面を確定し、METRON ON なら `contract.yaml` / `beats.yaml` を整えてから `prepare` を実行し、active run を確認して本文作業へ進む。準備できない章はその章で停止し、`_novel_text` を直接追記・先行作成しない。
+- 章の遷移は `prepare` → 候補作成 → `receive` → `inspect`（必要なら修復・publish・story reflection）を同じ章で完了した証跡を条件にする。`novel_project_check --check-inspection-layers` の終了コードが0でも、未計測警告があれば次章へ進まない。
+- 既存本文の後追い計測も同じゲートを使う。最初の未計測章を拾い、`contract/beats` の欠落を補ってから計測を完了し、次の章へ移る。
+
 ## 完了の定義（本文出力での適用）
 
 ユーザーに「執筆した」「本文を出した」「ファイルに保存した」などと **完了扱い**で伝えてよいのは、`.rulesync/rules/concepts.md` の「完了扱い条件」を満たしたときに限る。本スキルでは次の順で適用する。経路が writing_bridge のときは、同じターンで `_novel_text` の手編集と `publish` を重ねない。

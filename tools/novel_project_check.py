@@ -349,6 +349,13 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
                 f"本文 {display_text} がありますが METRON 未計測です（欠落: {', '.join(missing)}）"
             )
 
+        if unmeasured_chapters:
+            warnings.append(
+                "METRON 未計測章があります。複数章処理では最初の未計測章で停止し、"
+                "欠落項目を解消して prepare → receive → inspect を完了してから次章へ進んでください。"
+                "この警告は終了コード0でも次章遷移のゲートとして扱い、_novel_text へ直接追記しないでください。"
+            )
+
     return {
         "ok": True,
         "config_path": str(config_path),

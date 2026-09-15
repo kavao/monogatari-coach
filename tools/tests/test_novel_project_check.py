@@ -185,10 +185,14 @@ def test_inspection_layers_warn_for_empty_metron_and_unmeasured_chapter(
     ].endswith("_novel_text/novel_text01.md")
     assert rows[0]["missing"] == ["contract.yaml", "beats.yaml", "run"]
     assert any("contract.yaml" in warning for warning in result["warnings"])
+    assert any("最初の未計測章で停止" in warning for warning in result["warnings"])
+    assert any("次章遷移のゲート" in warning for warning in result["warnings"])
     assert main([str(work), "--no-character-structure", "--check-inspection-layers"]) == 0
     output = capsys.readouterr().out
     assert "未計測 第1章" in output
     assert "contract.yaml, beats.yaml, run" in output
+    assert "最初の未計測章で停止" in output
+    assert "_novel_text へ直接追記しないでください" in output
 
 
 def test_inspection_layers_do_not_mark_chapter_with_contract_beats_and_run(
