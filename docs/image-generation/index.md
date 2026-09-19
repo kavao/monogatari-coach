@@ -7,6 +7,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 ## 関連ファイル
 
 - 実行クライアント: [`/tools/image_provider_generate.py`](../../tools/image_provider_generate.py)
+- 既存画像のImage2Imageリライト: [image-provider-edit.md](image-provider-edit.md)
 - 漫画ページ一括生成: [`/tools/image_provider_novel_manga_batch.py`](../../tools/image_provider_novel_manga_batch.py)
 - キャラタグ一括生成: [`/tools/image_provider_novel_tag_batch.py`](../../tools/image_provider_novel_tag_batch.py)
 - 設定: [`/config/image_generation.json`](../../config/image_generation.json)

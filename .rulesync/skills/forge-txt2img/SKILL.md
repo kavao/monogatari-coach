@@ -17,6 +17,12 @@ targets: ["*"]
 
 v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `openai` / `openrouter`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`**、OpenAI は **`OPENAI_API_KEY`**、OpenRouter は **`OPENROUTER_API_KEY`** を使って REST API に接続する。
 
+### txt2img と restyle/edit の入口分離
+
+`tools/image_provider_generate.py` は従来どおりtxt2imgの正式入口とし、`--action img2img` を追加してrestyle用途へ流用しない。既存画像1枚のNovelAI Image2Image／絵柄リライトは、専用の `tools/image_provider_edit.py` から `--operation image-to-image --intent restyle` を明示して実行し、複数画像を1回の処理へまとめる場合も同じ `image_provider_edit.py` に `--batch` を付けて実行する（batch実装は `tools/image_provider_edit_batch.py` に分離）。edit CLIはNovelAIの入力画像・strength・noise・Vibe参照を検証し、未実装providerへの切替やtxt2imgへの代替を行わない。
+
+edit CLI（単画像・`--batch`）は必ず `--dry-run` で計画とredacted payloadを確認してから、明示した `--execute` で本番要求を送る。batchは1回につき `_restyle/<batch_id>/` を1つ作り、各コマの計画・候補・結果をそこへ集約する。dry-runと保存JSONには元画像base64、Vibe encoding、認証ヘッダーを出さない。候補はrestyle専用runディレクトリへ保存し、採用・正規画像へのコピーは別操作とする。寸法変換、RGBA合成、未検証のV5＋Vibe、明示portionのfallbackは自動で行わない。
+
 ## プロバイダ解決の優先順位（LLM 向け確認手順）
 
 > **⚠️ LLM 必須アクション（最初に行う）**

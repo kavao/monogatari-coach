@@ -204,3 +204,41 @@ def resolve_novelai_portion(
     raise ValueError(
         f"{meta_path}: portion {chosen!r} not found in novelai.portions"
     )
+
+
+def resolve_novelai_portion_strict(
+    novel_dir: Path,
+    root: Path,
+    *,
+    portion_id: str,
+) -> NovelaiPortion:
+    """Resolve an explicitly named portion without fallback.
+
+    Existing batch callers keep the historical ``portion_fallback`` behavior
+    through :func:`resolve_novelai_portion`.  The explicit image-edit/restyle
+    path uses this function so a missing or broken named reference cannot be
+    silently replaced by another style.
+    """
+    chosen = str(portion_id or "").strip()
+    if not chosen:
+        raise ValueError("strict portion resolution requires an explicit portion_id")
+    meta = load_meta_yaml(novel_dir)
+    meta_path = find_meta_yaml_path(novel_dir) or (novel_dir / META_YAML_FILENAME)
+    if meta is None:
+        raise FileNotFoundError(f"{meta_path} が見つかりません")
+    novelai = meta.get("novelai")
+    if not isinstance(novelai, dict):
+        raise ValueError(f"{meta_path}: novelai セクションがありません")
+    portions = novelai.get("portions")
+    if not isinstance(portions, dict) or not portions:
+        raise ValueError(f"{meta_path}: novelai.portions がありません")
+    if chosen not in portions:
+        raise ValueError(
+            f"{meta_path}: portion {chosen!r} が見つかりません。fallback/defaultは使用しません"
+        )
+    return _portion_entry(
+        chosen,
+        portions[chosen],
+        novel_dir=novel_dir,
+        root=root,
+    )

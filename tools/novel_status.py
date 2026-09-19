@@ -121,7 +121,9 @@ def _get_latest_image_timestamp(work_dir: Path) -> str:
         return "なし"
     images = []
     for ext in ("*.png", "*.jpg", "*.webp"):
-        images.extend(assets_dir.rglob(ext))
+        images.extend(
+            path for path in assets_dir.rglob(ext) if "_restyle" not in path.parts
+        )
     if not images:
         return "なし"
     latest = max(images, key=lambda p: p.stat().st_mtime)
@@ -164,7 +166,7 @@ def _has_images(work_dir: Path) -> bool:
     if not assets_dir.is_dir():
         return False
     for ext in ("*.png", "*.jpg", "*.webp"):
-        if any(assets_dir.rglob(ext)):
+        if any("_restyle" not in path.parts for path in assets_dir.rglob(ext)):
             return True
     return False
 

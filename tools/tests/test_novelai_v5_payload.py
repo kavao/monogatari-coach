@@ -139,6 +139,7 @@ def test_v5_payload_includes_v4_prompt() -> None:
     assert "location" not in caption
     assert payload["parameters"]["params_version"] == 3
     assert "straight_alpha" not in payload["parameters"]
+    assert "image" not in payload["parameters"]
 
 
 def test_v5_opt_in_alpha_flags() -> None:
