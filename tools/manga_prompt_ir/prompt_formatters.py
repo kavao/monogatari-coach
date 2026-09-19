@@ -444,12 +444,16 @@ def manga_panel_composition_lines(panel: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     comp = panel.get("composition") or {}
     camera = panel.get("camera") or {}
+    camera_values = [
+        camera.get("angle_en") or camera.get("angle"),
+        camera.get("view_en") or camera.get("view"),
+    ]
     for label, value in (
         ("Layout", comp.get("layout_en") or comp.get("layout")),
         ("Framing", comp.get("framing_en") or comp.get("framing")),
         ("Focus", comp.get("focus_en") or comp.get("focus")),
         ("Perspective", comp.get("perspective_en") or comp.get("perspective")),
-        ("Camera", camera.get("angle_en") or camera.get("angle")),
+        ("Camera", ", ".join(str(value) for value in camera_values if value)),
     ):
         if value:
             lines.append(f"- {label}: {value}")

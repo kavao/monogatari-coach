@@ -20,6 +20,56 @@
 - **手と手だけ／キャラYAMLを載せない**: `character_id` 無し・`description_en`／`tag_token` で手の特徴だけ載せる運用は **`manga.md` の「手元・手と手など『キャラID注入を載せない』コマ」** を参照。
 - **`manga.genre_tags` / `manga.visual_tags`（ページ共通）**: 互換 Step1 の **各コマ `tag` 行**にページ単位で付く。**フルカラー運用では原則 `monochrome`・`screentone` を入れない**（コマの `prompt_tags` だけ整えても、ここに残ると白黒寄りが毎コマ付き続ける）。詳細は **`manga.md` の「`manga.genre_tags` / `manga.visual_tags`」**。
 
+## 画角（角度・距離・視点）
+
+コマの画角は、`panels[].camera` の **角度**・**距離**・**視点／被写体収まり**を分けて書く。日本語欄は人間向けのメモ、`angle_en` / `shot_size_en` / `view_en` は生成タグと機械検査に使う正規トークンとする。許容語彙の機械的な集合は [`tools/manga_prompt_ir/data/camera_shot_vocab.yaml`](../tools/manga_prompt_ir/data/camera_shot_vocab.yaml) に置く。語を追加するときは、この表とレジストリを同じ変更で更新する。
+
+### 角度（`camera.angle` / `angle_en`）
+
+| 日本語 | `angle_en` | 使うとき |
+|--------|------------|----------|
+| 目線 | `eye level` | 対話・立ち位置の基準。連続コマでの連発は避ける |
+| 俯瞰 | `high angle` | 体格差、膝上、寝ている相手を見下ろす |
+| あおり | `low angle` | 威厳、見上げ、祭壇、大きい身体 |
+| 真後ろ | `from behind` | 見送る、背中、窓の外 |
+| 肩越し | `over the shoulder` | 会話の相手、手に持った物 |
+| 三人称側面 | `from side` | 並び、騎乗の輪郭、体の重なり |
+
+### 距離（`camera.shot_size` / `shot_size_en`）
+
+| 日本語 | `shot_size_en` | 使うとき |
+|--------|----------------|----------|
+| ロング | `long shot` | establishing、空間、星空 |
+| 全身 | `full body` | 立ち姿の紹介、体格差の一枚 |
+| ミディアム | `medium shot` | 腰から上の会話。連続コマの既定にしない |
+| バスト | `medium close-up` | 表情と胸元、上半身の反応 |
+| 接写 | `close-up` | 手、入口、額のキス、重要な小物 |
+| 極接写 | `extreme close-up` | 瞳、指先、錠前。前後のコマでは引く |
+
+### 視点・被写体収まり（`camera.view` / `view_en`）
+
+`view_en` は、角度（誰の高さから見るか）と距離（どれだけ寄るか）とは別の補助軸で、1コマにつき1トークンだけ書く。`solo bust` のように空白を含む表記も1トークンとして扱う。寄り具合は `shot_size_en` に残し、何が主対象かは `focus_en` と `prompt_tags` で補足する。
+
+| 日本語 | `view_en` | 使うとき |
+|--------|-----------|----------|
+| ソロバスト | `solo bust` | 一人の胸から上。表情と上半身を主にする。距離は原則 `medium close-up` |
+| ソロ顔 | `solo face` | 一人の顔を枠の主にする。距離は原則 `close-up` |
+| POV | `pov` | 一人称の目。手・相手・対象だけが見える。既存の `prompt_tags: pov` は後方互換で、`view_en` を書くコマでは重ねない |
+| 対顔 | `two faces` | 三人称で二人の顔を同じ枠に入れる。`framing_en: two shot` をコピーしない |
+| 接触ズーム | `contact close-up` | 二人の手・口・肌などの接触点を枠の主にする。顔は切れてもよい |
+| 捜査ズーム | `inspect close-up` | 錠前・傷・痕跡・道具などの注目点を枠の主にする |
+
+- `contact close-up` / `inspect close-up` は距離語や `focus_en` の代わりではない。距離は `close-up` / `extreme close-up`、固有の接触部位・痕跡名は `focus_en` と `prompt_tags` に書く。
+- `framing_en: insert shot` は切り込みコマのときだけ使い、`view_en` の語をコピーしない。
+- 1コマに複数の意味があるときの優先順位は `pov` → `contact close-up` → `inspect close-up` → `two faces` → `solo face` → `solo bust`。POV を選んだ場合、相手や対象は `subjects[]` と `focus_en` に任せる。
+
+### `composition` との使い分け
+
+- `composition.framing_en` は切り方・配置の補足だけに使う（例: `establishing shot`, `insert shot`, `two shot`）。`camera.shot_size_en` と同じ距離語をコピーしない。
+- `composition.focus_en` は注視点（例: `starry window`, `intact hymen`）を書く。キャラID単体は置かない。
+- `composition.perspective_en` は強いパースが必要なコマだけに使う（例: `forced perspective`, `looking down a marble aisle`）。
+- `camera.view_en` は一人称・顔の収まり・接触点・捜査点を示す。`view_en: pov` を書いたコマでは `prompt_tags` に `pov` / `first_person_view` を重ねない。`view_en` が空の既存 YAML では、従来どおり `prompt_tags` の `pov` / `first_person_view` を使える。`camera.angle_en` の代わりにはしない。
+
 ## 目・視線・表情タグ（コマ用）
 
 **キャラの目の形・色**（`tsurime`, `brown_eyes` 等）は **`world_wear.md` §12** と `tag/characters/*.yaml` の **`000_base`** を正とする。本節は **コマごとに変わる**目元・視線・涙・瞳孔演出の語彙。運用コピーは通常 **`_how_to/manga_tag.md`** に同内容を置く。

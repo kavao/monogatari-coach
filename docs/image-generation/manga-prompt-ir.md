@@ -90,6 +90,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 ```
 
 - 本番前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を推奨。
+- 画角・視点（`camera.angle_en` / `shot_size_en` / `view_en` の未知語、同一ページ内の隣接コマで角度と距離が両方同じ）は **Advisory** として標準エラーに出るだけです。`view_en` は隣接コマの連続規則の対象外で、`--strict-quality` の失敗条件には入りません。
 - 通常は `--input yaml` が既定。旧 Markdown 互換だけ `--input markdown`。
 - 修正は **常に YAML 側**。`manga_XX.md` が要るときだけ再エクスポート。
 - **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `image_provider_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。

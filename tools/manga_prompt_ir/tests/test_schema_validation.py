@@ -18,7 +18,7 @@ _EXAMPLES = _PKG_ROOT / "examples"
 from manga_prompt_ir.converters.prompt_renderer import extract_text_elements, render_page_prompt
 from manga_prompt_ir.converters.yaml_loader import load_model
 from manga_prompt_ir.schemas.character import CharacterPrompt
-from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
+from manga_prompt_ir.schemas.manga_page import Camera, MangaPagePrompt
 
 from image_provider_novel_manga_batch import filter_single_panel_tags
 
@@ -38,6 +38,12 @@ def test_manga_page_yaml_validates_and_renders() -> None:
     assert "panel 1" in rendered.prompt
     assert "black_hair" in rendered.tags
     assert "bad_hands" in rendered.negative_tags
+
+
+def test_camera_view_fields_remain_free_strings() -> None:
+    camera = Camera(view="任意の視点メモ", view_en="custom view")
+    assert camera.view == "任意の視点メモ"
+    assert camera.view_en == "custom view"
 
 
 def test_illustration_page_yaml_validates() -> None:

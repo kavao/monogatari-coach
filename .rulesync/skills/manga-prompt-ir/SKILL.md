@@ -147,6 +147,8 @@ targets: ["*"]
 
 **創作技法としてのコマ割り・ページ設計・IR の組み立て**は **`_how_to/manga.md`**（雛形は `_how_to.example/manga.md`）。構造・型・正本/副本の横断定義は **`.rulesync/rules/concepts.md`** と本スキル、検証の実装は `novel_prompt_ir_validate.py` が担う。**ツール連携の手順の詳細**は **`docs/image-generation/manga-prompt-ir.md`**、**互換 Markdown の Step1/Step2 長文テンプレ・実例**は **`docs/image-generation/manga-tag-generation.md`**。一方、**コマ単位の英語タグ語彙・置き換え・NSFW 表記の慣例**は **`_how_to/manga_tag.md`**（雛形は `_how_to.example/manga_tag.md`）を正とする。**Step2 要約・抽象ページ指示**は **`_how_to/manga_tag_step2.md`**（雛形 **`_how_to.example/manga_tag_step2.md`**）を正とする。
 
+画角・視点の許容語彙は `tools/manga_prompt_ir/data/camera_shot_vocab.yaml` を参照する。ここへ語彙表を複製せず、人間向けの使い分けと例は `_how_to/manga_tag.md` に置く。
+
 ### エージェント／人間の必須動作（ページ YAML を新規・改稿するとき）
 
 1. **`manga/pages/*.yaml` の `panels[].prompt_tags` を書く前に**、必ず **`_how_to/manga_tag.md`** を読む（ユーザーが `_how_to/` をカスタムしている場合はそちらが優先。未編集なら `_how_to.example/manga_tag.md` と同内容を想定）。
@@ -154,7 +156,7 @@ targets: ["*"]
 2. 次を **`prompt_tags` に反映する**（ファイルに書いたルールを機械が自動検証するわけではないため、**人手で反映するまで完了とみなさない**）。
    - **置き換えリスト**: 作品内隠語・言い換えを、 `manga_tag.md` の表に合わせる。
    - **追加ルール**: 該当コマでは `manga_tag.md` の追加ルールに従う。
-   - **視点**: `male perspective`, `pov` など、ファイルで推奨されている表記に寄せる。
+   - **視点**: 新規 YAML では `camera.view_en` の許容語彙（`pov`、`two faces`、`contact close-up`、`inspect close-up`、`solo face`、`solo bust`）を使う。既存 YAML の `prompt_tags` の `pov` / `first_person_view` は後方互換。`view_en: pov` を書いたコマでは tags 側に `pov` を重ねない。
    - **カラー指向時・ページの `manga` 節**: **原則 `monochrome` と `screentone` を `manga.genre_tags` / `manga.visual_tags` に入れない**（`novel_prompt_ir_export_md.py` が各コマの互換 Step1 `tag` 行へ連結する）。コマの `prompt_tags` だけでなく YAML の **`manga`** を **`_how_to/manga.md`**（雛形 `_how_to.example/manga.md`）の「`manga.genre_tags` / `manga.visual_tags`」節に合わせる。**意図的にモノクロ作品にする場合のみ**例外。コマ単位では従来どおり **`manga_tag.md`** の `screentone` 除外など運用上の禁止・除外も参照。
    - **色モード正本**: ページYAMLの **`color_palette.mode`** をページ単位の色モード正本とする。値は `monochrome` / `limited_color` / `full_color`。`manga.visual_tags` は補助タグとして併用するが、`mode=monochrome` に `full_color` 系タグ、`mode=full_color` に `monochrome` / `screentone` 系タグがある場合は `novel_prompt_ir_validate.py` が **WARNING** を出す。センターカラー・巻頭カラー・扉絵だけカラー・一部限定色などの意図的例外を想定し、通常運用では自動修正・通常エラー化しない。
    - **背景のみ**: `nohuman` 等、ファイルで定義されているルール。
@@ -162,7 +164,7 @@ targets: ["*"]
 
 ### ツール側の限界（期待値の調整）
 
-- `novel_prompt_ir_validate.py` は **Pydantic 型・参照・品質ゲート**を検証するが、**`manga_tag.md` の置き換え表どおりかまでは検証しない**。
+- `novel_prompt_ir_validate.py` は **Pydantic 型・参照・品質ゲート**を検証するが、**`manga_tag.md` の置き換え表どおりかまでは検証しない**。画角・視点（`angle_en` / `shot_size_en` / `view_en`）の未知語彙と、隣接コマの同一画角（角度・距離）は **advisory**（stderr の `Advisory:`）。`view_en` は連続規則の対象外で、`--strict-quality` では落とさない。
 - 置き換えの自動適用をコードに足す場合は **`tools/`** に実装し、本スキルからパスを参照する（スキルディレクトリに Python を置かない）。
 
 ## ユーザ指示の正本（`render_instruction.user_directives`）と prompt_tags の強制適用

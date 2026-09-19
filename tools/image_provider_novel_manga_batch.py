@@ -95,10 +95,18 @@ from manga_prompt_ir.prompt_formatters import (
     provider_config_from_root,
     resolve_prompt_formatter,
 )
+from manga_prompt_ir.page_render_plan import (
+    PAGE_COMPILER,
+    PageRenderPlan,
+    PageRenderPlanError,
+    compile_page_render_plan,
+)
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
 INPUT_CHOICES = ("yaml", "markdown")
+PAGE_COMPILER_CHOICES = ("legacy", PAGE_COMPILER)
+TEXT_MODE_CHOICES = ("generate", "letter_later", "none")
 MANGA_ASSET_SUBDIR_BACKGROUND = "backgrounds"
 MANGA_ASSET_SUBDIR_COMIC = "comic"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
@@ -2005,6 +2013,8 @@ def iter_yaml_manga_jobs(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
+    page_compiler: str = "legacy",
+    text_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
@@ -2088,29 +2098,54 @@ def iter_yaml_manga_jobs(
             page_negative = merge_panel_negative_prompt(
                 cli_negative_prompt, as_list(technical.get("negative_tags")), [], []
             )
-            bundle = format_manga_page_prompt(
-                page,
-                source=source,
-                existing_prompt=prompt,
-                negative_prompt=page_negative,
-                formatter=prompt_formatter,
-            )
-            prompt = bundle.prompt
+            plan: PageRenderPlan | None = None
+            if page_compiler == PAGE_COMPILER:
+                plan = compile_page_render_plan(
+                    page,
+                    source=source,
+                    provider=provider,
+                    existing_prompt=prompt,
+                    negative_prompt=page_negative,
+                    text_mode=text_mode,
+                )
+                bundle_prompt = plan.prompt
+                bundle_negative = plan.negative_prompt
+                bundle_formatter = plan.formatter
+                bundle_negative_mode = plan.negative_mode
+            else:
+                bundle = format_manga_page_prompt(
+                    page,
+                    source=source,
+                    existing_prompt=prompt,
+                    negative_prompt=page_negative,
+                    formatter=prompt_formatter,
+                )
+                bundle_prompt = bundle.prompt
+                bundle_negative = bundle.negative_prompt
+                bundle_formatter = bundle.formatter
+                bundle_negative_mode = bundle.negative_mode
+            prompt = bundle_prompt
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
-            all_jobs.append(
-                {
-                    "stem": stem,
-                    "page": str(page_num),
-                    "koma": "00",
-                    "prefix": f"{stem}_p{page_num:02d}",
-                    "prompt": prompt,
-                    "negative_prompt": bundle.negative_prompt,
-                    "prompt_formatter": bundle.formatter,
-                    "negative_mode": bundle.negative_mode,
-                    "output_dir": comic_dir.as_posix(),
+            job_entry: dict[str, Any] = {
+                "stem": stem,
+                "page": str(page_num),
+                "koma": "00",
+                "prefix": f"{stem}_p{page_num:02d}",
+                "prompt": prompt,
+                "negative_prompt": bundle_negative,
+                "prompt_formatter": bundle_formatter,
+                "negative_mode": bundle_negative_mode,
+                "output_dir": comic_dir.as_posix(),
+            }
+            if plan is not None:
+                job_entry["page_render_plan"] = plan
+                job_entry["metadata"] = {
+                    "kind": "manga-page",
+                    "source": source,
+                    "page_render_plan": plan.metadata(),
                 }
-            )
+            all_jobs.append(job_entry)
         elif source == "step1-pages":
             body = yaml_page_step1_text(
                 page,
@@ -2133,29 +2168,54 @@ def iter_yaml_manga_jobs(
             page_negative = merge_panel_negative_prompt(
                 cli_negative_prompt, as_list(technical.get("negative_tags")), [], []
             )
-            bundle = format_manga_page_prompt(
-                page,
-                source=source,
-                existing_prompt=prompt,
-                negative_prompt=page_negative,
-                formatter=prompt_formatter,
-            )
-            prompt = bundle.prompt
+            plan = None
+            if page_compiler == PAGE_COMPILER:
+                plan = compile_page_render_plan(
+                    page,
+                    source=source,
+                    provider=provider,
+                    existing_prompt=prompt,
+                    negative_prompt=page_negative,
+                    text_mode=text_mode,
+                )
+                bundle_prompt = plan.prompt
+                bundle_negative = plan.negative_prompt
+                bundle_formatter = plan.formatter
+                bundle_negative_mode = plan.negative_mode
+            else:
+                bundle = format_manga_page_prompt(
+                    page,
+                    source=source,
+                    existing_prompt=prompt,
+                    negative_prompt=page_negative,
+                    formatter=prompt_formatter,
+                )
+                bundle_prompt = bundle.prompt
+                bundle_negative = bundle.negative_prompt
+                bundle_formatter = bundle.formatter
+                bundle_negative_mode = bundle.negative_mode
+            prompt = bundle_prompt
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
-            all_jobs.append(
-                {
-                    "stem": stem,
-                    "page": str(page_num),
-                    "koma": "00",
-                    "prefix": f"{stem}_p{page_num:02d}_step1page",
-                    "prompt": prompt,
-                    "negative_prompt": bundle.negative_prompt,
-                    "prompt_formatter": bundle.formatter,
-                    "negative_mode": bundle.negative_mode,
-                    "output_dir": comic_dir.as_posix(),
+            job_entry = {
+                "stem": stem,
+                "page": str(page_num),
+                "koma": "00",
+                "prefix": f"{stem}_p{page_num:02d}_step1page",
+                "prompt": prompt,
+                "negative_prompt": bundle_negative,
+                "prompt_formatter": bundle_formatter,
+                "negative_mode": bundle_negative_mode,
+                "output_dir": comic_dir.as_posix(),
+            }
+            if plan is not None:
+                job_entry["page_render_plan"] = plan
+                job_entry["metadata"] = {
+                    "kind": "manga-page",
+                    "source": source,
+                    "page_render_plan": plan.metadata(),
                 }
-            )
+            all_jobs.append(job_entry)
         else:
             technical = page.get("technical") or {}
             tech_neg = as_list(technical.get("negative_tags"))
@@ -2260,6 +2320,8 @@ def iter_jobs_by_input(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
+    page_compiler: str = "legacy",
+    text_mode: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2276,6 +2338,8 @@ def iter_jobs_by_input(
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
             mask_rules=mask_rules,
+            page_compiler=page_compiler,
+            text_mode=text_mode,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -2455,6 +2519,25 @@ def main(argv: list[str] | None = None) -> int:
             "config/image_generation.json の providers.*.prompt_formatter を参照"
         ),
     )
+    p.add_argument(
+        "--page-compiler",
+        choices=PAGE_COMPILER_CHOICES,
+        default="legacy",
+        help=(
+            "ページ生成の実行経路。既定はlegacy。"
+            f" {PAGE_COMPILER} はschema 1.0を読み取り、opt-inのPageRenderPlanと文字manifestを作る。"
+            " step1-panels・background-concepts・Markdown入力では使えない"
+        ),
+    )
+    p.add_argument(
+        "--text-mode",
+        choices=TEXT_MODE_CHOICES,
+        default=None,
+        help=(
+            "PageRenderPlanの実効文字方針（generate / letter_later / none）。"
+            " YAMLのtext_policy明示値と衝突する場合は送信前に停止する"
+        ),
+    )
     p.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
     p.add_argument("--max-page", type=int, default=None, help="処理する Page 番号の上限（含む）")
     p.add_argument("--min-koma", type=int, default=None, help="処理するコマ番号の下限（含む）。ページ生成ジョブは koma=0")
@@ -2589,6 +2672,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.source is None:
         args.source = "step1-panels"
 
+    if args.page_compiler == PAGE_COMPILER:
+        if args.input != "yaml" or args.source not in {"step1-pages", "step2-pages"}:
+            print(
+                "error: --page-compiler page_render_plan は YAML の step1-pages / step2-pages 専用です",
+                file=sys.stderr,
+            )
+            return 2
+    elif args.text_mode is not None:
+        print(
+            "error: --text-mode は --page-compiler page_render_plan と併用してください",
+            file=sys.stderr,
+        )
+        return 2
+
     try:
         provider = resolve_batch_provider(root, args.source, args.provider)
     except ValueError as e:
@@ -2713,8 +2810,10 @@ def main(argv: list[str] | None = None) -> int:
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
             mask_rules=mask_rules,
+            page_compiler=args.page_compiler,
+            text_mode=args.text_mode,
         )
-    except (FileNotFoundError, ValueError) as e:
+    except (FileNotFoundError, ValueError, PageRenderPlanError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 

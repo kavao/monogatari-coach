@@ -17,6 +17,7 @@ from manga_prompt_ir.prompt_formatters import (  # noqa: E402
     format_illustration_prompt,
     format_manga_panel_prompt,
     format_manga_page_prompt,
+    manga_panel_composition_lines,
     resolve_prompt_formatter,
 )
 
@@ -101,6 +102,14 @@ def test_natural_sections_moves_negative_to_do_not_include() -> None:
     assert "- comic panel borders" in bundle.prompt
     assert bundle.negative_prompt == ""
     assert bundle.negative_mode == INLINE_DO_NOT_INCLUDE
+
+
+def test_manga_panel_camera_line_includes_view_and_legacy_view_fallback() -> None:
+    panel = {"camera": {"angle_en": "eye level", "view_en": "two faces"}}
+    assert "- Camera: eye level, two faces" in manga_panel_composition_lines(panel)
+
+    legacy_panel = {"camera": {"angle_en": "eye level", "view": "solo face"}}
+    assert "- Camera: eye level, solo face" in manga_panel_composition_lines(legacy_panel)
 
 
 def test_natural_sections_keeps_composition_cells_for_multi_cell_illustration() -> None:

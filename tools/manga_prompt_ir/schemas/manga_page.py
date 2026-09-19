@@ -191,6 +191,8 @@ class Camera(BaseModel):
     depth_of_field_en: str | None = None
     shot_size: str | None = None
     shot_size_en: str | None = None
+    view: str | None = None
+    view_en: str | None = None
 
 
 class Lighting(BaseModel):

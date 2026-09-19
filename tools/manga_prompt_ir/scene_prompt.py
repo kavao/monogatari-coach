@@ -95,6 +95,7 @@ def camera_tag_tokens(camera: Mapping[str, Any] | None) -> list[str]:
     for en_k, leg_k in (
         ("angle_en", "angle"),
         ("shot_size_en", "shot_size"),
+        ("view_en", "view"),
         ("lens_en", "lens"),
         ("depth_of_field_en", "depth_of_field"),
     ):

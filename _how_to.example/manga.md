@@ -77,9 +77,10 @@ panels:
 `image_provider_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
 
 - **原則**: フレームで**面積・意味の中心になっている身体**の持ち主を、`subjects[]` の**先頭に近いほど主**として書く。複数人物がいるときは「誰の体型・肌・衣装タグが結果を決めるか」がその人物側になるように並べる。
-- **一人称・POV**（`prompt_tags` に `pov`・`first_person_view`・`male perspective` 等がある、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。
+- **一人称・POV**（実装後は `camera.view_en: pov`、既存 YAML では `prompt_tags` の `pov`・`first_person_view`・`male perspective` 等、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。`view_en: pov` を書いたコマでは `prompt_tags` に `pov` / `first_person_view` を重ねない。
 - **よくある誤り**: 行為の主体だけを `character_id` にし、**画面上は相手の裸体・腰などが主**なのに視点人物だけを載せる——注入タグが視点人物側に寄り、**見えている身体とずれる**。その場合は**見えている側を主 subject** にする。
 - **話者と画の主役**: モノローグの話者が視点人物でも、画が相手の部位中心なら **`text` は話者、`subjects` の先頭は相手**と分けて書くと混線しない。
+- **視点・被写体収まり**: `camera.view_en` は1コマ1トークンで、`solo bust` / `solo face` / `two faces` / `contact close-up` / `inspect close-up` を使う。距離は `shot_size_en`、接触部位や捜査対象の固有名は `focus_en` と `prompt_tags` に残す。複数の意味が重なるときは `pov` → 接触 → 捜査 → 対顔 → ソロ顔 → ソロバストの順で選び、POV の相手・対象は `subjects[]` と `focus_en` で補う。
 
 ### クローズアップ・接写と `prompt_tags`（見えている部分の特徴を書く）
 
@@ -125,6 +126,15 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 ```
 
 生成バッチは `character_snapshots` があればこれを最優先し、無い場合だけ `tag/characters/*.yaml` を参照する。
+
+### 連続コマの画角リズム
+
+同じページ内で `panel_id` 順に隣接するコマは、`camera.angle_en` と `camera.shot_size_en` の両方を同じにしない。どちらか一方を変えることで、視線の停滞を避ける。変えるときは、まず距離（引き／寄り）、次に角度（俯瞰／あおり／側面）の順で検討する。
+
+- 据え置きたい理由がある場合はページメモに残してよいが、連続規則の検査対象からは外さない。パイロットでは据え置きを使わず、隣接するどちらかの距離または角度を変える。
+- ページをまたぐ場面転換は、このページ内の連続規則とは分けて考える。
+- `composition.framing_en` は `establishing shot`、`insert shot`、`two shot` などの切り方・配置の補足に使い、`camera.shot_size_en` と同じ距離語を重ねない。
+- 角度と距離の許容語彙は `_how_to/manga_tag.md` と `tools/manga_prompt_ir/data/camera_shot_vocab.yaml` を参照する。
 
 ### バリアントとタグ注入の優先（曖昧にしないための正本）
 
