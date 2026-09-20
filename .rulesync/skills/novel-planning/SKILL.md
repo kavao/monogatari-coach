@@ -72,11 +72,14 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 
 ### B1. 知識の選択と読込
 
+索引は選定にだけ使う。契約に残すのは、ここで選んだ **葉ファイル**である（`_index.md`、`episode_.md`、`epsode_common.md`、`epsode_mature.md` などの目次は selected にしない）。索引に新しい葉が載っても、既存作品の selected には足さない。追加はユーザーが Gate B 再実施を指示したときだけ。
+
 1. **作品経路・作品プロファイル**を判定し記録する。
-2. **`_how_to/_index.md`** を開き、プロファイルに応じた必読だけを選ぶ（**全件必読にしない**）。
-3. **`_how_to/skills/_index.md`** の発動条件に当てはまるユーザスキルだけを読む（例: `body_therapy` → `character-body-pick`、mature 系フック → `episode-mature-pick`）。
-4. 命名・トロープ・プロフィール候補が必要なら **content-pick-registry** と `python tools/novel_pick_registry.py validate` のあと `pick <list_id>` する（path 直書きは fallback）。
-5. 読まなかった必須候補がある場合は **非該当理由**を記録する。
+2. **索引入口**: `_how_to/_index.md` があればそれを選定入口として開き、`_how_to.example/_index.md` を発見用に併読する。作業用索引（および作業用の該当 README）に入口が無い標準の新葉は **選定対象外**。作業用索引が無ければ標準 `_how_to.example/_index.md` だけを開く。プロファイルに応じた必読の葉だけを選ぶ（**全件必読にしない**）。
+3. **ユーザスキル索引**: `_how_to/skills/_index.md` があればそれを選定入口とし、`_how_to.example/skills/_index.md` を発見用に併読する。作業用に無い雛形スキルは追随まで選定対象外。作業用が無ければ標準だけを開く。発動条件に当てはまるユーザスキルだけを読む（例: `body_therapy` → `character-body-pick`、mature 系フック → `episode-mature-pick`）。
+4. **葉の読込**: 各葉は `relative_id`（先頭の `_how_to/` と `_how_to.example/` を除いた相対パス）で識別する。**`working_path` に書くパスは必ず自己完結ファイル**とする。そこに書いたらその1ファイルだけを読む。調整メモは `working_path` に書かず、`standard_path` を読む。標準と作業の合成はしない。
+5. 命名・トロープ・プロフィール候補が必要なら **content-pick-registry** と `python tools/novel_pick_registry.py validate` のあと `pick <list_id>` する（path 直書きは fallback）。
+6. **not_applicable** はカタログの未選択ファイルを全部書かない。書くのは次だけ。(a) プロファイル上の必須候補で selected にしなかった葉（`relative_id` と why）(b) 経路・プロファイルから外れるグループ（例: `genre/*`）と why。索引にあるだけの任意葉は書かない。selected にした葉の実効パスが実在しないときは Gate B 未完了とする（`required_missing` は `_meta.md` へ status として書かない。実在チェックの検査結果である）。
 
 ### B2. タイトル命名ゲート
 
@@ -103,10 +106,15 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 
 ### B5. Gate B 実施記録（`_meta.md`）
 
-`_meta.md` に **Gate B 記録**節を設け（雛形: `_how_to.example/meta.md`）、少なくとも次を残す。
+`_meta.md` に **Gate B 記録**節を設け（雛形: `_how_to.example/meta.md`）、少なくとも次を残す。新規の Gate B 完了と、ユーザーが明示した Gate B 再実施だけ新形式で書く。既存作品の旧形式リストは一括変換しない。
 
 - 作品経路 / 作品プロファイル
-- 読んだ `_how_to`（パスまたは索引上の名前）
+- **創作技法契約**（葉の契約。索引を selected に混ぜない）:
+  - **pack_id**（任意）: `_how_to.example/howto_packs/<id>.yaml`。作業用 `_how_to/howto_packs/<id>.yaml` があればそれを自己完結として使う。既存作品へ自動では付けない。葉列挙（案 A）のままでよい
+  - **pack_add** / **pack_exclude**: パックとの差分
+  - **selected**: 各葉の `relative_id`、role、why、`standard_path` / `working_path` / `effective_path`、`bound_at`。status は `selected` のみ。パック展開分と重複して書いてよい
+  - **not_applicable**: プロファイル上の必須候補の見送り、または `genre/*` のようなグループ。カタログ全未選択は書かない。pattern または `relative_id` と why
+  - **選定補助**（任意）: 開いた索引パス。作業用索引があるときは、標準だけにあって作業用に無い葉の `relative_id` を列挙してよい。後工程の再読義務は無い。selected にしない
 - 発動したユーザスキル（なければ非該当理由）
 - pick の有無（使った場合: `list_id`・seed・採用結果。使わない場合: 非該当理由）
 - タイトル命名: 実施 / 既存記録確認 / 例外理由
@@ -114,7 +122,18 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 - Gate A で許容した WARN（あれば）
 - 検査レイヤ: 標準 ON で確認済み / ユーザー明示の OFF / 確認未応答で標準 ON
 
-完了報告には、この要約をチャットへ含める。
+旧形式（`how_to/` プレフィックス、リポジトリ根からの相対だけ、索引を読んだ一覧に含む）は、第3段の実在チェックで WARN にする。第1段では正規化規則を守って新形式を書き、既存行は触らない。
+
+完了報告には、selected の `relative_id` 要約をチャットへ含める。
+
+## 執筆・清書での契約再読
+
+スキル **`novel-text-file-output`** / **`novel-refinement-output`** が適用する。評価の既定は契約外（各評価スキル）。
+
+1. 本文起草・清書の **前**（writing_bridge では **`prepare` の前**）に `_meta.md` の創作技法契約を読む。新形式なら **selected** と **pack 展開後の葉**だけを再読する（索引・`not_applicable` は再読しない）。`pack_id` があるときは、先に `python tools/novel_howto_contract_check.py novels/<作品> --strict` を実行する。終了コード 0 以外（欠落または `errors`）は再読を始めず **未完了**。0 のときだけ `--json` の `present` を再読集合とする。旧形式のパス一覧なら、索引・目次以外の葉だけを再読する（未変換の grandfather）。Gate B 節が無いときはカタログへ広がらず、「契約なし」と完了報告に書く。
+2. 各 selected（または旧形式の葉）の実効パスを解決して Read する。`working_path` が契約にあればそれを自己完結として読む。無ければ `standard_path`。
+3. 完了報告に、使った葉ごとに拠り所を1句書く。査証ログへ要約する（`AUDIT_LOG | OFF` ならログ省略）。
+4. selected（旧形式では一覧の葉）に無い how_to を創作判断に使う場合は、先に契約を更新するか、使わずに進む。黙ってカタログへ広げない。`rewrite.md` など清書手順ファイルは本スキル群の工程正本であり、selected に無くても読んでよい。
 
 ## Feedback の扱い
 
@@ -130,6 +149,8 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 - 人物プロフィール: `.rulesync/skills/novel-character-profile/SKILL.md`
 - 選定レジストリ: `.rulesync/skills/content-pick-registry/SKILL.md`
 - 本文保存: `.rulesync/skills/novel-text-file-output/SKILL.md`
+- 清書: `.rulesync/skills/novel-refinement-output/SKILL.md`
 - 操作説明: `docs/workflow/planning.md`
 - 受け入れ条件: `docs/developer-verification.md`（Plan Mode Gate A / Gate B）
+- 契約実在チェック（任意・非 Gate A）: `tools/novel_howto_contract_check.py`
 - 任意参照（完了条件ではない）: 説得力の配分は `_how_to.example/episode/general/episode_reality.md`、失敗の許容は `episode_hindrance.md`（作業用があれば `_how_to/episode/general/`）

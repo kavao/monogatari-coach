@@ -1,6 +1,11 @@
 # - 創作技法ファイル (how_to/)
+
+葉は **既定では読まない**（この冒頭注記で足りる。行ごとや該当 README に発動条件を足してもよい）。Plan Mode は索引からプロファイルに合う葉だけを選び、作品 `_meta.md` の selected に固定する。新しい葉を足すときは、このファイルに入口を1行置き、該当サブカタログに README または `_index.md` があればそこにも置く。作業用 `_how_to/_index.md` がある環境では、そちらへ追随するまで新葉は選定対象外。既存作品の selected は自動では増やさない。手順は `.rulesync/rules/rule-authoring.md`「2.2 創作技法葉の追加」。
+
 0. **（画像参照・横断）** [`image_refs/novelai/README.md`](image_refs/novelai/README.md)
    - NovelAI Vibe / ポーション（`.naiv4vibebundle`）。普段使いは `_how_to/image_refs/novelai/` に置く。作品固有は `novels/<作品>/references/novelai/`。
+0. **（創作技法パック）** [`howto_packs/README.md`](howto_packs/README.md)
+   - **既定では適用しない。** Gate B で `pack_id` を書いた作品だけ展開する。既存 selected は増やさない。
 0. **（ユーザスキル・雛形）** [`skills/_index.md`](skills/_index.md)
    - リポジトリに同梱する**雛形**の一覧。初回はここを **`_how_to/skills/<名前>/` にコピー**してから編集する（正本と副本の扱いは **`.rulesync/rules/concepts.md`**「正本と副本」）。
    - 既にコピー済みの**作業用**一覧は **`_how_to/skills/_index.md`** を正とする（雛形にないスキルが列挙されることもある）。
@@ -16,6 +21,7 @@
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
    - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
+   - general（友人・偽味方・敵対者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
@@ -36,6 +42,7 @@
    - [`genre/isekai_modern_knowledge.md`](genre/isekai_modern_knowledge.md) … 異世界現代知識無双。知識範囲、解説演出、受容の階梯、実装の壁、考証。
    - [`genre/dungeon.md`](genre/dungeon.md) … ダンジョンもの。迷宮法則、生態系、探索ループ、経済、成長、パーティ、感情設計。
    - [`genre/akuyaku_reijo.md`](genre/akuyaku_reijo.md) … 悪役令嬢。原作知識、破滅回避、人物ロール、断罪、ざまぁ、話法。
+   - [`genre/yaminabe_hybrid.md`](genre/yaminabe_hybrid.md) … 闇鍋・多題材混交。出汁（推進軸・計測・不可逆性）、鍋の運用、摩擦設計、品質検定。
 8. reader.md
    - 小説の書評・下読みを行うときに使うレビュアープロンプト
    - 評価観点（キャラクター、プロットの完成度、文章力、わかりやすさ、独創性など）と、5段階評価・読後感の期待値・改善サイクルといった出力フォーマットを定義する

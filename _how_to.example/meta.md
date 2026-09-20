@@ -27,9 +27,33 @@
 ## 3.5 Plan Mode Gate B 記録
 企画完了時にスキル **`novel-planning`** の Gate B を実施した事実を残す。`novel_project_check` の OK（Gate A）だけでは企画完了としない。
 
+創作技法は **葉ファイルの契約**である。索引・ディレクトリ目次は selected に入れない（選定補助へ）。`required_missing` はここに status として書かない。selected の `effective_path` が実在しないときは検査失敗として Gate B を完了しない。
+
+**`working_path` に書くパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは working があればそれ、無ければ standard。標準と作業は合成しない。
+
+**`not_applicable` はカタログ全未選択ではない。** プロファイル上の必須候補で選ばなかった葉と、`genre/*` のようなグループだけを理由付きで書く。
+
+既存作品の旧形式リスト（パス箇条書きや索引混在）は、ユーザーが Gate B 再実施を指示するまで置き換えない。
+
 - **作品経路**: (新規起こし / 資料取り込み / 既存作品の洗練)
 - **作品プロファイル**: (複数可。非該当は理由)
-- **読んだ _how_to**: (パスまたは索引上の名前。読まない場合は非該当理由)
+- **創作技法契約**:
+  - **pack_id**: (任意。例: general / mature / body_therapy。無ければ葉列挙のみ。既存作品へ自動では付けない)
+  - **pack_add**: (パックに無い葉の relative_id。無ければなし)
+  - **pack_exclude**: (パックから外す relative_id。無ければなし)
+  - **selected**（再読する葉。パック展開分と重複して書いてよい）:
+    - relative_id: (例: naming.md)
+      - role: (プロファイル必読 / エピソード選択 / 命名 など)
+      - why: (1行)
+      - standard_path: (_how_to.example/... またはなし)
+      - working_path: (_how_to/... またはなし。書いたパスは必ず自己完結ファイル。調整メモは書かない)
+      - effective_path: (実際に読んだ1ファイル)
+      - bound_at: (YYYY-MM-DD)
+  - **not_applicable**（読まない。再読しない。カタログ全未選択は書かない）:
+    - pattern または relative_id: (必須候補の見送り、または例: genre/*)
+      - why: (必須)
+  - **選定補助**（索引。後工程の再読義務なし）:
+    - (例: _how_to/_index.md。無ければ _how_to.example/_index.md)
 - **発動したユーザスキル**: (例: character-body-pick。なければ非該当理由)
 - **pick**: (使った場合: list_id / seed / 採用結果。使わない場合: 非該当理由)
 - **タイトル命名**: (実施 / 既存記録確認 / 例外理由)

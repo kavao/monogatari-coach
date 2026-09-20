@@ -7,6 +7,7 @@ _workingspace 配下の月次 Markdown — 追記専用（公式用）。
 - **横断ナレッジ日記**: `diary/(YYYYMM).md` — スキル workspace-diary
 
 いずれも既存内容の上書き・削除は行わない（追記は open(..., "a") のみ）。
+新規月ファイルと追記行は UTF-8。既存月ファイルが UTF-8 でないときは履歴を直さず、verify は WARN して読む。
 新規月ファイルは、存在しないか空のときだけ先頭に月見出しを1回書き込む。
 エントリ1行形式: 「- YYYY-MM-DD HH:MM: 本文」
 
@@ -73,6 +74,22 @@ def normalize_message(text: str) -> str:
 ENTRY_LINE_RE = re.compile(
     r"^-\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})(?::(\d{2}))?\s*:\s*(.*)$"
 )
+
+
+def decode_monthly_markdown(path: Path) -> tuple[str, str | None]:
+    """新規追記は UTF-8。既存月ファイルが UTF-8 でないときは書き換えず、読んで WARN する。"""
+    raw = path.read_bytes()
+    try:
+        return raw.decode("utf-8"), None
+    except UnicodeDecodeError:
+        try:
+            return raw.decode("cp932"), "UTF-8 ではないため cp932 で読んだ（既存履歴は変更しない）"
+        except UnicodeDecodeError:
+            return (
+                raw.decode("utf-8", errors="replace"),
+                "UTF-8/cp932 とも失敗したため置換して読んだ（既存履歴は変更しない）",
+            )
+
 
 
 def parse_year_month(s: str | None) -> tuple[int, int] | None:
@@ -327,7 +344,9 @@ def _verify_monthly_files(
         if not re.match(r"^\d{6}\.md$", p.name):
             errors.append(f"想定外のファイル名（YYYYMM.md 以外）: {p.name}")
             continue
-        text = p.read_text(encoding="utf-8")
+        text, enc_warn = decode_monthly_markdown(p)
+        if enc_warn:
+            warnings.append(f"{p.name}: {enc_warn}")
         lines = text.splitlines()
         if not lines:
             errors.append(f"{p.name}: 空ファイル")

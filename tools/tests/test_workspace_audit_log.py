@@ -90,3 +90,14 @@ def test_append_writes_when_novel_config_is_missing(tmp_path: Path) -> None:
     )
     text = (tmp_path / "_workingspace" / "log" / "202609.md").read_text(encoding="utf-8")
     assert "implicit on without config" in text
+
+
+def test_verify_cp932_month_file_warns_and_does_not_fail(tmp_path: Path, capsys) -> None:
+    log_dir = tmp_path / "_workingspace" / "log"
+    log_dir.mkdir(parents=True)
+    body = "# 査証ログ 2026年1月\n\n- 2026-01-01 12:00: 古い行\n"
+    (log_dir / "202601.md").write_bytes(body.encode("cp932"))
+    code = main(["--repo-root", str(tmp_path), "verify"])
+    err = capsys.readouterr().err
+    assert code == 0
+    assert "UTF-8 ではない" in err

@@ -416,6 +416,18 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OF
 
 ---
 
+### `novel_howto_contract_check.py` — 創作技法契約の実在確認
+
+`_meta.md` の Gate B 契約を読み取り専用で確認します。ファイルは書き換えません。Gate A（`novel_project_check`）の必須ではありません。記録パスは `_how_to/` と `_how_to.example/` だけを許可し、`..`・絶対パス・`relative_id` 不一致はエラーにします。新形式で selected に索引・雛形が混ざるとエラーで、葉件数からも外します。旧形式の索引混在は grandfather の WARN です。任意の `pack_id` があるときは `_how_to.example/howto_packs/`（作業用があれば `_how_to/howto_packs/`）を展開し、`pack_add` / `pack_exclude` を加味します。既存作品へパックは自動では付きません。パック展開後に再読するときは、先に `--strict` で終了コードを確認します。0 以外なら欠落または YAML エラーです。`--json` の `present` だけを見ると欠落葉が抜けます。欠落や新形式エラーを失敗にしたいときだけ `--strict` を付けます。
+
+```bash
+python tools/novel_howto_contract_check.py novels/NNN_作品名
+python tools/novel_howto_contract_check.py novels/NNN_作品名 --json
+python tools/novel_howto_contract_check.py novels/NNN_作品名 --strict
+```
+
+---
+
 ### `story_reflection_op.py` — ストーリー反映の lock / journal
 
 本文保存後に `design_specification.md` の確定出来事と `_meta.md` を同期するときの、排他ロックと operation journal を扱います。エージェントが手で lock や journal を書き換えないための機械操作です。終了コード 0 が成功、2 が未完了です。
@@ -971,7 +983,7 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 python tools/workspace_audit_log.py path
 python tools/workspace_audit_log.py diary path
 
-# 整合性の検証
+# 整合性の検証（新規追記は UTF-8。既存月が UTF-8 でないときは WARN して読み、履歴は直しません）
 python tools/workspace_audit_log.py verify
 python tools/workspace_audit_log.py diary verify
 ```

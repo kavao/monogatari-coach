@@ -56,6 +56,8 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 | `--character-suggest` | `--json` 出力に不足項目追記案・表形式変換案を含める |
 | `--check-inspection-layers` | `config.md` の METRON / CHRONOS / AUDIT_LOG フラグと保存先、本文がある未計測章を確認（WARN は終了コード 0） |
 
+創作技法契約の実在確認は Gate A に含めません。任意で `python tools/novel_howto_contract_check.py novels/<作品>` を使います。`_meta.md` は書き換えません。`--strict` は selected 欠落（パック展開後を含む）または新形式 `errors` を終了コード 1 にします。
+
 ## 不足時の典型対処
 
 - **`_novel_text/` または `_reader/` が無い**: ディレクトリを作成（空でよい。Git 用に `.gitkeep` を置いてもよい）。

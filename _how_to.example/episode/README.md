@@ -1,5 +1,7 @@
 # episode（エピソード技法・横断索引・雛形）
 
+葉は **既定では読まない**。新しい葉を足すときは `_how_to.example/_index.md` と、この README のように存在するサブカタログ入口の両方に置く。条件は行ごとでも、索引または README の冒頭注記でもよい。既存作品の selected は自動では増やさない。
+
 エピソード設計・フック・恋愛技法は次の2系統に分かれています。ファイル名の `epsode_*` は歴史的表記（リネームしていません）。
 
 | 系統 | 入口 | 用途 |
@@ -14,6 +16,15 @@ general の設計技法（抽選 JSON の対象外）:
 - [リアリティの設計](general/episode_reality.md)
 - [足を引っ張るキャラクターの設計](general/episode_hindrance.md)
 - [地の文モノローグの設計](general/episode_monolog.md)
+- [友人類型設計（SODALITAS）](general/episode_friendship.md)
+- [偽味方類型設計（AMICITIA）](general/episode_false_ally.md)
+- [敵対者類型設計（MALITIA）](general/episode_antagonist.md)
+- [危機脱出構成（EXITUS）](general/episode_crisis_escape.md)
+- [恩義設計論（ON）](general/episode_obligation.md)
+- [責任移行の人物類型設計（ONUS）](general/episode_responsibility_shift.md)
+- [部活ラブコメ構成（CLUBROM）](general/episode_club_romcom.md)
+- [大学サークルラブコメ類型（CIRCLEROM）](general/episode_circle_romcom.md)
+- [人の心を震わせるもの／揺らぎと作者性の設計（FLUCTUATION）](general/episode_fluctuation.md)
 
 初回セットアップ例:
 
