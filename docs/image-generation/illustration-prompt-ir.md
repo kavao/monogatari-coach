@@ -248,15 +248,28 @@ Grok / OpenAI / OpenRouter 系では、挿絵YAMLを `natural_sections` formatte
 
 formatter を比較するときは `--prompt-formatter` を使います。
 
-系列を絞る場合:
+系列を絞る場合（既定は 2.0。`--model quality` は 1.x quality slug の別名で、2026-11-02 退役予定です）:
 
 ```bash
+# 確認（dry-run）— quality slug を明示するとき
 python tools/image_provider_novel_illustration_batch.py \
   novels/NNN_作品名 \
   --illustration-stem illustration_01 \
   --provider grok_pro \
   --prompt-formatter natural_sections \
   --model quality \
+  --aspect-ratio book_cover \
+  --resolution 2k \
+  --dry-run
+
+# 確認（dry-run）— Imagine 2.0 medium
+python tools/image_provider_novel_illustration_batch.py \
+  novels/NNN_作品名 \
+  --illustration-stem illustration_01 \
+  --provider grok_pro \
+  --prompt-formatter natural_sections \
+  --model v2 \
+  --grok-image-quality medium \
   --aspect-ratio book_cover \
   --resolution 2k \
   --dry-run

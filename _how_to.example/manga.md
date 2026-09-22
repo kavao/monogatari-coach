@@ -6,6 +6,7 @@
 |------------------|------|
 | ルート [`readme.md`](../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
 | [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) | **ツール・パイプライン**に加え、**ページ YAML の型・旧差分表・最小例**（互換 Step1 の元データの説明。アンカー [`#yaml-minimal-step1`](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)）。 |
+| [`docs/image-generation/manga-page-edit.md`](../docs/image-generation/manga-page-edit.md) | **写植と領域合成のコマンド**。文字を画像に描かせるか、空吹き出しへ後載せするかの操作。 |
 | [`docs/image-generation/manga-tag-generation.md`](../docs/image-generation/manga-tag-generation.md) | **漫画タグ生成用**：互換 Step1/Step2 の長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。 |
 | [`manga_tag.md`](manga_tag.md)（本フォルダ） | **英語タグの語彙・置換・追加ルール**（Step1／`prompt_tags` 中心）。 |
 | [`manga_tag_step2.md`](manga_tag_step2.md)（本フォルダ） | **Step2**（`step2_summary`・ページ生成・抽象レイアウト）の**言い換え表・チェックリスト**。※過去に **`manga.md` にあったのではなく** `docs` 側にあった Step2 作法をここへ集約した。 |
@@ -222,6 +223,29 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 - variant を変えてよいのは、**本文上はっきり境目があるとき**に限る（移動、時間経過、着脱・治療段階の推移など）。迷ったら「直前のページ／コマと **まだ同じ状況か**」を問い、同じなら **同じ variant を維持**する。
 - **ページをまたいでも**、ひと続きの場面なら variant は **引き継ぐ**。場当たり的な付け替えは、絵の一貫性だけでなく、後からの **validate や `character_snapshots`** とも齟齬を生みやすい。
 
+## 文字は描かせるか、後で載せるか
+
+ページの文字方針は、絵の段階で決めます。操作コマンドは [`docs/image-generation/manga-page-edit.md`](../docs/image-generation/manga-page-edit.md) に置きます。
+
+- **絵と一緒に字を描く**ときは、そのコマの話者・文言・吹き出しの種類が IR に揃っていることを先に確認します。字形の正確さは画像モデルに依存します。
+- **空の吹き出しにして後で載せる**ときは、誰のどの文をどの吹き出しへ置くかを IR に残し、生成結果の実位置を見てから文字を載せます。設計上の位置だけで顔へ重ねません。
+- **文字も吹き出しも要らない**ページは、文字入りの完成稿として扱いません。
+
+擬音だけ先に描き、台詞は後載せする、といった要素ごとの例外は、ページごとに明示してからにします。
+
+### 漫画内での基本スタイル
+
+後載せ写植を使うページでは、`manga.lettering` を漫画内の基本スタイルとして扱います。標準は次のとおりです。
+
+```yaml
+lettering:
+  direction: vertical
+  base_font_size: 30
+  size_policy: uniform_then_shrink
+```
+
+基本は縦書きで、ページ内の台詞は同じ基準フォントサイズを使います。吹き出しの形や台詞量のために収まらない項目だけを縮小します。横書きが必要な固有の台詞は、その台詞に `writing_direction: horizontal` を明示します。
+
 ## ページ YAML の型・Step1 互換の元データ（ドキュメントへ移設）
 
 **Monogatari Coach（`_how_to`）では参照されない**、ページ IR の形と旧フォーマット差分・最小 YAML 例は、操作マニュアル **[`docs/image-generation/manga-prompt-ir.md` の「ページ YAML の最小構造と Step1 互換出力の元」](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)** に置いてあります（互換 `manga_XX.md` の Step1 は、この YAML をエクスポートした結果です）。
@@ -231,6 +255,7 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 ## ツール・タグ出力ドキュメントへのリンク
 
 - **検証・バッチ・ネガ合成・novelai-pipe-tags**: [docs/image-generation/manga-prompt-ir.md](../docs/image-generation/manga-prompt-ir.md)
+- **写植・領域合成**: [docs/image-generation/manga-page-edit.md](../docs/image-generation/manga-page-edit.md)
 - **互換 Step1/Step2 の全文テンプレ・実例・レイアウト・運用メモ**: [docs/image-generation/manga-tag-generation.md](../docs/image-generation/manga-tag-generation.md)
 
 ネガの語彙・運用例は引き続き manga_tag.md の「コマ別ネガ」を参照してください。

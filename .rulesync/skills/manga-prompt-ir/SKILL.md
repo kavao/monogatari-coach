@@ -35,6 +35,7 @@ targets: ["*"]
 創作技法は `_how_to/manga.md` に置き、**コマンド・検証・バッチ・ネガ合成・export フラグ**など運用手順は `docs/` に分離している。
 
 - **`docs/image-generation/manga-prompt-ir.md`**: `novel_prompt_ir_validate.py` / `novel_prompt_ir_embed_snapshots.py` / `novel_prompt_ir_export_md.py`（`--novelai-pipe-tags` 等）、`image_provider_novel_manga_batch.py` の `--source`、コマ単位ネガの合成順。
+- **`docs/image-generation/manga-page-edit.md`**: 空吹き出しへの写植と、マスクで範囲だけ差し替えるローカル合成。
 - **`docs/image-generation/manga-tag-generation.md`**: 互換 `manga/manga_XX.md` の Step1/Step2 長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。
 
 ## 運用方針
@@ -399,3 +400,16 @@ python tools/novel_prompt_ir_export_md.py \
 - `manga-tag-character-sync`: 漫画コマへのキャラクター特徴継承
 - `manga-tag-quality-gate`: 主語・行為・レイアウトの品質確認
 - `image-provider（旧 forge-txt2img）`: 生成プロバイダへの最終受け渡し
+
+## 写植と領域合成
+
+操作のコマンドと確認先は `docs/image-generation/manga-page-edit.md`。創作上の選び方は `_how_to.example/manga.md` の「文字は描かせるか、後で載せるか」。この節は作業時の拘束だけを置く。
+
+- 写植は `tools/novel_manga_lettering.py letter`。入力の geometry は `kind: actual` かつ元画像の SHA-256 と一致すること。`design_projected` では写植しない。
+- `manga.lettering` は漫画ページの基本写植スタイルであり、既定は縦書き・基準フォントサイズ30・`uniform_then_shrink`。ページへ明示した台詞単位の `writing_direction` は基本スタイルを上書きする。
+- ローカル写植の文字ブロックは指定矩形の上下左右中央へ配置する。縦書きでは句読点・括弧・三点リーダー等を縦組み用字形へ変換するが、`？` は通常字形のままとし、IR本文は変更しない。
+- 写植はまず基準フォントサイズを全台詞へ適用し、実座標へ収まらない項目だけを縮小する。`--size-ratio` による全体縮小は通常の既定にしない。
+- `complete` は未配置とはみ出しが両方空のときだけ。どちらかがあれば完成報告しない。
+- 領域合成は同 CLI の `region-edit`。マスク値 0 の画素は元ページと一致しないと `complete` にしない。
+- `--provider` 付きの `region-edit` は未対応として送信前に拒否する。領域編集 API があるものとして NovelAI / Grok / OpenAI へ送らない。
+- ページ生成の既定 provider は変えない。`letter_later` の採用はページごとの文字方針であり、`.env` の既定切替ではない。

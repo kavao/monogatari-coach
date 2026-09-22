@@ -15,6 +15,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 操作説明は `docs/`、チャットは要約である。
 - 小説本文は `novels/<作品>/_novel_text/novel_text*.md`、キャラクタータグは `tag/characters/*.yaml`、漫画ページは `manga/pages/*.yaml`、挿絵ページは `illustrations/pages/*.yaml` を正本とする。
 - 正本を更新できる場合、副本だけを直して完了扱いにしない。生成物を変えたいときは先に正本を変え、再生成する。
+- 漫画の後載せ写植は、ページYAMLの `manga.lettering` を基本スタイル正本とする。既定は縦書き・基準フォントサイズ30・指定矩形の上下左右中央寄せ・必要時のみ縮小で、個別の `writing_direction` は明示時だけ上書きする。縦書きの句読点・括弧・三点リーダー等は縦組み用字形へ変換するが、`？` は通常字形のままとし、IR本文は変更しない。
 
 ## 完了扱い条件
 

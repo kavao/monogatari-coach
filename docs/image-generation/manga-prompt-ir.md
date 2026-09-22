@@ -2,7 +2,7 @@
 
 **読者**: リポジトリの **操作マニュアル**（`docs/`）として、YAML の正本置き場・検証・画像生成バッチまでの**機械的な手順**を扱います。
 
-**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。
+**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。空吹き出しへの写植とマスク合成のコマンド（→ [manga-page-edit.md](manga-page-edit.md)）。
 
 **本書で扱うこと**: 後述の「ページ YAML の最小構造と Step1 互換出力の元」で、**IR のフィールド形**と **エクスポート先の Step1 との関係**を述べる（創作技法ではなくドキュメント）。
 
@@ -130,6 +130,56 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 ```
 
 `--prompt-formatter tag_csv` を付けると、旧来の日本語ページ指示文と native `negative_prompt` の形に戻して比較できます。既定値は `config/image_generation.json` の `providers.*.prompt_formatter` で管理します。
+
+### OpenAIの漫画ページを縦長で生成するとき
+
+`provider=openai` の既定modelは `gpt-image-2` です。`--aspect-ratio` を省略すると `size=1024x1024`、`--aspect-ratio manga_b5_portrait` または `portrait` を指定すると `size=1024x1536`、`story_vertical` では `size=864x1536` になります。OpenAIの有効なサイズを直接指定する場合は `--size WIDTHxHEIGHT` を使い、比率presetより優先させます。
+
+同じ `manga_b5_portrait` でも、Grok / OpenRouterは `3:4`、OpenAIは `2:3` です。provider間で同じ3:4を比較する場合は、OpenAI側を `--aspect-ratio 3:4`（`size=1024x1344`）にします。旧 `gpt-image-1.5` は明示指定できますが、GPT Image 2向けの任意サイズが同じように受理されるとは限らないため、モデルとsizeを比較条件に記録します。
+
+```powershell
+python tools/image_provider_novel_manga_batch.py tools/manga_prompt_ir/examples/p4_compare `
+  --manga-stem manga_01 --source step1-pages --provider openai `
+  --page-compiler page_render_plan --text-mode letter_later `
+  --aspect-ratio manga_b5_portrait --max-page 1 --dry-run
+```
+
+dry-runの `resolved_model` と `image_size` を確認してから `--dry-run` を外します。`gpt-image-2` は縦長サイズを受け付けますが、生成後の画像寸法と文字領域は保存JSON・manifestで確認します。
+
+### OpenRouterでSchema 1.1ページを生成するとき
+
+OpenRouterのSchema 1.1ページ生成は、`--page-compiler page_render_plan` を明示したときだけ有効です。legacyのページ生成は従来どおり `/chat/completions` を使い、新compilerはOpenRouter Image APIへ送ります。新compiler用の既定modelは `providers.openrouter.page_default_model` で管理します。
+
+まず、provider・解決model・`/images` transport・文字方針・参照件数を確認します。
+
+```powershell
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --text-mode letter_later `
+  --aspect-ratio manga_b5_portrait --dry-run
+```
+
+`asset_references[]` に `path` がある場合、宣言順のまま `input_references[]` へ渡し、送信前にファイル存在・画像MIME・SHA-256を検証します。参照画像のroleや順序はページmanifestと保存JSONへ残ります。APIがmodelごとに異なる参照上限を持つため、参照を自動で切りません。dry-runを確認して承認したあとだけ、`--dry-run`を外して実行します。
+
+OpenRouterのImage APIは、同じ `provider=openrouter` のままモデルprofileを切り替えます。Nano Banana 2（`nano_banana_2`）は `resolution`、GPT Image 2（`gpt_image_2`）は `quality` を使います。profileにないmodelや、モデルに対応しないパラメータは送信前に停止します。
+
+```powershell
+# Nano Banana 2（resolution）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --aspect-ratio manga_b5_portrait `
+  --model nano_banana_2 `
+  --resolution 2K --dry-run
+
+# GPT Image 2（quality）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --aspect-ratio manga_b5_portrait `
+  --model gpt_image_2 `
+  --image-quality medium --dry-run
+```
+
+漫画バッチは `--aspect-ratio` を省略すると `1:1` になります。Grokページ生成の既定比率はOpenRouterへ自動継承されないため、比較・本番前確認では `manga_b5_portrait`（`3:4`）などを明示します。
 
 ### コマ生成の provider 別 formatter
 

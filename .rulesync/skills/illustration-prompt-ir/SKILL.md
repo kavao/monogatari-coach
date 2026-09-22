@@ -77,6 +77,8 @@ MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 
 Grok / OpenAI 系では `negative_prompt` を API に送らず、`Do not include:` へ統合する。比較実験時は CLI `--prompt-formatter` で上書きできる。
 
+挿絵バッチの既定 `grok_pro` の model は `grok-imagine-image-2.0`。quality slug は `--model quality`（2026-11-02 退役予定）。品質を固定するときは `--grok-image-quality`。画像生成手順はスキル **image-provider**。
+
 ## チャットの最小トリガー
 
 ```text
