@@ -212,6 +212,7 @@ def build_job_payload(
     model: str | None,
     resolution: str | None,
     novelai_ref_fields: dict[str, Any],
+    grok_image_quality: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "provider": provider,
@@ -226,6 +227,8 @@ def build_job_payload(
     }
     if model is not None:
         payload["model"] = model
+    if grok_image_quality is not None:
+        payload["grok_image_quality"] = grok_image_quality
     if aspect_ratio is not None:
         payload["aspect_ratio_preset"] = aspect_ratio
     if resolution is not None and provider in _GROK_FAMILY:
@@ -290,6 +293,7 @@ def run_provider_job(
     resolution: str | None,
     novelai_ref_fields: dict[str, Any],
     dry_run: bool,
+    grok_image_quality: str | None = None,
 ) -> int:
     payload = build_job_payload(
         provider,
@@ -298,6 +302,7 @@ def run_provider_job(
         model=model,
         resolution=resolution,
         novelai_ref_fields=novelai_ref_fields,
+        grok_image_quality=grok_image_quality,
     )
 
     if dry_run:
@@ -307,6 +312,8 @@ def run_provider_job(
         try:
             merged = preview_merged_params(root, provider, payload)
             print(f"    width×height: {merged.get('width')}×{merged.get('height')}")
+            if merged.get("model"):
+                print(f"    resolved_model: {merged['model']}")
             ref_count = len(merged.get("reference_image_multiple") or [])
             if provider == "novelai":
                 print(f"    novelai_reference_images: {ref_count}")
@@ -318,7 +325,8 @@ def run_provider_job(
                     if ri:
                         print(f"    reference_information_extracted_multiple={ri}")
         except (ValueError, KeyError, FileNotFoundError) as exc:
-            print(f"    warning: merge preview failed: {exc}", file=sys.stderr)
+            print(f"error: provider merge に失敗しました ({job['prefix']}): {exc}", file=sys.stderr)
+            return 2
         print(f"    prompt[:100]: {payload['prompt'][:100]}...")
         neg_show = str(payload["negative_prompt"])
         if len(neg_show) > 160:
@@ -375,7 +383,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE, help="negative_prompt（既定は汎用）")
     parser.add_argument("--provider", choices=PROVIDER_CHOICES, default=None, help="生成プロバイダ")
     parser.add_argument("--prompt-formatter", default=None, help="provider 別プロンプト整形を上書き")
-    parser.add_argument("--model", default=None, help="provider に渡すモデル名または alias（例: quality）")
+    parser.add_argument("--model", default=None, help="provider に渡すモデル名または alias（例: quality / v2）")
+    parser.add_argument(
+        "--grok-image-quality",
+        default=None,
+        dest="grok_image_quality",
+        help="Grok Imagine 2.0 専用 quality（low / medium / auto）",
+    )
     parser.add_argument("--aspect-ratio", default=None, help="比率 preset 名（book_cover 等）または比率文字列")
     parser.add_argument("--resolution", default=None, help="Grok 用の解像度（例: 1k, 2k）")
     parser.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
@@ -534,6 +548,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"prompt_formatter: {prompt_formatter}")
     if model is not None:
         print(f"model: {model}")
+    if getattr(args, "grok_image_quality", None) is not None:
+        print(f"grok_image_quality: {args.grok_image_quality}")
     if aspect_ratio is not None:
         print(f"aspect_ratio: {aspect_ratio}")
     if resolution is not None and provider in _GROK_FAMILY:
@@ -573,6 +589,7 @@ def main(argv: list[str] | None = None) -> int:
             resolution=resolution,
             novelai_ref_fields=novelai_ref_fields,
             dry_run=args.dry_run,
+            grok_image_quality=args.grok_image_quality,
         )
         if code != 0:
             return code

@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from image_provider_generate import (  # noqa: E402
     _novelai_augment_prompt,
+    _novelai_augment_page_prompt,
     _novelai_combine_uc,
     _novelai_is_v5_model,
     _novelai_uses_v4_condition,
@@ -108,6 +109,36 @@ def test_quality_toggle_false_skips_suffix() -> None:
         "nai-diffusion-5-full", "1girl, 「hello」", quality_toggle=False
     )
     assert text == "1girl, 「hello」"
+
+
+def test_page_render_plan_text_block_stays_at_prompt_end() -> None:
+    prompt = "visual instruction\n\nText:\n- panel 10 dialogue: こんにちは"
+    augmented = _novelai_augment_page_prompt(
+        "nai-diffusion-5-full",
+        prompt,
+        metadata={"page_render_plan": {"text_mode": "generate"}},
+    )
+    assert augmented.endswith("- panel 10 dialogue: こんにちは")
+    assert "no text\n\nText:" in augmented
+    assert augmented.count("Text:") == 1
+    assert not augmented.endswith("no text")
+
+
+def test_page_render_plan_without_text_block_keeps_quality_suffix() -> None:
+    prompt = "1コマ目のレイアウト。白い吹き出しは character slot 側。"
+    augmented = _novelai_augment_page_prompt(
+        "nai-diffusion-5-full",
+        prompt,
+        metadata={"page_render_plan": {"text_mode": "generate"}},
+    )
+    assert augmented == f"{prompt}, very aesthetic, masterpiece, no text"
+
+
+def test_legacy_prompt_augmentation_remains_unchanged_without_page_plan() -> None:
+    prompt = "visual instruction"
+    assert _novelai_augment_page_prompt("nai-diffusion-5-full", prompt) == (
+        "visual instruction, very aesthetic, masterpiece, no text"
+    )
 
 
 def test_v45_quality_suffix_unchanged() -> None:

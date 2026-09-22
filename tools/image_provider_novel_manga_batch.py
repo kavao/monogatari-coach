@@ -101,6 +101,7 @@ from manga_prompt_ir.page_render_plan import (
     PageRenderPlanError,
     compile_page_render_plan,
 )
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -201,7 +202,7 @@ def dotenv_or_env(root: Path, name: str) -> str | None:
 def manga_grok_pro_effective_aspect_ratio(
     cli_aspect: str | None, provider: str, *, root: Path | None = None
 ) -> str | None:
-    """CLI が優先。未指定かつ grok_pro のとき .env → 環境変数 → manga_b5_portrait。"""
+    """CLI が優先。OpenAIはCLI指定を渡し、grok_proだけ既定を補完する。"""
     if cli_aspect is not None:
         return cli_aspect
     if provider != "grok_pro":
@@ -223,6 +224,8 @@ def resolve_manga_assets_stem_dir(manga_dir: Path, stem: str) -> Path:
 def resolve_manga_comic_output_dir(manga_dir: Path, stem: str) -> Path:
     return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_COMIC
 
+
+PAGE_PANEL_QUALITY_TAGS = ("best_quality", "very_aesthetic", "ultra-detailed")
 
 STYLE_PREFIX = (
     "best quality, very aesthetic, ultra-detailed, best illustration, "
@@ -430,6 +433,20 @@ def resolve_batch_provider(root: Path, source: str, args_provider: str | None) -
         str(root_cfg.get("default_provider", "forge")),
         source="config default_provider",
     )
+
+
+def preview_merged_params(root: Path, provider: str, payload: dict[str, Any]) -> dict[str, Any]:
+    from image_provider_generate import (  # noqa: E402
+        get_provider_cfg,
+        load_dotenv as gen_load_dotenv,
+        load_root_config as gen_load_root_config,
+        merge_provider_defaults,
+    )
+
+    root_cfg = gen_load_root_config(root / "config" / "image_generation.json")
+    dotenv_map = gen_load_dotenv(root / ".env")
+    provider_cfg = get_provider_cfg(root_cfg, provider, dotenv_map=dotenv_map)
+    return merge_provider_defaults(provider, provider_cfg, payload, root=root)
 
 
 def normalize_tag_body(raw: str) -> str:
@@ -1140,6 +1157,7 @@ def yaml_panel_tags(
     single_panel: bool = False,
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
+    include_quality_prefix: bool = True,
 ) -> list[str]:
     """Flat tag list for tag_csv / Forge / illustration batch.
 
@@ -1154,7 +1172,9 @@ def yaml_panel_tags(
     camera = panel.get("camera") or {}
     lighting = panel.get("lighting") or {}
     tags: list[str] = []
-    tags.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
+    if include_quality_prefix:
+        tags.extend(PAGE_PANEL_QUALITY_TAGS)
+    tags.append("manga")
     tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
     tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
     _extend_base_summary_en_tags(tags, panel, include_panel_summary=include_panel_summary)
@@ -1207,6 +1227,7 @@ def yaml_panel_tags_novelai_split(
     single_panel: bool = False,
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
+    include_quality_prefix: bool = True,
 ) -> tuple[list[str], list[list[str]]]:
     """
     NovelAI の「ベース | キャラA | キャラB | …」入力向けにタグを分割する。
@@ -1223,7 +1244,9 @@ def yaml_panel_tags_novelai_split(
     lighting = panel.get("lighting") or {}
     base: list[str] = []
     character_segments: list[list[str]] = []
-    base.extend(["best_quality", "very_aesthetic", "ultra-detailed", "manga"])
+    if include_quality_prefix:
+        base.extend(PAGE_PANEL_QUALITY_TAGS)
+    base.append("manga")
     base.extend(str(v) for v in as_list(manga.get("genre_tags")))
     base.extend(str(v) for v in as_list(manga.get("visual_tags")))
     _extend_base_summary_en_tags(base, panel, include_panel_summary=include_panel_summary)
@@ -1292,13 +1315,19 @@ def yaml_panel_tags_novelai_split(
 def yaml_text_lines(panel: dict) -> list[str]:
     text = panel.get("text") or {}
     lines: list[str] = []
+
+    def text_content(item: object) -> str:
+        if isinstance(item, dict):
+            return str(item.get("content", item.get("text", "")))
+        return str(item)
+
     for item in as_list(text.get("dialogue")):
         if isinstance(item, dict):
             lines.append(f"- セリフ: {item.get('speaker', '不明')}「{item.get('content', '')}」")
     for item in as_list(text.get("monologue")):
-        lines.append(f"- モノローグ: {item}")
+        lines.append(f"- モノローグ: {text_content(item)}")
     for item in as_list(text.get("narration")):
-        lines.append(f"- ナレーション: {item}")
+        lines.append(f"- ナレーション: {text_content(item)}")
     for item in as_list(text.get("sfx")):
         if isinstance(item, dict):
             meaning = f"（{item.get('meaning')}）" if item.get("meaning") else ""
@@ -1339,6 +1368,23 @@ def yaml_render_instruction_block(page: dict) -> str:
         if note:
             lines.append(str(note))
     return "\n".join(dict.fromkeys(lines))
+
+
+_PAGE_GLOSS_OMIT_PROVIDERS = frozenset({"novelai", "grok", "grok_pro"})
+
+
+def omit_page_japanese_gloss_lines(prompt: str) -> str:
+    """Drop ``- 日本語訳:`` lines from a NovelAI or Grok page send.
+
+    Those lines repeat the panel summary. The summary line stays. OpenAI and
+    the human-readable export keep the gloss.
+    """
+    kept = [
+        line
+        for line in prompt.splitlines()
+        if not line.strip().startswith("- 日本語訳:")
+    ]
+    return "\n".join(kept).strip()
 
 
 def trim_prompt_to_byte_limit(prompt: str, max_bytes: int) -> str:
@@ -1439,7 +1485,7 @@ def yaml_page_step1_text(
                 f"- 人物・対象: {' / '.join(subjects)}",
                 f"- 構図: {comp.get('layout', '')} / {comp.get('framing', '')} / {comp.get('focus', '')} / {camera.get('angle', '')}",
                 *yaml_text_lines(panel),
-                f"- tag: {join_tags(yaml_panel_tags(page, panel, characters))}",
+                f"- tag: {join_tags(yaml_panel_tags(page, panel, characters, include_quality_prefix=False))}",
                 f"- 日本語訳: {panel.get('translation') or panel.get('summary', '')}",
                 "",
             ]
@@ -1574,10 +1620,8 @@ def yaml_character_anchor_block(page: dict, characters: dict[str, dict]) -> str:
             character = characters.get(cid, {})
             tags = join_tags(snapshot_tags(snapshot) if snapshot else character_ir_tags(character, selected_subject_variant_id(subject)))
             if tags:
-                variant_id = selected_subject_variant_id(subject)
                 label_base = str(snapshot.get("name") or snapshot.get("name_en") or cid) if snapshot else character_display_name(character, cid)
-                label = f"{label_base} / {variant_id}" if variant_id else label_base
-                lines.append(f"- {label}: {tags}")
+                lines.append(f"- {label_base}: {tags}")
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
@@ -2015,6 +2059,7 @@ def iter_yaml_manga_jobs(
     mask_rules: MaskRuleSet | None = None,
     page_compiler: str = "legacy",
     text_mode: str | None = None,
+    novelai_model: str | None = None,
 ) -> list[dict[str, Any]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
@@ -2050,6 +2095,7 @@ def iter_yaml_manga_jobs(
     all_jobs: list[dict[str, Any]] = []
     for index, path in enumerate(paths, start=1):
         page = load_yaml(path)
+        MangaPagePrompt.model_validate(page)
         panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
         if not panels:
             continue
@@ -2107,6 +2153,9 @@ def iter_yaml_manga_jobs(
                     existing_prompt=prompt,
                     negative_prompt=page_negative,
                     text_mode=text_mode,
+                    novelai_model=novelai_model,
+                    asset_base_dir=novel_dir,
+                    characters=characters,
                 )
                 bundle_prompt = plan.prompt
                 bundle_negative = plan.negative_prompt
@@ -2125,7 +2174,14 @@ def iter_yaml_manga_jobs(
                 bundle_formatter = bundle.formatter
                 bundle_negative_mode = bundle.negative_mode
             prompt = bundle_prompt
+            if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
+                prompt = omit_page_japanese_gloss_lines(prompt)
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+                if plan is not None:
+                    raise PageRenderPlanError(
+                        f"PageRenderPlan のpromptがprovider上限を超えています: "
+                        f"{len(prompt.encode('utf-8'))} > {max_prompt_bytes} bytes"
+                    )
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry: dict[str, Any] = {
                 "stem": stem,
@@ -2139,12 +2195,30 @@ def iter_yaml_manga_jobs(
                 "output_dir": comic_dir.as_posix(),
             }
             if plan is not None:
+                if plan.ordered_image_inputs:
+                    if provider not in {"openai", "openrouter", "grok", "grok_pro"}:
+                        raise PageRenderPlanError(
+                            "PageRenderPlanの画像入力はOpenAI/OpenRouter/Grokページbridgeだけに接続できます。"
+                            f"provider={provider!r}では参照を黙って捨てません"
+                        )
+                    job_entry["image_inputs"] = [
+                        dict(item) for item in plan.ordered_image_inputs
+                    ]
                 job_entry["page_render_plan"] = plan
                 job_entry["metadata"] = {
                     "kind": "manga-page",
                     "source": source,
                     "page_render_plan": plan.metadata(),
                 }
+                if provider == "novelai" and plan.character_slots:
+                    job_entry["character_prompts"] = [
+                        {
+                            key: value
+                            for key, value in slot.items()
+                            if key in {"prompt", "uc", "center", "centers"}
+                        }
+                        for slot in plan.character_slots
+                    ]
             all_jobs.append(job_entry)
         elif source == "step1-pages":
             body = yaml_page_step1_text(
@@ -2162,8 +2236,6 @@ def iter_yaml_manga_jobs(
                 f"日本の漫画のコマ割りとして、ページ全体を1枚で精密に生成してください。"
             )
             prompt = f"{intro}\n\n{extra_text}\n\n{body}" if extra_text else f"{intro}\n\n{body}"
-            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
-                prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             technical = page.get("technical") or {}
             page_negative = merge_panel_negative_prompt(
                 cli_negative_prompt, as_list(technical.get("negative_tags")), [], []
@@ -2177,6 +2249,9 @@ def iter_yaml_manga_jobs(
                     existing_prompt=prompt,
                     negative_prompt=page_negative,
                     text_mode=text_mode,
+                    novelai_model=novelai_model,
+                    asset_base_dir=novel_dir,
+                    characters=characters,
                 )
                 bundle_prompt = plan.prompt
                 bundle_negative = plan.negative_prompt
@@ -2195,7 +2270,14 @@ def iter_yaml_manga_jobs(
                 bundle_formatter = bundle.formatter
                 bundle_negative_mode = bundle.negative_mode
             prompt = bundle_prompt
+            if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
+                prompt = omit_page_japanese_gloss_lines(prompt)
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+                if plan is not None:
+                    raise PageRenderPlanError(
+                        f"PageRenderPlan のpromptがprovider上限を超えています: "
+                        f"{len(prompt.encode('utf-8'))} > {max_prompt_bytes} bytes"
+                    )
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry = {
                 "stem": stem,
@@ -2209,12 +2291,30 @@ def iter_yaml_manga_jobs(
                 "output_dir": comic_dir.as_posix(),
             }
             if plan is not None:
+                if plan.ordered_image_inputs:
+                    if provider not in {"openai", "openrouter", "grok", "grok_pro"}:
+                        raise PageRenderPlanError(
+                            "PageRenderPlanの画像入力はOpenAI/OpenRouter/Grokページbridgeだけに接続できます。"
+                            f"provider={provider!r}では参照を黙って捨てません"
+                        )
+                    job_entry["image_inputs"] = [
+                        dict(item) for item in plan.ordered_image_inputs
+                    ]
                 job_entry["page_render_plan"] = plan
                 job_entry["metadata"] = {
                     "kind": "manga-page",
                     "source": source,
                     "page_render_plan": plan.metadata(),
                 }
+                if provider == "novelai" and plan.character_slots:
+                    job_entry["character_prompts"] = [
+                        {
+                            key: value
+                            for key, value in slot.items()
+                            if key in {"prompt", "uc", "center", "centers"}
+                        }
+                        for slot in plan.character_slots
+                    ]
             all_jobs.append(job_entry)
         else:
             technical = page.get("technical") or {}
@@ -2322,6 +2422,7 @@ def iter_jobs_by_input(
     mask_rules: MaskRuleSet | None = None,
     page_compiler: str = "legacy",
     text_mode: str | None = None,
+    novelai_model: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2340,6 +2441,7 @@ def iter_jobs_by_input(
             mask_rules=mask_rules,
             page_compiler=page_compiler,
             text_mode=text_mode,
+            novelai_model=novelai_model,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -2429,14 +2531,36 @@ def main(argv: list[str] | None = None) -> int:
         "--aspect-ratio",
         default=None,
         help=(
-            "Forge/Grok 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）。"
+            "Forge/Grok/OpenAI 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）。"
             f" 未指定かつ provider=grok_pro のときは環境変数 {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV} で上書き可能"
         ),
     )
     p.add_argument(
+        "--size",
+        default=None,
+        help="OpenAI Images の明示サイズ（例: 1024x1536）。--aspect-ratio より優先",
+    )
+    p.add_argument(
         "--resolution",
         default=None,
-        help="Grok 用の解像度（例: 1k, 2k）",
+        help="Grok または OpenRouter Image API（resolution profile）の解像度（例: 1k, 2k）",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help="モデル名または alias（例: v2, grok-imagine-image-2.0）。CLI が params より優先",
+    )
+    p.add_argument(
+        "--grok-image-quality",
+        default=None,
+        dest="grok_image_quality",
+        help="Grok Imagine 2.0 専用 quality（low / medium / auto）。CLI が params より優先",
+    )
+    p.add_argument(
+        "--image-quality",
+        default=None,
+        dest="image_quality",
+        help="OpenRouter Image API / OpenAI Images の quality（auto / low / medium / high）。CLI が params より優先",
     )
     p.add_argument(
         "--subdir-by-page",
@@ -2525,7 +2649,7 @@ def main(argv: list[str] | None = None) -> int:
         default="legacy",
         help=(
             "ページ生成の実行経路。既定はlegacy。"
-            f" {PAGE_COMPILER} はschema 1.0を読み取り、opt-inのPageRenderPlanと文字manifestを作る。"
+            f" {PAGE_COMPILER} はschema 1.0/1.1を読み取り、opt-inのPageRenderPlanと文字manifestを作る。"
             " step1-panels・background-concepts・Markdown入力では使えない"
         ),
     )
@@ -2691,11 +2815,18 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    if args.size is not None and provider != "openai":
+        print(
+            "error: --size は provider=openai のときだけ指定できます",
+            file=sys.stderr,
+        )
+        return 2
+    provider_cfg = provider_config_from_root(root, provider)
     try:
         prompt_formatter = resolve_prompt_formatter(
             provider,
             args.source,
-            provider_cfg=provider_config_from_root(root, provider),
+            provider_cfg=provider_cfg,
             cli_formatter=args.prompt_formatter,
         )
     except ValueError as e:
@@ -2812,6 +2943,7 @@ def main(argv: list[str] | None = None) -> int:
             mask_rules=mask_rules,
             page_compiler=args.page_compiler,
             text_mode=args.text_mode,
+            novelai_model=(provider_cfg.get("default_model") if provider == "novelai" else None),
         )
     except (FileNotFoundError, ValueError, PageRenderPlanError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -2860,6 +2992,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"(env {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV})"
             )
     print(f"jobs: {len(jobs)}")
+    if args.model is not None:
+        print(f"model: {args.model} (--model)")
+    if args.grok_image_quality is not None:
+        print(f"grok_image_quality: {args.grok_image_quality} (--grok-image-quality)")
     if omit_panel_background:
         print("omit_panel_background: true (step1-panels)")
     if include_panel_summary and args.source == "step1-panels":
@@ -2903,6 +3039,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.subdir_by_page:
             out_dir = out_dir / f"p{int(job['page']):02d}"
         out_dir_posix = out_dir.as_posix()
+        page_plan = job.get("page_render_plan")
+        page_manifest_path = (
+            out_dir / f"{job['prefix']}_page_render_plan.json"
+            if isinstance(page_plan, PageRenderPlan)
+            else None
+        )
 
         payload = {
             "provider": provider,
@@ -2917,18 +3059,59 @@ def main(argv: list[str] | None = None) -> int:
         }
         if job.get("metadata"):
             payload["metadata"] = job["metadata"]
+        if provider == "novelai" and job.get("character_prompts"):
+            payload["character_prompts"] = job["character_prompts"]
+        if job.get("image_inputs"):
+            payload["image_inputs"] = [
+                dict(item) for item in job["image_inputs"]
+            ]
+        if isinstance(page_plan, PageRenderPlan) and isinstance(payload.get("metadata"), dict):
+            plan_metadata = payload["metadata"].get("page_render_plan")
+            if isinstance(plan_metadata, dict) and page_manifest_path is not None:
+                plan_metadata["manifest_path"] = page_manifest_path.as_posix()
         if aspect_effective is not None:
             payload["aspect_ratio_preset"] = aspect_effective
+        if args.size is not None:
+            payload["size"] = args.size
         if args.resolution is not None:
             payload["resolution"] = args.resolution
+        if args.model is not None:
+            payload["model"] = args.model
+        if args.grok_image_quality is not None:
+            payload["grok_image_quality"] = args.grok_image_quality
+        if args.image_quality is not None:
+            payload["quality"] = args.image_quality
         if novelai_ref_fields:
             payload.update(novelai_ref_fields)
+        try:
+            merged = preview_merged_params(root, provider, payload)
+        except (ValueError, KeyError, FileNotFoundError) as exc:
+            print(f"error: provider merge に失敗しました ({job['prefix']}): {exc}", file=sys.stderr)
+            return 2
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {out_dir_posix}")
             print(
                 f"    formatter: {payload['prompt_formatter']} "
                 f"({payload['negative_mode']})"
             )
+            if merged.get("aspect_ratio"):
+                print(f"    aspect_ratio: {merged['aspect_ratio']}")
+            if merged.get("model"):
+                print(f"    resolved_model: {merged['model']}")
+            if merged.get("grok_image_quality"):
+                print(f"    grok_image_quality: {merged['grok_image_quality']}")
+            if merged.get("openrouter_image_profile"):
+                profile = merged["openrouter_image_profile"]
+                print(
+                    f"    openrouter_profile: {profile.get('profile_id', '')} "
+                    f"parameter_family={profile.get('parameter_family', '')}"
+                )
+            if merged.get("quality"):
+                print(f"    image_quality: {merged['quality']}")
+            if provider == "openai" and merged.get("size"):
+                print(f"    image_size: {merged['size']}")
+            if provider == "openrouter" and merged.get("image_size"):
+                print(f"    image_resolution: {merged['image_size']}")
             print(f"    prompt[:100]: {payload['prompt'][:100]}...")
             mask_result = job.get("mask_result")
             if isinstance(mask_result, MaskApplyResult) and (
@@ -2943,10 +3126,58 @@ def main(argv: list[str] | None = None) -> int:
             if len(neg_show) > 160:
                 neg_show = neg_show[:160] + "..."
             print(f"    negative: {neg_show}")
+            if isinstance(page_plan, PageRenderPlan) and page_manifest_path is not None:
+                print(
+                    f"    page_render_plan: compiler={page_plan.compiler_version} "
+                    f"text_mode={page_plan.text_mode} "
+                    f"text_manifest={len(page_plan.text_manifest)} "
+                    f"character_slots={len(page_plan.character_slots)}"
+                )
+                print(
+                    "    effective_settings: "
+                    f"{json.dumps(page_plan.effective_settings, ensure_ascii=False, sort_keys=True)}"
+                )
+                if provider == "openrouter":
+                    print("    transport: OpenRouter Image API (/images)")
+                for warning in page_plan.warnings:
+                    print(f"    warning: {warning}")
+                if page_plan.ordered_image_inputs:
+                    print(
+                        "    ordered_image_inputs: "
+                        f"{len(page_plan.ordered_image_inputs)} (sent in declared order)"
+                    )
+                    for item in page_plan.ordered_image_inputs:
+                        print(
+                            "      image "
+                            f"{item['order']}: role={item['role']} "
+                            f"asset_id={item.get('asset_id', '')} "
+                            f"sha256={item['sha256']}"
+                        )
+                else:
+                    print("    ordered_image_inputs: [] (none declared; not sent)")
+                if page_plan.name_images:
+                    print(
+                        "    name_images: "
+                        f"{len(page_plan.name_images)} (sent as ordered input references)"
+                    )
+                else:
+                    print("    name_images: [] (none declared; not sent)")
+                print(f"    unsupported: {'; '.join(page_plan.unsupported)}")
+                if page_plan.character_slots:
+                    native = provider == "novelai"
+                    print(
+                        "    character_prompts: "
+                        f"{len(page_plan.character_slots)} "
+                        f"({'sent as native slots' if native else 'metadata only for this provider'})"
+                    )
+                print(f"    manifest: {page_manifest_path} (not written in dry-run)")
             continue
 
         out = out_dir
         out.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(page_plan, PageRenderPlan) and page_manifest_path is not None:
+            page_plan.write_manifest(page_manifest_path)
 
         with tempfile.NamedTemporaryFile(
             mode="w",

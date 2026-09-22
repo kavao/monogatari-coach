@@ -171,6 +171,24 @@ def test_explicit_character_prompts() -> None:
     assert payload["parameters"]["characterPrompts"][0]["uc"] == "bad hands"
 
 
+def test_character_prompt_keeps_multiple_centers() -> None:
+    merged = _merged(
+        {
+            "model": "v5-full",
+            "prompt": "manga page",
+            "character_prompts": [
+                {
+                    "prompt": "1boy, black_hair",
+                    "centers": [{"x": 0.3, "y": 0.2}, {"x": 0.7, "y": 0.8}],
+                }
+            ],
+        }
+    )
+    payload = build_novelai_payload(merged, seed_for_request=1)
+    centers = payload["parameters"]["v4_prompt"]["caption"]["char_captions"][0]["centers"]
+    assert centers == [{"x": 0.3, "y": 0.2}, {"x": 0.7, "y": 0.8}]
+
+
 def test_character_prompts_win_over_pipe_right() -> None:
     merged = _merged(
         {

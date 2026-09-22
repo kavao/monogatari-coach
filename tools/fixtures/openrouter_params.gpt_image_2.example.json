@@ -5,5 +5,10 @@
   "output_dir": "outputs/openrouter",
   "file_prefix": "openrouter_gpt_image_2",
   "aspect_ratio_preset": "manga_b5_portrait",
-  "image_size": "1K"
+  "quality": "medium",
+  "metadata": {
+    "page_render_plan": {
+      "compiler_version": "1.0"
+    }
+  }
 }
