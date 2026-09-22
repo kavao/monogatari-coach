@@ -1,4 +1,10 @@
-schema_version: "1.0"
+schema_version: "1.1"
+reference_contract:
+  version: "1.1"
+  role_based_references: offline_contract_verified
+  multi_image_inputs: offline_contract_verified
+  reference_guided_generation: offline_contract_verified
+  ordered_attachments: offline_contract_verified
 provider: novelai
 confirmed_at: "2026-09-19"
 sources:
@@ -23,3 +29,4 @@ models:
     notes:
       - "Vibe reference and img2img source are separate inputs."
       - "Payload shape is verified from Swagger; combined quality is not a quality guarantee."
+      - "The common role/order contract is verified offline; provider-specific mapping remains explicit."

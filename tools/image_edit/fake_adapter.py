@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contracts import EditExecutionPlan, EditResult, ImageEditRequest
+from .contracts import (
+    EditExecutionPlan,
+    EditResult,
+    ImageEditRequest,
+    validate_ordered_image_inputs,
+)
 
 
 class FakeAdapter:
@@ -16,16 +21,22 @@ class FakeAdapter:
 
     name = "fake"
 
-    def __init__(self, *, transport: str = "json") -> None:
+    def __init__(self, *, transport: str = "json", max_inputs: int = 1) -> None:
         if transport not in {"json", "multipart"}:
             raise ValueError("fake transport must be json or multipart")
+        if max_inputs < 1:
+            raise ValueError("fake max_inputs must be positive")
         self.transport = transport
+        self.max_inputs = max_inputs
 
     def capabilities(self, model: str, operation: str) -> dict[str, Any]:
         return {
             "model": model,
             "operation": operation,
-            "input_images": 1,
+            "input_images": self.max_inputs,
+            "multi_image_editing": self.max_inputs > 1,
+            "reference_guided_generation": self.max_inputs > 1,
+            "reference_contract_version": "1.1",
             "style_references": True,
             "strength": False,
             "noise": False,
@@ -40,6 +51,16 @@ class FakeAdapter:
             raise ValueError("fake adapter supports image_to_image only")
         if len(request.source_images) != 1:
             raise ValueError("fake adapter requires exactly one source image")
+        if request.ordered_image_inputs:
+            validate_ordered_image_inputs(
+                request.ordered_image_inputs,
+                max_images=self.max_inputs,
+            )
+        elif request.style_references:
+            # Legacy requests did not carry an explicit order.  Keep them
+            # valid, but the new restyle planner always emits the ordered form.
+            if len(request.style_references) + 1 > self.max_inputs:
+                raise ValueError("fake adapterの画像入力件数上限を超えています")
         unsupported = {
             key
             for key in ("seed", "strength", "noise")
@@ -60,6 +81,8 @@ class FakeAdapter:
                 "instruction": request.instruction,
                 "source_images": list(request.source_images),
                 "style_references": list(request.style_references),
+                "ordered_image_inputs": list(request.ordered_image_inputs),
+                "reference_guided_generation": request.reference_guided_generation,
             },
             network_allowed=False,
         )

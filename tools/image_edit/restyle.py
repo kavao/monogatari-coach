@@ -27,6 +27,12 @@ except ModuleNotFoundError:  # pragma: no cover - package import fallback
     from .. import image_provider_generate as generate
     from ..novel_meta_yaml import resolve_novelai_portion_strict
 
+from .contracts import (
+    REFERENCE_CONTRACT_VERSION,
+    validate_ordered_image_inputs,
+    validate_reference_contract,
+)
+
 
 class RestyleError(ValueError):
     """A user-correctable restyle planning or validation error."""
@@ -400,20 +406,31 @@ def redact_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return _redact_value(payload)  # type: ignore[return-value]
 
 
-def _style_reference_records(paths: list[Path]) -> list[dict[str, Any]]:
+def _reference_records(
+    paths: list[Path],
+    *,
+    role: str,
+    start_order: int,
+) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
-    for path in paths:
+    for offset, path in enumerate(paths):
         resolved = path.expanduser().resolve()
         if not resolved.is_file():
-            raise RestyleError(f"絵柄参照ファイルが見つかりません: {resolved}")
+            raise RestyleError(f"画像参照ファイルが見つかりません: {resolved}")
         records.append(
             {
                 "path": str(resolved),
                 "sha256": file_sha256(resolved),
+                "role": role,
+                "order": start_order + offset,
                 "kind": "novelai_vibe" if resolved.suffix.lower() in {".naiv4vibe", ".naiv4vibebundle"} else "image",
             }
         )
     return records
+
+
+def _style_reference_records(paths: list[Path], *, start_order: int = 2) -> list[dict[str, Any]]:
+    return _reference_records(paths, role="style", start_order=start_order)
 
 
 def _source_json_default(source: Path) -> Path | None:
@@ -488,6 +505,26 @@ def load_restyle_plan(path: Path) -> dict[str, Any]:
         raise RestyleError("承認済みrestyle計画に元画像hashがありません")
     if not isinstance(plan.get("payload"), dict):
         raise RestyleError("承認済みrestyle計画にpayloadがありません")
+    request = plan.get("request")
+    if not isinstance(request, dict):
+        raise RestyleError("承認済みrestyle計画に共通request contractがありません")
+    contract_version = str(request.get("reference_contract_version", "1.0"))
+    if contract_version == REFERENCE_CONTRACT_VERSION:
+        try:
+            ordered = validate_reference_contract(
+                source_images=request.get("source_images"),
+                style_references=request.get("style_references"),
+                ordered_image_inputs=request.get("ordered_image_inputs"),
+            )
+        except ValueError as exc:
+            raise RestyleError(str(exc)) from exc
+        expected_guided = len(ordered) > 1
+        if request.get("reference_guided_generation") is not expected_guided:
+            raise RestyleError(
+                "画像参照契約のreference_guided_generationが入力件数と一致しません"
+            )
+    elif contract_version != "1.0":
+        raise RestyleError(f"未知の参照契約versionです: {contract_version!r}")
     alpha_handling = plan.get("alpha_handling", {"kind": "none"})
     if not isinstance(alpha_handling, dict) or alpha_handling.get("kind") not in {
         "none",
@@ -513,6 +550,7 @@ def build_restyle_plan(
     prompt: str,
     negative_prompt: str = "",
     style_reference_paths: list[Path] | None = None,
+    reference_paths: list[tuple[str, Path]] | None = None,
     options: dict[str, Any] | None = None,
     output_dir: str,
     run_id: str | None = None,
@@ -545,6 +583,35 @@ def build_restyle_plan(
     style_records = _style_reference_records(style_paths)
     if not style_paths and opts.get("style_reference"):
         raise RestyleError("style_referenceはCLIの参照指定で渡してください")
+    other_records: list[dict[str, Any]] = []
+    for role, path in reference_paths or []:
+        normalized_role = str(role).strip().lower()
+        if normalized_role != "style":
+            raise RestyleError(
+                "NovelAI restyleで現在送信できる参照roleはstyleだけです: "
+                f"{normalized_role!r}"
+            )
+        other_records.extend(
+            _reference_records(
+                [Path(path)], role=normalized_role, start_order=2 + len(style_records) + len(other_records)
+            )
+        )
+    if other_records:
+        style_records.extend(other_records)
+    ordered_inputs = [
+        {
+            "path": str(source.path),
+            "sha256": source.sha256,
+            "role": "source",
+            "order": 1,
+            "dimensions": [source.oriented_width, source.oriented_height],
+        },
+        *style_records,
+    ]
+    try:
+        validate_ordered_image_inputs(ordered_inputs, label="restyle.ordered_image_inputs")
+    except ValueError as exc:
+        raise RestyleError(str(exc)) from exc
 
     width = opts.get("width")
     height = opts.get("height")
@@ -648,6 +715,7 @@ def build_restyle_plan(
 
     request_contract = {
         "schema_version": "1.0",
+        "reference_contract_version": REFERENCE_CONTRACT_VERSION,
         "operation": "image_to_image",
         "intent": "restyle",
         "provider": "novelai",
@@ -661,6 +729,8 @@ def build_restyle_plan(
         ],
         "instruction": effective_prompt,
         "style_references": style_records,
+        "ordered_image_inputs": ordered_inputs,
+        "reference_guided_generation": bool(style_records),
         "size_policy": transform or {"kind": "same_dimensions"},
         "output_dir": str(resolved_run_dir),
         "provider_options": {
@@ -706,6 +776,9 @@ def build_restyle_plan(
             )
         ),
         "style_references": style_records,
+        "ordered_image_inputs": ordered_inputs,
+        "reference_contract_version": REFERENCE_CONTRACT_VERSION,
+        "reference_guided_generation": bool(style_records),
         "prompt": {
             "source_value": prompt,
             "value": effective_prompt,
@@ -741,6 +814,7 @@ def build_restyle_plan(
             "RGBA入力は明示したalpha-backgroundで作業用RGBへ合成し、元画像を変更しない",
             "保存JSONにはbase64・Vibe encoding・認証ヘッダーを含めない",
             "再描画結果を次の入力へ自動連鎖しない",
+            "画像参照のroleと送信順は共通contractへ固定し、provider adapterで再検証する",
         ],
     }
 
@@ -789,6 +863,24 @@ def execute_restyle(
             raise RestyleError(
                 f"絵柄参照のhashがdry-run後に変わっています。再計画してください: {reference_path}"
             )
+    ordered_inputs = plan.get("ordered_image_inputs") or []
+    if ordered_inputs:
+        try:
+            normalized_inputs = validate_ordered_image_inputs(
+                ordered_inputs,
+                label="restyle.ordered_image_inputs",
+            )
+        except ValueError as exc:
+            raise RestyleError(str(exc)) from exc
+        for record in normalized_inputs:
+            input_path = Path(str(record["path"])).expanduser().resolve()
+            if not input_path.is_file():
+                raise RestyleError(f"参照画像ファイルが見つかりません: {input_path}")
+            if file_sha256(input_path) != str(record["sha256"]):
+                raise RestyleError(
+                    "画像参照のhashがdry-run後に変わっています。再計画してください: "
+                    f"{input_path}"
+                )
     run_dir = Path(plan["output_dir"]).expanduser().resolve()
     if not any(part.lower() == "_restyle" for part in run_dir.parts):
         raise RestyleError("restyleの出力先は _restyle/ 配下である必要があります")
