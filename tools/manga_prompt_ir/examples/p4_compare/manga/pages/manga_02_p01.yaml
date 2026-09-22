@@ -1,0 +1,209 @@
+schema_version: "1.1"
+meta:
+  intent: manga_page
+  reading_order: right_to_left
+  aspect_ratio: "2:3"
+  page_count: 1
+render_instruction:
+  task: 漫画1ページとして描く。
+  prompt_header: 動作・反応・見せゴマの3コマ。
+  panel_policy: panels順とpanel_idを保つ。
+  character_policy: character_idとvariant_idを保つ。
+  text_mode: generate
+  output_policy: コマ枠と右から左を明確にする。
+manga:
+  genre_tags:
+    - manga
+    - full_color
+  visual_tags:
+    - speed_lines
+    - clean_lineart
+  panel_layout: 上動作・中反応・下見せゴマ
+  lettering:
+    direction: vertical
+    base_font_size: 30
+    size_policy: uniform_then_shrink
+scene:
+  location: 駅の待合室
+  location_en: station waiting room
+  time_of_day: 夕方
+  time_of_day_en: late afternoon
+character_ids:
+  - kazuki
+  - yui
+character_snapshots:
+  - character_id: kazuki
+    name: 和紀
+    name_en: Kazuki
+    selected_variant_id: "001_normal"
+  - character_id: yui
+    name: 結
+    name_en: Yui
+    selected_variant_id: "001_normal"
+dramaturgy:
+  purpose: 落ちる切符を和紀がつかむ。
+  purpose_en: Kazuki catches a falling ticket.
+background_concepts:
+  - concept_id: station_waiting_room
+    title: 待合室
+    description: 木のベンチのある待合室。
+    prompt: manga background, station waiting room, wooden bench, no characters
+    negative_tags:
+      - people
+layout_geometry:
+  panels:
+    - panel_id: 10
+      rect: {x: 0.04, y: 0.03, w: 0.92, h: 0.28}
+    - panel_id: 20
+      rect: {x: 0.04, y: 0.34, w: 0.92, h: 0.26}
+    - panel_id: 30
+      rect: {x: 0.04, y: 0.63, w: 0.92, h: 0.34}
+continuity_tracks:
+  - entity_id: ticket
+    panel_id: 10
+    state: falling from Yui's hand
+  - entity_id: kazuki
+    panel_id: 30
+    state: catching the ticket
+asset_references:
+  - asset_id: paper-ticket
+    role: prop
+panels:
+  - panel_id: 10
+    summary: 切符が落ち、和紀が手を伸ばす。
+    summary_en: Ticket slips; Kazuki reaches.
+    dramaturgy:
+      role: action
+      purpose: 落下を1ビートで出す。
+      purpose_en: One beat for the drop.
+    background_density: medium
+    subjects:
+      - subject_id: p10-s01
+        character_id: yui
+        variant_id: "001_normal"
+        description: 切符を落とす結
+        pose_action: 右手から切符が離れる
+        pose_action_en: ticket leaving her right hand
+        position: midground
+        expression: 焦り
+        expression_en: alarmed
+      - subject_id: p10-s02
+        character_id: kazuki
+        variant_id: "001_normal"
+        description: 手を伸ばす和紀
+        pose_action: 落ちる切符へ手を伸ばす
+        pose_action_en: reaching for the falling ticket
+        position: midground
+        expression: 集中
+        expression_en: focused
+      - subject_id: p10-s03
+        type: object
+        description: 空中の切符
+        description_en: paper ticket in mid-air
+        pose_action: 落ちる
+        pose_action_en: falling
+        position: foreground
+    composition:
+      framing: medium shot
+      framing_en: action shot
+      layout: 上段
+      layout_en: top panel
+      focus: 落ちる切符
+      focus_en: falling ticket
+    camera:
+      shot_size: medium shot
+      view_en: two people and falling ticket
+    text:
+      sfx:
+        - text_id: p10-sfx-01
+          content: ぱらっ
+          meaning: 切符が指を離れる
+  - panel_id: 20
+    summary: 結が目を見開く。
+    summary_en: Yui's eyes widen.
+    dramaturgy:
+      role: reaction
+      purpose: 顔の反応だけ出す。
+      purpose_en: Face reaction only.
+    background_density: sparse
+    subjects:
+      - subject_id: p20-s01
+        character_id: yui
+        variant_id: "001_normal"
+        description: 驚く結
+        pose_action: 両手を上げて固まる
+        pose_action_en: hands raised, frozen
+        position: foreground
+        expression: 驚き
+        expression_en: startled
+    composition:
+      framing: close-up
+      framing_en: reaction close-up
+      layout: 中段
+      layout_en: middle panel
+      focus: 結の目
+      focus_en: Yui's eyes
+    camera:
+      shot_size: close-up
+      view_en: solo face
+    text:
+      dialogue:
+        - text_id: p20-dialogue-01
+          speaker: yui
+          content: あっ
+          bubble_type: small speech bubble
+  - panel_id: 30
+    summary: 和紀が切符をつかむ見せゴマ。
+    summary_en: "Splash: Kazuki catches the ticket."
+    dramaturgy:
+      role: splash
+      purpose: キャッチを大きく出す。
+      purpose_en: Large catch panel.
+    background_density: medium
+    subjects:
+      - subject_id: p30-s01
+        character_id: kazuki
+        variant_id: "001_normal"
+        description: 切符をつかむ和紀
+        pose_action: 床近くで切符をつかむ
+        pose_action_en: catching the ticket near the floor
+        position: foreground
+        expression: 安堵
+        expression_en: relieved
+      - subject_id: p30-s02
+        character_id: yui
+        variant_id: "001_normal"
+        description: 見下ろす結
+        pose_action: 胸に手を当てる
+        pose_action_en: hand on chest, looking down
+        position: midground
+        expression: 安堵
+        expression_en: relieved
+      - subject_id: p30-s03
+        type: object
+        description: つかんだ切符
+        description_en: caught paper ticket
+        pose_action: 指の間で止まる
+        pose_action_en: held between fingers
+        position: foreground
+    composition:
+      framing: wide shot
+      framing_en: splash
+      layout: 下段
+      layout_en: bottom splash
+      focus: つかんだ切符
+      focus_en: caught ticket
+    camera:
+      shot_size: wide shot
+      view_en: catch near the floor
+    text:
+      dialogue:
+        - text_id: p30-dialogue-01
+          speaker: kazuki
+          content: 取った。
+          bubble_type: speech bubble
+technical:
+  quality_level: high
+  negative_tags:
+    - watermark
+    - extra_fingers

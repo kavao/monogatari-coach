@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+import re
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -29,6 +30,16 @@ class MangaMeta(BaseModel):
     illustration_type: str | None = None
 
 
+class LetteringStyle(BaseModel):
+    """Page-level lettering defaults used by the local lettering pass."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    direction: Literal["vertical", "horizontal"] = "vertical"
+    base_font_size: int = Field(default=30, ge=12, le=512)
+    size_policy: Literal["uniform_then_shrink"] = "uniform_then_shrink"
+
+
 class MangaStyle(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -38,6 +49,7 @@ class MangaStyle(BaseModel):
     screentone: str | None = None
     panel_layout: str | None = None
     text_policy: str = "Japanese text must be legible"
+    lettering: LetteringStyle = Field(default_factory=LetteringStyle)
 
 
 class TagPolicy(BaseModel):
@@ -78,6 +90,7 @@ class RenderInstruction(BaseModel):
     panel_policy: str | None = None
     character_policy: str | None = None
     text_policy: str | None = None
+    text_mode: Literal["generate", "letter_later", "none"] | None = None
     output_policy: str | None = None
     notes: list[str] = Field(default_factory=list)
     user_directives: UserDirectives = Field(default_factory=UserDirectives)
@@ -138,6 +151,7 @@ class BackgroundConcept(BaseModel):
 class Subject(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    subject_id: str | None = None
     character_id: str | None = None
     variant_id: str | None = None
     prompt_variant_id: str | None = None
@@ -165,6 +179,66 @@ class CharacterSnapshot(BaseModel):
     fixed_tags: list[str] = Field(default_factory=list)
     variant_tags: list[str] = Field(default_factory=list)
     do_not_change: list[str] = Field(default_factory=list)
+
+
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
+
+
+def _requires_english(value: str | None) -> bool:
+    return bool(value and _CJK_RE.search(value))
+
+
+def _raw_text_policy_mode(value: Any) -> str | None:
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+    modes: set[str] = set()
+    if any(token in text for token in ("no text", "without text", "文字なし", "文字を描かない")):
+        modes.add("none")
+    if any(token in text for token in ("letter later", "lettering later", "後載せ", "空吹き出し")):
+        modes.add("letter_later")
+    if any(
+        token in text
+        for token in (
+            "legible",
+            "readable",
+            "render text",
+            "日本語",
+            "可読",
+            "正確な文言",
+            "文字を入れ",
+            "文字を描",
+        )
+    ):
+        modes.add("generate")
+    if len(modes) > 1:
+        raise ValueError("text_policyが複数の文字方針に衝突しています")
+    return next(iter(modes), None)
+
+
+class Dramaturgy(BaseModel):
+    """Optional 1.1 page/panel intent; English is required for Japanese prose."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: str | None = None
+    purpose: str | None = None
+    purpose_en: str | None = None
+    emotional_arc: str | None = None
+    emotional_arc_en: str | None = None
+    relation_to_previous: str | None = None
+    relation_to_previous_en: str | None = None
+
+    @model_validator(mode="after")
+    def english_fields_pair(self) -> "Dramaturgy":
+        for label, value, english in (
+            ("purpose", self.purpose, self.purpose_en),
+            ("emotional_arc", self.emotional_arc, self.emotional_arc_en),
+            ("relation_to_previous", self.relation_to_previous, self.relation_to_previous_en),
+        ):
+            if _requires_english(value) and not english:
+                raise ValueError(f"dramaturgy.{label} に日本語を記載した場合は {label}_en が必須です")
+        return self
 
 
 class Composition(BaseModel):
@@ -211,25 +285,68 @@ class Dialogue(BaseModel):
 
     speaker: str
     content: str
+    text_id: str | None = None
     bubble_type: str | None = None
-    placement: str | None = None
+    placement: str | TextPlacement | None = None
+    writing_direction: Literal["horizontal", "vertical"] | None = None
 
 
 class SoundEffect(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     content: str
-    placement: str | None = None
+    text_id: str | None = None
+    placement: str | TextPlacement | None = None
+    writing_direction: Literal["horizontal", "vertical"] | None = None
     style: str | None = None
     meaning: str | None = None
+
+
+class TextPlacement(BaseModel):
+    """Optional normalized placement used by schema 1.1 text entries."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    x: float | None = None
+    y: float | None = None
+    w: float | None = None
+    h: float | None = None
+    anchor: str | None = None
+    writing_direction: Literal["horizontal", "vertical"] | None = None
+
+    @model_validator(mode="after")
+    def normalized_bounds(self) -> "TextPlacement":
+        values = {"x": self.x, "y": self.y, "w": self.w, "h": self.h}
+        if any(value is not None and not 0.0 <= value <= 1.0 for value in values.values()):
+            raise ValueError("text placementのx/y/w/hは0〜1の範囲です")
+        if self.w is not None and self.w <= 0:
+            raise ValueError("text placementのwは0より大きくしてください")
+        if self.h is not None and self.h <= 0:
+            raise ValueError("text placementのhは0より大きくしてください")
+        if self.x is not None and self.w is not None and self.x + self.w > 1:
+            raise ValueError("text placementのx+wは1以下です")
+        if self.y is not None and self.h is not None and self.y + self.h > 1:
+            raise ValueError("text placementのy+hは1以下です")
+        return self
+
+
+class StructuredText(BaseModel):
+    """Structured form for legacy narration/monologue strings."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text_id: str | None = None
+    content: str
+    placement: str | TextPlacement | None = None
+    writing_direction: Literal["horizontal", "vertical"] | None = None
 
 
 class PanelText(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dialogue: list[Dialogue] = Field(default_factory=list)
-    narration: list[str] = Field(default_factory=list)
-    monologue: list[str] = Field(default_factory=list)
+    narration: list[str | StructuredText] = Field(default_factory=list)
+    monologue: list[str | StructuredText] = Field(default_factory=list)
     sfx: list[SoundEffect] = Field(default_factory=list)
 
 
@@ -246,6 +363,8 @@ class Panel(BaseModel):
     step2_summary: str | None = None
     scene: Scene | None = None
     subjects: list[Subject]
+    dramaturgy: Dramaturgy | None = None
+    background_density: str | None = None
     composition: Composition = Field(default_factory=Composition)
     camera: Camera = Field(default_factory=Camera)
     lighting: Lighting = Field(default_factory=Lighting)
@@ -286,14 +405,72 @@ class Technical(BaseModel):
     negative_tags: list[str] = Field(default_factory=list)
 
 
+class GeometryRect(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    x: float
+    y: float
+    w: float
+    h: float
+
+    @model_validator(mode="after")
+    def normalized_bounds(self) -> "GeometryRect":
+        values = {"x": self.x, "y": self.y, "w": self.w, "h": self.h}
+        if any(not 0.0 <= value <= 1.0 for value in values.values()):
+            raise ValueError("layout_geometryのx/y/w/hは0〜1の範囲です")
+        if self.w <= 0 or self.h <= 0:
+            raise ValueError("layout_geometryのw/hは0より大きくしてください")
+        if self.x + self.w > 1 or self.y + self.h > 1:
+            raise ValueError("layout_geometryの矩形がページ範囲を超えています")
+        return self
+
+
+class LayoutPanel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    panel_id: int
+    rect: GeometryRect
+
+
+class LayoutGeometry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    panels: list[LayoutPanel]
+
+
+class ContinuityTrack(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str
+    panel_id: int
+    state: str
+    intentional_change: bool = False
+    change_note: str | None = None
+
+
+class AssetReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_id: str
+    role: str
+    path: str | None = None
+    character_id: str | None = None
+    variant_id: str | None = None
+    concept_id: str | None = None
+
+
 class MangaPagePrompt(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.0", "1.1"] = "1.0"
     meta: MangaMeta
     render_instruction: RenderInstruction = Field(default_factory=RenderInstruction)
     manga: MangaStyle
     scene: Scene
+    dramaturgy: Dramaturgy | None = None
+    layout_geometry: LayoutGeometry | None = None
+    continuity_tracks: list[ContinuityTrack] = Field(default_factory=list)
+    asset_references: list[AssetReference] = Field(default_factory=list)
     character_ids: list[str] = Field(default_factory=list)
     character_snapshots: list[CharacterSnapshot] = Field(default_factory=list)
     background_concepts: list[BackgroundConcept] = Field(default_factory=list)
@@ -307,3 +484,207 @@ class MangaPagePrompt(BaseModel):
         if not value:
             raise ValueError("manga page must contain at least one panel")
         return value
+
+    @model_validator(mode="after")
+    def apply_lettering_defaults(self) -> "MangaPagePrompt":
+        """Resolve omitted per-item directions from the page lettering style."""
+        direction = self.manga.lettering.direction
+        for panel in self.panels:
+            for item in panel.text.dialogue:
+                if item.writing_direction is None:
+                    item.writing_direction = direction
+            for item in panel.text.sfx:
+                if item.writing_direction is None:
+                    item.writing_direction = direction
+            for collection in (panel.text.monologue, panel.text.narration):
+                for item in collection:
+                    if isinstance(item, StructuredText) and item.writing_direction is None:
+                        item.writing_direction = direction
+        return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def keep_schema_1_0_closed(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        schema_version = str(value.get("schema_version", "1.0"))
+        if schema_version == "1.1":
+            instruction = value.get("render_instruction")
+            manga = value.get("manga")
+            declared: list[tuple[str, str]] = []
+            if isinstance(manga, dict) and "text_policy" in manga:
+                kind = _raw_text_policy_mode(manga.get("text_policy"))
+                if kind:
+                    declared.append(("manga.text_policy", kind))
+            if isinstance(instruction, dict) and "text_policy" in instruction:
+                kind = _raw_text_policy_mode(instruction.get("text_policy"))
+                if kind:
+                    declared.append(("render_instruction.text_policy", kind))
+            kinds = {kind for _path, kind in declared}
+            if len(kinds) > 1:
+                detail = ", ".join(f"{path}={kind}" for path, kind in declared)
+                raise ValueError(f"text_policyが衝突しています: {detail}")
+            requested = instruction.get("text_mode") if isinstance(instruction, dict) else None
+            if requested and kinds and next(iter(kinds)) != requested:
+                detail = ", ".join(f"{path}={kind}" for path, kind in declared)
+                raise ValueError(f"text_mode={requested!r}とtext_policyが衝突しています: {detail}")
+            return value
+        if schema_version != "1.0":
+            return value
+        versioned_keys = {
+            "dramaturgy",
+            "layout_geometry",
+            "continuity_tracks",
+            "asset_references",
+            "text_mode",
+            "subject_id",
+            "background_density",
+            "text_id",
+            "lettering",
+        }
+
+        def find_key(node: Any, path: str = "") -> str | None:
+            if isinstance(node, dict):
+                for key, child in node.items():
+                    if key in versioned_keys:
+                        return f"{path}/{key}" if path else str(key)
+                    found = find_key(child, f"{path}/{key}" if path else str(key))
+                    if found:
+                        return found
+            elif isinstance(node, list):
+                for index, child in enumerate(node):
+                    found = find_key(child, f"{path}/{index}")
+                    if found:
+                        return found
+            return None
+
+        found = find_key(value)
+        if found:
+            raise ValueError(f"schema 1.0ではschema 1.1項目を使用できません: {found}")
+        return value
+
+    @model_validator(mode="after")
+    def validate_schema_1_1_references(self) -> "MangaPagePrompt":
+        if self.schema_version == "1.0":
+            return self
+
+        panel_ids = [panel.panel_id for panel in self.panels]
+        if len(panel_ids) != len(set(panel_ids)):
+            raise ValueError("schema 1.1ではpanel_idはページ内で一意でなければなりません")
+
+        subject_ids: list[str] = []
+        text_ids: list[str] = []
+        for panel in self.panels:
+            for subject in panel.subjects:
+                if subject.subject_id:
+                    subject_ids.append(subject.subject_id)
+            for item in panel.text.dialogue + panel.text.sfx:
+                if item.text_id:
+                    text_ids.append(item.text_id)
+            for items in (panel.text.narration, panel.text.monologue):
+                for item in items:
+                    if isinstance(item, StructuredText) and item.text_id:
+                        text_ids.append(item.text_id)
+        if len(subject_ids) != len(set(subject_ids)):
+            raise ValueError("schema 1.1ではsubject_idはページ内で一意でなければなりません")
+        if len(text_ids) != len(set(text_ids)):
+            raise ValueError("schema 1.1ではtext_idはページ内で一意でなければなりません")
+
+        if self.layout_geometry is not None:
+            geometry_ids = [item.panel_id for item in self.layout_geometry.panels]
+            unknown = sorted(set(geometry_ids) - set(panel_ids))
+            missing = sorted(set(panel_ids) - set(geometry_ids))
+            if unknown:
+                raise ValueError(f"layout_geometryに未知のpanel_idがあります: {unknown}")
+            if missing:
+                raise ValueError(f"layout_geometryに未定義のpanel_idがあります: {missing}")
+            if len(geometry_ids) != len(set(geometry_ids)):
+                raise ValueError("layout_geometryのpanel_idは一意でなければなりません")
+            if geometry_ids != panel_ids:
+                raise ValueError(
+                    "layout_geometryのpanels順は既存panels順と一致させ、"
+                    "第二の読み順を保存しないでください"
+                )
+            for index, left in enumerate(self.layout_geometry.panels):
+                for right in self.layout_geometry.panels[index + 1 :]:
+                    if _rectangles_overlap(left.rect, right.rect):
+                        raise ValueError(
+                            "layout_geometryの矩形が重複しています: "
+                            f"panel_id={left.panel_id} と panel_id={right.panel_id}"
+                        )
+
+        if self.continuity_tracks:
+            unknown_track_panels = sorted(
+                {track.panel_id for track in self.continuity_tracks} - set(panel_ids)
+            )
+            if unknown_track_panels:
+                raise ValueError(
+                    f"continuity_tracksに未知のpanel_idがあります: {unknown_track_panels}"
+                )
+        if len(self.asset_references) != len({ref.asset_id for ref in self.asset_references}):
+            raise ValueError("schema 1.1ではasset_idはページ内で一意でなければなりません")
+
+        known_character_ids = set(self.character_ids)
+        known_character_ids.update(
+            subject.character_id
+            for panel in self.panels
+            for subject in panel.subjects
+            if subject.character_id
+        )
+        known_character_ids.update(snapshot.character_id for snapshot in self.character_snapshots)
+
+        known_variant_ids: dict[str, set[str]] = {}
+        for panel in self.panels:
+            for subject in panel.subjects:
+                if not subject.character_id:
+                    continue
+                selected_variant = next(
+                    (
+                        value
+                        for value in (
+                            subject.prompt_variant_id,
+                            subject.costume_variant,
+                            subject.variant_id,
+                        )
+                        if value
+                    ),
+                    None,
+                )
+                if selected_variant:
+                    known_variant_ids.setdefault(subject.character_id, set()).add(selected_variant)
+        for snapshot in self.character_snapshots:
+            if snapshot.selected_variant_id:
+                known_variant_ids.setdefault(snapshot.character_id, set()).add(
+                    snapshot.selected_variant_id
+                )
+
+        known_concept_ids = {concept.concept_id for concept in self.background_concepts}
+        for reference in self.asset_references:
+            if reference.character_id and reference.character_id not in known_character_ids:
+                raise ValueError(
+                    "asset_referencesに未知のcharacter_idがあります: "
+                    f"{reference.character_id}"
+                )
+            if reference.variant_id:
+                if not reference.character_id:
+                    raise ValueError(
+                        "asset_referencesのvariant_idにはcharacter_idが必要です: "
+                        f"{reference.variant_id}"
+                    )
+                if reference.variant_id not in known_variant_ids.get(reference.character_id, set()):
+                    raise ValueError(
+                        "asset_referencesにページ内で解決できないvariant_idがあります: "
+                        f"{reference.character_id}/{reference.variant_id}"
+                    )
+            if reference.concept_id and reference.concept_id not in known_concept_ids:
+                raise ValueError(
+                    "asset_referencesに未知のconcept_idがあります: "
+                    f"{reference.concept_id}"
+                )
+        return self
+
+
+def _rectangles_overlap(left: GeometryRect, right: GeometryRect) -> bool:
+    horizontal = min(left.x + left.w, right.x + right.w) - max(left.x, right.x)
+    vertical = min(left.y + left.h, right.y + right.h) - max(left.y, right.y)
+    return horizontal > 0 and vertical > 0

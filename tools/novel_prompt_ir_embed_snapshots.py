@@ -5,10 +5,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt  # noqa: E402
 
 
 def repo_root() -> Path:
@@ -149,6 +156,7 @@ def page_character_variants(page: dict[str, Any]) -> list[tuple[str, str | None]
 
 def embed_snapshots(path: Path, characters: dict[str, dict[str, Any]], *, dry_run: bool) -> bool:
     page = load_yaml(path)
+    MangaPagePrompt.model_validate(page)
     snapshots: list[dict[str, Any]] = []
     for character_id, variant_id in page_character_variants(page):
         character = characters.get(character_id)
@@ -156,6 +164,7 @@ def embed_snapshots(path: Path, characters: dict[str, dict[str, Any]], *, dry_ru
             continue
         snapshots.append(build_snapshot(character, variant_id))
     page["character_snapshots"] = snapshots
+    MangaPagePrompt.model_validate(page)
     if dry_run:
         print(f"would update: {path} snapshots={len(snapshots)}")
         return bool(snapshots)

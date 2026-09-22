@@ -242,6 +242,24 @@ def test_manga_page_instruction_wraps_existing_prompt_and_inlines_negative() -> 
     assert bundle.negative_mode == INLINE_DO_NOT_INCLUDE
 
 
+def test_manga_page_separates_preserve_from_do_not_include() -> None:
+    page = _sample_illustration_page()
+    page["meta"]["intent"] = "manga_page"
+    bundle = format_manga_page_prompt(
+        page,
+        source="step1-pages",
+        existing_prompt="page instruction",
+        negative_prompt="watermark",
+        formatter=MANGA_PAGE_INSTRUCTION,
+    )
+
+    preserve, do_not_include = bundle.prompt.split("Do not include:", 1)
+    assert "Preserve:" in preserve
+    assert "do not make him a muscular hero" in preserve
+    assert "do not make him a muscular hero" not in do_not_include
+    assert "- watermark" in do_not_include
+
+
 def test_manga_panel_natural_sections_inlines_negative_and_keeps_panel_context() -> None:
     page = _sample_illustration_page()
     page["meta"]["intent"] = "manga_page"

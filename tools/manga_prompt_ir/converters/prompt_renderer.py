@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 
 from ..schemas.character import CharacterPrompt
-from ..schemas.manga_page import MangaPagePrompt, Panel
+from ..schemas.manga_page import MangaPagePrompt, Panel, StructuredText
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,10 @@ def render_page_prompt(
         f"style: {', '.join(tags)}" if tags else "",
         f"layout: {page.manga.panel_layout}" if page.manga.panel_layout else "",
         f"text policy: {page.manga.text_policy}",
+        "lettering: "
+        f"{page.manga.lettering.direction} Japanese writing, "
+        f"base font size {page.manga.lettering.base_font_size}, "
+        f"{page.manga.lettering.size_policy}",
     ]
 
     panel_parts: list[str] = []
@@ -63,30 +68,81 @@ def extract_text_elements(page: MangaPagePrompt) -> list[dict[str, str | int]]:
     elements: list[dict[str, str | int]] = []
     for panel in page.panels:
         for item in panel.text.dialogue:
-            elements.append(
-                {
-                    "panel_id": panel.panel_id,
-                    "type": "dialogue",
-                    "speaker": item.speaker,
-                    "content": item.content,
-                    "placement": item.placement or "",
-                }
-            )
+            element = {
+                "panel_id": panel.panel_id,
+                "type": "dialogue",
+                "speaker": item.speaker,
+                "content": item.content,
+                "placement": _placement_text(item.placement),
+                "writing_direction": item.writing_direction or page.manga.lettering.direction,
+            }
+            if item.text_id:
+                element["text_id"] = item.text_id
+            elements.append(element)
         for item in panel.text.monologue:
-            elements.append({"panel_id": panel.panel_id, "type": "monologue", "content": item})
-        for item in panel.text.narration:
-            elements.append({"panel_id": panel.panel_id, "type": "narration", "content": item})
-        for item in panel.text.sfx:
             elements.append(
-                {
-                    "panel_id": panel.panel_id,
-                    "type": "sfx",
-                    "content": item.content,
-                    "placement": item.placement or "",
-                    "meaning": item.meaning or "",
-                }
+                _structured_text_element(
+                    panel.panel_id,
+                    "monologue",
+                    item,
+                    default_direction=page.manga.lettering.direction,
+                )
             )
+        for item in panel.text.narration:
+            elements.append(
+                _structured_text_element(
+                    panel.panel_id,
+                    "narration",
+                    item,
+                    default_direction=page.manga.lettering.direction,
+                )
+            )
+        for item in panel.text.sfx:
+            element = {
+                "panel_id": panel.panel_id,
+                "type": "sfx",
+                "content": item.content,
+                "placement": _placement_text(item.placement),
+                "meaning": item.meaning or "",
+                "writing_direction": item.writing_direction or page.manga.lettering.direction,
+            }
+            if item.text_id:
+                element["text_id"] = item.text_id
+            elements.append(element)
     return elements
+
+
+def _structured_text_content(item: str | StructuredText) -> str:
+    return item.content if isinstance(item, StructuredText) else item
+
+
+def _placement_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return json.dumps(value.model_dump(), ensure_ascii=False, sort_keys=True)
+
+
+def _structured_text_element(
+    panel_id: int,
+    kind: str,
+    item: str | StructuredText,
+    *,
+    default_direction: str,
+) -> dict[str, str | int]:
+    element: dict[str, str | int] = {
+        "panel_id": panel_id,
+        "type": kind,
+        "content": _structured_text_content(item),
+    }
+    if isinstance(item, StructuredText):
+        if item.text_id:
+            element["text_id"] = item.text_id
+        if item.placement is not None:
+            element["placement"] = _placement_text(item.placement)
+        element["writing_direction"] = item.writing_direction or default_direction
+    return element
 
 
 def _scene_to_text(scene) -> str:

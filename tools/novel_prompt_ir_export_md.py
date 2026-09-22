@@ -43,6 +43,8 @@ from manga_prompt_ir.color_mode import (
 from manga_prompt_ir.user_directives import (
     apply_to_tags as apply_user_directives_to_tags,
 )
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
+from manga_prompt_ir.page_render_plan import schema_1_1_prompt_context
 
 STYLE_TAGS = ["best_quality", "very_aesthetic", "ultra-detailed", "manga"]
 
@@ -333,9 +335,11 @@ def render_text_block(panel: dict[str, Any]) -> list[str]:
         if isinstance(item, dict):
             lines.append(f"- セリフ: {item.get('speaker', '不明')}「{item.get('content', '')}」")
     for item in as_list(text.get("monologue")):
-        lines.append(f"- モノローグ: {item}")
+        content = item.get("content", item.get("text", "")) if isinstance(item, dict) else item
+        lines.append(f"- モノローグ: {content}")
     for item in as_list(text.get("narration")):
-        lines.append(f"- ナレーション: {item}")
+        content = item.get("content", item.get("text", "")) if isinstance(item, dict) else item
+        lines.append(f"- ナレーション: {content}")
     for item in as_list(text.get("sfx")):
         if isinstance(item, dict):
             meaning = f"（{item.get('meaning')}）" if item.get("meaning") else ""
@@ -492,6 +496,9 @@ def render_manga_page_section(
         f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
     ]
+    schema_context = schema_1_1_prompt_context(page)
+    if schema_context:
+        lines.extend(["### Schema 1.1 context", *schema_context, ""])
     for panel in panels:
         if not isinstance(panel, dict):
             continue
@@ -649,6 +656,7 @@ def main(argv: list[str] | None = None) -> int:
         pages: list[tuple[Path | None, dict[str, Any]]] = []
         for manga_page_path in args.manga_page:
             page = load_data(manga_page_path)
+            MangaPagePrompt.model_validate(page)
             if "panels" not in page:
                 raise ValueError(f"invalid manga page IR: {manga_page_path}")
             pages.append((manga_page_path, page))
@@ -668,6 +676,7 @@ def main(argv: list[str] | None = None) -> int:
         ill_pages: list[tuple[Path, dict[str, Any]]] = []
         for illustration_page_path in args.illustration_page:
             page = load_data(illustration_page_path)
+            MangaPagePrompt.model_validate(page)
             if "panels" not in page:
                 raise ValueError(f"invalid illustration page IR: {illustration_page_path}")
             meta = page.get("meta") or {}

@@ -161,6 +161,34 @@ def _user_directive_warnings_for_page(label: str, page) -> list[str]:
     return warnings
 
 
+def _schema_1_1_advisories(label: str, page) -> list[str]:
+    """Report optional migration work without inventing meaning or IDs."""
+    if getattr(page, "schema_version", "1.0") != "1.1":
+        return []
+    advisories: list[str] = []
+    if page.dramaturgy is None:
+        advisories.append(f"{label}: schema 1.1のdramaturgyが未記載です（演出意図はadvisory）")
+    if page.render_instruction.text_mode is None:
+        advisories.append(
+            f"{label}: render_instruction.text_modeが未記載です（移行時にgenerate/letter_later/noneを選択）"
+        )
+    for panel in page.panels:
+        for index, subject in enumerate(panel.subjects, start=1):
+            if not subject.subject_id:
+                advisories.append(
+                    f"{label}: panel {panel.panel_id} subject {index} にsubject_idがありません（移行dry-run対象）"
+                )
+        text_items = [*panel.text.dialogue, *panel.text.sfx]
+        text_items.extend(panel.text.narration)
+        text_items.extend(panel.text.monologue)
+        for index, item in enumerate(text_items, start=1):
+            if not getattr(item, "text_id", None):
+                advisories.append(
+                    f"{label}: panel {panel.panel_id} text {index} にtext_idがありません（移行dry-run対象）"
+                )
+    return advisories
+
+
 def load_summary_en_validator():
     tools_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(tools_dir))
@@ -366,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--strict-quality",
         action="store_true",
-        help="意味品質の警告も失敗扱いにする（画角 advisory は対象外）",
+        help="意味品質の警告も失敗扱いにする（画角・schema 1.1 advisory は対象外）",
     )
     args = parser.parse_args(argv)
 
@@ -443,6 +471,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             warnings.extend(page_warnings)
             quality_errors.extend(page_errors)
+            advisories.extend(_schema_1_1_advisories(path.as_posix(), page))
             advisories.extend(camera_shot_advisories_for_page(path.as_posix(), page))
             print(f"OK {page.meta.intent}: {path}")
         except Exception as exc:
