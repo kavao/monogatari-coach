@@ -1,0 +1,23 @@
+schema: 1
+scene_id: ch01-001
+text_path: _novel_text/novel_text01.md
+selector:
+  kind: heading
+  value: 第一章　駅までの道
+text_sha256: sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf
+status: adopted
+created_by: agent
+adopted_by: agent
+items:
+  - beat_id: pack_bag
+    event_id: EVT-0001
+    state_at: after
+    actors: [CHR-a]
+  - beat_id: say_goodbye
+    event_id: EVT-0002
+    state_at: after
+    actors: [CHR-a]
+  - beat_id: reach_station
+    event_id: EVT-0001
+    state_at: after
+    actors: [CHR-a]

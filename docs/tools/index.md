@@ -8,6 +8,278 @@
 
 ## テキスト・プロジェクト管理
 
+### `metron_cli.py` — METRON V0/V1 の計測と局所修復計画
+
+METRON は Scene を Beat に分け、本文の構造予算を計測してレポートします。V1 の判定・修復処理は provider 呼び出しを直接行わず、注入可能な生成境界として提供します。
+
+まず契約と BeatPlan を検証します。
+
+```bash
+python tools/metron_cli.py validate \
+  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml
+```
+
+マーカー付き draft を解析し、run ごとの `draft.NNN.md`、`spans.NNN.yaml`、`metrics.NNN.yaml`、`regression.NNN.yaml` を保存します。既存 run のファイルは上書きしません。
+
+```bash
+python tools/metron_cli.py analyze \
+  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --draft novels/NNN_作品名/_metron/ch03-002/marked.md \
+  --output-dir novels/NNN_作品名/_metron/ch03-002 \
+  --run 1 --model <model-id>
+```
+
+解析結果から著者向けレポートを作成します。
+
+```bash
+python tools/metron_cli.py report \
+  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --output novels/NNN_作品名/_metron/ch03-002/report.001.md
+```
+
+キャリブレーションは、課金や外部生成を伴わない dry-run を先に確認します。dry-run は計画だけを表示し、本番生成を行いません。
+
+```bash
+python tools/metron_cli.py calibrate --model <model-id> --dry-run
+```
+
+承認済みのローカル fixture を集計するときは `--samples` を指定します。`--write` を付けた場合だけ `config/metron_models.yaml` を更新します。
+
+```bash
+python tools/metron_cli.py calibrate --model <model-id> \
+  --samples _metron-fixtures/calibration.yaml \
+  --config config/metron_models.yaml \
+  --expand-retention-threshold 0.8 --approve --write
+```
+
+`--expand-retention-threshold` は、Expand 候補に残す元文の最低残存率を設定します。`--approve` は、承認済みの本番キャリブレーション結果を反映するときだけ指定します。承認なしの集計出力・書込みでは、モデル設定の `calibrated: false` を変更しません。`cursor-direct` の数値は `config/calibration_samples.yaml` の現行13件を再集計した未承認値です。V1 判定には使いません。
+
+キャリブレーション済みモデルの V1 判定と生成単位計画を確認できます。
+
+```bash
+python tools/metron_cli.py classify \
+  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --spans novels/NNN_作品名/_metron/ch03-002/spans.001.yaml \
+  --config config/metron_models.yaml --model <model-id>
+
+python tools/metron_cli.py plan \
+  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --config config/metron_models.yaml --model <model-id>
+```
+
+判定で修復対象になった場合の provider 呼び出しは、アプリケーション側から `repair_scene()` のコールバックへ接続します。採用稿を保存するときは、Beat / fact コメントを除去してから `FINAL.md` へ書き出します。
+
+```bash
+python tools/metron_cli.py finalize \
+  --draft novels/NNN_作品名/_metron/ch03-002/draft.002.md \
+  --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
+```
+
+### `chronos_cli.py` — CHRONOS の順序検査と人物状態
+
+CHRONOS は物語内部の出来事順を YAML で持ち、循環を機械的に検出します。日付は省略できます。作品が `character_state.dimensions` を書いたときだけ、人物の次元値も畳み込み検査します。外部 provider は呼びません。
+
+作品フォルダへ `chronos/` 雛形を置く前に、作成予定パスを確認します。`--dry-run` ではファイルを書きません。雛形は次元なしです。
+
+```bash
+# 確認（dry-run）— 作成予定のパスを表示する
+python tools/chronos_cli.py init novels/NNN_作品名 --dry-run
+
+# 本番 — 空の chronos/ を作成する
+python tools/chronos_cli.py init novels/NNN_作品名
+```
+
+実行後、`novels/NNN_作品名/chronos/` に設定と空のイベントファイルができます。既にある場合は失敗します。
+
+順序の矛盾を検査します。問題がなければ `ok`、循環があれば `CHR001` とイベント ID が出ます。状態を使う作品では CHR010〜013 も出ます。warning だけのときは終了コード 0、error は 1、入力エラーは 2 です。
+
+```bash
+python tools/chronos_cli.py check novels/NNN_作品名
+python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
+```
+
+`view` で循環があるときは CHR001 を標準エラーへ出し、終了コードは 1 です。表示順は制約順として信用しません。`--actor` かつ状態ありの作品では、各イベントの before / after を表示します。
+
+技術背景は [CHRONOS 技術詳細](../architecture/chronos.md) を参照してください。
+
+### `writing_bridge_cli.py` — METRON / CHRONOS の執筆接続
+
+Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
+
+両方 OFF のときは run を作りません。契約とマーカー稿は従来どおり `_metron/` に置きます。
+
+接続の対象パスを確認します。`--dry-run` では run も `request.yaml` も作りません。
+
+```bash
+# 確認（dry-run）— 作成予定の run パスだけを表示する。未作成の新章は selector なし
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --dry-run
+
+# 本番 — request.yaml を作り、標準出力の run_id を以降で使う
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new
+```
+
+実行後、`_writing/ch01-001/run-0001/` などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
+
+候補を受領し、同じ本文版を検査します。このレシピは正本を書きません。
+
+```bash
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 \
+  --candidate path/to/marked.md
+
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 \
+  --observations path/to/observations.json
+
+python tools/writing_bridge_cli.py status novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001
+
+# C1 座標の下書き — 一意の quote だけ。重複は推測しない。版ずれは STALE_EVIDENCE
+python tools/writing_bridge_cli.py locate-quote novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --quote "旅行用の上着"
+
+# 校正済みモデルの局所修復（本文正本は更新しない）
+python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --model MODEL_ID \
+  --authorization "ユーザー依頼: 当該場面をDeepen"
+python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001
+python tools/writing_bridge_cli.py repair-finish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-0001 --reason floor_met \
+  --authorization "ユーザー依頼: Deepenを止める"
+```
+
+正本へ書くときは `--allow-publish` 付きの run が必要です。METRON ON の場面作業では、執筆や Deepen の依頼だけで保存用 run まで進みます。起草用 run に後から権限は付きません。上の起草レシピを実行済みなら、保存用 `prepare` は別の `run_id` を返します。その id で `receive` / `inspect` をやり直してから `publish` します。起草用の `run-0001` へ `publish` すると `PERMISSION_DENIED` です。実行後の `prepared: .../run-XXXX` を、次の `--run-id` に使います。候補が無い保存用 run へ `publish` すると失敗します。
+
+未作成または空の正本へ新章を保存するときは selector を付けません。既存の非空本文を差し替えるときだけ heading などを付けます。
+
+```bash
+# レシピ1: 未作成または空の正本。selector なし
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --allow-publish \
+  --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind new \
+  --allow-publish
+
+# レシピ2: 既存の非空本文。heading で当該章だけを置換する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind refine \
+  --selector-kind heading \
+  --selector-value "章タイトル" \
+  --allow-publish \
+  --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 \
+  --text-path _novel_text/novel_text01.md \
+  --request-kind refine \
+  --selector-kind heading \
+  --selector-value "章タイトル" \
+  --allow-publish
+
+# 以降は両レシピ共通。同じ run-XXXX で receive → inspect → publish
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+
+# 確認（dry-run）— 正本は書き換えず、保存予定の対象ファイル全体へ句読点予検する。fail なら本番へ進まない。本番後の記録も結合後全文
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+
+# 本番 — 旧稿を退避し、対象場面だけを _novel_text へ書く
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
+```
+
+inspect は受領済み候補へ METRON と C1 を同じ本文版でかけます。`--marked` は受領候補と同じ内容のパスだけを指定できます。別内容なら `STALE_EVIDENCE` です。候補が無いときだけ既存の `_novel_text` を見ます。未作成の新章は先に receive が必要です。人物初期値や links など状態解決の入力が変わると context を作り直し、links と CHRONOS の整合も再確認します。受領済みの最新候補を後から書き換えた場合は再受領が必要です。破損した旧版は履歴に残し、新しい受領で差し替えられます。receive は版別に残し、同じハッシュの再受領は既存版を使います。`CHRONOS_NO_SCENE_EVENTS` は対象場面にイベントが未登録だったことを示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認します。これは `chronos_registered: success` やイベント検査済みを意味しません。契約の正本は `tools/fixtures/writing_bridge/SCHEMA.md` です。
+
+Phase 3の `repair-begin / repair-next / repair-submit / repair-finish` は、校正済みモデルの局所修復をファイル受け渡しで進めます。試行履歴を保持し、修復後の本文を再計測・C1照合します。結合校正の provider 呼び出しは出さず、マーカー異常は機械検証で止めます。生成打切り（`finish_reason`）は候補本文のハッシュが一致する版だけへ引き継ぎ、欠落Beatがあっても自動修復しません。ジョブを出せない必須は `escalated` になり、新しい `prepare` へ切り替えます。`--scope beats` は指定した Beat だけを直します。発行済みジョブ記録が消えているときは止めます。シーン床に届き必須修復も無いときは `repair-begin` を始めず保存へ進みます。明示 Deepen は `--intent explicit_deepen`、未提出 job の破棄は `repair-finish` です。始め方と止め方は [Writing bridge の速度のための運用](../architecture/writing-bridge.md#速度のための運用2026-09-12) を見てください。
+
+正本へ書くときは、先に `--allow-publish` で保存用 run を用意し、その `run_id` で `receive` → `inspect` → `publish --dry-run` → `publish` します。起草用 run へは書けません。[局所修復と本文反映の操作手順](../architecture/writing-bridge.md)を参照してください。
+
+### `book_review.py` / `book_lock.py` / `book_diff.py` — 出版パッケージ Phase 1
+
+作品フォルダ内の `book.yaml` と `rights.yaml` を基に、本文・付属原稿・挿絵・権利・奥付を検証し、入稿用入力一式を lockfile で管理します。PDF / EPUB の組版は行いません。
+
+```bash
+# 執筆中の参照チェック
+python tools/book_review.py novels/NNN_作品名 --gate writing
+
+# 入稿対象ごとの厳密チェック
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper
+
+# error 0 件の入力一式を凍結し、後続変更を確認
+python tools/book_lock.py novels/NNN_作品名 --target paper
+python tools/book_diff.py novels/NNN_作品名 --against lock
+
+# 手仕上げ稿（_novel_text_re）を使う場合は review / lock / diff で同じフラグを付ける
+python tools/book_review.py novels/NNN_作品名 --gate export --target paper --manuscript-source novel_text_re
+python tools/book_lock.py novels/NNN_作品名 --target paper --manuscript-source novel_text_re
+python tools/book_diff.py novels/NNN_作品名 --against lock --manuscript-source novel_text_re
+```
+
+`book.lock.yaml` は生成物のため手編集しません。読者向けの「登場人物」原稿を含む導入手順は [Publishing Package](../workflow/publishing-package.md) を参照してください。
+
+### `book_cover_review.py` / `book_cover_export.py` — 表紙合成（Phase 1.5）
+
+`cover.yaml` のレイアウト・base art・書体・権利を検査します。題字は組版（`type: text`）または題字ロゴ（`type: logo_asset`）です。ebook 前面 PDF の単体出力は `book_cover_export.py`（paper wrap は printer profile 未確定のため停止し得ます）。
+
+```bash
+# 表紙構成の確認（writing ゲート）
+python tools/book_cover_review.py novels/NNN_作品名 --target reader --gate writing
+
+# 公開・販売前の厳格ゲート
+python tools/book_cover_review.py novels/NNN_作品名 --target reader --gate export
+```
+
+手順と題字方針の分岐は [表紙合成・題字ロゴ](../workflow/cover-composition.md) を参照してください。
+
+### `book_export.py` / `book_preflight.py` — 紙書籍 proof PDF（Phase 2A）
+
+paper 用に lock した出版入力から、縦書き `interior.pdf` と、表紙を先頭に付けた `reader-proof.pdf` を組版し、ページ寸法・フォント埋め込み・挿絵配置・開始ページを検査します。プロファイルは `bunko`（文庫 / ISO A6・105×148mm）または `jis_b5`（182×257mm）。生成先は作品フォルダ内の `_publication_output/<build-id>/` です。`cover.yaml` がある作品では reader-proof の1ページ目が layered cover になります。
+
+```bash
+# 文庫サイズ（ISO A6）で proof を生成
+python tools/book_export.py novels/NNN_作品名 --target paper --profile bunko
+
+# JIS B5 で生成する場合
+python tools/book_export.py novels/NNN_作品名 --target paper --profile jis_b5
+
+# 手仕上げ稿で proof（lock 時と同じ --manuscript-source を指定）
+python tools/book_export.py novels/NNN_作品名 --profile bunko --manuscript-source novel_text_re
+
+# 生成済みproofを再検査
+python tools/book_preflight.py novels/NNN_作品名/_publication_output/<build-id> --target paper
+```
+
+`reader-proof.pdf` は閲覧・PDF配布確認用です。印刷所固有のPDF/X・CMYK・表1・背・表4を一体化した `cover.pdf` は、仕様確定後の別工程です。詳細は [紙書籍 proof PDF](../workflow/paper-proof-export.md) を参照してください。
+
+---
+
 ### `novel_onboard.py` — 新規作品オンボーディング
 
 新規作品を1コマンドで準備します。作品名を渡すと採番・フォルダ作成・scaffold・プロジェクト確認・次の一言まで一括で実行します。
@@ -21,7 +293,12 @@ python tools/novel_onboard.py novels/067_作品タイトル
 
 # 実行前に採番とフォルダパスだけ確認する
 python tools/novel_onboard.py "作品タイトル" --dry-run
+
+# 検査レイヤを明示的に止める場合（新規作成時のみ）
+python tools/novel_onboard.py "作品タイトル" --metron OFF --chronos OFF
 ```
+
+新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、`_metron/` と `chronos/` を ON の場合だけ準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプションを付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
 
 実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
 
@@ -62,13 +339,42 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 
 ---
 
-### `novel_project_check.py` — 必須ファイル確認
+### `novel_punctuation_metrics.py` — 句読点指標の集計と任意ゲート
 
-執筆開始前に、作品フォルダの必須ファイル・ディレクトリが揃っているかを確認します。終了コード 0 で「問題なし」です。
+本文の読点密度・一文あたり読点数・平均文長・接続助詞後読点率・句点誤配置を集計します。地の文と会話文はカギ括弧で分離します。付けない場合は計測だけで、終了コードは 0 です。
+
+ユーザーが作品フォルダや `--all` を指定すると、Monogatari Coach は章ファイルを読み、指標表と要約を表示します。`--json` を付けると、比較や回帰用の JSON が標準出力に出ます。
+
+執筆の初稿・場面追記では、同じスクリプトに `--gate` を付けて合否を確認できます。地の文の読点密度が高く、かつ平均文長が短いときだけ終了コード 1 になります。片方だけの逸脱は通ります。閾値はスクリプト内の定数です。
 
 ```bash
-# 基本確認
+# 1作品（章別 + 要約）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名
+
+# 全作品を作品単位で比較する
+python tools/novel_punctuation_metrics.py --all --by-novel
+
+# JSON（比較・回帰用）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名 --json
+
+# 執筆完了前の合否（短文かつ高密度なら終了コード 1）
+python tools/novel_punctuation_metrics.py novels/NNN_作品名/_novel_text/novel_text01.md --gate
+```
+
+実行後、コンソールに読点密度（地の文1000字あたり）と一文あたり読点の分布が出ます。`--gate` を付けたときは、続けて各ファイルの pass / fail / skip が出ます。
+
+---
+
+### `novel_project_check.py` — 必須ファイル確認
+
+執筆開始前に、作品フォルダの必須ファイル・ディレクトリが揃っているかを確認します。終了コード 0 で「問題なし」です。**既定で `character.md` の構造 lint（`plan` profile）も実行**されます。
+
+```bash
+# 基本確認（character.md 構造 lint 含む）
 python tools/novel_project_check.py novels/NNN_作品名
+
+# character.md 構造 lint をスキップ
+python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 
 # Tag Mode 済みを必須にする場合
 python tools/novel_project_check.py novels/NNN_作品名 --require-tag
@@ -79,17 +385,73 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 # G3 足切り通過を必須にする場合（_meta.md または最新 _reader/*.md を確認）
 python tools/novel_project_check.py novels/NNN_作品名 --require-slush-g3
 
+# 本文と設計書（執筆スケジュール・章分割）のズレを警告表示
+python tools/novel_project_check.py novels/NNN_作品名 --check-story-sync
+
+# ズレを NG（失敗）扱いにしたい場合
+python tools/novel_project_check.py novels/NNN_作品名 --strict-story-sync
+
+# METRON / CHRONOS のフラグと成果物の対応を確認（欠落は WARN）
+python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
+
 # _meta.yaml 等を不足分だけ作成してからチェック
 python tools/novel_project_check.py novels/NNN_作品名 --bootstrap
+
+# 未作成の NNN_タイトル を --bootstrap する場合の明示 OFF
+python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OFF --chronos OFF
 ```
 
 `--require-slush-g3` は、`_meta.md` に「足切りステータス: G3合格」が記録されているか、または最新の `_reader/YYYYMMDD_HHMM.md` に「スコア ≥ 55 かつ読むべき」が記録されているかを確認します。投稿前のゲートや校正着手前の確認に使います。
+
+`--check-story-sync` は、`_novel_text/novel_text*.md`（本文の実在状況）と `design_specification.md` の「執筆スケジュール」節を照合し、次のような形式的なズレを警告します。既定では警告表示のみで終了コードは変えません（`--strict-story-sync` を付けると NG 扱い）。
+
+- ある章の本文ファイルがあるのに、執筆スケジュールがその章を「未着手」等のままにしている。
+- 前半・後半（項）に分割した本文ファイル（例: `novel_text01_1.md`）があるのに、設計書側に分割の記載が見当たらない。
+
+本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。出来事リストの意味一致は検査しません。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。確定出来事の同期と lock / journal 操作は `story_reflection_op.py` を使います。
+
+`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+
+未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。既存フォルダの `--bootstrap` は設定行や値を変更しません。
+
+---
+
+### `novel_howto_contract_check.py` — 創作技法契約の実在確認
+
+`_meta.md` の Gate B 契約を読み取り専用で確認します。ファイルは書き換えません。Gate A（`novel_project_check`）の必須ではありません。記録パスは `_how_to/` と `_how_to.example/` だけを許可し、`..`・絶対パス・`relative_id` 不一致はエラーにします。新形式で selected に索引・雛形が混ざるとエラーで、葉件数からも外します。旧形式の索引混在は grandfather の WARN です。任意の `pack_id` があるときは `_how_to.example/howto_packs/`（作業用があれば `_how_to/howto_packs/`）を展開し、`pack_add` / `pack_exclude` を加味します。既存作品へパックは自動では付きません。パック展開後に再読するときは、先に `--strict` で終了コードを確認します。0 以外なら欠落または YAML エラーです。`--json` の `present` だけを見ると欠落葉が抜けます。欠落や新形式エラーを失敗にしたいときだけ `--strict` を付けます。
+
+```bash
+python tools/novel_howto_contract_check.py novels/NNN_作品名
+python tools/novel_howto_contract_check.py novels/NNN_作品名 --json
+python tools/novel_howto_contract_check.py novels/NNN_作品名 --strict
+```
+
+---
+
+### `story_reflection_op.py` — ストーリー反映の lock / journal
+
+本文保存後に `design_specification.md` の確定出来事と `_meta.md` を同期するときの、排他ロックと operation journal を扱います。エージェントが手で lock や journal を書き換えないための機械操作です。終了コード 0 が成功、2 が未完了です。
+
+```bash
+python tools/story_reflection_op.py inspect novels/NNN_作品名
+python tools/story_reflection_op.py resolve novels/NNN_作品名 --text novel_text18.md
+python tools/story_reflection_op.py hash novels/NNN_作品名/design_specification.md
+python tools/story_reflection_op.py begin novels/NNN_作品名 --evidence evidence.json
+python tools/story_reflection_op.py apply-design novels/NNN_作品名 --file intended_design.md
+python tools/story_reflection_op.py apply-meta novels/NNN_作品名 --file intended_meta.md
+python tools/story_reflection_op.py lock-inspect novels/NNN_作品名
+python tools/story_reflection_op.py lock-release novels/NNN_作品名
+```
+
+`lock-inspect` は lock と現行 operation を表示するだけで、ファイルは消しません。`begin` / `apply-design` / `apply-meta` / `fail` / `resume` / `close-orphan` / `lock-release` は、読込から全書込みまで OS 排他を保持します。同じ作品へ同時に走らせると、一方だけが成功し、他方は終了コード 2（`LOCK_HELD`）になります。正式名への公開は既存 lock を上書きしません。解除は正式名が消えるまで排他を保持します。削除に失敗したときは正式名を動かさず、終了コード 2（`LOCK_HELD`）になります。`lock-release` は current と最後の状態遷移が `done` / `failed` で完全一致しているときだけ lock を消します。`lock_released` は削除成功後だけ journal に残します。削除失敗では成功イベントを書きません。進行中や孤児の lock は解除しません。チャットで「ロックを消して」とだけ言われても、Monogatari Coach はこのコマンドの判定を通さずに消しません。`close-orphan` は active の孤児だけを `failed` にできます。`done` / `failed` の terminal は変えません。`resume` も terminal は対象外です。
+
+完了報告の見方は `_meta.md` の `出来事同期` 1行です。`第N章出来事（更新|差分なし|未完了）` が残っているかを後続セッションが参照します。`--check-story-sync` は形式検査だけなので、この1行の代わりにはなりません。
 
 ---
 
 ### `novel_character_md_check.py` — character.md 構造 lint
 
-`character.md` の見出し・必須フィールド・表形式を、`_how_to` のチェックリスト YAML（既定: `_how_to.example/character_checklist.yaml`）に基づいて検証します。Tag Mode 前の Plan 段階で書き漏れを検出する用途です（外見の機械正本は `tag/characters/*.yaml`）。
+`character.md` の見出し・必須フィールド・表形式を、`_how_to` のチェックリスト YAML（既定: `_how_to.example/character_checklist.yaml`）に基づいて検証します。Tag Mode 前の Plan 段階で書き漏れを検出する用途です（外見の機械正本は `tag/characters/*.yaml`）。`visual` / `plan` profile では **外見の個性** を子項目3件以上で必須とします。
 
 ```bash
 # 作品フォルダ全体の character.md を検証
@@ -236,6 +598,28 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --strict
 
 詳しい評価フローは [Reader Output](../workflow/reader-output.md) を参照してください。
 
+### `novel_reader_walk_check.py` — Reader Walk 反応行検証・山谷trace生成
+
+Reader Walk のセッションディレクトリにある `journal.md` の反応メタデータ（冒頭ヘッダの `persona_id`/`session_id` と場面ごとの反応行）を、必須項目・固定順・値域・タグ語彙・`scene_id` 重複・セッション境界について検証します。`scene_id` は本文アンカー形式 `chNN-MMM` またはアンカー無しの決定的形式 `source_file_stem-sNNN` に限定します。検証を通過した既読範囲から、同じ `session_id`・`persona_id` 内の `rising` / `falling` / `flat` / `peak` を生成できます。作品評価の採点には使いません。
+
+```bash
+# セッションディレクトリを検証する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id>
+
+# 検証済みのtraceを同じセッションディレクトリへ生成する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> \
+  --trace-output novels/NNN_作品名/_reader/walk/<session_id>/reaction_trace.json
+
+# 定量化前の既存エントリをWARNINGとして許容する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<session_id> --allow-missing-reaction
+
+# 移行前のルート直下journalを一時的に検証する
+python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk \
+  --legacy-root --allow-missing-reaction
+```
+
+`<session_id>/journal.md` が正本で、`<session_id>/reaction_trace.json` は生成物です。終了コードは 0（OK）/ 1（ERROR）/ 2（WARNING）/ 3（対象なし）です。`walk/` を指定して複数セッションを一つのtraceへ統合することはできません。
+
 ### `novel_evaluation_prepare.py` — 評価セッション準備
 
 評価を始める前に、章別文字数・既存評価ファイルの一覧・frontmatter テンプレートを表示します。
@@ -364,7 +748,7 @@ python tools/novel_prompt_ir_migrate_character_tags.py --all-novels --dry-run
 
 ### `novel_manga_panel_summary_en.py` — コマ要約の英訳（`summary_en`・任意）
 
-`manga/pages/*.yaml` の `panels[].summary` を Chat API で英訳し、`summary_en` / `summary_en_source` を書き込みます。**Manga Tag Mode の主経路はエージェント同時翻訳＋`novel_prompt_ir_validate.py --strict-quality`**（`concepts.md`「Manga `summary_en` の翻訳経路」）。本ツールはエージェントなし編集・一括再翻訳向けの**任意**経路です。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
+`manga/pages/*.yaml` の `panels[].summary` を Chat API で英訳し、`summary_en` / `summary_en_source` を書き込みます。**Manga Tag Mode の主経路はエージェント同時翻訳＋`novel_prompt_ir_validate.py --strict-quality`**（[ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)「Manga `summary_en` の翻訳経路」）。本ツールはエージェントなし編集・一括再翻訳向けの**任意**経路です。provider は `.env` の `MONOCRI_SUMMARY_EN_*` を参照します。
 
 ```bash
 # 作品フォルダ内の全ページを処理（要 API キー）
@@ -472,13 +856,21 @@ python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
   --prepend-tags solo simple_background --dry-run
 ```
 
-**プロンプトのタグ順**（positive）: 品質プリフィックス → `prepend_tags` → 固定タグ（YAML）→ バリアント `danbooru_tags` → `append_tags`。
+**プロンプトのタグ順**（positive）: 品質プリフィックス → `prepend_tags` → 固定タグ（YAML）→ バリアント `danbooru_tags` → `append_tags` → **マスク**（`replace_tags` → `omit_tags`）。
 
 | 指定場所 | キー / フラグ |
 |----------|----------------|
-| 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` など |
-| `tag/characters/<id>.yaml` | `tag_batch.prepend_tags` など（任意） |
-| CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--prepend-negative-tags` / `--append-negative-tags` |
+| 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` / `omit_tags` / `replace_tags` など |
+| `tag/characters/<id>.yaml` | `tag_batch.*`（任意。同キー） |
+| CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW` / negative 系 |
+
+マスクは **生成時のみ** 適用し、`tag/characters/*.yaml` の正本は書き換えません。dry-run では適用した置換・除外をジョブごとに表示します。
+
+```bash
+# 生成時マスクの確認例
+python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
+  --replace-tag old_token=new_token --omit-tags unwanted --dry-run
+```
 
 生成画像の保存先: `novels/<作品>/tag/<romaji>/`
 
@@ -497,6 +889,11 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step1-panels
 
+# 生成時マスク確認（step1-panels。_meta.yaml の manga_tag_batch / character_tag_batch も可）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
+  --manga-stem manga_01 --source step1-panels \
+  --replace-tag childlike_mature=toddler --omit-tags fairy --dry-run
+
 # 精密ページ生成（dry-run）
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source step1-pages \
@@ -511,6 +908,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source background-concepts --dry-run
 ```
+
+**生成時マスク（step1-panels）**: YAML IR は変えず、組み立て後のタグ列に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `manga_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
 
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
@@ -536,7 +935,13 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
   --illustration-stem illustration_01 \
   --prompt-formatter natural_sections --dry-run
+
+# 生成時マスク確認（_meta.yaml の illustration_tag_batch / character_tag_batch も可）
+python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
+  --omit-tags "pointed ears" --replace-tag "childlike_mature=toddler" --dry-run
 ```
+
+**生成時マスク**: YAML IR は変えず、タグ組み立て後に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `illustration_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
 
 生成画像の保存先: `novels/<作品>/illustrations/_assets/<illustration_XX>/`
 
@@ -565,8 +970,11 @@ python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 `_workingspace/log/(YYYYMM).md` にセッションの作業記録を、`_workingspace/diary/(YYYYMM).md` に横断ナレッジを追記します。既存行の上書き・削除は行いません。
 
 ```bash
-# 査証ログに追記
-python tools/workspace_audit_log.py append "作業内容の説明"
+# 査証ログに追記（作品の AUDIT_LOG=OFF ならスキップ）
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 "作業内容の説明"
+
+# AUDIT_LOG=OFF でも明示的に追記する
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 --force "作業内容の説明"
 
 # 日記（横断ナレッジ）に追記
 python tools/workspace_audit_log.py diary append "学びや判断の記録"
@@ -575,12 +983,12 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 python tools/workspace_audit_log.py path
 python tools/workspace_audit_log.py diary path
 
-# 整合性の検証
+# 整合性の検証（新規追記は UTF-8。既存月が UTF-8 でないときは WARN して読み、履歴は直しません）
 python tools/workspace_audit_log.py verify
 python tools/workspace_audit_log.py diary verify
 ```
 
-査証ログは「何をしたか」の事実、日記は「なぜそうするか・次回以降も使う判断理由」を残す場所です。
+査証ログは「何をしたか」の事実、日記は「なぜそうするか・次回以降も使う判断理由」を残す場所です。作品の `config.md` に `AUDIT_LOG | OFF` があるときは、`--novel` 付きの自動追記をスキップします。`--novel` を付けない従来形式は、対象作品がない横断作業向けで、引き続き追記します。`config.md` が未作成の作品は既定 ON として追記します。日記はこのフラグの対象外です。
 
 ---
 
@@ -588,11 +996,39 @@ python tools/workspace_audit_log.py diary verify
 
 ### `json_weighted_pick.py` — 確率付き乱数選択
 
-JSON リストから均等または確率フィールドに基づいて要素を選びます。キャラクター命名（`_how_to/name_creature.json`）などで使います。
+JSON リストから均等または確率フィールドに基づいて要素を選びます。キャラクター命名（`_how_to/name_creature.json`）などで使います。registry 経由の抽選は **`novel_pick_registry.py`** を優先する（スキル **content-pick-registry**）。
 
 ```bash
 python tools/json_weighted_pick.py _how_to/name_creature.json
 ```
+
+---
+
+### `novel_pick_registry.py` — 選定レジストリ（Pick Registry）
+
+`_how_to.example/pick_registry/` と `_how_to/pick_registry/` の YAML フラグメントをマージし、`list_id` から source / path を解決して抽選する。命名・プロフィール補助・エピソードトロープの入口を宣言的に登録する。
+
+```bash
+# 登録一覧（public のみ）
+python tools/novel_pick_registry.py list --visibility public
+
+# list_id の詳細
+python tools/novel_pick_registry.py show naming_japanese_female_heisei
+
+# 抽選
+python tools/novel_pick_registry.py pick episode_hook_general
+
+# 全 fragment の source / path 検証
+python tools/novel_pick_registry.py validate
+
+# user fragment（mature.yaml 配置後）
+python tools/novel_pick_registry.py list --visibility user
+python tools/novel_pick_registry.py list --prefix mature_
+```
+
+`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意）。
+
+mature / body 向け user list_id の有効化手順は **`_how_to.example/pick_registry/README.md`** を正とする（公式 docs には具体 path を載せない）。
 
 ---
 
@@ -612,14 +1048,13 @@ python tools/codex_builtin_image_archive.py --help
 
 `.rulesync/rules/` / `.rulesync/skills/` を編集したあと、各 AI ツールの設定フォルダ（`.codex/`、`.kilocode/` 等）へ生成物を同期します。
 
-```bash
-corepack pnpm dlx rulesync generate
-
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+```powershell
+python tools/rulesync.py generate --dry-run
+python tools/rulesync.py generate
+python tools/rulesync.py generate --check
 ```
 
-`corepack enable` は不要です。Windows では Node.js のインストール先に shim を作ろうとして権限エラーになることがあるため、Corepack から直接 `pnpm` を呼び出します。代替として `npm exec --yes rulesync -- generate` も使えます。
+初回のみ `python tools/install_rulesync.py` で固定版バイナリを取得します。Node.js・pnpm・グローバル npm は不要です（詳細は [Rulesync](../rulesync.md)）。ルール変更後の確認コマンドやコミット前ゲートは [開発者向け検証コマンド](../developer-verification.md) を参照してください。
 
 主編集先: `.rulesync/rules/*.md` / `.rulesync/skills/*/SKILL.md` / `.rulesync/mcp.json` / `.rulesync/hooks.json`
 

@@ -1,0 +1,28 @@
+events:
+  - id: EVT-0001
+    title: 玄関を出て駅へ向かう
+    type: state_change
+    actors: [CHR-a, CHR-b]
+    location: LOC-station
+    time:
+      after: []
+    origin: authored
+    source:
+      scene: ch01-001
+    effects_on:
+      CHR-a:
+        outfit: travel
+        whereabouts: LOC-station
+  - id: EVT-0002
+    title: 券売機で切符を買うと話す
+    type: decision
+    actors: [CHR-a]
+    location: LOC-station
+    time:
+      after: [EVT-0001]
+    origin: authored
+    source:
+      scene: ch01-001
+    effects_on:
+      CHR-a:
+        whereabouts: LOC-station

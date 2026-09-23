@@ -23,13 +23,36 @@ novelai:
       information_extracted: 1.0
 
 # ── キャラタグ一括（image_provider_novel_tag_batch.py）────────────────
-# 全キャラ・全バリアントの positive / negative に挿入する任意タグ。
-# 優先: 本節 → tag/characters/*.yaml の tag_batch → CLI --prepend-tags 等
+# 全キャラ・全バリアントの positive / negative に挿入・マスクする任意タグ。
+# 優先: 本節 → tag/characters/*.yaml の tag_batch → CLI
+# マスク（omit / replace）は生成時のみ適用し、YAML IR 正本は書き換えない。
 # character_tag_batch:
 #   prepend_tags: [simple_background, white_background]
 #   append_tags: []
+#   omit_tags: []
+#   replace_tags:
+#     - from: old_token
+#       to: new_token
 #   prepend_negative_tags: []
 #   append_negative_tags: []
+
+# ── 漫画コマ一括（image_provider_novel_manga_batch.py・step1-panels）──
+# 生成時マスク。未設定時は character_tag_batch の omit/replace を下敷きにする。
+# manga_tag_batch があれば後勝ちでマージ。
+# manga_tag_batch:
+#   omit_tags: []
+#   replace_tags:
+#     - from: old_token
+#       to: new_token
+
+# ── 挿絵・表紙一括（image_provider_novel_illustration_batch.py）──
+# 生成時マスク。未設定時は character_tag_batch の omit/replace を下敷きにする。
+# illustration_tag_batch があれば後勝ちでマージ。CLI: --omit-tags / --replace-tag
+# illustration_tag_batch:
+#   omit_tags: []
+#   replace_tags:
+#     - from: old_token
+#       to: new_token
 
 # ── 名前付きレシピ（--workflow で呼び出す）──────────────────────────
 # 優先順位: CLI 明示フラグ > workflow 設定 > .env / 既定値

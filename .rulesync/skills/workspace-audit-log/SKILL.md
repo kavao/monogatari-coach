@@ -8,17 +8,21 @@ targets: ["*"]
 
 ## 目的
 
-`.rulesync/rules/concepts.md` の **「プロジェクト・インテリジェンス」** に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
+`.rulesync/rules/workflow-specification.md` の **「プロジェクト・インテリジェンス」** に従い、会話・作業の記録を **`_workingspace/log/(YYYYMM).md` にのみ追記**し、履歴を機械的に保証する。
 
 - **追記型のみ**: 新規エントリは **`tools/workspace_audit_log.py append`** で追加する。スクリプトは **`open(..., "a")` 以外でログ本文を書かない**（新規月ファイルのヘッダ初回だけ同じ追記処理内で行う）。
 - **ファイル命名**: 西暦4桁＋月2桁、`202604.md` のように **ゼロ埋め2桁の月**。
 - **エントリの1行形式（公式）**:
   `- YYYY-MM-DD HH:MM: 本文`
   本文に改行を含めない（複数行貼り付けは空白で連結される）。
+- **文字コード**: 新規月ファイルと追記行は UTF-8。既存月ファイルが UTF-8 でないときは履歴を直さない。`verify` はデコード失敗を WARN にし、可能なら cp932 で読んで検査を続ける。
 
 ## いつ追記するか
 
 - **会話（セッション）ごと**に、更新したファイル・実施したモード・次に望ましいことを1エントリにまとめる（既存の査証ログの書き方例に準拠）。
+- 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは、自動追記しない。行なし、または `config.md` 未作成は ON（従来どおり追記する）。
+- **抑止は `--novel` を付けたときだけ有効。** 作品作業の自動追記は必ず `--novel novels/<作品>` を付ける。対象作品がない横断作業だけ省略してよい。
+- ユーザーが「査証ログを書いて」と明示したときは OFF でも追記する（`--force`）。日記は本フラグの対象外。
 
 ## 何を記録するか
 
@@ -43,25 +47,27 @@ targets: ["*"]
 **1件追記**（日時は実行時刻。追記先は「今日の年月」のファイル）:
 
 ```bash
-python tools/workspace_audit_log.py append "関連ファイル（…）を更新。次は…が望ましい。"
+python tools/workspace_audit_log.py append --novel novels/<作品> "関連ファイル（…）を更新。次は…が望ましい。"
 ```
+
+`AUDIT_LOG | OFF` の作品では、上の `--novel` 指定により追記せず終了する。ユーザー明示の追記だけ `--force` を付ける。
 
 **標準入力から**（長文に便利）:
 
 ```bash
-echo "本文" | python tools/workspace_audit_log.py append
+echo "本文" | python tools/workspace_audit_log.py append --novel novels/<作品>
 ```
 
 **追記先の月を指定**（例: 2026年4月のファイルへ）:
 
 ```bash
-python tools/workspace_audit_log.py append --year-month 202604 "本文"
+python tools/workspace_audit_log.py append --novel novels/<作品> --year-month 202604 "本文"
 ```
 
 **エントリの日時だけ変える**（ファイルは `--year-month`、行の日付は `--at`）:
 
 ```bash
-python tools/workspace_audit_log.py append --year-month 202604 --at "2026-04-11 15:30" "本文"
+python tools/workspace_audit_log.py append --novel novels/<作品> --year-month 202604 --at "2026-04-11 15:30" "本文"
 ```
 
 **今月（または指定月）のログファイルの絶対パス**:
@@ -84,7 +90,7 @@ python tools/workspace_audit_log.py verify --strict
 **検証のみ**（書き込まない）:
 
 ```bash
-python tools/workspace_audit_log.py append --dry-run "本文"
+python tools/workspace_audit_log.py append --novel novels/<作品> --dry-run "本文"
 ```
 
 ## 禁止・非推奨
@@ -94,13 +100,14 @@ python tools/workspace_audit_log.py append --dry-run "本文"
 
 ## エージェント向け運用
 
-- セッション終了前に **可能な限り `append` を1回実行**し、査証ログを更新する。
+- セッション終了前に **可能な限り `append --novel novels/<作品>` を1回実行**し、査証ログを更新する。`AUDIT_LOG | OFF` ならスキップしてよい。
 - チャットに「査証ログを書いた」と書くだけで済ませず、**実際にコマンドを実行したか**を作業フローに含める（実行不能な環境のみ、その旨をチャットに明記）。
+- `_workingspace/plans/*.md` のチェックリストを持つ計画を実行した場合、**査証ログ追記の前に**計画書の該当タスクを `- [x]` へ更新し、査証ログ本文に「どの計画のどの項目を完了にしたか」を含める（概念正本: `.rulesync/rules/workflow-specification.md`「計画書チェック更新ゲート」）。
 
 ## 関連パス
 
 - スクリプト: `tools/workspace_audit_log.py`（`append` / `path` / `verify` は査証ログ用）
 - 保存先: `_workingspace/log/YYYYMM.md`
-- 概念正本: `.rulesync/rules/concepts.md`（プロジェクト・インテリジェンス）
-- 入口ルール: `.rulesync/rules/overview.md`（プロジェクト・インテリジェンス）
+- 概念正本: `.rulesync/rules/workflow-specification.md`（プロジェクト・インテリジェンス）
+- 入口ルール: `.rulesync/rules/workflow-specification.md`（プロジェクト・インテリジェンス）
 - **横断ナレッジ日記**（別スキル）: `workspace-diary` — `workspace_audit_log.py diary append` などで `_workingspace/diary/YYYYMM.md` へ追記

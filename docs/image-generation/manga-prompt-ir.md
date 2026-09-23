@@ -2,7 +2,7 @@
 
 **読者**: リポジトリの **操作マニュアル**（`docs/`）として、YAML の正本置き場・検証・画像生成バッチまでの**機械的な手順**を扱います。
 
-**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。
+**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。空吹き出しへの写植とマスク合成のコマンド（→ [manga-page-edit.md](manga-page-edit.md)）。
 
 **本書で扱うこと**: 後述の「ページ YAML の最小構造と Step1 互換出力の元」で、**IR のフィールド形**と **エクスポート先の Step1 との関係**を述べる（創作技法ではなくドキュメント）。
 
@@ -37,7 +37,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 1. 本文を読んでコマ・ページに分解する
 2. `novels/<作品>/manga/pages/manga_XX_pYY.yaml` を作成する（ページ定義の正本）
 3. `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` で型・参照・品質を検証する
-4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する（**チャットやエージェントの Write だけでは不可**。完了条件は `.rulesync/rules/concepts.md` の「漫画互換Markdownの完了条件」・スキル `novel-manga-md-output`）
+4. 必要なら `python tools/novel_prompt_ir_export_md.py` で互換 Markdown（`manga/manga_XX.md`）を出力する（**チャットやエージェントの Write だけでは不可**。完了条件は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「漫画互換Markdownの完了条件」・スキル `novel-manga-md-output`）
 
 ### ユーザーが確認できるもの
 
@@ -55,7 +55,7 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 
 ## 正本と入出力
 
-正本・副本の横断定義は [概念正本](../../.rulesync/rules/concepts.md) の「漫画IRと互換Markdown」にあります。このページでは、人間が実際に確認するファイルとコマンドの流れだけを説明します。
+正本・副本の横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「漫画IRと互換Markdown」にあります。このページでは、人間が実際に確認するファイルとコマンドの流れだけを説明します。
 
 | 役割 | パス |
 |------|------|
@@ -90,13 +90,14 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 ```
 
 - 本番前は `python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality` を推奨。
+- 画角・視点（`camera.angle_en` / `shot_size_en` / `view_en` の未知語、同一ページ内の隣接コマで角度と距離が両方同じ）は **Advisory** として標準エラーに出るだけです。`view_en` は隣接コマの連続規則の対象外で、`--strict-quality` の失敗条件には入りません。
 - 通常は `--input yaml` が既定。旧 Markdown 互換だけ `--input markdown`。
 - 修正は **常に YAML 側**。`manga_XX.md` が要るときだけ再エクスポート。
 - **Step1 の `tag` 行（画像向けトークン列）は英語のみを載せる**: `tools/manga_prompt_ir/scene_prompt.py` が `image_provider_novel_manga_batch` / `novel_prompt_ir_export_md` から呼ばれ、**`composition` / `camera` / `lighting` / subject の状況語**は **`*_en` を優先**し、旧フィールドは **CJK を含まない場合のみ**タグに含める（日本語メモがタグに漏れない）。確実に載せたい語は **`focus_en`**, **`pose_action_en`**, **`expression_en`**, **`panels[].mood_atmosphere_en`** などを YAML に書く。
 
 ### コマ要約の英訳（`summary_en`）と NovelAI 併用
 
-各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+各 `panels[]` には **`summary`（日本語）** と **`summary_en`（英語）** をペアで持たせる。横断正本は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「Manga `summary_en` の翻訳経路」。
 
 **主経路（既定）**: Manga Tag Mode で `summary` を書いた同ターンに、エージェントが **`summary_en`** と **`summary_en_source`（= そのときの `summary` 原文）** を YAML に記入する。`location_en` / `pose_action_en` と同型。
 
@@ -130,6 +131,56 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 `--prompt-formatter tag_csv` を付けると、旧来の日本語ページ指示文と native `negative_prompt` の形に戻して比較できます。既定値は `config/image_generation.json` の `providers.*.prompt_formatter` で管理します。
 
+### OpenAIの漫画ページを縦長で生成するとき
+
+`provider=openai` の既定modelは `gpt-image-2` です。`--aspect-ratio` を省略すると `size=1024x1024`、`--aspect-ratio manga_b5_portrait` または `portrait` を指定すると `size=1024x1536`、`story_vertical` では `size=864x1536` になります。OpenAIの有効なサイズを直接指定する場合は `--size WIDTHxHEIGHT` を使い、比率presetより優先させます。
+
+同じ `manga_b5_portrait` でも、Grok / OpenRouterは `3:4`、OpenAIは `2:3` です。provider間で同じ3:4を比較する場合は、OpenAI側を `--aspect-ratio 3:4`（`size=1024x1344`）にします。旧 `gpt-image-1.5` は明示指定できますが、GPT Image 2向けの任意サイズが同じように受理されるとは限らないため、モデルとsizeを比較条件に記録します。
+
+```powershell
+python tools/image_provider_novel_manga_batch.py tools/manga_prompt_ir/examples/p4_compare `
+  --manga-stem manga_01 --source step1-pages --provider openai `
+  --page-compiler page_render_plan --text-mode letter_later `
+  --aspect-ratio manga_b5_portrait --max-page 1 --dry-run
+```
+
+dry-runの `resolved_model` と `image_size` を確認してから `--dry-run` を外します。`gpt-image-2` は縦長サイズを受け付けますが、生成後の画像寸法と文字領域は保存JSON・manifestで確認します。
+
+### OpenRouterでSchema 1.1ページを生成するとき
+
+OpenRouterのSchema 1.1ページ生成は、`--page-compiler page_render_plan` を明示したときだけ有効です。legacyのページ生成は従来どおり `/chat/completions` を使い、新compilerはOpenRouter Image APIへ送ります。新compiler用の既定modelは `providers.openrouter.page_default_model` で管理します。
+
+まず、provider・解決model・`/images` transport・文字方針・参照件数を確認します。
+
+```powershell
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --text-mode letter_later `
+  --aspect-ratio manga_b5_portrait --dry-run
+```
+
+`asset_references[]` に `path` がある場合、宣言順のまま `input_references[]` へ渡し、送信前にファイル存在・画像MIME・SHA-256を検証します。参照画像のroleや順序はページmanifestと保存JSONへ残ります。APIがmodelごとに異なる参照上限を持つため、参照を自動で切りません。dry-runを確認して承認したあとだけ、`--dry-run`を外して実行します。
+
+OpenRouterのImage APIは、同じ `provider=openrouter` のままモデルprofileを切り替えます。Nano Banana 2（`nano_banana_2`）は `resolution`、GPT Image 2（`gpt_image_2`）は `quality` を使います。profileにないmodelや、モデルに対応しないパラメータは送信前に停止します。
+
+```powershell
+# Nano Banana 2（resolution）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --aspect-ratio manga_b5_portrait `
+  --model nano_banana_2 `
+  --resolution 2K --dry-run
+
+# GPT Image 2（quality）
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --aspect-ratio manga_b5_portrait `
+  --model gpt_image_2 `
+  --image-quality medium --dry-run
+```
+
+漫画バッチは `--aspect-ratio` を省略すると `1:1` になります。Grokページ生成の既定比率はOpenRouterへ自動継承されないため、比較・本番前確認では `manga_b5_portrait`（`3:4`）などを明示します。
+
 ### コマ生成の provider 別 formatter
 
 `--source step1-panels` も同じ resolver を通ります。既定では、NovelAI は `novelai_pipe` のまま **`ベース | キャラ`** 形式と native `negative_prompt` を維持し、Forge は `tag_csv` を維持します。Grok / OpenAI / OpenRouter 系は `natural_sections` になり、1コマ分の `Panel Context` / `Characters` / `Composition` / `Lighting and Mood` / `Visual Tag Hints` / `Do not include` へ整理します。
@@ -144,7 +195,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 NovelAI で `|` 分割を使わない比較は、従来どおり `--no-novelai-pipe-character-tags` を付けます。この場合、effective formatter は `tag_csv` と表示されます。
 
-**ベース列のキャラ単独トークン**: `novelai_pipe` 時、ベース側から **スペースなし**で `character_id` / `name_en` と一致するトークン（例: `focus_en: yuna`）は `character_token_filter` で除外される。`focus_en` はキャラ ID 単体ではなく構図タグ（例: `lying figure on bed`）を書く（`.rulesync/skills/manga-prompt-ir/SKILL.md`）。
+**キャラ単独トークン（tag_csv / pipe base）**: `tag_csv`（`yaml_panel_tags`・挿絵バッチ含む）および `novelai_pipe` のベース列では、`character_id` / `name_en` / `name` と一致するトークン（例: `focus_en: yuna`、誤って入った `Tsumugi`）を `character_token_filter` で除外する。`yaml_panel_tags` は人名を後付けしない。`focus_en` はキャラ ID 単体ではなく構図タグ（例: `lying figure on bed`）を書く（`.rulesync/skills/manga-prompt-ir/SKILL.md`）。pipe のキャラセグメント先頭 `name_en` は今回の除外対象外。
 
 ### 互換 Markdown を出すとき（`novel_prompt_ir_export_md.py`）
 
@@ -418,7 +469,7 @@ character_snapshots: []
 
 | 内容 | 参照先 |
 |------|--------|
-| 生成モード語（コマ／ページ／精密） | [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) の Manga 節 |
+| 生成モード語（コマ／ページ／精密） | [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「生成モード用語」 |
 | スキル総説 | [`.rulesync/skills/manga-prompt-ir/SKILL.md`](../../.rulesync/skills/manga-prompt-ir/SKILL.md) |
 | 品質ゲート（主語・レイアウト） | [`.rulesync/skills/manga-tag-quality-gate/SKILL.md`](../../.rulesync/skills/manga-tag-quality-gate/SKILL.md) |
 | 互換 Step1/Step2 の**長文指示・例**（本書の型・最小例と対で読む） | [manga-tag-generation.md](manga-tag-generation.md) |

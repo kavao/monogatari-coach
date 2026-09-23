@@ -1,0 +1,63 @@
+schema_version: "1.0"
+character_id: yui
+name: 結
+name_en: Yui
+role: 会話相手
+appearance:
+  age_range: late teens
+  gender_presentation: feminine
+  body_type: slim
+  height: average height
+  eye_color: green
+  hair_style: shoulder-length straight hair
+  hair_color: brown
+  skin_tone: fair skin
+  distinctive_features:
+    - small mole near the left eye
+costume:
+  outfit_tags:
+    - cream_cardigan
+    - plaid_skirt
+  main_outfit: クリームのカーディガンとチェックのスカート
+  accessories:
+    - canvas_tote
+  color_palette:
+    - cream
+    - brown
+    - green
+personality:
+  archetype_tags:
+    - straightforward_friend
+  personality_tags:
+    - encouraging
+    - practical
+  default_expression: 穏やかで少し急かす笑顔
+  speech_style: 短くはっきり話す
+manga_rules:
+  consistency_tags:
+    - brown_hair
+    - green_eyes
+    - fair_skin
+    - cream_cardigan
+  do_not_change:
+    - 髪色を茶以外にしない
+    - カーディガンを別の固定衣装に置き換えない
+prompt_variants:
+  - variant_id: "000_base"
+    title: 基本外見
+    description: 固定特徴。
+    danbooru_tags:
+      - 1girl
+      - young_woman
+      - brown_hair
+      - green_eyes
+      - fair_skin
+  - variant_id: "001_normal"
+    title: 通常時
+    description: 駅前の会話用の通常衣装。
+    danbooru_tags:
+      - cream_cardigan
+      - plaid_skirt
+negative_tags:
+  - extra_fingers
+  - bad_hands

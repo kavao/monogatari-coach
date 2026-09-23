@@ -1,0 +1,63 @@
+metrics:
+  run: 1
+  finish_reason: null
+  beats:
+  - id: pack_bag
+    chars: 39
+    budget_ratio: 0.975
+    paragraphs: 1
+    dialogue_turns: 0
+    sensory: 0
+    interiority: 0
+    new_facts: null
+    new_facts_source: unmeasured
+    measurement_methods:
+      paragraphs: line_v0
+      dialogue_turns: line_dialogue_v0
+      sensory: ja_lexicon_v0
+      interiority: ja_lexicon_v0
+      summary_markers: ja_summary_v0
+      new_facts: annotation_v0
+    summary_markers: []
+    time_density: null
+  - id: say_goodbye
+    chars: 29
+    budget_ratio: 0.9666666666666667
+    paragraphs: 2
+    dialogue_turns: 2
+    sensory: 0
+    interiority: 0
+    new_facts: null
+    new_facts_source: unmeasured
+    measurement_methods:
+      paragraphs: line_v0
+      dialogue_turns: line_dialogue_v0
+      sensory: ja_lexicon_v0
+      interiority: ja_lexicon_v0
+      summary_markers: ja_summary_v0
+      new_facts: annotation_v0
+    summary_markers: []
+    time_density: null
+  - id: reach_station
+    chars: 23
+    budget_ratio: 0.7666666666666667
+    paragraphs: 1
+    dialogue_turns: 0
+    sensory: 0
+    interiority: 0
+    new_facts: null
+    new_facts_source: unmeasured
+    measurement_methods:
+      paragraphs: line_v0
+      dialogue_turns: line_dialogue_v0
+      sensory: ja_lexicon_v0
+      interiority: ja_lexicon_v0
+      summary_markers: ja_summary_v0
+      new_facts: annotation_v0
+    summary_markers: []
+    time_density: null
+  scene:
+    chars: 109
+    overall_budget_ratio: 1.09
+    head_tail_ratio: null
+    coverage: true

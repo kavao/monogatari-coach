@@ -1,0 +1,157 @@
+---
+name: novel-reader-walk
+description: >-
+  一般読者ペルソナが本文を場面ごとに読み、その時点の感想と突っ込みだけを
+  novels/.../_reader/walk/ へ追記する。既定は未読の残り全部。要望があれば指定範囲。
+  採点・足切りはしない。チャットには範囲と通しの要約だけを返す。
+targets: ["*"]
+---
+
+## 目的
+
+Reader Walk（読み進み）で、感想の所在と進行位置を曖昧にしない。
+
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」および「Reader Walk Mode」。短い完了条件は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。このスキルは、場面ごとに感想を追記しながら指定範囲（既定は未読の残り全部）を読み進める実行手順を定める。
+
+書き方の技法は `_how_to/reader_walk.md` を読む。**無いときは `_how_to.example/reader_walk.md` を使う。** ペルソナは、明示指定が無い場合は **`readers/000_default/reader_preferences.md`**、追加ペルソナを指定した場合は `readers/<persona_id>/reader_preferences.md` を正とする。
+
+**重要**: 足切りは **`novel-reader-output`**、深掘り採点・一貫性監査は **`novel-evaluation-output`** が正とする。本スキルはそれらを上書きしない。
+
+## 創作技法契約
+
+既定は **評価は契約外**。工程正本（`reader_walk.md`）は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ再読する。`pack_id` があるときは先に `novel_howto_contract_check.py --strict`。終了コード 0 以外は読み進みを始めず未完了。0 のときだけ `--json` の `present` を再読する。完了報告に「評価は契約外（工程正本のみ）」または再読した葉の拠り所1句を書く。採点には使わない。
+
+## 保存先（必須）
+
+| 役割 | パス |
+|------|------|
+| セッションディレクトリ | `novels/<作品>/_reader/walk/<session_id>/` |
+| 感想正本（追記専用） | `novels/<作品>/_reader/walk/<session_id>/journal.md` |
+| 到達位置・次に読む箇所 | `novels/<作品>/_reader/walk/<session_id>/state.md` |
+| 反応trace（生成物） | `novels/<作品>/_reader/walk/<session_id>/reaction_trace.json` |
+
+- `_reader/walk/` が無ければ作成する。
+- 一つの読み進みセッションにつき一つの `<session_id>/` を作成し、その中に `journal.md` と `state.md` を置く。定量化時だけ `reaction_trace.json` を生成する。
+- 新規セッションの `session_id` は JST の `YYYYMMDD_HHMM_<persona_id>` とする。同じ分に同じペルソナで発行する場合は `_2`、`_3` のような連番を付け、既存ディレクトリと衝突させない。098移行の `20260830_000_default` のような既存値は保持する。
+- `session_id` またはセッションディレクトリが明示された場合は、その既存セッションだけを再開する。存在しない指定はエラーとし、新規発行に読み替えない。「新規セッション」「別の読者として」などの明示がある場合は新しく発行する。指定が無い場合は、対象ペルソナの読了が未の最新セッションを再開し、無ければ新規発行する。
+- 自動再開時の最新判定は、ディレクトリ名に含まれる発行日時を第一キーとする。旧形式の既存値は移行時の互換値として扱う。
+- First Reader の `_reader/YYYYMMDD_HHMM.md` や Interest Check とファイルを混ぜない。
+- チャットに感想を出しただけでは完了ではない。
+- `walk/` 直下の `journal.md`、`state.md`、`reaction_trace.json`、`state/<persona_id>.md` は正本にしない。旧ルート形式は移行時だけ扱う。
+
+## 反応メタデータ（定量化モード）
+
+ペルソナ差を比較したいときは、`journal.md` に反応メタデータを記録する。これは作品の評価点ではなく、**そのペルソナが既読場面で受けた反応の記録**である。通常の Reader Walk と同様、数値をチャットへ出さない。
+
+`persona_id` と `session_id` は1つの `journal.md`（＝1セッションディレクトリ）内で常に同一値なので、**ファイル冒頭に1回だけ**書く。
+
+```markdown
+# Reader Walk ジャーナル
+
+- **persona_id**: `000_default`
+- **session_id**: `20260830_000_default`
+```
+
+各場面では、感想本文の後ろに**1行だけ**の反応行を置く。
+
+```markdown
+反応: scene=ch01-003 / intensity=4 / valence=mixed / tags=curiosity,tension / pull=5
+```
+
+- `scene`: `<!-- scene: chNN-MMM -->` のアンカー値を優先する。アンカー値は `chNN-MMM` の形式にする。無い場合は、入力本文のファイル名（拡張子を除き、ID許可文字以外を `_` に置換）と場面出現順をつないだ `source_file_stem-sNNN`（例: `novel_text01-s001`）とする。見出し文言を集計キーにしない。
+- `intensity`（`reaction_intensity`）: 感情の大きさ。0〜5の整数で、0はほぼ無反応、3は感情の動きが明確、5は強い感情のピーク。怒り・不安・悲しみも含む。
+- `valence`（`reaction_valence`）: `positive` / `negative` / `mixed` / `neutral` のいずれか。
+- `tags`（`reaction_tags`）: 固定語彙から1〜3個をカンマ区切り（角括弧・引用符無し）で記録する。順序は `curiosity` → `tension` → `surprise` → `joy` → `relief` → `sadness` → `anger` → `fear` → `confusion` → `boredom` → `admiration` とする。`valence` とタグの組み合わせは独立項目として許容する。
+- `pull`（`continuation_pull`）: 次を読みたい強さ。0〜5の整数で、0は止めたい／飛ばしたい、3は時間があれば続けたい、5はすぐ次を開きたい。感情の強さとは分けて記録する。
+
+フィールド順は `scene` → `intensity` → `valence` → `tags` → `pull` で固定し、` / ` 区切りの1行に収める。定量化モードでは、ヘッダ2項目とこの反応行を必須とする。既存の定量化前ジャーナルを検査するときだけ `python tools/novel_reader_walk_check.py <session_dir> --allow-missing-reaction` で反応行の無い旧エントリをWARNINGとして許容できる。移行前の `walk/journal.md` を検査する場合は、さらに `--legacy-root` を付ける。
+
+`rising` / `falling` / `flat` / `peak` は本文へ手で書かず、`tools/novel_reader_walk_check.py` がヘッダの `(session_id, persona_id)` に紐づくジャーナル出現順から生成する。`rising` は直前との差分が+1以上、`falling` は-1以下、`flat` は0。`peak` は強度4以上で利用可能な前後の場面以上の局所最大とし、同点の連続は先頭だけを採用する。先頭の推移は `null`、末尾や1場面だけの範囲は利用可能な近傍だけで判定する。生成した trace は `reaction_trace.json` などの副本であり、`journal.md` が正本である。
+
+## セッション手順
+
+**既定の範囲は未読の残り全部**である。ユーザーが章・プロローグ・場面など範囲を指定したときだけ、その領域で止める。ジャーナルは場面ごとに1エントリずつ追記する。途中で「次へ進みますか」と止めない。
+
+### 開始時
+
+最初に対象ペルソナを決める。指定が無ければ `000_default` とし、追加ペルソナが明示された場合はそのIDを使う。対象ペルソナに応じて状態ファイルを次のように固定する。
+
+- 新規または再開するセッションを決め、`walk/<session_id>/state.md` を使う。ペルソナにかかわらず状態ファイルはセッションディレクトリ内に一つだけ置く。
+
+新規発行したセッションに状態ファイルが無い場合は、他のセッションの終端状態を引き継がず、本文の最初の場面から開始する。追加ペルソナや別セッションも、既存セッションの到達位置を上書きしない。
+
+次の順で読む。
+
+1. `walk/<session_id>/state.md`（無ければ初回として扱う）
+2. `walk/<session_id>/journal.md` の最新エントリ（前回の口調と未回収の疑問）
+3. 対象ペルソナの `reader_preferences.md`
+4. 対象範囲の本文。範囲指定がなければセッション状態の「次に読む箇所」から最終ファイルまで。新規セッションは本文の最初から読む。指定があればその領域だけ。
+
+場面の単位は、本文の `<!-- scene: chNN-MMM -->` を優先する。無いときは章内の場所・時間・視点の切れ目を1単位とし、対象ペルソナの状態ファイルに「次はどこから」を残す。
+
+指定範囲の外は読まない。`character.md` / `world.md` / `design_specification.md` を根拠に本文を訂正しない。
+
+### 追記
+
+1. `_how_to/reader_walk.md`（無ければ `_how_to.example/reader_walk.md`）に従い、進めた各場面を `walk/<session_id>/journal.md` へ1エントリずつ追記する。
+2. 範囲の最後で `walk/<session_id>/state.md` の到達場面・次に読む箇所・今の気分・未回収の疑問を更新する。初回なら次の雛形で作成する。
+
+```markdown
+# Reader Walk 状態
+
+- **ペルソナ**: readers/<persona_id>
+- **到達場面**: ch01-001
+- **次に読む箇所**: `novel_text01.md` の ch01-002
+- **今の気分**: （短い一言）
+- **未回収の疑問**: （読者がまだ気にしている点。無ければ「なし」）
+- **読了**: 未
+```
+
+3. **`Read`** で追記箇所を確認する。確認前に完了を告げない。
+
+4. 反応メタデータを1つでも追記した定量化モードでは、`Read` の後にcheckerを実行する。
+
+```bash
+python tools/novel_reader_walk_check.py <walk_dir>/<session_id> \
+  --trace-output <walk_dir>/<session_id>/reaction_trace.json
+```
+
+checkerのERRORが0であることを確認してから完了とする。定量化前の旧エントリを移行する場合だけ `--allow-missing-reaction` を付け、WARNINGが残る移行途中であることを記録する。定量化を新規に始めたセッションでは、`--allow-missing-reaction` なしで終了コード0になることを完了条件とする。旧ルート形式の確認に使う `--legacy-root` は通常の完了条件に使わない。
+
+定量化モードでは、同じファイル（＝同じ `session_id`・`persona_id`）内で同じ `scene_id` を二度登録しない。同じペルソナの再読は `session_id` を変えて新しいセッションディレクトリに追記し、旧エントリを保持する。
+
+### チャットで返すもの
+
+- 進めた範囲（開始場面〜終了場面、件数）
+- 通しの感想要約 2〜6行
+- 保存先パス（`walk/<session_id>/journal.md` と `walk/<session_id>/state.md`）
+- 定量化モードでtraceを生成した場合は `walk/<session_id>/reaction_trace.json` の保存先
+- 範囲指定で途中停止した場合のみ「続きの範囲を指定するか、残り全部を読むか」
+- 評価は契約外、または再読した契約葉の要約
+
+ジャーナル全文はチャットに出さない。点数・改善点リストは出さない。
+
+### 読了
+
+指定範囲の最終場面を追記したあと、対象セッションが作品本文の最終場面まで到達していれば、`walk/<session_id>/state.md` の **読了** を完了にする。途中範囲で止めた場合は読了にしない。
+
+## 禁止
+
+- 採点、足切り判定、Editor Score 形式の改善提案
+- 指定範囲の外を読むこと
+- 設定資料を根拠にした本文訂正（読者が既読範囲で「さっきと違う」と感じた突っ込みは残してよい）
+- First Reader / Interest Check のファイル名への混入
+- 宣言だけで `walk/` を更新せず応答を終えること
+
+## 査証ログ
+
+`_workingspace/log/` には「どの作品のどの場面まで読んだか」と保存先だけを追記する（スキル **`workspace-audit-log`**）。感想本文は査証ログに置かない。
+
+## 関連
+
+- 足切り・興味判定: **`novel-reader-output`**
+- 深掘り採点・一貫性監査: **`novel-evaluation-output`**
+- 査証ログ: **`workspace-audit-log`**
+- 概念正本: `.rulesync/rules/concepts.md` の「完了扱い条件」
+- 横断仕様: `.rulesync/rules/workflow-specification.md` の「評価ファイル命名と役割」
+- 操作説明: `docs/workflow/reader-output.md`

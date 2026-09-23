@@ -26,6 +26,12 @@ from typing import Any
 
 import yaml
 
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt  # noqa: E402
+
 
 # ─────────────────────────────────────────
 # YAML ユーティリティ
@@ -347,11 +353,13 @@ def run(args: argparse.Namespace) -> int:
 
         for yaml_path in yaml_paths:
             data = load_yaml(yaml_path)
+            MangaPagePrompt.model_validate(data)
             updated_data, changes = apply_defaults_to_yaml(
                 data,
                 entry,
                 add_note=not args.no_note,
             )
+            MangaPagePrompt.model_validate(updated_data)
 
             real_changes = [c for c in changes if "変更なし" not in c and "スキップ" not in c]
             total_yaml_count += 1

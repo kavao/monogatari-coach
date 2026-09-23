@@ -8,7 +8,7 @@ targets: ["*"]
 
 # Manga Prompt IR
 
-> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、Manga Prompt IR を実際に編集・検証・エクスポートするときの作業手順を扱う。
+> 横断正本: YAML IR と互換 Markdown の正本・副本関係は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を正とする。このスキルは、Manga Prompt IR を実際に編集・検証・エクスポートするときの作業手順を扱う。
 
 ## 目的
 
@@ -28,13 +28,14 @@ targets: ["*"]
 3. `tools/manga_prompt_ir/converters/*.py`: YAML/JSON を読み、モデル検証後にプロンプトへ変換する参考実装。
 4. `tag/<romaji>.md` / `manga/manga_XX.md`: 既存ツール互換・**人間向けの可読副本**・旧資産からの移行元として扱う。
 
-正本・副本関係の詳細は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」を参照する。
+正本・副本関係の詳細は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」を参照する。
 
 ## ユーザー向けマニュアル（ツール・パイプライン）
 
 創作技法は `_how_to/manga.md` に置き、**コマンド・検証・バッチ・ネガ合成・export フラグ**など運用手順は `docs/` に分離している。
 
 - **`docs/image-generation/manga-prompt-ir.md`**: `novel_prompt_ir_validate.py` / `novel_prompt_ir_embed_snapshots.py` / `novel_prompt_ir_export_md.py`（`--novelai-pipe-tags` 等）、`image_provider_novel_manga_batch.py` の `--source`、コマ単位ネガの合成順。
+- **`docs/image-generation/manga-page-edit.md`**: 空吹き出しへの写植と、マスクで範囲だけ差し替えるローカル合成。
 - **`docs/image-generation/manga-tag-generation.md`**: 互換 `manga/manga_XX.md` の Step1/Step2 長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。
 
 ## 運用方針
@@ -51,7 +52,7 @@ targets: ["*"]
 1. **「漫画 variant 対応（TPO 正本）」** — 区間ごとの **状況バリアント（`01_` 以降）** → YAML は `subjects[].variant_id`
 2. **「漫画タグ層（区間・常時上乗せ）」** — 区間ごとに全コマへ足す／外す **英語タグ** → YAML は区間内各ページの `render_instruction.user_directives.defaults`（バッチは `_meta` を直接読まない）。§5 テーブルから YAML への転記漏れを防ぐには `python tools/novel_manga_apply_tag_defaults.py novels/<作品> [--apply]` を使う。
 
-表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/concepts.md`** の「Manga Tag Mode ワークフロー」。
+表の書き方・3層（variant / タグ層 / コマ固有）の分担は **`_how_to.example/meta.md`** §4・§5 と **`_how_to.example/manga.md`** の「TPO → variant 対応表」を正とする。横断ワークフローの必須順は **`.rulesync/rules/workflow-specification.md`** の「Manga Tag Mode ワークフロー」。
 - `character_id` はキャラクター一貫性の主キーとし、ページ側の `character_ids` と各コマの `subjects[].character_id` から参照する。
 - セリフ、モノローグ、ナレーション、効果音は混ぜず、`text.dialogue` / `text.monologue` / `text.narration` / `text.sfx` に分ける。
 - 漫画ページ YAML を単体で画像モデルへ渡す運用では、`render_instruction` に作画依頼文を入れる。外側の Markdown やチャット冒頭文が無くても、何を描くか・コマ割りをどう扱うか・キャラクター外見をどう継承するかが読める状態を正とする。
@@ -76,7 +77,7 @@ targets: ["*"]
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。
 - **`composition` / `camera` / `lighting` とコマの状況語（タグ行）**: Step1 の機械連結タグ（`image_provider_novel_manga_batch`・`novel_prompt_ir_export_md`）では **`framing_en` / `focus_en` / `perspective_en` / `layout_en`**、**`camera` の `*_en`**、**`lighting` の `*_en`**、**`pose_action_en` / `expression_en`** を優先する。旧キー（`focus` 等）は **CJK を含まないときだけ**タグに載せる（`medium shot` のような英語のみは従来 YAML でも可）。**`panels[].mood_atmosphere_en`** があればタグに使い、無い場合は `mood_atmosphere` のうち CJK を含まない要素のみ。実装の中心は **`tools/manga_prompt_ir/scene_prompt.py`**。
 - **`focus_en` はキャラ ID 単体を書かない**（例: `yuna` / `hayate` は不可）。構図・注視点は **Danbooru 風の英語タグまたは短い英語フレーズ**（例: `glowing phone screen`, `lying figure on bed`, `hayate's eyes`）とし、固有名・外見固定は **`subjects[]` と NovelAI パイプのキャラ列**に任せる。
-- **NovelAI パイプのベース列（機械除外）**: `yaml_panel_tags_novelai_split`（`novel_prompt_ir_export_md` の `--novelai-pipe-tags` 含む）では、**スペースを含まない単独トークン**が当該ページの `character_id` / `name_en` / `name`（正規化後）と一致するとき **ベースから除外**する（`tools/manga_prompt_ir/character_token_filter.py`）。フレーズ（`summary_en` や `glowing phone screen`）は残る。非パイプの `yaml_panel_tags` では従来どおり載りうる。
+- **人名トークンの機械除外（tag_csv / NovelAI pipe base）**: `yaml_panel_tags`（挿絵バッチ・Forge 等の **tag_csv**）および `yaml_panel_tags_novelai_split` の **ベース列**では、タグ全体が当該ページの `character_id` / `name_en` / `name`（正規化後）と一致するとき除外する（`tools/manga_prompt_ir/character_token_filter.py`）。`yaml_panel_tags` は **`name_en` 等を subjects から後付けしない**。フレーズ（`summary_en` や `glowing phone screen`）は残る。NovelAI pipe の **キャラセグメント先頭の `name_en`** はパイプ識別用として残す（tag_csv スコープ外）。
 
 ### キャラクターIR・外見初版を新規に起こすとき（`world_wear.md`）
 
@@ -120,7 +121,7 @@ targets: ["*"]
 
 ## `panels[].summary_en`（コマ要約の英訳）と NovelAI タグ併用
 
-横断正本は **`.rulesync/rules/concepts.md`** の「Manga `summary_en` の翻訳経路」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「Manga `summary_en` の翻訳経路」。
 
 ### 主経路（エージェント＋検証）
 
@@ -147,6 +148,8 @@ targets: ["*"]
 
 **創作技法としてのコマ割り・ページ設計・IR の組み立て**は **`_how_to/manga.md`**（雛形は `_how_to.example/manga.md`）。構造・型・正本/副本の横断定義は **`.rulesync/rules/concepts.md`** と本スキル、検証の実装は `novel_prompt_ir_validate.py` が担う。**ツール連携の手順の詳細**は **`docs/image-generation/manga-prompt-ir.md`**、**互換 Markdown の Step1/Step2 長文テンプレ・実例**は **`docs/image-generation/manga-tag-generation.md`**。一方、**コマ単位の英語タグ語彙・置き換え・NSFW 表記の慣例**は **`_how_to/manga_tag.md`**（雛形は `_how_to.example/manga_tag.md`）を正とする。**Step2 要約・抽象ページ指示**は **`_how_to/manga_tag_step2.md`**（雛形 **`_how_to.example/manga_tag_step2.md`**）を正とする。
 
+画角・視点の許容語彙は `tools/manga_prompt_ir/data/camera_shot_vocab.yaml` を参照する。ここへ語彙表を複製せず、人間向けの使い分けと例は `_how_to/manga_tag.md` に置く。
+
 ### エージェント／人間の必須動作（ページ YAML を新規・改稿するとき）
 
 1. **`manga/pages/*.yaml` の `panels[].prompt_tags` を書く前に**、必ず **`_how_to/manga_tag.md`** を読む（ユーザーが `_how_to/` をカスタムしている場合はそちらが優先。未編集なら `_how_to.example/manga_tag.md` と同内容を想定）。
@@ -154,7 +157,7 @@ targets: ["*"]
 2. 次を **`prompt_tags` に反映する**（ファイルに書いたルールを機械が自動検証するわけではないため、**人手で反映するまで完了とみなさない**）。
    - **置き換えリスト**: 作品内隠語・言い換えを、 `manga_tag.md` の表に合わせる。
    - **追加ルール**: 該当コマでは `manga_tag.md` の追加ルールに従う。
-   - **視点**: `male perspective`, `pov` など、ファイルで推奨されている表記に寄せる。
+   - **視点**: 新規 YAML では `camera.view_en` の許容語彙（`pov`、`two faces`、`contact close-up`、`inspect close-up`、`solo face`、`solo bust`）を使う。既存 YAML の `prompt_tags` の `pov` / `first_person_view` は後方互換。`view_en: pov` を書いたコマでは tags 側に `pov` を重ねない。
    - **カラー指向時・ページの `manga` 節**: **原則 `monochrome` と `screentone` を `manga.genre_tags` / `manga.visual_tags` に入れない**（`novel_prompt_ir_export_md.py` が各コマの互換 Step1 `tag` 行へ連結する）。コマの `prompt_tags` だけでなく YAML の **`manga`** を **`_how_to/manga.md`**（雛形 `_how_to.example/manga.md`）の「`manga.genre_tags` / `manga.visual_tags`」節に合わせる。**意図的にモノクロ作品にする場合のみ**例外。コマ単位では従来どおり **`manga_tag.md`** の `screentone` 除外など運用上の禁止・除外も参照。
    - **色モード正本**: ページYAMLの **`color_palette.mode`** をページ単位の色モード正本とする。値は `monochrome` / `limited_color` / `full_color`。`manga.visual_tags` は補助タグとして併用するが、`mode=monochrome` に `full_color` 系タグ、`mode=full_color` に `monochrome` / `screentone` 系タグがある場合は `novel_prompt_ir_validate.py` が **WARNING** を出す。センターカラー・巻頭カラー・扉絵だけカラー・一部限定色などの意図的例外を想定し、通常運用では自動修正・通常エラー化しない。
    - **背景のみ**: `nohuman` 等、ファイルで定義されているルール。
@@ -162,7 +165,7 @@ targets: ["*"]
 
 ### ツール側の限界（期待値の調整）
 
-- `novel_prompt_ir_validate.py` は **Pydantic 型・参照・品質ゲート**を検証するが、**`manga_tag.md` の置き換え表どおりかまでは検証しない**。
+- `novel_prompt_ir_validate.py` は **Pydantic 型・参照・品質ゲート**を検証するが、**`manga_tag.md` の置き換え表どおりかまでは検証しない**。画角・視点（`angle_en` / `shot_size_en` / `view_en`）の未知語彙と、隣接コマの同一画角（角度・距離）は **advisory**（stderr の `Advisory:`）。`view_en` は連続規則の対象外で、`--strict-quality` では落とさない。
 - 置き換えの自動適用をコードに足す場合は **`tools/`** に実装し、本スキルからパスを参照する（スキルディレクトリに Python を置かない）。
 
 ## ユーザ指示の正本（`render_instruction.user_directives`）と prompt_tags の強制適用
@@ -235,8 +238,8 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 キャラクター YAML の `prompt_variants[].variant_id` について、スキーマ・ツールは次のように振る舞う。
 
 - **Pydantic 上の型**: `variant_id` は **任意の文字列**。推奨形式 **`NNN_short_slug`（3桁ゼロ埋め）** は **スキーマでは強制されない**。英字のみの ID（例: `normal`）でも検証は通る。
-- **命名・階層の正本**: **`.rulesync/rules/concepts.md`**（「Tag Mode バリアント階層」「Tag Mode 身体的正本（3階層継承）」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（着衣）→ `006_nude`（NSFW 作品）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
-- **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **concepts.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
+- **命名・階層の正本**: **`.rulesync/rules/workflow-specification.md`**（「Tag Mode バリアント階層」「Tag Mode 身体的正本（3階層継承）」「Tag Mode 汎用テンプレートとカスタム要素」）。標準成果物は **`000_base` → 000番台（着衣）→ `006_nude`（NSFW 作品）→ 100番台（資料、`combines_with` 付き）**。100番台を省略するときは省略理由を残す。
+- **テンプレート一式**: チャットまたは作品 `_meta.md` の**バリアント方針**が **`テンプレート一式`** のときは **workflow-specification.md**「Tag Mode テンプレート一式」に従い、**汎用** `variant_id` をエージェント独断で省略しない。**カスタム**は作品メタの**カスタム要素**に列挙したときのみ追加（共有ルールにジャンル固有 ID を固定しない）。
 - **互換 Markdown の `## 1.` など**: `tools/novel_prompt_ir_export_md.py` は、`prompt_variants` の **配列の並び順**に従い、状況ブロック見出しを `## 1.` `## 2.` … と付ける。**見出しの連番は `variant_id` の先頭数字から自動算出されない**（先頭要素が必ず `## 1.` に対応する）。
 - **検証ツール**: `tools/novel_prompt_ir_validate.py` は、漫画ページなどとの **参照整合**（存在しない `variant_id` を指していないか等）は確認するが、**`NN_short_slug` 形式かどうかは検証しない**。
 
@@ -249,7 +252,7 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
 
 具体的には、`fixed_prompt_tags()` が返す **`000_base.danbooru_tags`** が、各バリアント合成の土台として毎回混ざる。
 
-**副経路**（`novel_prompt_ir_embed_snapshots`、`prompt_renderer` の snapshot 未使用時等）では、従来どおり `manga_rules.consistency_tags` や `appearance.distinctive_features` が **追加注入され得る**（concepts「身体的正本」§3.1 参照）。
+**副経路**（`novel_prompt_ir_embed_snapshots`、`prompt_renderer` の snapshot 未使用時等）では、従来どおり `manga_rules.consistency_tags` や `appearance.distinctive_features` が **追加注入され得る**（`workflow-specification.md`「Tag Mode 身体的正本（3階層継承）」参照）。
 
 ### ルール（推奨）
 
@@ -265,12 +268,13 @@ NovelAI 分割（`base | キャラ`）では **`required` は base 側のみへ�
   - standing / sitting のような姿勢タグ（状況で変わる）
   - 屋外・屋内・背景（作品側/コマ側で管理）
   - **露出・性器・裸限定タグ**（→ **`006_nude`（身体的正本）** および **`combines_with: 006_nude` の Level 3**）
+  - **`character_id` / `name` / `name_en` 相当の人名・キャラ名トークン**（メタ情報として YAML ルートに残し、**`danbooru_tags` 列には入れない**。既存学習キャラへの引きずり防止）
 
 ### 身体的正本（3階層継承・Tag Mode 作成順）
 
 NSFW を扱う作品では、新規 YAML 作成時の思考順を固定する。
 
-1. **Level 1（SFW）**: `000_base` — 髪・目・肌・種族のみ。`appearance.distinctive_features` / `consistency_tags` にも **裸限定タグを置かない**。
+1. **Level 1（SFW）**: `000_base` — 髪・目・肌・種族のみ。`appearance.height` には **`character.md` の身長**を写す（必須。`novel_character_md_check.py --profile visual` と整合）。`appearance.distinctive_features` / `consistency_tags` にも **裸限定タグを置かない**。
 2. **Level 2（NSFW）**: `006_nude` — `nude`, `uncensored`, 性器・秘部詳細の**唯一のタグ正本**。
 3. **000番台（着衣）**: `001_normal` 等 — 衣装・半脱衣装のみ。裸露本体は載せない。
 4. **Level 3（状況）**: `007_arousal`, `008_relax`, `103_*` 等 — **`combines_with: 006_nude` 必須**。表情・体液・行為タグのみ。
@@ -278,7 +282,7 @@ NSFW を扱う作品では、新規 YAML 作成時の思考順を固定する。
 
 Level 1 禁止事項（着衣漏洩防止）: 主経路の character_ir_tags() は 000_base 優先に改修済み。それでも distinctive_features / consistency_tags に裸限定タグがあると、embed・renderer 等の副経路で着衣コマに漏れうる。Tag Mode では Level 1 から裸限定タグを除外すること。
 
-検証: `python tools/novel_prompt_ir_validate.py novels/<作品>`（身体的正本 WARNING、`--strict-quality` で ERROR 化可）。
+検証: `python tools/novel_prompt_ir_validate.py novels/<作品>`（身体的正本 WARNING、人名トークン WARNING、`--strict-quality` で ERROR 化可）。
 
 ### 実装メモ（確認ポイント）
 
@@ -396,3 +400,16 @@ python tools/novel_prompt_ir_export_md.py \
 - `manga-tag-character-sync`: 漫画コマへのキャラクター特徴継承
 - `manga-tag-quality-gate`: 主語・行為・レイアウトの品質確認
 - `image-provider（旧 forge-txt2img）`: 生成プロバイダへの最終受け渡し
+
+## 写植と領域合成
+
+操作のコマンドと確認先は `docs/image-generation/manga-page-edit.md`。創作上の選び方は `_how_to.example/manga.md` の「文字は描かせるか、後で載せるか」。この節は作業時の拘束だけを置く。
+
+- 写植は `tools/novel_manga_lettering.py letter`。入力の geometry は `kind: actual` かつ元画像の SHA-256 と一致すること。`design_projected` では写植しない。
+- `manga.lettering` は漫画ページの基本写植スタイルであり、既定は縦書き・基準フォントサイズ30・`uniform_then_shrink`。ページへ明示した台詞単位の `writing_direction` は基本スタイルを上書きする。
+- ローカル写植の文字ブロックは指定矩形の上下左右中央へ配置する。縦書きでは句読点・括弧・三点リーダー等を縦組み用字形へ変換するが、`？` は通常字形のままとし、IR本文は変更しない。
+- 写植はまず基準フォントサイズを全台詞へ適用し、実座標へ収まらない項目だけを縮小する。`--size-ratio` による全体縮小は通常の既定にしない。
+- `complete` は未配置とはみ出しが両方空のときだけ。どちらかがあれば完成報告しない。
+- 領域合成は同 CLI の `region-edit`。マスク値 0 の画素は元ページと一致しないと `complete` にしない。
+- `--provider` 付きの `region-edit` は未対応として送信前に拒否する。領域編集 API があるものとして NovelAI / Grok / OpenAI へ送らない。
+- ページ生成の既定 provider は変えない。`letter_later` の採用はページごとの文字方針であり、`.env` の既定切替ではない。

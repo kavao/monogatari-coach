@@ -65,7 +65,13 @@ def filter_base_standalone_character_tokens(
     tags: list[str],
     blocked: frozenset[str],
 ) -> list[str]:
-    """Drop base tags that are a single token equal to a blocked character key."""
+    """Drop tags whose entire value equals a blocked character key.
+
+    Matching uses ``normalize_character_token_key`` (spaces→underscores, lower),
+    so both ``yuna`` and ``Yuna Tanaka`` / ``Yuna_Tanaka`` are removed when
+    blocked. Longer phrases (e.g. summary_en, ``glowing phone screen``) are kept
+    because their normalized form is not exactly a blocked key.
+    """
     if not blocked:
         return tags
     out: list[str] = []
@@ -73,7 +79,7 @@ def filter_base_standalone_character_tokens(
         s = str(tag).strip()
         if not s:
             continue
-        if is_standalone_tag_token(s) and normalize_character_token_key(s) in blocked:
+        if normalize_character_token_key(s) in blocked:
             continue
         out.append(tag)
     return out

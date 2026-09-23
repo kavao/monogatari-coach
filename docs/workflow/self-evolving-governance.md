@@ -6,7 +6,7 @@
 
 **自己発展型ルールガバナンス**は、正本（Policy-as-Code）を先に固定し、チャットの指示（Instruction-driven）で運用を拡張しながら、**機械検証**と**追記ログ**で「完了」を拘束して、再現可能に発展させる運用方式です。
 
-定義の正本は [`/.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) を参照してください。
+定義の正本は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「自己発展型ルールガバナンス」を参照してください。短い完了条件は [`concepts.md`](../../.rulesync/rules/concepts.md) にあります。
 
 ## このドキュメントを使う場面
 
@@ -25,7 +25,7 @@
 ## Monogatari Coach が行うこと（何が起きるか）
 
 - **正本（policy）を決める**
-  - `concepts.md` のような「短い概念正本」を入口にする
+  - 短い概念正本（`concepts.md`）と、必要時だけ読む詳細仕様（`workflow-specification.md`）を入口にする
 - **完了条件を固定する**
   - 「正本へ反映し、確認してから完了扱い」を最優先にする
 - **機械検証を用意する**
@@ -38,7 +38,8 @@
 最小構成は「概念正本 + 検証 + 追記ログ」です。ここだけで、自己発展の“土台”が作れます。
 
 - **概念正本（policy）**
-  - `/.rulesync/rules/concepts.md`
+  - `/.rulesync/rules/concepts.md`（短い完了条件）
+  - `/.rulesync/rules/workflow-specification.md`（モード別の詳細仕様）
   - `/.rulesync/rules/rule-authoring.md`
 - **追記ログ（auditability）**
   - `tools/workspace_audit_log.py`
@@ -46,14 +47,15 @@
 - **機械検証（verification）**
   - `tools/novel_project_check.py`（作品フォルダの必須物チェック）
   - `tools/novel_prompt_ir_validate.py`（YAML IR を運用する場合）
+  - `tools/tests/test_rulesync_router_contract.py`（Rulesync ルーター・参照到達）
 
 ## 補助（必要になったら足す）
 
 - **正本→副本の再生成（export）**
   - `tools/novel_prompt_ir_export_md.py`（YAML IR から互換 Markdown を出す）
 - **ルールの配布（distribution）**
-  - `corepack pnpm dlx rulesync generate`（`.rulesync/` を入口へ同期）
-  - `uv run python sync_rules.py`（後方互換ラッパー経由で同じ生成を実行）
+  - `python tools/rulesync.py generate`（`.rulesync/` を入口へ同期）
+  - `python sync_rules.py`（後方互換ラッパー経由で同じ生成を実行）
 
 ## ユーザーが確認できるもの（成果物）
 

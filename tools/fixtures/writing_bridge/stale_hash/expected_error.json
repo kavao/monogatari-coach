@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "code": "STALE_EVIDENCE",
+  "severity": "error",
+  "message": "base_text_sha256 does not match current normalized text",
+  "refs": {
+    "path": "_novel_text/novel_text01.md",
+    "expected": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "actual": "sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf"
+  }
+}

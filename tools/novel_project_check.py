@@ -27,6 +27,7 @@ import novel_code_allocate as nca  # noqa: E402
 import novel_character_md_check as ncmc  # noqa: E402
 import novel_image_layout as nil  # noqa: E402
 import novel_text_rewrite_lint as ntrl  # noqa: E402
+import inspection_flags as iflags  # noqa: E402
 
 
 # overview.md「小説ファイル」に基づく執筆開始前の必須（本文ファイルは未作成でもよい）
@@ -119,6 +120,129 @@ def _check_slush_g3(work: Path) -> dict[str, Any]:
     }
 
 
+_RE_NOVEL_TEXT = re.compile(r"^novel_text(\d+)(?:_(\d+))?\.md$")
+_RE_SCHEDULE_HEADING = re.compile(r"^#{1,6}\s*.*執筆スケジュール")
+_RE_SCHEDULE_LINE = re.compile(r"第(\d+)章[^：:\n]*[：:]\s*(.+?)\s*$")
+_RE_SUBPART_KEYWORD = re.compile(r"(前半|後半|項|分割|_1|_2|_3)")
+_STATUS_NOT_STARTED = ("未着手", "未定", "予定")
+
+
+def _novel_text_files(work: Path) -> list[Path]:
+    text_dir = work / "_novel_text"
+    if not text_dir.is_dir():
+        return []
+    return sorted(f for f in text_dir.glob("novel_text*.md") if _RE_NOVEL_TEXT.match(f.name))
+
+
+def _written_chapter_map(files: list[Path]) -> dict[int, list[int | None]]:
+    """章番号 → 項番号（項なしは None）のリスト。"""
+    out: dict[int, list[int | None]] = {}
+    for f in files:
+        m = _RE_NOVEL_TEXT.match(f.name)
+        if not m:
+            continue
+        chapter = int(m.group(1))
+        sub = int(m.group(2)) if m.group(2) else None
+        out.setdefault(chapter, []).append(sub)
+    return out
+
+
+def _parse_schedule(design_text: str) -> dict[int, str]:
+    """design_specification.md の「執筆スケジュール」節から 章番号→状態文字列 を抽出。"""
+    lines = design_text.splitlines()
+    in_schedule = False
+    schedule: dict[int, str] = {}
+    for line in lines:
+        if _RE_SCHEDULE_HEADING.search(line):
+            in_schedule = True
+            continue
+        if in_schedule:
+            # 次の見出しでスケジュール節を抜ける
+            if re.match(r"^#{1,6}\s", line):
+                break
+            m = _RE_SCHEDULE_LINE.search(line)
+            if m:
+                schedule[int(m.group(1))] = m.group(2).strip()
+    return schedule
+
+
+def _check_story_sync(work: Path) -> dict[str, Any]:
+    """本文ファイルと design_specification.md 執筆スケジュールの食い違いを WARNING 検出。
+
+    意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の形式的ズレのみを見る。
+    """
+    warnings: list[str] = []
+    files = _novel_text_files(work)
+    chapters = _written_chapter_map(files)
+
+    design = work / "design_specification.md"
+    schedule: dict[int, str] = {}
+    design_ok = design.is_file()
+    if design_ok:
+        try:
+            schedule = _parse_schedule(design.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            design_ok = False
+
+    if not files:
+        return {
+            "ok": True,
+            "written_chapters": [],
+            "schedule_chapters": sorted(schedule.keys()),
+            "warnings": warnings,
+            "detail": "本文ファイルがまだ無いため同期チェックはスキップ",
+        }
+
+    if not design_ok:
+        warnings.append("design_specification.md が読めないため執筆スケジュールと照合できません")
+        return {
+            "ok": False,
+            "written_chapters": sorted(chapters.keys()),
+            "schedule_chapters": [],
+            "warnings": warnings,
+        }
+
+    # 1. 本文があるのにスケジュールが未着手のまま
+    for chapter in sorted(chapters.keys()):
+        status = schedule.get(chapter)
+        if status is None:
+            warnings.append(
+                f"第{chapter}章の本文ファイルがあるのに、執筆スケジュールに第{chapter}章の記載がありません"
+            )
+            continue
+        if any(token in status for token in _STATUS_NOT_STARTED):
+            warnings.append(
+                f"第{chapter}章の本文ファイルがあるのに、執筆スケジュールが「{status}」のままです"
+            )
+
+    # 2. 前後半・項ファイルがあるのに、スケジュールに分割記載がない
+    design_text_l = ""
+    if design_ok:
+        try:
+            design_text_l = design.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            design_text_l = ""
+    for chapter, subs in sorted(chapters.items()):
+        has_sub = any(s is not None for s in subs)
+        if has_sub:
+            status = schedule.get(chapter, "")
+            # スケジュール行または設計書全体に分割の手掛かりがあるか
+            if not _RE_SUBPART_KEYWORD.search(status) and not _RE_SUBPART_KEYWORD.search(
+                design_text_l
+            ):
+                warnings.append(
+                    f"第{chapter}章は前半・後半（項）ファイルに分割されていますが、"
+                    f"design_specification.md に分割の記載が見当たりません"
+                )
+
+    return {
+        "ok": not warnings,
+        "written_chapters": sorted(chapters.keys()),
+        "schedule_chapters": sorted(schedule.keys()),
+        "warnings": warnings,
+    }
+
+
 def _illustration_page_yaml_paths(work: Path) -> list[Path]:
     pages = work / "illustrations" / "pages"
     if not pages.is_dir():
@@ -133,6 +257,114 @@ def _needs_cover_plan(work: Path) -> bool:
     return False
 
 
+def _check_inspection_layers(work: Path) -> dict[str, Any]:
+    """作品フラグと検査レイヤの保存先を確認する（WARN はゲートにしない）。"""
+
+    config_path = work / "config.md"
+    try:
+        flags = iflags.load_inspection_flags(config_path)
+    except iflags.InspectionConfigError as error:
+        return {
+            "ok": False,
+            "config_path": str(config_path),
+            "error": str(error),
+            "flags": None,
+            "warnings": [],
+        }
+
+    warnings: list[str] = []
+    layer_dirs = {
+        "METRON": work / "_metron",
+        "CHRONOS": work / "chronos",
+    }
+    for key, path in layer_dirs.items():
+        if flags.value_for(key) is not iflags.InspectionFlag.ON:
+            continue
+        if not path.is_dir():
+            warnings.append(
+                f"検査レイヤ {key} がONですが保存先がありません: {path.name}/"
+            )
+        elif key == "METRON" and not any(child.is_file() for child in path.rglob("*")):
+            warnings.append(f"検査レイヤ METRON がONですが {path.name}/ が空です")
+
+    unmeasured_chapters: list[dict[str, Any]] = []
+    metron_on = flags.value_for("METRON") is iflags.InspectionFlag.ON
+    if metron_on:
+        metron_root = work / "_metron"
+        writing_root = work / "_writing"
+        for text_path in _novel_text_files(work):
+            match = _RE_NOVEL_TEXT.match(text_path.name)
+            if match is None:
+                continue
+            chapter = int(match.group(1))
+            # 項分割は章単位の検査対象へまとめる。代表パスは章ファイルを優先する。
+            if match.group(2) is not None:
+                chapter_text = work / "_novel_text" / f"novel_text{chapter:02d}.md"
+                if chapter_text.is_file():
+                    if text_path != chapter_text:
+                        continue
+                else:
+                    previous = next(
+                        (item for item in unmeasured_chapters if item["chapter"] == chapter),
+                        None,
+                    )
+                    if previous is not None:
+                        continue
+            scene_dirs = (
+                [item for item in metron_root.glob(f"ch{chapter:02d}-*") if item.is_dir()]
+                if metron_root.is_dir()
+                else []
+            )
+            contract_exists = any((scene / "contract.yaml").is_file() for scene in scene_dirs)
+            beats_exists = any((scene / "beats.yaml").is_file() for scene in scene_dirs)
+            run_exists = False
+            if writing_root.is_dir():
+                for scene in writing_root.glob(f"ch{chapter:02d}-*"):
+                    if scene.is_dir() and any(
+                        child.is_dir() and re.fullmatch(r"run-\d+", child.name)
+                        for child in scene.iterdir()
+                    ):
+                        run_exists = True
+                        break
+            missing: list[str] = []
+            if not contract_exists:
+                missing.append("contract.yaml")
+            if not beats_exists:
+                missing.append("beats.yaml")
+            if not run_exists:
+                missing.append("run")
+            if not missing:
+                continue
+            try:
+                display_text = str(text_path.relative_to(work.parent))
+            except ValueError:
+                display_text = str(text_path)
+            item = {
+                "chapter": chapter,
+                "text_path": display_text,
+                "missing": missing,
+            }
+            unmeasured_chapters.append(item)
+            warnings.append(
+                f"本文 {display_text} がありますが METRON 未計測です（欠落: {', '.join(missing)}）"
+            )
+
+        if unmeasured_chapters:
+            warnings.append(
+                "METRON 未計測章があります。複数章処理では最初の未計測章で停止し、"
+                "欠落項目を解消して prepare → receive → inspect を完了してから次章へ進んでください。"
+                "この警告は終了コード0でも次章遷移のゲートとして扱い、_novel_text へ直接追記しないでください。"
+            )
+
+    return {
+        "ok": True,
+        "config_path": str(config_path),
+        "flags": flags.as_dict(),
+        "warnings": warnings,
+        "unmeasured_chapters": unmeasured_chapters,
+    }
+
+
 def check_novel_project(
     work: Path,
     *,
@@ -141,13 +373,16 @@ def check_novel_project(
     require_manga_dir: bool,
     require_meta_yaml: bool = False,
     require_illustration_plan: bool = False,
-    require_character_structure: bool = False,
+    require_character_structure: bool = True,
     character_profile: str = "plan",
     character_strict: bool = False,
     character_suggest: bool = False,
     require_text_lint: bool = False,
     text_lint_profile: str = "default",
     require_slush_g3: bool = False,
+    check_story_sync: bool = False,
+    strict_story_sync: bool = False,
+    check_inspection_layers: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -158,6 +393,7 @@ def check_novel_project(
         "required_dirs": [],
         "optional": {},
         "issues": [],
+        "warnings": [],
     }
 
     if not work.is_dir():
@@ -206,6 +442,7 @@ def check_novel_project(
                 "suggest": character_suggest,
                 "errors": [{"level": "ERROR", "message": str(e)}],
                 "warnings": [],
+                "hints": [],
                 "suggestions": [],
                 "characters": [],
             }
@@ -317,6 +554,27 @@ def check_novel_project(
             out["ok"] = False
             out["issues"].append(f"本文 lint 実行エラー: {e}")
 
+    if check_story_sync:
+        sync_result = _check_story_sync(work)
+        out["optional"]["story_sync"] = sync_result
+        for w in sync_result.get("warnings") or []:
+            if strict_story_sync:
+                out["ok"] = False
+                out["issues"].append(f"本文・設計書同期: {w}（--strict-story-sync 指定）")
+            else:
+                out["warnings"].append(f"本文・設計書同期: {w}")
+
+    if check_inspection_layers:
+        inspection_result = _check_inspection_layers(work)
+        out["optional"]["inspection_layers"] = inspection_result
+        if not inspection_result["ok"]:
+            out["ok"] = False
+            out["issues"].append(
+                f"検査レイヤ設定: {inspection_result.get('error', '設定エラー')}"
+            )
+        else:
+            out["warnings"].extend(inspection_result.get("warnings") or [])
+
     return out
 
 
@@ -369,9 +627,14 @@ def main(argv: list[str] | None = None) -> int:
         help="_meta.yaml を必須チェック対象にする（画像生成・ポーション運用時に指定）",
     )
     p.add_argument(
+        "--no-character-structure",
+        action="store_true",
+        help="character.md のチェックリスト構造 lint をスキップする（既定は実行）",
+    )
+    p.add_argument(
         "--require-character-structure",
         action="store_true",
-        help="character.md をチェックリスト YAML に基づいて構造 lint する",
+        help="character.md 構造 lint を明示的に有効化（既定で有効。無効化は --no-character-structure）",
     )
     p.add_argument(
         "--character-profile",
@@ -408,27 +671,96 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--check-story-sync",
+        action="store_true",
+        help=(
+            "本文ファイル（_novel_text/novel_text*.md）と design_specification.md の"
+            "執筆スケジュール・章分割の食い違いを WARNING 表示する（既定では NG にしない）"
+        ),
+    )
+    p.add_argument(
+        "--strict-story-sync",
+        action="store_true",
+        help="--check-story-sync の食い違いを WARNING ではなく NG（失敗）扱いにする",
+    )
+    p.add_argument(
+        "--check-inspection-layers",
+        action="store_true",
+        help="config.md の METRON / CHRONOS / AUDIT_LOG フラグと保存先を確認する（欠落は WARN）",
+    )
+    p.add_argument(
         "--bootstrap",
         action="store_true",
         help="_meta.yaml / _novel_text / _reader / references/novelai を不足分だけ作成してからチェック",
+    )
+    p.add_argument(
+        "--metron",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="未作成フォルダを --bootstrap するときの METRON（既定: ON）",
+    )
+    p.add_argument(
+        "--chronos",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="未作成フォルダを --bootstrap するときの CHRONOS（既定: ON）",
     )
     args = p.parse_args(argv)
 
     if args.bootstrap:
         from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
+        from inspection_bootstrap import (
+            InspectionBootstrapError,
+            initialize_new_layers,
+        )
 
         work = args.work_dir
         if not work.is_absolute():
             work = scaffold_root() / work
         work = work.resolve()
+        was_absent = not work.exists()
         print(f"bootstrap: {work}")
         try:
+            if was_absent and nca.parse_folder_code(work.name) is None:
+                print(
+                    "error: 新規 --bootstrap のフォルダ名は 'NNN_タイトル' 形式が必要です",
+                    file=sys.stderr,
+                )
+                return 2
+            if was_absent:
+                try:
+                    work.mkdir(parents=True, exist_ok=False)
+                except FileExistsError:
+                    # 競合相手が作成した作品は既存作品として扱い、フラグを初期化しない。
+                    was_absent = False
             for rel, status in bootstrap_novel(work, scaffold_root()):
                 print(f"  {rel}: {status}")
+            if was_absent:
+                code = nca.parse_folder_code(work.name)
+                assert code is not None
+                title = work.name.split("_", 1)[1]
+                for rel, status in initialize_new_layers(
+                    work,
+                    code,
+                    title,
+                    metron=args.metron,
+                    chronos=args.chronos,
+                ):
+                    print(f"  {rel}: {status}")
         except FileNotFoundError as e:
             print(f"error: {e}", file=sys.stderr)
             return 2
+        except InspectionBootstrapError as e:
+            print(f"error: 検査レイヤ初期化失敗: {e}", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"error: 初期ファイル作成失敗: {e}", file=sys.stderr)
+            return 2
         print()
+
+    require_character_structure = not args.no_character_structure
+    if args.require_character_structure:
+        require_character_structure = True
 
     result = check_novel_project(
         args.work_dir,
@@ -437,13 +769,16 @@ def main(argv: list[str] | None = None) -> int:
         require_manga_dir=args.require_manga_dir,
         require_meta_yaml=args.require_meta_yaml,
         require_illustration_plan=args.require_illustration_plan,
-        require_character_structure=args.require_character_structure,
+        require_character_structure=require_character_structure,
         character_profile=args.character_profile,
         character_strict=args.character_strict,
         character_suggest=args.character_suggest,
         require_text_lint=args.require_text_lint,
         text_lint_profile=args.text_lint_profile,
         require_slush_g3=args.require_slush_g3,
+        check_story_sync=args.check_story_sync or args.strict_story_sync,
+        strict_story_sync=args.strict_story_sync,
+        check_inspection_layers=args.check_inspection_layers,
     )
 
     if args.check_image_layout:
@@ -518,7 +853,7 @@ def main(argv: list[str] | None = None) -> int:
                 "    挿絵計画 cover_plan.md: "
                 + ("OK" if cv_ok else "NG")
             )
-    if args.require_character_structure:
+    if require_character_structure:
         ch = opt.get("character_structure") or {}
         print(
             "    character.md 構造: "
@@ -528,6 +863,14 @@ def main(argv: list[str] | None = None) -> int:
         warnings = ch.get("warnings") or []
         if warnings:
             print(f"    character.md WARN: {len(warnings)} 件")
+        hints = ch.get("hints") or []
+        if hints:
+            print(f"    character.md HINT: {len(hints)} 件")
+            for hint in hints:
+                print(f"      - {hint.get('message', '')}")
+                command = hint.get("command")
+                if command:
+                    print(f"        $ {command}")
 
     if args.require_text_lint:
         tl = opt.get("text_lint") or {}
@@ -548,6 +891,43 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"    足切り G3: {'OK' if g3_ok else 'NG'} — {detail}  [{src}]"
         )
+
+    if args.check_story_sync or args.strict_story_sync:
+        ss = opt.get("story_sync") or {}
+        written = ss.get("written_chapters") or []
+        sched = ss.get("schedule_chapters") or []
+        ss_warns = ss.get("warnings") or []
+        print(
+            "    本文・設計書同期: "
+            + ("OK" if ss.get("ok") else f"要確認 — {len(ss_warns)} 件")
+            + f"（本文章: {written} / スケジュール章: {sched}）"
+        )
+        for w in ss_warns:
+            print(f"      - {w}")
+
+    if args.check_inspection_layers:
+        il = opt.get("inspection_layers") or {}
+        if il.get("ok"):
+            flags = il.get("flags") or {}
+            print(
+                "    検査レイヤ: "
+                f"METRON={flags.get('METRON', 'OFF')}, "
+                f"CHRONOS={flags.get('CHRONOS', 'OFF')}, "
+                f"AUDIT_LOG={flags.get('AUDIT_LOG', 'ON')}"
+            )
+        else:
+            print(f"    検査レイヤ: 設定エラー — {il.get('error', '設定エラー')}")
+        for item in il.get("unmeasured_chapters") or []:
+            missing = ", ".join(item.get("missing") or []) or "—"
+            print(
+                f"      - 未計測 第{item.get('chapter')}章: "
+                f"{item.get('text_path')}（欠落: {missing}）"
+            )
+
+    if result.get("warnings"):
+        print("\n  警告（WARNING・NG ではない）:")
+        for line in result["warnings"]:
+            print(f"    ! {line}")
 
     if result["ok"] and not result.get("issues"):
         print("\n=== 結果: OK ===")

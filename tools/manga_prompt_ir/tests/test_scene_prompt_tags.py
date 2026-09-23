@@ -12,6 +12,7 @@ from manga_prompt_ir.scene_prompt import (
     subject_situational_tag_tokens,
     subject_tag_line_token,
 )
+from image_provider_novel_manga_batch import yaml_panel_tags
 
 
 def test_composition_prefers_en_and_drops_cjk_legacy() -> None:
@@ -30,8 +31,43 @@ def test_composition_allows_ascii_only_legacy() -> None:
 
 
 def test_camera_uses_en_only_when_set() -> None:
-    cam = {"angle": "high angle", "angle_en": "low angle", "shot_size": "medium shot"}
-    assert camera_tag_tokens(cam) == ["low angle", "medium shot"]
+    cam = {
+        "angle": "high angle",
+        "angle_en": "low angle",
+        "shot_size": "medium shot",
+        "view_en": "solo face",
+    }
+    assert camera_tag_tokens(cam) == ["low angle", "medium shot", "solo face"]
+
+
+def test_camera_uses_english_legacy_view_when_view_en_is_empty() -> None:
+    assert camera_tag_tokens({"view": "two faces"}) == ["two faces"]
+
+
+def test_yaml_panel_tags_keeps_legacy_pov_when_view_en_is_empty() -> None:
+    panel = {
+        "prompt_tags": ["pov"],
+        "camera": {"view_en": ""},
+        "subjects": [],
+    }
+    page = {"manga": {}, "scene": {}, "panels": [panel]}
+
+    tags = yaml_panel_tags(page, panel, {})
+
+    assert tags.count("pov") == 1
+
+
+def test_yaml_panel_tags_emits_view_pov_once_without_prompt_tag() -> None:
+    panel = {
+        "prompt_tags": [],
+        "camera": {"view_en": "pov"},
+        "subjects": [],
+    }
+    page = {"manga": {}, "scene": {}, "panels": [panel]}
+
+    tags = yaml_panel_tags(page, panel, {})
+
+    assert tags.count("pov") == 1
 
 
 def test_subject_no_japanese_description_in_tag_token() -> None:

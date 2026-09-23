@@ -1,0 +1,59 @@
+schema_version: "1.0"
+character_id: akane
+name: 中瀬茜
+name_en: Akane Nakase
+role: 主人公・大学一年生
+appearance:
+  age_range: 18-year-old adult
+  gender_presentation: feminine
+  body_type: slim, athletic posture
+  height: short to average height
+  hair_style: shoulder-length straight hair, usually tied back
+  hair_color: natural black
+  distinctive_features:
+    - reserved expression
+    - neat posture
+costume:
+  outfit_tags: [charcoal_gray_hoodie, dark_blue_jeans, casual_clothes]
+  main_outfit: 実家から持ってきた古いチャコールグレーのパーカーと濃いブルーのジーンズ
+  accessories: []
+  color_palette: [charcoal_gray, dark_blue, muted_beige]
+personality:
+  archetype_tags: [quiet_protagonist]
+  personality_tags: [observant, guarded, compassionate]
+  default_expression: 表情を抑え、相手を慎重に見つめる。
+  speech_style: 丁寧語を基本とし、感情が動くと一瞬言葉に詰まる。
+manga_rules:
+  consistency_tags: [adult_woman, black_hair, shoulder_length_hair, charcoal_gray_hoodie, dark_blue_jeans]
+  do_not_change:
+    - 髪を黒以外の色にしない
+    - 肩までの自然な髪の長さを極端に変えない
+    - パーカーとジーンズを派手な服装へ置き換えない
+  closeup_rules: 目元の強さより、静かに考えている気配を残す。
+prompt_variants:
+  - variant_id: "000_base"
+    title: 固定外見
+    description: 成人女性としての固定外見。衣装・姿勢なし。
+    danbooru_tags: [1girl, adult_woman, black_hair, shoulder_length_hair]
+  - variant_id: "001_normal"
+    title: 晩秋の普段着
+    description: 東京郊外のアパートで過ごす茜の通常衣装。
+    danbooru_tags: [charcoal_gray_hoodie, dark_blue_jeans, casual_clothes]
+    caption: Akane Nakase in her everyday late-autumn apartment clothes.
+    translation: 晩秋の普段着を着た中瀬茜。
+  - variant_id: "100_intro"
+    title: 紹介用
+    description: 読者向け人物紹介に使う、落ち着いた正面寄りの立ち姿。
+    danbooru_tags: [standing, reserved_expression, simple_background]
+    combines_with: "001_normal"
+  - variant_id: "101_turnaround"
+    title: 三面図用
+    description: 固定外見と普段着を確認するための資料用バリアント。
+    danbooru_tags: [character_sheet, front_view, side_view, back_view, simple_background]
+    combines_with: "001_normal"
+  - variant_id: "102_signature_pose"
+    title: 決めポーズ用
+    description: パーカーの袖口を軽く握り、相手を見つめる姿。
+    danbooru_tags: [looking_at_viewer, hand_holding_sleeve, reserved_expression]
+    combines_with: "001_normal"
+negative_tags: [child, school_uniform, brightly_colored_hair, fantasy_costume]

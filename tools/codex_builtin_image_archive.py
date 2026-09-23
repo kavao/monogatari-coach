@@ -19,7 +19,9 @@ def latest_image(search_dir: Path) -> Path:
     candidates = [
         path
         for path in search_dir.rglob("*")
-        if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+        if path.is_file()
+        and "_restyle" not in path.parts
+        and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     ]
     if not candidates:
         raise FileNotFoundError(f"画像ファイルが見つかりません: {search_dir}")

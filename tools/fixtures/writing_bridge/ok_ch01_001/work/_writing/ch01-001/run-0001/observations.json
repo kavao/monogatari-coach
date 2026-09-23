@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "request_id": "WRQ-0001",
+  "text_sha256": "sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf",
+  "expected_total": 3,
+  "items": [
+    {
+      "event_id": "EVT-0001",
+      "actor_id": "CHR-a",
+      "dimension": "outfit",
+      "value": "travel",
+      "state_at": "after",
+      "quote": "旅行用の上着",
+      "start": 22,
+      "end": 28,
+      "range_sha256": "sha256:22ba4f6cc334845396ff0eae6bdb17be1b5a67f89fba0a188ed5b15ed2730c10",
+      "recorder": "agent",
+      "confirmation": "match"
+    },
+    {
+      "event_id": "EVT-0001",
+      "actor_id": "CHR-a",
+      "dimension": "whereabouts",
+      "value": "LOC-station",
+      "state_at": "after",
+      "quote": "駅の券売機の前に立った",
+      "start": 90,
+      "end": 101,
+      "range_sha256": "sha256:9307c2c7c562640d0c2e4b14c78539928fb5f0b68d689a81641dd1311c9a3ec4",
+      "recorder": "agent",
+      "confirmation": "match"
+    },
+    {
+      "event_id": "EVT-0002",
+      "actor_id": "CHR-a",
+      "dimension": "whereabouts",
+      "value": "LOC-station",
+      "state_at": "after",
+      "quote": "駅の券売機の前に立った",
+      "start": 90,
+      "end": 101,
+      "range_sha256": "sha256:9307c2c7c562640d0c2e4b14c78539928fb5f0b68d689a81641dd1311c9a3ec4",
+      "recorder": "agent",
+      "confirmation": "match"
+    }
+  ]
+}

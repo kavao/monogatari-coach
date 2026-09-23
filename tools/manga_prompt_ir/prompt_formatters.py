@@ -134,6 +134,8 @@ def subject_notes(subject: dict[str, Any]) -> list[str]:
 def do_not_include_lines(
     page: dict[str, Any],
     negative_prompt: str,
+    *,
+    include_preserved: bool = True,
 ) -> list[str]:
     instruction = page.get("render_instruction") or {}
     directives = instruction.get("user_directives") or {}
@@ -141,6 +143,14 @@ def do_not_include_lines(
     items: list[str] = []
     items.extend(split_prompt_fragments(negative_prompt))
     items.extend(str(x) for x in as_list(defaults.get("omit_prompt_tags")) if x)
+    if include_preserved:
+        items.extend(line[2:] for line in preserve_lines(page))
+    return bullet_lines(unique(items), limit=24)
+
+
+def preserve_lines(page: dict[str, Any]) -> list[str]:
+    """Return fixed features that must remain, not negative constraints."""
+    items: list[str] = []
     for snapshot in as_list(page.get("character_snapshots")):
         if isinstance(snapshot, dict):
             items.extend(str(x) for x in as_list(snapshot.get("do_not_change")) if x)
@@ -325,20 +335,63 @@ def manga_page_layout_lines(page: dict[str, Any], source: str) -> list[str]:
 
 def manga_page_text_policy_lines(page: dict[str, Any]) -> list[str]:
     instruction = page.get("render_instruction") or {}
+    manga = page.get("manga") if isinstance(page.get("manga"), dict) else {}
     lines: list[str] = []
     for key in ("text_policy", "output_policy", "panel_policy"):
         value = instruction.get(key)
         if value:
             lines.append(f"- {value}")
+    lettering = manga.get("lettering") if isinstance(manga, dict) else {}
+    if not isinstance(lettering, dict):
+        lettering = {}
+    direction = str(lettering.get("direction") or "vertical").strip().lower()
+    if direction not in {"vertical", "horizontal"}:
+        direction = "vertical"
+    base_font_size = lettering.get("base_font_size", 30)
+    size_policy = str(lettering.get("size_policy") or "uniform_then_shrink")
+    lines.append(
+        "- Basic lettering style: "
+        f"{direction} Japanese writing; base font size {base_font_size}; "
+        f"{size_policy}"
+    )
     return lines
+
+
+_PANEL_ORDINALS = (
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh",
+    "eighth",
+    "ninth",
+    "tenth",
+    "eleventh",
+    "twelfth",
+)
+
+
+def image_panel_label(panel: dict[str, Any], ordinal: int) -> str:
+    """Position words for an image model. Schema panel_id stays out of the prompt."""
+    composition = panel.get("composition") if isinstance(panel.get("composition"), dict) else {}
+    for key in ("layout_en", "layout"):
+        value = str(composition.get(key) or "").strip()
+        if value and not value.isdigit():
+            return value
+    if 1 <= ordinal <= len(_PANEL_ORDINALS):
+        return f"{_PANEL_ORDINALS[ordinal - 1]} panel"
+    return "another panel"
 
 
 def manga_page_panel_outline_lines(page: dict[str, Any], *, limit: int = 12) -> list[str]:
     lines: list[str] = []
-    for panel in [p for p in as_list(page.get("panels")) if isinstance(p, dict)][:limit]:
-        pid = panel.get("panel_id", len(lines) + 1)
+    panels = [p for p in as_list(page.get("panels")) if isinstance(p, dict)][:limit]
+    for ordinal, panel in enumerate(panels, start=1):
+        label = image_panel_label(panel, ordinal)
         summary = panel.get("summary") or panel.get("translation") or "panel"
-        lines.append(f"- Panel {pid}: {summary}")
+        lines.append(f"- {label}: {summary}")
         comp = panel.get("composition") or {}
         focus = comp.get("focus_en") or comp.get("focus")
         if focus:
@@ -370,7 +423,11 @@ def format_manga_page_prompt(
         named_section("Panel Outline", manga_page_panel_outline_lines(page)),
         named_section("Character Anchors", illustration_character_lines(page)),
         named_section("Text and Output Policy", manga_page_text_policy_lines(page)),
-        named_section("Do not include", do_not_include_lines(page, negative_prompt)),
+        named_section("Preserve", preserve_lines(page)),
+        named_section(
+            "Do not include",
+            do_not_include_lines(page, negative_prompt, include_preserved=False),
+        ),
         "Source Page Instructions:\n" + existing_prompt.strip(),
     ]
     prompt = "\n\n".join(part for part in prompt_parts if part)
@@ -444,12 +501,16 @@ def manga_panel_composition_lines(panel: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     comp = panel.get("composition") or {}
     camera = panel.get("camera") or {}
+    camera_values = [
+        camera.get("angle_en") or camera.get("angle"),
+        camera.get("view_en") or camera.get("view"),
+    ]
     for label, value in (
         ("Layout", comp.get("layout_en") or comp.get("layout")),
         ("Framing", comp.get("framing_en") or comp.get("framing")),
         ("Focus", comp.get("focus_en") or comp.get("focus")),
         ("Perspective", comp.get("perspective_en") or comp.get("perspective")),
-        ("Camera", camera.get("angle_en") or camera.get("angle")),
+        ("Camera", ", ".join(str(value) for value in camera_values if value)),
     ):
         if value:
             lines.append(f"- {label}: {value}")

@@ -12,6 +12,7 @@ description: >-
 
 - **初稿・執筆の正本**は **`_novel_text/novel_text*.md`**（スキル **`novel-text-file-output`**）。
 - **`_how_to/rewrite.md` を適用した清書結果**は、**`_novel_text_backup/` に旧版を退避したうえで** **`_novel_text/`** を更新する（本スキル）。
+- 単一章の清書は1章で停止する。明示範囲または複数章の列挙による清書は、1章ずつ直列に処理し、各章完了後に次章へ自動遷移して指定の終端で停止する。章境界の詳細は **`novel-text-file-output`** に従う。
 
 ## パス規則（必須）
 
@@ -40,28 +41,36 @@ description: >-
 ## 他フェーズとの関係（参照）
 
 - **執筆直後の機械校正（`grammar --fix`）**: スキル **`novel-text-rewrite-lint`**。`_novel_text` 保存後に誤打（`　「`・半角 `,`・`…` 等）を **安全な置換だけ** 直す。**本スキル（rewrite 清書）の前**に行ってよいが、**代わりにはしない**。
-- **Writing Mode §2.3 手順7（reader.md による清書）**: 手順どおりなら **`_novel_text/` 内の同一ファイル名を置換**する（下読み・体裁の清書）。
+- **Writing Mode / Refinement（`workflow-specification.md` §2.3・§2.5）**: 手順どおりなら **`_novel_text/` 内の同一ファイル名を置換**する（下読み・体裁の清書）。
 - **本スキル（rewrite.md による文章校正）**: 手順7と同様に **`_novel_text/`** を更新するが、**更新前に必ず `_novel_text_backup/` へ旧版を退避する**。
 
 ## 手順（推奨順）
 
 1. **作業計画**: 対象の `novel_textXX.md` と、強化したい点（分量・描写・文体）を明示する。
-2. **入力を読む**: `_novel_text/novel_textXX.md` を正とする。
-3. **バックアップ採番**: `_novel_text_backup/` に、上書き対象の `novel_textXX.md` を **`<元ファイル名>_vNNN.md`** の形式で退避する。
-4. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル。**§9 章番号・前章メタ参照の除去**を含む）。
-5. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
-6. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
-7. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスクを更新する。
-8. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。
-   - **部分加筆・シーンの途中挿入**でも手順 3〜7 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
+2. **創作技法契約**: スキル **`novel-planning`** の「執筆・清書での契約再読」。契約外の how_to を使うなら先に契約を更新する。`rewrite.md` は工程正本なので selected に無くても読んでよい。
+3. **入力を読む**: `_novel_text/novel_textXX.md` を正とする。
+4. **バックアップ採番**: `_novel_text_backup/` に、上書き対象の `novel_textXX.md` を **`<元ファイル名>_vNNN.md`** の形式で退避する。
+5. **rewrite 適用**: `_how_to/rewrite.md` に従いリライトする（目安・句読点ルールは同ファイル。**§9 章番号・前章メタ参照の除去**、**§10 重複・繰り返しの剪定と読み味の優先**を含む。文章量の画一的な水増しを目的とせず、読み味・テンポ・情景密度を最優先とする）。
+6. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
+7. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
+8. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、対象章を解決したうえで `_meta.md` の進捗・文字数・次回タスクと、`design_specification.md` の実文字数・状態および**確定出来事**を同期する。結果は `更新` / `差分なし` / `未完了`。解決不能と書込失敗は未完了として完了報告を止める。
+9. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。完了報告に selected の拠り所1句を含める。
+   - **部分加筆・シーンの途中挿入**でも手順 4〜8 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
+
+## 作品単位のフラグ
+
+- **METRON / CHRONOS**: 清書では自動の再計測・イベント更新を起動しない。writing_bridge の `prepare` / `repair-*` / `publish` も起動しない。ユーザーが明示したときだけ実行する。
+- **writing_bridge `publish`**: 既稿退避の採番規則は本スキルと同じ `<元ファイル名>_vNNN.md`。`publish` は rewrite.md 清書を行わない。清書が必要なら本スキルを別途実行する。同一ターンで `publish` と本スキルの正本更新を重ねない。
+- **AUDIT_LOG**: 対象作品の `config.md` が `OFF` なら査証ログを追記しない。行なしは ON。
 
 ## 査証・メタ
 
 - `_meta.md` や `_workingspace/log/` に文字数を書くときは **`novel_char_count.py` の集計値**を根拠にする。
+- `AUDIT_LOG | OFF` のときは査証ログへ書かない。
 
 ## 関連
 
-- プロジェクト全体: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.5 Writing Mode Refinement」
+- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode / Writing Mode Refinement と「執筆接続の起動判定」
 - 初稿のファイル出力: **`novel-text-file-output`**
 - 技法: **`_how_to/rewrite.md`**
 - 執筆直後の機械校正・清書後 lint: **`novel-text-rewrite-lint`**

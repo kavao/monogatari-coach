@@ -1,0 +1,6 @@
+schema_version: 1
+merge_order:
+  - tools/fixtures/pick_registry
+fragments:
+  test: test.yaml
+default_tool: json_weighted_pick

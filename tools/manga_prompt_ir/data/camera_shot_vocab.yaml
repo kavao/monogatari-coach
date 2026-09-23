@@ -1,0 +1,83 @@
+schema_version: "1.0"
+description: >-
+  Manga Prompt IR の camera.angle_en / camera.shot_size_en / camera.view_en に使う許容語彙。
+  人間向けの説明は _how_to/manga_tag.md、機械検査の集合はこのファイルを正とする。
+
+vocabulary:
+  angle_en:
+    - id: eye_level
+      token: eye level
+      label_ja: 目線
+      usage: 対話・立ち位置の基準。連続コマでの連発は避ける。
+    - id: high_angle
+      token: high angle
+      label_ja: 俯瞰
+      usage: 体格差、膝上、寝ている相手を見下ろす。
+    - id: low_angle
+      token: low angle
+      label_ja: あおり
+      usage: 威厳、見上げ、祭壇、大きい身体。
+    - id: from_behind
+      token: from behind
+      label_ja: 真後ろ
+      usage: 見送る、背中、窓の外。
+    - id: over_the_shoulder
+      token: over the shoulder
+      label_ja: 肩越し
+      usage: 会話の相手、手に持った物。
+    - id: from_side
+      token: from side
+      label_ja: 三人称側面
+      usage: 並び、騎乗の輪郭、体の重なり。
+
+  shot_size_en:
+    - id: long_shot
+      token: long shot
+      label_ja: ロング
+      usage: establishing、空間、星空。
+    - id: full_body
+      token: full body
+      label_ja: 全身
+      usage: 立ち姿の紹介、体格差の一枚。
+    - id: medium_shot
+      token: medium shot
+      label_ja: ミディアム
+      usage: 腰から上の会話。連続コマの既定にしない。
+    - id: medium_close_up
+      token: medium close-up
+      label_ja: バスト
+      usage: 表情と胸元、上半身の反応。
+    - id: close_up
+      token: close-up
+      label_ja: 接写
+      usage: 手、入口、額のキス、重要な小物。
+    - id: extreme_close_up
+      token: extreme close-up
+      label_ja: 極接写
+      usage: 瞳、指先、錠前。前後のコマでは引く。
+
+  view_en:
+    - id: solo_bust
+      token: solo bust
+      label_ja: ソロバスト
+      usage: 一人の胸から上。表情と上半身を主にする。
+    - id: solo_face
+      token: solo face
+      label_ja: ソロ顔
+      usage: 一人の顔を枠の主にする。
+    - id: pov
+      token: pov
+      label_ja: POV
+      usage: 一人称の目。手・相手・対象だけが見える。
+    - id: two_faces
+      token: two faces
+      label_ja: 対顔
+      usage: 三人称で二人の顔を同じ枠に入れる。
+    - id: contact_close_up
+      token: contact close-up
+      label_ja: 接触ズーム
+      usage: 二人の手・口・肌などの接触点を枠の主にする。
+    - id: inspect_close_up
+      token: inspect close-up
+      label_ja: 捜査ズーム
+      usage: 錠前・傷・痕跡・道具などの注目点を枠の主にする。

@@ -48,6 +48,12 @@ from manga_prompt_ir.prompt_formatters import (  # noqa: E402
     provider_config_from_root,
     resolve_prompt_formatter,
 )
+from tag_prompt_mask import (  # noqa: E402
+    MaskRuleSet,
+    apply_mask,
+    load_novel_mask_rules,
+    parse_cli_replace_tags,
+)
 
 
 ILLUSTRATION_PROVIDER_ENV = "MONOCRI_ILLUSTRATION_PROVIDER_DEFAULT"
@@ -116,9 +122,11 @@ def iter_illustration_jobs(
     cli_negative_prompt: str,
     provider: str,
     prompt_formatter: str,
+    mask_rules: MaskRuleSet | None = None,
 ) -> list[dict[str, str]]:
     characters = load_character_ir_map(novel_dir)
     pages_dir = novel_dir / "illustrations"
+    rules = mask_rules or MaskRuleSet.empty()
     jobs: list[dict[str, str]] = []
     for index, path in enumerate(iter_illustration_paths(novel_dir, only_stem), start=1):
         page = load_yaml(path)
@@ -127,7 +135,10 @@ def iter_illustration_jobs(
             raise ValueError(f"{path}: meta.intent は illustration である必要があります")
         stem = illustration_asset_stem(path, page)
         page_num = yaml_page_number(path, index)
-        tags = join_tags(page_prompt_tags(page, characters))
+        tag_list = page_prompt_tags(page, characters)
+        if rules != MaskRuleSet.empty():
+            tag_list = apply_mask(tag_list, rules).tags
+        tags = join_tags(tag_list)
         if not tags:
             continue
         technical = page.get("technical") or {}
@@ -201,6 +212,7 @@ def build_job_payload(
     model: str | None,
     resolution: str | None,
     novelai_ref_fields: dict[str, Any],
+    grok_image_quality: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "provider": provider,
@@ -215,6 +227,8 @@ def build_job_payload(
     }
     if model is not None:
         payload["model"] = model
+    if grok_image_quality is not None:
+        payload["grok_image_quality"] = grok_image_quality
     if aspect_ratio is not None:
         payload["aspect_ratio_preset"] = aspect_ratio
     if resolution is not None and provider in _GROK_FAMILY:
@@ -279,6 +293,7 @@ def run_provider_job(
     resolution: str | None,
     novelai_ref_fields: dict[str, Any],
     dry_run: bool,
+    grok_image_quality: str | None = None,
 ) -> int:
     payload = build_job_payload(
         provider,
@@ -287,6 +302,7 @@ def run_provider_job(
         model=model,
         resolution=resolution,
         novelai_ref_fields=novelai_ref_fields,
+        grok_image_quality=grok_image_quality,
     )
 
     if dry_run:
@@ -296,6 +312,8 @@ def run_provider_job(
         try:
             merged = preview_merged_params(root, provider, payload)
             print(f"    width×height: {merged.get('width')}×{merged.get('height')}")
+            if merged.get("model"):
+                print(f"    resolved_model: {merged['model']}")
             ref_count = len(merged.get("reference_image_multiple") or [])
             if provider == "novelai":
                 print(f"    novelai_reference_images: {ref_count}")
@@ -307,7 +325,8 @@ def run_provider_job(
                     if ri:
                         print(f"    reference_information_extracted_multiple={ri}")
         except (ValueError, KeyError, FileNotFoundError) as exc:
-            print(f"    warning: merge preview failed: {exc}", file=sys.stderr)
+            print(f"error: provider merge に失敗しました ({job['prefix']}): {exc}", file=sys.stderr)
+            return 2
         print(f"    prompt[:100]: {payload['prompt'][:100]}...")
         neg_show = str(payload["negative_prompt"])
         if len(neg_show) > 160:
@@ -364,7 +383,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE, help="negative_prompt（既定は汎用）")
     parser.add_argument("--provider", choices=PROVIDER_CHOICES, default=None, help="生成プロバイダ")
     parser.add_argument("--prompt-formatter", default=None, help="provider 別プロンプト整形を上書き")
-    parser.add_argument("--model", default=None, help="provider に渡すモデル名または alias（例: quality）")
+    parser.add_argument("--model", default=None, help="provider に渡すモデル名または alias（例: quality / v2）")
+    parser.add_argument(
+        "--grok-image-quality",
+        default=None,
+        dest="grok_image_quality",
+        help="Grok Imagine 2.0 専用 quality（low / medium / auto）",
+    )
     parser.add_argument("--aspect-ratio", default=None, help="比率 preset 名（book_cover 等）または比率文字列")
     parser.add_argument("--resolution", default=None, help="Grok 用の解像度（例: 1k, 2k）")
     parser.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
@@ -397,6 +422,20 @@ def main(argv: list[str] | None = None) -> int:
         metavar="FLOAT",
         help="NovelAI information_extracted 乗数",
     )
+    parser.add_argument(
+        "--omit-tags",
+        action="append",
+        default=None,
+        metavar="TAGS",
+        help="生成時に除外するタグ（カンマ区切り可・複数指定可）。_meta.yaml に後勝ちマージ",
+    )
+    parser.add_argument(
+        "--replace-tag",
+        action="append",
+        default=None,
+        metavar="OLD=NEW",
+        help="生成時タグ置換（例: childlike_mature=toddler）。複数指定可",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -428,12 +467,31 @@ def main(argv: list[str] | None = None) -> int:
             ILLUSTRATION_RESOLUTION_ENV,
             default="2k",
         )
+        # illustration_tag_batch があれば後勝ち。無ければ character_tag_batch を下敷き。
+        novel_mask = load_novel_mask_rules(
+            novel,
+            primary_key="illustration_tag_batch",
+            fallback_key="character_tag_batch",
+        )
+        cli_replace = tuple(parse_cli_replace_tags(args.replace_tag))
+        cli_omit: list[str] = []
+        for raw in args.omit_tags or []:
+            for part in str(raw).split(","):
+                token = part.strip()
+                if token:
+                    cli_omit.append(token)
+        cli_mask = MaskRuleSet(
+            omit_tags=tuple(dict.fromkeys(cli_omit)),
+            replace_pairs=cli_replace,
+        )
+        mask_rules = novel_mask.merge(cli_mask)
         jobs = iter_illustration_jobs(
             novel,
             args.illustration_stem,
             cli_negative_prompt=args.negative_prompt,
             provider=provider,
             prompt_formatter=prompt_formatter,
+            mask_rules=mask_rules,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -490,6 +548,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"prompt_formatter: {prompt_formatter}")
     if model is not None:
         print(f"model: {model}")
+    if getattr(args, "grok_image_quality", None) is not None:
+        print(f"grok_image_quality: {args.grok_image_quality}")
     if aspect_ratio is not None:
         print(f"aspect_ratio: {aspect_ratio}")
     if resolution is not None and provider in _GROK_FAMILY:
@@ -502,6 +562,19 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"  strength_multiplier={novelai_ref.strength} "
                 f"ie_multiplier={novelai_ref.information_extracted}"
+            )
+    if mask_rules != MaskRuleSet.empty():
+        if mask_rules.replace_pairs:
+            pairs = ", ".join(f"{src}→{dst}" for src, dst in mask_rules.replace_pairs)
+            print(f"replace_tags: {pairs}")
+        if mask_rules.omit_tags:
+            print(f"omit_tags: {', '.join(mask_rules.omit_tags)}")
+        conflicts = mask_rules.conflict_from_in_omit()
+        if conflicts:
+            print(
+                "warning: replace の from が omit_tags にもあります "
+                f"（{', '.join(conflicts)}）。replace 後に omit されます",
+                file=sys.stderr,
             )
     print(f"jobs: {len(jobs)}")
 
@@ -516,6 +589,7 @@ def main(argv: list[str] | None = None) -> int:
             resolution=resolution,
             novelai_ref_fields=novelai_ref_fields,
             dry_run=args.dry_run,
+            grok_image_quality=args.grok_image_quality,
         )
         if code != 0:
             return code

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "errors": [
+    {
+      "schema": 1,
+      "code": "TEXT_STATE_UNVERIFIED",
+      "severity": "error",
+      "message": "required check not recorded",
+      "refs": {
+        "event_id": "EVT-0001",
+        "actor_id": "CHR-a",
+        "dimension": "whereabouts",
+        "state_at": "after"
+      }
+    },
+    {
+      "schema": 1,
+      "code": "TEXT_STATE_UNVERIFIED",
+      "severity": "error",
+      "message": "required check not recorded",
+      "refs": {
+        "event_id": "EVT-0002",
+        "actor_id": "CHR-a",
+        "dimension": "whereabouts",
+        "state_at": "after"
+      }
+    }
+  ]
+}

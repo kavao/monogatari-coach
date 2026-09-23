@@ -1,0 +1,40 @@
+generation:
+  granularity: auto
+  chars_floor: 80
+beats:
+  - id: pack_bag
+    type: action
+    intent: 玄関で旅行用の上着に袖を通す
+    weight: light
+    isolated: false
+    budget:
+      paragraphs: [1, 2]
+      dialogue_turns: [0, 0]
+      sensory: 1
+      interiority: 0
+      new_facts: 1
+      chars_hint: 40
+  - id: say_goodbye
+    type: dialogue
+    intent: 定期と切符の確認をする
+    weight: normal
+    isolated: false
+    budget:
+      paragraphs: [1, 2]
+      dialogue_turns: [1, 2]
+      sensory: 0
+      interiority: 0
+      new_facts: 1
+      chars_hint: 30
+  - id: reach_station
+    type: action
+    intent: 家を出て券売機の前に立つ
+    weight: normal
+    isolated: false
+    budget:
+      paragraphs: [1, 2]
+      dialogue_turns: [0, 0]
+      sensory: 1
+      interiority: 0
+      new_facts: 1
+      chars_hint: 30

@@ -33,29 +33,85 @@ novels/NNN_作品名/ の設計を確認して、足りないところを洗練�
 
 ## Monogatari Coach が行うこと
 
-Monogatari Coach は、執筆前に必要なファイルを確認し、不足しているものを作成・更新します。
+Monogatari Coach は、企画を **Gate A（骨格）** と **Gate B（知識・厚さ）** の二段で進めます。ファイルが揃っただけでは企画完了になりません。
+
+### Gate A（骨格）
+
+必須ファイルとディレクトリを揃え、機械チェックを通します。
 
 | ファイル | 内容 |
 |----------|------|
 | `proposal.md` | 作品名、ログライン、ターゲット層、あらすじ、魅力 |
 | `design_specification.md` | テーマ、コンセプト、章構成、相関図 |
-| `config.md` | novel_ID、writer_code、ジャンル、キーワード |
+| `config.md` | novel_ID、writer_code、ジャンル、キーワード、METRON / CHRONOS / AUDIT_LOG の ON / OFF |
 | `character.md` | 登場人物のプロフィール、課題、目的、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術 |
-| `_meta.md` | 進捗、伏線、次回タスク |
+| `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録** |
 | `_meta.yaml` | 画像生成の機械可読設定（NovelAI ポーション等） |
 
 新規作品では、資料を揃えたあと次を実行します。
 
 ```bash
+# 作品フォルダをまだ作っていない場合は、先にオンボーディングする
+python tools/novel_onboard.py novels/NNN_作品名
+
+# 既に config.md がある場合の不足分補充
 python tools/novel_scaffold.py novels/NNN_作品名
 ```
 
-作成後は、必要に応じて設計の弱い部分を自己評価し、心理描写や具体的なシーンを増やします。
+続いて人物構造とプロジェクト準備を確認します。
+
+```bash
+python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+python tools/novel_project_check.py novels/NNN_作品名
+
+# METRON / CHRONOS が ON の作品で保存先も確認する
+python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
+```
+
+新規は採番から、既存作品の洗練では再採番しません。合否はコマンドの終了コードを正とします。
+
+`--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS / AUDIT_LOG と保存先を確認します。METRON / CHRONOS は行なしまたは `OFF` が対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。AUDIT_LOG は行なしが ON です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
+
+新規作品では、Monogatari Coach は METRON / CHRONOS を標準で ON にします。起こしのときに確認し、OFF にしたいときだけ指示します。行が無い既存作品は従来どおり OFF のままです。ON にした作品では `_metron/` と `chronos/` を用意してから上の確認コマンドを実行します。
+
+オンボーディング時に確認への返答がない場合は、**「未応答・既定 ON」** として `config.md` に記録します。明示的に止める場合だけ、`novel_onboard.py` に `--metron OFF` / `--chronos OFF` を指定してください。`--dry-run` では予定フラグと保存先だけを表示し、ファイルは作成しません。
+
+### Gate B（知識・厚さ）
+
+作品の経路とプロファイルを判定し、必要な創作技法だけを読んで設計を厚くします。索引は選ぶための入口であり、あとから読み直す対象は `_meta.md` に残した **葉ファイル（selected）** です。新しい技法ファイルをカタログに足しても、指示のない既存作品の selected は増えません。
+
+1. **分類**: 作品経路（新規起こし / 資料取り込み / 既存洗練）と作品プロファイル（一般 / mature / body_therapy 等・複数可）を決める
+2. **必読選択**: 作業用 `_how_to/_index.md` があるときはそれを選定の入口にし、あわせて標準 `_how_to.example/_index.md` を発見用に開きます。標準にだけある葉は、作業用へ行を足すまで読みません。作業用が無ければ標準だけを開きます。該当する葉だけを読む（全件は読まない。索引そのものは selected に入れない）
+3. **ユーザスキル**: 作業用 `_how_to/skills/_index.md` があるときはそれを選定の入口にし、標準 `_how_to.example/skills/_index.md` を発見用に開きます。作業用に無い雛形は追随するまで読みません。作業用が無ければ標準だけを開き、発動条件に当たるものだけ読む
+4. **葉の読み方**: 契約の `working_path` に書いたパスは、必ず自己完結な1ファイルです。Monogatari Coach はそこだけを読み、標準本文と足し合わせません。調整メモは `working_path` に書きません。`working_path` が空なら標準を読みます
+5. **抽選**: 必要なら選定レジストリで `pick`（使わない場合は理由を残す）
+6. **タイトル命名**: 新規または改題時は候補5件以上。既存で記録がある場合は確認のみ
+7. **設計の厚さ**: 初回は各章5項目以上 → 洗練後は原則2倍かつ最低10項目。Mermaid 相関図は必須
+8. **洗練**: 自己評価 → プロット厚化 → 心理・シーン増 → プロフィール掘り下げ（省略しない）
+9. **記録**: `_meta.md` の Gate B 記録へ、selected / not_applicable / 選定補助、任意の pack_id と差分、スキル、pick、厚さを残す。パックは既存作品へ自動では付きません。not_applicable はカタログの残り全部ではなく、プロファイル上の必須候補の見送りと `genre/*` のようなグループだけです。選んだ葉がファイルとして無いときは企画完了にしません（欠落は検査結果であり、`_meta.md` の status 欄には書きません）
+
+既存作品の `_meta.md` に旧形式のパス一覧がある場合、Monogatari Coach は一括では書き換えません。新しい形式は新規の企画完了と、ユーザーが Gate B の再実施を指示した作品だけに使います。旧形式（`how_to/` で始まるパス、プレフィックス無し、索引と葉の混在）は、後続の実在チェックで警告します。確認だけするときは次を使います（`_meta.md` は書き換えません。Gate A の必須ではありません）。
+
+```bash
+python tools/novel_howto_contract_check.py novels/NNN_作品名
+```
+
+`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認します（`python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。詳細は [ユーザスキル](user-skills.md) を参照してください。
+
+## エピソード・トロープの抽選（一般向け）
+
+設計を厚くする際、一般向け（全年齢）のエピソードフックや進行パターンを抽選できます。
+
+1. `python tools/novel_pick_registry.py list --domain episode --visibility public` で ID を確認
+2. `python tools/novel_pick_registry.py pick <list_id>` で具体シチュエーションを抽選
+3. 抽選結果を `design_specification.md` のストーリー節やシーン案へ取り込む
+
+詳細は [`_how_to.example/skills/episode-general-pick/SKILL.md`](../../_how_to.example/skills/episode-general-pick/SKILL.md) を参照してください。
 
 ## ユーザーが確認できるもの
 
-作品フォルダ `novels/<作品>/` に、企画・設計・人物・世界観のファイルが揃います。
+作品フォルダ `novels/<作品>/` に、企画・設計・人物・世界観のファイルが揃います。あわせて `_meta.md` の Gate B 記録で、読んだ葉（selected）と読まなかった理由（not_applicable）を確認できます。not_applicable はカタログの残り全部ではなく、プロファイル上の必須候補の見送りと `genre/*` のようなグループです。索引だけの行は選定のメモであり、あとから技法を読み直す一覧ではありません。標準カタログへ技法ファイルを足しても、指示のない作品の selected は増えません。作業用 `_how_to/_index.md` があるときは、標準にだけある新しい葉は作業用へ行を足すまで選定の対象になりません。任意の `pack_id` も、Gate B に書いた作品以外には付きません。足し方は [`docs/project-structure/how-to-area.md`](../project-structure/how-to-area.md) です。
 
 執筆前には次のコマンドで不足がないか確認できます。
 
@@ -63,7 +119,7 @@ python tools/novel_scaffold.py novels/NNN_作品名
 python tools/novel_project_check.py novels/NNN_作品名
 ```
 
-人物プロフィールの構造を先に確認する場合は、次を実行します。
+`novel_project_check.py` は既定で `character.md` の構造 lint（`plan` profile）も実行します。詳細だけ先に見る場合は次を使います。
 
 ```bash
 python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
@@ -75,16 +131,17 @@ python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
 python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
 ```
 
-執筆前チェックに character.md の構造 lint も含める場合は、次のようにします。
+構造 lint を執筆前チェックから外す場合のみ `--no-character-structure` を付けます。
 
 ```bash
-python tools/novel_project_check.py novels/NNN_作品名 --require-character-structure --character-profile plan
+python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 ```
 
-結果が OK になったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
+**Gate A が OK でも、Gate B（知識読込・厚い設計・洗練・`_meta.md` 記録）が終わるまで企画完了にはしません。** 両方そろったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
 
 ## 関連ページ
 
 - 原資料から始める場合は [Source Material Intake](source-material-intake.md) を参照してください。
 - 指示文の一覧は [指示出しベースのワークフロー](instruction-driven.md) を参照してください。
 - 作品フォルダの構造は [Project Structure](../project-structure/index.md) を参照してください。
+- 受け入れ条件は [開発者向け検証](../developer-verification.md) の Plan Mode Gate A / Gate B を参照してください。

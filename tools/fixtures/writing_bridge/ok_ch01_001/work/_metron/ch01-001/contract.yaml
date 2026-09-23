@@ -1,0 +1,16 @@
+scene:
+  id: ch01-001
+  pov: 兄
+  narrative_distance: close
+  chronos_span: [EVT-0001, EVT-0002]
+  start_state:
+    location: 家の玄関
+    action: 旅行の支度
+    emotion: 落ち着き
+  end_state:
+    location: 駅の券売機
+    action: 切符を買う
+    emotion: 出発の緊張
+  forbidden:
+  - 旅の目的を途中で変える
+  - 切符を買わずに改札を越える

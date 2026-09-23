@@ -13,20 +13,40 @@ targets: ["*"]
 
 **本文の正本はリポジトリ上の Markdown ファイル**とする。モデルやクライアントによっては、**会話画面にだけ** 章本文を出し、**`_novel_text` を更新しない**ことがある（**Auto 以外・別 LLM 選択時**で起きやすい）。本スキルはその抜けを防ぐ。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。このスキルは、小説本文出力でその条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。このスキルは、小説本文出力でその条件を満たすための実行手順を定める。創作技法契約の再読はスキル **`novel-planning`** の「執筆・清書での契約再読」に従う。
+
+## 複数章の依頼でも1章ずつ直列に完了する
+
+- ユーザーが1章だけを指定したときは、その章の**契約再読（事前）**・正本保存・確認・句読点・story reflectionまで完了して停止する。
+- ユーザーが第X〜Y章の明示範囲、または複数章の列挙を指定したときは、チャット内の `batch_manifest` に順序を固定し、最初の未完了章から1章ずつ直列に処理する。各章の完了条件を満たしたら、確認を待たず `batch_manifest` の次章へ進み、範囲・列挙の終端で停止する。範囲外の章は開始しない。
+- 各章の `target_manifest` はチャット内の一時メモとし、章番号、題名、本文パス、scene ID、設計アンカー、METRON / CHRONOS対象を列挙する。新しいリポジトリファイルや `context.md` の正本にはせず、分割本文・複数sceneは一覧の全対象が完了するまで章完了にしない。
+- 明示範囲や列挙がない「次」は、対象作品の `_meta.md` の次回タスクと、本文として完了している最新章から次の未完了章を1章だけ解決する。チャットの記憶だけで決めず、前章が未完了のまま後続章を指定された場合は本文・prepareを始めず、前章の未完了理由を報告する。前章を飛ばすのはユーザーの明示指示がある場合だけとする。
+- 章をまたぐ本文起草、候補受領、修復、publish、story reflectionの並列分担はしない。各章は `receive` → `inspect` →（必要なら修復）→ `publish` → story reflection の証跡を確認してから完了とし、`prepare` や run 内の `candidate.md` だけでは完了としない。ツール失敗、stale、`escalated`、ユーザーの停止指示では現在章を未完了としてバッチ全体を止め、後続章へ進まない。章ごとの完了は内部チェックポイントと査証ログへ残し、明示バッチの最終報告は終端後に行う。
+
+### 複数章 × METRON ON の遷移ゲート
+
+- `batch_manifest` の各章を開始するときは対象場面を確定し、METRON ON なら契約再読のあと `contract.yaml` / `beats.yaml` を整えてから `prepare` を実行し、active run を確認して本文作業へ進む。準備できない章はその章で停止し、`_novel_text` を直接追記・先行作成しない。
+- 章の遷移は `prepare` → 候補作成 → `receive` → `inspect`（必要なら修復・publish・story reflection）を同じ章で完了した証跡を条件にする。`novel_project_check --check-inspection-layers` の終了コードが0でも、未計測警告があれば次章へ進まない。
+- 既存本文の後追い計測も同じゲートを使う。最初の未計測章を拾い、`contract/beats` の欠落を補ってから計測を完了し、次の章へ移る。
 
 ## 完了の定義（本文出力での適用）
 
-ユーザーに「執筆した」「本文を出した」「ファイルに保存した」などと **完了扱い**で伝えてよいのは、`.rulesync/rules/concepts.md` の「完了扱い条件」を満たしたときに限る。本スキルでは次の順で適用する。
+ユーザーに「執筆した」「本文を出した」「ファイルに保存した」などと **完了扱い**で伝えてよいのは、`.rulesync/rules/concepts.md` の「完了扱い条件」を満たしたときに限る。本スキルでは次の順で適用する。経路が writing_bridge のときは、同じターンで `_novel_text` の手編集と `publish` を重ねない。
 
-1. **正本の更新**: `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）に、エージェントの **ファイル書き込み**（新規・追記・置換）が行われている。チャットへの貼り付けだけでは **完了ではない**。
+0. **創作技法契約（事前条件）**: 従来経路では起草の **前**、writing_bridge 経路では **`prepare` の前** に、スキル **`novel-planning`** の「執筆・清書での契約再読」を行う。完了報告に、使った selected 葉の拠り所を1句ずつ書く。契約外の how_to を創作判断に使ったままでは **未完了**（先に契約を更新するか、使わない）。Gate B 節が無い作品はカタログへ広がらず「契約なし」と書いてよい。旧形式のパス一覧は未変換のままでよく、索引以外の葉を再読する。
+1. **正本の更新**: `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）が更新されている。更新手段は **従来のファイル書き込み** または **`writing_bridge_cli.py publish`** のいずれか一方。チャットへの貼り付けと `FINAL.md` だけでは **完了ではない**。
 2. **事実確認**（書き込み直後、いずれか必須）:
    - **`Read`** で当該 `novel_text*.md` を読み、内容が保存されていることを確認する。
    - または **`python tools/novel_char_count.py <対象ファイルまたは作品フォルダ>`** を実行し、分量を確認する。
-3. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、`_meta.md` の進捗・文字数・次回タスクを更新する。
-4. **報告の順序**: 上記 1〜3 の **後** に、**更新パス**を含めてユーザーへ報告する。確認・反映前に「保存した」「執筆を完了した」と述べ **ない**。
+3. **句読点ゲート**（初稿・場面追記の本文ターン。誤打の `grammar --fix` だけなら不要）:
+   - 従来経路: `python tools/novel_punctuation_metrics.py <対象ファイル> --gate`
+   - `publish` 経路: 先に `publish --dry-run` の句読点予検を見る。fail なら正本を書かず結合して書き直す。本番後は `report.json` の句読点記録を正とする。同じターンで `--gate` を重ねない。
+   - 終了コード 0 以外 / 記録が fail は **未完了**。本文は戻さない。短文を結合して書き直し、最大2回まで再実行する。
+   - 数値の正はスクリプト側。スキルに閾値を写経しない。
+4. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、対象章を解決したうえで `_meta.md` の進捗・文字数・次回タスクと、`design_specification.md` の実文字数・状態および**確定出来事**を同期する。結果は `更新` / `差分なし` / `未完了`。解決不能と書込失敗は未完了として完了報告を止める。`publish` は `_meta.md` を書かない。
+5. **報告の順序**: 上記 0〜4 の **後** に、**更新パス**と契約再読の要約を含めてユーザーへ報告する。確認・反映前に「保存した」「執筆を完了した」と述べ **ない**。
 
-**禁止（幻覚完了の防止）**: 正本更新・確認・ストーリー反映を満たす前に、執筆・保存の **完了**をユーザーに告げない。
+**禁止（幻覚完了の防止）**: 契約再読（事前）・正本更新・確認・句読点ゲート・ストーリー反映を満たす前に、執筆・保存の **完了**をユーザーに告げない。
 
 **ツールでリポジトリに書けない環境**（ワークスペース非接続の対話のみ等）では、本文を提示し手動で `_novel_text` へ保存するよう依頼する。その場合、**当リポジトリ上の執筆完了とはみなさない**（「下書きを提示した」にとどめ、必要なら完了条件を明示する）。
 
@@ -41,22 +61,75 @@ targets: ["*"]
 
 「まず旧版を退避してから加筆します」「ツールで退避→加筆→確認を行います」など、**これからツールで実行する旨**を述べた場合、**その応答で前置きだけを出して終えない**。
 
+明示範囲または複数章の列挙では、この実行継続を章ごとに繰り返し、各章の完了後に `batch_manifest` の次章へ自動遷移する。範囲・列挙の終端で停止し、失敗・stale・`escalated`・ユーザーの停止指示では後続章へ進まない。単一章の依頼では完了後に停止する。
+
 - **同一応答（同一ターン）内**で、可能なら **退避・`_novel_text/` への書き込み・`Read`／`novel_char_count.py`** まで進める。長くなる場合でも、**最低でも退避（バックアップファイルの作成）または正本への書き込みのいずれか一歩**をツールで実行してから区切る。
 - **応答が続く場合**、次のメッセージでは **同じ前置きを繰り返さず**、未完了ステップから **直ちにツール実行**で再開する。
-- **例外（画像生成）**: **`tools/image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。`.rulesync/rules/concepts.md` の「画像生成: dry-run から本番まで」とスキル **`image-provider（旧 forge-txt2img）`** に従い、計画と `--dry-run` の提示までで一度止める。
+- **例外（画像生成）**: **`tools/image_provider_generate.py`**・**`image_provider_novel_tag_batch.py`**・**`image_provider_novel_manga_batch.py`** 等は、上記「同一ターンで進める」の **対象外**。`.rulesync/rules/workflow-specification.md` の「画像生成: dry-run から本番まで」とスキル **`image-provider（旧 forge-txt2img）`** に従い、計画と `--dry-run` の提示までで一度止める。
 - 旧版退避を含む清書・校正の手順はスキル **`novel-refinement-output`** に従う。
 
 ## 必須（執筆ターンごと）
 
-上記 **「執筆『完了』の定義（本文出力での適用）」** の手順に従う。
+上記 **「完了の定義（本文出力での適用）」** の手順に従う。経路は先に一つ選ぶ（下記「本文の書き方」）。
 
-1. **書き込み**: `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）に対し、**新規作成・追記・置換**のいずれかで **必ずファイルを更新**する。長文をチャットに貼るだけで終えない。
-2. **確認**: **`Read`**（追記は末尾でよい／挿入は追加箇所の前後）または **`python tools/novel_char_count.py`** のいずれかで、保存内容・分量を検証する。
-3. **報告**: ユーザー向け返答に、**更新したファイルのパス**（リポジトリ相対でよい）を明示する。確認 **後** に完了を伝える。
+1. **契約再読（事前）**: スキル **`novel-planning`** の「執筆・清書での契約再読」。従来経路は起草前、writing_bridge は `prepare` 前。
+2. **書き込み**: 従来経路では `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）を **新規作成・追記・置換**する。`publish` 経路では CLI が正本を書く。長文をチャットに貼るだけで終えない。
+3. **確認**: **`Read`**（追記は末尾でよい／挿入は追加箇所の前後）または **`python tools/novel_char_count.py`** のいずれかで、保存内容・分量を検証する。
+4. **句読点ゲート**: 従来経路は `python tools/novel_punctuation_metrics.py <対象ファイル> --gate`。`publish` 経路は先に `--dry-run` の予検を見て、本番後は `report.json` を確認する。失敗なら結合して書き直し（最大2回）。本文は戻さない。dry-run fail のときは正本を書かない。
+5. **報告**: ユーザー向け返答に、**更新したファイルのパス**（リポジトリ相対でよい）と契約再読の要約を明示する。確認 **後** に完了を伝える。
 
-## 執筆直後の機械校正（推奨・任意）
+## 本文の書き方（経路を一つにする）
 
-上記 1〜3 で **執筆完了**としたあと、同一ターンまたは直後のターンで、誤打・体裁の第一校正として次を実行する（詳細はスキル **`novel-text-rewrite-lint`**）。
+完了条件（契約再読（事前）・正本更新・確認・句読点・ストーリー反映）は変えない。先に経路を一つ選ぶ。不変条件は **`.rulesync/rules/concepts.md`** の「執筆接続（writing_bridge）」。起動判定は **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」。
+
+### 従来経路（既定）
+
+フラグが両方 OFF、または ON でも対象場面にハッシュ一致の active run が無いとき。
+
+1. スキル **`novel-planning`** の「執筆・清書での契約再読」を行う（起草前）。
+2. `_novel_text` を直接更新する（本スキルの書き込み手順）。
+3. 確認と句読点ゲートを本スキルどおり行う。
+4. `novel-story-reflection` を行う。
+5. フラグ ON で run が無いときだけ、下記「従来の検査」を起動する。
+
+### writing_bridge 経路
+
+対象場面に `_writing/<scene_id>/<run_id>/` の active run があり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するとき。入口は `python tools/writing_bridge_cli.py`。ディレクトリがあるだけでは切り替えない。`prepare` 前は従来経路。
+
+**契約再読は `prepare` の前に行う**（スキル **`novel-planning`** の「執筆・清書での契約再読」）。active run の続きでも、そのターンでまだ再読していなければ `prepare` や起草の前に行う。
+
+起草候補の raw hash と publish 後のマーカー除去・合成済み正本の raw hash は別版として扱う。完了照合は正本最終版と、それを指す publish / story reflection の記録で行い、候補版との raw hash 一致は要求しない。
+
+- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
+- **候補の校正**: bridge経路では `receive` 前に候補へ `grammar --fix-dry-run` を行い、必要な機械修正も候補だけへ適用する。正本 `_novel_text` を直接校正しない。
+- **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。`CHRONOS_NO_SCENE_EVENTS` は対象場面のイベント未登録を示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認し、`success` をイベント検査済みと読まない。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
+- **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
+- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
+- **句読点**: `publish --dry-run` の予検は保存予定の対象ファイル全体。本番後の `report.json` も結合後全文。本スキルで `--gate` を重ねない。
+- **ストーリー反映**: 正本が更新された直後に `novel-story-reflection`。
+
+ユーザーが明示した CLI はフラグより優先し、個別 CLI は config.md を理由に拒否しない。
+
+### 従来の検査（run が無い ON 作品）
+
+本文の完了条件は変えない。本文保存・確認・句読点ゲート・ストーリー反映のあと、対象作品の config.md の「## 基本情報」表を共通パーサで読む。
+
+1. 行なしまたは OFF は、自動の init / analyze / 登録を行わない。
+2. 未知値・重複キー・config.md の読込失敗は設定エラーとして報告し、検査手順を止める。本文完了は取り消さない。
+3. METRON: ON は、既稿の不足を「未計測／要対応」として残し、新規章では可能なら contract / beats / マーカー付き draft を用意して analyze する。同一ターンに用意できない場合は `_novel_text` を触らず、可能な成果物だけを残して「未計測／要対応」と次回タスクを報告する。マーカーを _novel_text に後付けしない。
+4. CHRONOS: ON は、chronos/ が無ければ chronos_cli.py init を試み、既存のイベント YAML があれば chronos_cli.py check を実行する。当該章のイベント手入力は推奨であり、必須の完了条件にはしない。イベントが無い場面は writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS`（非ブロッキング）として残り、`success` を検査済みの意味に読まない。
+5. METRON / CHRONOS の結果は本文保存と分けて報告し、成果物不足・CLI失敗・CHR001で本文完了を取り消さない。未作成の scene / 未登録イベントは次回タスクへ記録する。
+
+## 執筆モデルが Grok / xAI 系のとき
+
+セッション先頭のモデル名、またはユーザーが Grok で書くと指定したときに適用する。他モデルは読み飛ばす。
+
+- 従属節や読点の切れ目だけで「。」を打たない。「は、」「を、」の直後だけで文を切らない。
+- 数値目標はここに書かない。合否は句読点ゲートだけを正とする。
+
+## 従来経路での執筆直後の機械校正（推奨・任意）
+
+上記 0〜5 で **執筆完了**としたあと、writing_bridge を使わない従来経路に限り、同一ターンまたは直後のターンで誤打・体裁の第一校正として次を実行する（詳細はスキル **`novel-text-rewrite-lint`**）。bridge経路の候補は、上記のとおり `receive` 前に校正する。publish後の正本へこの節の `--fix` を直接適用しない。後から正本を修正する場合は、新しい refine / publish run で再検査する。
 
 ```bash
 python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_textXX.md --profile grammar --fix-dry-run
@@ -73,13 +146,17 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 
 - 進捗や文字数を **`_workingspace/log/`** や **`_meta.md`** に書くときは、**ファイルに存在する内容**に基づく（会話の記憶だけに頼らない）。
 - 「執筆した」「◯文字」を査証ログに書く場合は、可能なら **`novel_char_count.py` の集計値**または **Read で読み取った事実**を根拠に含める。
+- 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
 
 ## 関連
 
 - 執筆**前**の資料・フォルダ: スキル **`novel-project-readiness`**（`tools/novel_project_check.py`）
-- 執筆直後の誤打・体裁の機械校正: **`novel-text-rewrite-lint`**（`grammar --fix`）
+- 従来経路での執筆直後の誤打・体裁の機械校正: **`novel-text-rewrite-lint`**（`grammar --fix`）。bridge候補は `receive` 前に校正する。
 - **`rewrite.md` による清書・旧版退避と正本更新**: スキル **`novel-refinement-output`**
 - 分量の公式カウント: **`novel-char-count`**（`tools/novel_char_count.py`）
+- 句読点ゲート: **`tools/novel_punctuation_metrics.py --gate`**
 - 画像生成の計画・承認・完了検証: **`image-provider（旧 forge-txt2img）`**
 - 完了条件の横断正本: **`.rulesync/rules/concepts.md`**
-- プロジェクト全体のルール: **`.rulesync/rules/overview.md`** の「2.3 Writing Mode」「2.3.1 本文出力の確認」「2.2.1 画像生成（txt2img）の事前確認」
+- 執筆接続の起動判定: **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」
+- プロジェクト全体の詳細仕様: **`.rulesync/rules/workflow-specification.md`** の Writing Mode と画像生成の事前確認
+- 任意参照（完了条件ではない）: 場面密度・力みは `_how_to.example/episode/general/episode_reality.md`、失敗の許容は `episode_hindrance.md`

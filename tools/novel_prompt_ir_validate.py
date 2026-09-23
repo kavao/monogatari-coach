@@ -161,12 +161,48 @@ def _user_directive_warnings_for_page(label: str, page) -> list[str]:
     return warnings
 
 
+def _schema_1_1_advisories(label: str, page) -> list[str]:
+    """Report optional migration work without inventing meaning or IDs."""
+    if getattr(page, "schema_version", "1.0") != "1.1":
+        return []
+    advisories: list[str] = []
+    if page.dramaturgy is None:
+        advisories.append(f"{label}: schema 1.1のdramaturgyが未記載です（演出意図はadvisory）")
+    if page.render_instruction.text_mode is None:
+        advisories.append(
+            f"{label}: render_instruction.text_modeが未記載です（移行時にgenerate/letter_later/noneを選択）"
+        )
+    for panel in page.panels:
+        for index, subject in enumerate(panel.subjects, start=1):
+            if not subject.subject_id:
+                advisories.append(
+                    f"{label}: panel {panel.panel_id} subject {index} にsubject_idがありません（移行dry-run対象）"
+                )
+        text_items = [*panel.text.dialogue, *panel.text.sfx]
+        text_items.extend(panel.text.narration)
+        text_items.extend(panel.text.monologue)
+        for index, item in enumerate(text_items, start=1):
+            if not getattr(item, "text_id", None):
+                advisories.append(
+                    f"{label}: panel {panel.panel_id} text {index} にtext_idがありません（移行dry-run対象）"
+                )
+    return advisories
+
+
 def load_summary_en_validator():
     tools_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(tools_dir))
     from manga_prompt_ir.summary_en import summary_en_quality_issues
 
     return summary_en_quality_issues
+
+
+def load_camera_shot_advisories():
+    tools_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(tools_dir))
+    from manga_prompt_ir.camera_shot import camera_shot_advisories_for_page
+
+    return camera_shot_advisories_for_page
 
 
 def quality_warnings_for_page(
@@ -358,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--strict-quality",
         action="store_true",
-        help="意味品質の警告も失敗扱いにする",
+        help="意味品質の警告も失敗扱いにする（画角・schema 1.1 advisory は対象外）",
     )
     args = parser.parse_args(argv)
 
@@ -373,7 +409,9 @@ def main(argv: list[str] | None = None) -> int:
     errors: list[str] = []
     warnings: list[str] = []
     quality_errors: list[str] = []
+    advisories: list[str] = []
     summary_en_quality_issues = load_summary_en_validator()
+    camera_shot_advisories_for_page = load_camera_shot_advisories()
 
     for path in character_files:
         try:
@@ -384,6 +422,8 @@ def main(argv: list[str] | None = None) -> int:
             }
             from manga_prompt_ir.character_tag_quality import (
                 character_base_required_errors,
+                character_height_warnings,
+                character_name_token_warnings,
                 character_nude_base_warnings,
             )
 
@@ -391,9 +431,15 @@ def main(argv: list[str] | None = None) -> int:
             if base_errors:
                 errors.extend(base_errors)
             nude_warnings = character_nude_base_warnings(character, str(path))
+            height_warnings = character_height_warnings(character, str(path))
+            name_warnings = character_name_token_warnings(character, str(path))
             warnings.extend(nude_warnings)
+            warnings.extend(height_warnings)
+            warnings.extend(name_warnings)
             if args.strict_quality:
                 quality_errors.extend(nude_warnings)
+                quality_errors.extend(height_warnings)
+                quality_errors.extend(name_warnings)
             print(f"OK character: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")
@@ -425,6 +471,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             warnings.extend(page_warnings)
             quality_errors.extend(page_errors)
+            advisories.extend(_schema_1_1_advisories(path.as_posix(), page))
+            advisories.extend(camera_shot_advisories_for_page(path.as_posix(), page))
             print(f"OK {page.meta.intent}: {path}")
         except Exception as exc:
             errors.append(f"{path}: {exc}")
@@ -433,6 +481,11 @@ def main(argv: list[str] | None = None) -> int:
         print("Quality warnings:", file=sys.stderr)
         for warning in warnings:
             print(f"- {warning}", file=sys.stderr)
+
+    if advisories:
+        print("Advisory:", file=sys.stderr)
+        for item in advisories:
+            print(f"- {item}", file=sys.stderr)
 
     if quality_errors:
         print("Summary EN quality errors:", file=sys.stderr)
@@ -452,7 +505,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"validated characters={len(character_files)} manga_pages={page_counts.get('manga_page', 0)} "
         f"manga_panels={page_counts.get('manga_panel', 0)} illustrations={page_counts.get('illustration', 0)} "
-        f"quality_warnings={len(warnings)} summary_en_errors={len(quality_errors)}"
+        f"quality_warnings={len(warnings)} summary_en_errors={len(quality_errors)} "
+        f"advisories={len(advisories)}"
     )
     return 0
 

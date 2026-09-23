@@ -100,7 +100,17 @@
       "max_count": 4,
       "min_png_bytes": 512,
       "auth_env": "NOVELAI_ACCESS_TOKEN",
-      "default_model": "nai-diffusion-4-5-full",
+      "default_model": "nai-diffusion-5-full",
+      "vibe_model": "nai-diffusion-4-5-full",
+      "model_aliases": {
+        "v5": "nai-diffusion-5-full",
+        "v5-full": "nai-diffusion-5-full",
+        "nai-v5-full": "nai-diffusion-5-full",
+        "v5-curated": "nai-diffusion-5-curated",
+        "nai-v5-curated": "nai-diffusion-5-curated",
+        "v4-5-full": "nai-diffusion-4-5-full",
+        "v4-5-curated": "nai-diffusion-4-5-curated"
+      },
       "default_action": "generate",
       "default_width": 1024,
       "default_height": 1024,
@@ -119,6 +129,7 @@
       "default_controlnet_strength": 1,
       "default_normalize_reference_strength_multiple": true,
       "default_use_coords": false,
+      "default_split_pipe_characters": false,
       "default_legacy": false,
       "default_legacy_uc": false,
       "default_legacy_v3_extend": false,
@@ -172,17 +183,21 @@
     "grok": {
       "base_url": "https://api.x.ai/v1",
       "generate_path": "/images/generations",
+      "edit_path": "/images/edits",
       "timeout_sec": 300,
       "max_count": 10,
       "min_png_bytes": 512,
       "auth_env": "XAI_API_KEY",
-      "default_model": "grok-imagine-image",
+      "default_model": "grok-imagine-image-2.0",
       "model_aliases": {
         "standard": "grok-imagine-image",
         "quality": "grok-imagine-image-quality",
         "pro": "grok-imagine-image-quality",
-        "legacy_pro": "grok-imagine-image-pro"
+        "legacy_pro": "grok-imagine-image-pro",
+        "v2": "grok-imagine-image-2.0",
+        "imagine2": "grok-imagine-image-2.0"
       },
+      "_max_prompt_bytes_note": "provisional internal gate; not an official xAI documented limit",
       "max_prompt_bytes": 7800,
       "default_width": 1024,
       "default_height": 1024,
@@ -223,17 +238,21 @@
       "_api_family": "grok",
       "base_url": "https://api.x.ai/v1",
       "generate_path": "/images/generations",
+      "edit_path": "/images/edits",
       "timeout_sec": 300,
       "max_count": 10,
       "min_png_bytes": 512,
       "auth_env": "XAI_API_KEY",
-      "default_model": "grok-imagine-image-quality",
+      "default_model": "grok-imagine-image-2.0",
       "model_aliases": {
         "quality": "grok-imagine-image-quality",
         "pro": "grok-imagine-image-quality",
         "standard": "grok-imagine-image",
-        "legacy_pro": "grok-imagine-image-pro"
+        "legacy_pro": "grok-imagine-image-pro",
+        "v2": "grok-imagine-image-2.0",
+        "imagine2": "grok-imagine-image-2.0"
       },
+      "_max_prompt_bytes_note": "provisional internal gate; not an official xAI documented limit",
       "max_prompt_bytes": 7800,
       "default_width": 1024,
       "default_height": 1024,
@@ -273,13 +292,36 @@
     "openai": {
       "base_url": "https://api.openai.com/v1",
       "generate_path": "/images/generations",
+      "edit_path": "/images/edits",
       "timeout_sec": 300,
       "max_count": 4,
       "min_png_bytes": 512,
       "auth_env": "OPENAI_API_KEY",
-      "default_model": "gpt-image-1.5",
+      "default_model": "gpt-image-2",
       "default_width": 1024,
       "default_height": 1024,
+      "default_size": "1024x1024",
+      "aspect_ratio_presets": {
+        "square": "1024x1024",
+        "portrait": "1024x1536",
+        "manga_b5_portrait": "1024x1536",
+        "book_cover": "1024x1536",
+        "cover_portrait": "1024x1536",
+        "story_vertical": "864x1536",
+        "mobile_vertical": "768x1536",
+        "landscape_4_3": "1536x1152",
+        "landscape_3_2": "1536x1024",
+        "landscape": "1536x864",
+        "wide": "1536x864",
+        "wide_2_1": "1536x768",
+        "1:1": "1024x1024",
+        "2:3": "1024x1536",
+        "3:2": "1536x1024",
+        "3:4": "1024x1344",
+        "4:3": "1536x1152",
+        "9:16": "864x1536",
+        "16:9": "1536x864"
+      },
       "default_steps": 0,
       "default_cfg_scale": 0,
       "default_sampler_name": "",
@@ -299,16 +341,57 @@
     "openrouter": {
       "base_url": "https://openrouter.ai/api/v1",
       "generate_path": "/chat/completions",
+      "page_generate_path": "/images",
       "timeout_sec": 300,
       "max_count": 1,
       "min_png_bytes": 512,
       "auth_env": "OPENROUTER_API_KEY",
       "default_model": "google/gemini-2.5-flash-image",
+      "page_default_model": "google/gemini-3.1-flash-image",
       "model_aliases": {
         "nano_banana": "google/gemini-2.5-flash-image",
-        "nano_banana_2": "google/gemini-3.1-flash-image-preview",
+        "nano_banana_2": "google/gemini-3.1-flash-image",
+        "nano_banana_2_preview": "google/gemini-3.1-flash-image-preview",
         "nano_banana_pro": "google/gemini-3-pro-image-preview",
-        "gpt_image_2": "openai/gpt-5.4-image-2"
+        "gpt_image_2": "openai/gpt-image-2"
+      },
+      "image_model_profiles": {
+        "google/gemini-3.1-flash-image": {
+          "profile_id": "nano_banana_2",
+          "parameter_family": "resolution",
+          "default_resolution": "2K",
+          "resolution_values": ["512", "1K", "2K", "4K"],
+          "max_input_references": 14,
+          "max_count": 1,
+          "provider_routing": {
+            "only": ["google-ai-studio"],
+            "allow_fallbacks": false
+          }
+        },
+        "google/gemini-3.1-flash-image-preview": {
+          "profile_id": "nano_banana_2_preview",
+          "parameter_family": "resolution",
+          "default_resolution": "2K",
+          "resolution_values": ["512", "1K", "2K", "4K"],
+          "max_input_references": 14,
+          "max_count": 1,
+          "provider_routing": {
+            "only": ["google-ai-studio"],
+            "allow_fallbacks": false
+          }
+        },
+        "openai/gpt-image-2": {
+          "profile_id": "gpt_image_2",
+          "parameter_family": "quality",
+          "default_quality": "medium",
+          "quality_values": ["auto", "low", "medium", "high"],
+          "max_input_references": 16,
+          "max_count": 10,
+          "provider_routing": {
+            "only": ["openai"],
+            "allow_fallbacks": false
+          }
+        }
       },
       "default_width": 1024,
       "default_height": 1024,

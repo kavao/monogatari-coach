@@ -52,6 +52,15 @@ NOVEL_RULES_NAME = "novel_text_rewrite_rules.yaml"
 # 各関数は「行末改行なし」の行文字列を受け取り、修正後の文字列を返す。
 _ASCII_COMMA_IN_PROSE = re.compile(r"(?<![0-9A-Za-z]),")
 
+# book.yaml が参照する場面・挿絵のアンカー。本文の体裁規則ではなく、出版用の
+# 構造情報なので、通常の Markdown 非本文要素と同様に lint 対象から除外する。
+_PUBLISHING_DIRECTIVE_LINE = re.compile(
+    r"^\s*<!--\s*(?:"
+    r"scene:\s*ch\d{2,}-\d{3,}"
+    r"|illustration:\s*[a-z][a-z0-9_]*"
+    r")\s*-->\s*$"
+)
+
 
 _FIXERS: dict[str, Any] = {
     "dialogue_leading_indent": lambda line: (
@@ -252,6 +261,8 @@ def resolve_profile(config: dict[str, Any], profile_name: str) -> list[str]:
 
 
 def should_skip_line(line: str, skip_patterns: list[re.Pattern[str]]) -> bool:
+    if _PUBLISHING_DIRECTIVE_LINE.fullmatch(line):
+        return True
     for pat in skip_patterns:
         if pat.search(line):
             return True

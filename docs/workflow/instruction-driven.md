@@ -26,6 +26,7 @@
 [D. 下読み](#d-下読き足きり判定する) /
 [D2. Editor Score](#d2-完稿推敲後に深掘り採点するeditor-score) /
 [D3. Consistency Audit](#d3-設定口調の一貫性を監査するconsistency-audit) /
+[D4. 読み進み](#d4-読み進み感想を残すreader-walk) /
 [E. 興味判定](#e-一般読者視点で興味を判定する) /
 [F. メタ情報更新](#f-メタ情報を更新する)
 
@@ -37,6 +38,8 @@
 [K-1. 挿絵計画](#k-1-挿絵計画を作るillustration-plan-mode) /
 [K-2. 挿絵IR作成](#k-2-挿絵表紙の-ir-を作るillustration-tag-mode) /
 [L. 挿絵生成](#l-挿絵表紙を生成する) /
+[L-2. 表紙合成・題字](#l-2-表紙合成題字ロゴcover-composition) /
+[L-3. 出版 proof](#l-3-出版パッケージと-proof-pdf) /
 [M. 背景資料生成](#m-背景画像背景資料を生成する)
 
 ---
@@ -71,11 +74,11 @@ uv sync
 # 初回セットアップ（_how_to/ と .env を未作成時にコピー）
 uv run python howto_init.py
 
-# ルール・スキルの生成物を同期
-corepack pnpm dlx rulesync generate
+# 初回のみ: 固定版 Rulesync を取得
+python tools/install_rulesync.py
 
-# 後方互換ラッパーを使う場合
-uv run python sync_rules.py
+# ルール・スキルの生成物を同期
+python tools/rulesync.py generate
 
 # .env の不足確認
 python tools/env_check.py
@@ -91,7 +94,7 @@ python tools/env_check.py
 
 **このように動きます:**
 1. 作品名・ジャンル・ログライン・主人公について必要最低限の質問をする
-2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する
+2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ）
 3. 生成した内容を評価・洗練して、執筆できる状態まで整える
 4. 次のステップ（執筆・タグ作成など）を提案する
 
@@ -112,7 +115,7 @@ python tools/env_check.py
 python tools/novel_code_allocate.py novels/
 
 # 必須ファイルの揃いを確認 ※ 自動呼び出し
-python tools/novel_project_check.py novels/NNN_作品名
+python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
 ```
 
 ---
@@ -190,17 +193,33 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 第1章を執筆してください。
 ```
 
+複数章を指定する場合、Monogatari Coach は指定範囲内を1章ずつ順に処理し、列挙の場合は列挙順に処理します。各章で本文保存・確認・句読点ゲート・ストーリー反映を完了したら、確認を待たず次章へ進み、範囲の最後で停止します（列挙では最後の指定で停止します）。単一章の指示はその章で停止し、途中で失敗・stale・escalatedになった場合は後続章へ進みません。前章が未完了のまま後続章だけを指定した場合は、本文と準備を始めず未完了理由を報告します。
+
 **このように動きます:**
 1. `writer_profile.md` を参照して作家の文体を確認する
 2. `proposal.md` / `design_specification.md` / `character.md` / `world.md` を参照する
 3. `novels/<作品>/_novel_text/novel_text01.md` に本文を書き出す（4000〜8000字目安）
-4. 書き終えたら `tools/novel_char_count.py` で文字数を集計して報告する
+4. 正本を再確認し、句読点ゲートとストーリー反映を終えてから `tools/novel_char_count.py` で文字数を集計して報告する。文字数の集計だけでは完了になりません
 
 章・項を指定する場合は以下のように補足できます。
 
 ```text
 第2章の前半を執筆してください。
 ```
+
+METRON または CHRONOS が ON の作品では、これだけで接続が起動します。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
+
+```text
+この場面をDeepenしてください。
+```
+
+**より詳細に指定したい場合:** Deepen は校正済みモデルの場面修復です。METRON ON の作品では、執筆や Deepen の依頼だけで正本反映まで進みます。止めたいときだけ書いてください。
+
+```text
+当該場面は保存しないでください。
+```
+
+CLI では保存用に `--allow-publish` の run が必要です。起草用 run に後から権限は付きません。手編集と `publish` は重ねません。操作の確認先は [Writing bridge の局所修復と本文反映](../architecture/writing-bridge.md) です。清書は次の「C. 清書」のままです。
 
 **使われるツール:**
 
@@ -213,6 +232,63 @@ python tools/novel_char_count.py novels/NNN_作品名
 
 # 特定ファイルのみ確認する場合
 python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.md
+
+# METRON / CHRONOS が ON のとき（起草・検査。正本は書き換えない）
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new
+# 標準出力の prepared: .../run-XXXX を以降の --run-id に使う
+```
+
+「当該場面を保存してください」と明示したときは、保存用の新しい run です。起草用 run へ `publish` しません。未作成または空の正本は selector なしの `new` です。既存の非空本文では selector、当該場面の scene アンカー、または `append` が必要です。無いと `MISSING_FIELD` になります。inspect の結果は required と advisory に分かれます。引用座標は `locate-quote` で下書きできます（一意の quote だけ。重複は推測しません。候補や正本の版がずれたときは止まります）。保存へ進む案内は、床到達・必須なしに加え、C1 が揃っているか対象外で、修復中でないときだけです。`publish --dry-run` が句読点 fail のときは正本を書きません。dry-run の測定は保存予定の対象ファイル全体です。
+
+```bash
+# レシピ1: 未作成または空の正本。selector なし
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --allow-publish --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind new --allow-publish
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
+```
+
+```bash
+# レシピ2: 既存の非空本文。heading で当該章だけを置換する
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind refine --selector-kind heading --selector-value "章タイトル" \
+  --allow-publish --dry-run
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
+  --scene-id ch01-001 --text-path _novel_text/novel_text01.md \
+  --request-kind refine --selector-kind heading --selector-value "章タイトル" \
+  --allow-publish
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --candidate path/to/marked.md
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --observations path/to/observations.json
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存" --dry-run
+python tools/writing_bridge_cli.py publish novels/NNN_作品名 \
+  --scene-id ch01-001 --run-id run-XXXX \
+  --authorization "ユーザー依頼: 当該場面を保存"
 ```
 
 ---
@@ -228,6 +304,8 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 2. `_how_to/rewrite.md` のルールを適用して文章を磨き上げる（1.5倍程度の分量が目安）
 3. `novels/<作品>/_novel_text/novel_text01.md` を上書き保存する
 4. 校正前後の文字数を比較して報告する
+
+清書は writing_bridge の `publish` と重ねません。自動の再計測も起動しません。ユーザーが明示した検査 CLI だけを追加実行します。
 
 **使われるツール:**
 
@@ -330,6 +408,30 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 ---
 
+### D4. 読み進み感想を残す（Reader Walk）
+
+最小のトリガー文1行で動きます。未読があれば、そこから最後まで進みます。
+
+```text
+第1章から読み進めて
+```
+
+範囲だけ読みたいときは、次のように指定します。
+
+```text
+プロローグだけ読み進めて
+第2章まで読み進めて
+```
+
+**このように動きます:**
+1. 指定ペルソナ（指定がなければ `readers/000_default/reader_preferences.md`）の一般読者として、指定範囲（なければ対象ペルソナにとって未読の残り全部）を場面ごとに読む
+2. 新規セッションではJSTの `YYYYMMDD_HHMM_<persona_id>` 形式でセッションIDを発行し、感想を `novels/<作品>/_reader/walk/<session_id>/journal.md` へ場面ごとに追記する。到達位置は同じセッションディレクトリの `state.md` に残す。セッションIDまたはセッションディレクトリを指定した場合はそのセッションだけを再開し、指定がない場合は対象ペルソナの読了が未の最新セッションを再開する。該当セッションがなければ新規発行し、「新規セッション」「別の読者として」などの明示時も必ず新規発行する
+3. チャットには進めた範囲と通しの要約だけを返す
+
+作品評価の点数は付きません。反応定量化を有効にした場合だけ、感想本文の後ろへペルソナ反応の反応行（1行）を記録できます。数値は `journal.md` と生成traceの検証に使い、チャットには出しません。詳しい保存先と形式は [Reader Output](reader-output.md) を参照してください。
+
+---
+
 ### E. 一般読者視点で興味を判定する
 
 ```text
@@ -365,7 +467,8 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 ```bash
 # 査証ログ（セッションの作業記録）を追記 ※ 自動呼び出し
-python tools/workspace_audit_log.py append "作業内容"
+# 作品作業では --novel を付ける。AUDIT_LOG=OFF の抑止は --novel があるときだけ有効
+python tools/workspace_audit_log.py append --novel novels/NNN_作品名 "作業内容"
 
 # 横断ナレッジ日記を追記 ※ 自動呼び出し
 python tools/workspace_audit_log.py diary append "学びや判断の記録"
@@ -385,7 +488,7 @@ python tools/workspace_audit_log.py diary append "学びや判断の記録"
 
 これだけ入力しても Monogatari Coach は Tag Mode を開始します。
 
-**正本（必須 ID・汎用／カスタムの分離）:** [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」。**創作技法（任意）:** `_how_to/tag.md`（Danbooru 語彙・`outfit_tags` 混入など）。
+**正本（必須 ID・汎用／カスタムの分離）:** [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「Tag Mode バリアント階層」「Tag Mode 汎用テンプレートとカスタム要素」「Tag Mode 作品メタ」「Tag Mode テンプレート一式」。**創作技法（任意）:** `_how_to/tag.md`（Danbooru 語彙・`outfit_tags` 混入など）。
 
 **バリアントの3層（主要キャラごと）**
 
@@ -426,7 +529,7 @@ python tools/novel_prompt_ir_export_md.py \
 Tag Mode（テンプレート一式）でお願いします。
 ```
 
-`concepts.md`「Tag Mode テンプレート一式」に従い、主要キャラごとに次を書きます。**カスタムはテンプレート一式だけでは追加されません**（作品メタに列挙した分のみ）。
+ワークフロー詳細仕様の「Tag Mode テンプレート一式」に従い、主要キャラごとに次を書きます。**カスタムはテンプレート一式だけでは追加されません**（作品メタに列挙した分のみ）。
 
 | 対象 | 内容 |
 |------|------|
@@ -434,12 +537,12 @@ Tag Mode（テンプレート一式）でお願いします。
 | 000番台 | `_meta.md` §4（漫画 variant 表）の `variant_id` をすべて YAML に揃える |
 | カスタム | `_meta.md` **キャラタグ方針**の **カスタム要素** に列挙した ID のみ |
 
-作品ごとに常時テンプレート一式にする場合は、`_meta.md` のキャラタグ方針で **バリアント方針: テンプレート一式** と書く（フィールド定義は `concepts.md`「Tag Mode 作品メタ」。記載例: `_how_to.example/meta.md` §6）。除外する ID があるときだけチャットで列挙する。
+作品ごとに常時テンプレート一式にする場合は、`_meta.md` のキャラタグ方針で **バリアント方針: テンプレート一式** と書く（フィールド定義はワークフロー詳細仕様「Tag Mode 作品メタ」。記載例: `_how_to.example/meta.md` §6）。除外する ID があるときだけチャットで列挙する。
 
 **より詳細に指定したい場合（コピペ用）:**
 
 ```text
-Tag Mode: novels/NNN_作品名。concepts.md の汎用テンプレートに従い、
+Tag Mode: novels/NNN_作品名。ワークフロー詳細仕様の汎用テンプレートに従い、
 主要キャラ全員で 000_base → 000番台 → 100番台（100_intro, 101_turnaround,
 102_signature_pose、combines_with 付き）を tag/characters/*.yaml に作成。
 カスタムは _meta.md キャラタグ方針のカスタム要素列挙分のみ。
@@ -448,7 +551,7 @@ Tag Mode: novels/NNN_作品名。concepts.md の汎用テンプレートに従�
 
 ```text
 Tag Mode（テンプレート一式）: novels/NNN_作品名。
-concepts.md「Tag Mode テンプレート一式」に従い、汎用 ID と _meta.md §4 の 000番台を
+ワークフロー詳細仕様「Tag Mode テンプレート一式」に従い、汎用 ID と _meta.md §4 の 000番台を
 tag/characters/*.yaml に揃え、--novelai-pipe-tags で MD 出力。
 カスタムは _meta.md のカスタム要素列挙分のみ。除外 ID だけチャットで列挙。
 ```
@@ -676,6 +779,47 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 
 ---
 
+### L-2. 表紙合成・題字ロゴ（Cover Composition）
+
+```text
+題字ロゴを計画してください。
+```
+
+または:
+
+```text
+表紙合成して proof を出してください。
+```
+
+**このように動きます:**
+1. `_meta.md` §3.1 の題字方針（`組版` / `logo_asset`）を確認する
+2. `logo_asset` なら `cover/title_logo_plan.md` を起こし、dry-run → 承認 → 採用PNG → `cover.yaml` を差し替える
+3. `組版` なら `cover.yaml` の title を `type: text` で整える
+4. `book_cover_review.py` で確認し、`_meta.md` §3.1／§7 を更新する
+
+詳細は [表紙合成・題字ロゴ](cover-composition.md)。
+
+---
+
+### L-3. 出版パッケージと proof PDF
+
+```text
+出版パッケージを点検して lock してください。
+```
+
+```text
+bunko の reader-proof を出してください。
+```
+
+**このように動きます:**
+1. `book_review.py --gate export` → `book_lock.py` → `book_diff.py`
+2. `book_export.py --profile bunko|jis_b5` で interior / reader-proof を生成する
+3. `book_preflight.py` で errors=0 を確認し、`_meta.md` §7 を同期する
+
+詳細は [Publishing Package](publishing-package.md) と [紙書籍 proof PDF](paper-proof-export.md)。
+
+---
+
 ### M. 背景画像（背景資料）を生成する
 
 コマ絵・ページ絵を描く前に、場所・光源・構図・物品配置を固めるための背景資料画像を出します。人物を主役にせず、空間設計を先に作ることで、後続のコマ生成やページ生成の参照素材になります。
@@ -705,7 +849,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
   --manga-stem manga_01 --source background-concepts
 ```
 
-> この操作は `.rulesync/rules/overview.md` §2.2.2「生成モードの用語統一」および `docs/image-generation/index.md`「背景資料生成」節に定義があります。
+> この操作は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「生成モード用語」および `docs/image-generation/index.md`「背景資料生成」節に定義があります。
 
 ---
 

@@ -7,6 +7,7 @@ _workingspace 配下の月次 Markdown — 追記専用（公式用）。
 - **横断ナレッジ日記**: `diary/(YYYYMM).md` — スキル workspace-diary
 
 いずれも既存内容の上書き・削除は行わない（追記は open(..., "a") のみ）。
+新規月ファイルと追記行は UTF-8。既存月ファイルが UTF-8 でないときは履歴を直さず、verify は WARN して読む。
 新規月ファイルは、存在しないか空のときだけ先頭に月見出しを1回書き込む。
 エントリ1行形式: 「- YYYY-MM-DD HH:MM: 本文」
 
@@ -73,6 +74,22 @@ def normalize_message(text: str) -> str:
 ENTRY_LINE_RE = re.compile(
     r"^-\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})(?::(\d{2}))?\s*:\s*(.*)$"
 )
+
+
+def decode_monthly_markdown(path: Path) -> tuple[str, str | None]:
+    """新規追記は UTF-8。既存月ファイルが UTF-8 でないときは書き換えず、読んで WARN する。"""
+    raw = path.read_bytes()
+    try:
+        return raw.decode("utf-8"), None
+    except UnicodeDecodeError:
+        try:
+            return raw.decode("cp932"), "UTF-8 ではないため cp932 で読んだ（既存履歴は変更しない）"
+        except UnicodeDecodeError:
+            return (
+                raw.decode("utf-8", errors="replace"),
+                "UTF-8/cp932 とも失敗したため置換して読んだ（既存履歴は変更しない）",
+            )
+
 
 
 def parse_year_month(s: str | None) -> tuple[int, int] | None:
@@ -160,8 +177,60 @@ def parse_at(s: str) -> datetime:
     )
 
 
+def resolve_novel_config(novel: str | Path, *, root: Path | None = None) -> Path:
+    """作品フォルダまたは config.md パスから config.md を解決する。未作成でもパスだけ返す。"""
+
+    base = root or repo_root()
+    raw = Path(novel)
+    candidates = [raw] if raw.is_absolute() else [base / raw, raw]
+    for candidate in candidates:
+        if candidate.is_file() and candidate.name == "config.md":
+            return candidate.resolve()
+        if candidate.is_dir():
+            return (candidate / "config.md").resolve()
+        if candidate.name == "config.md":
+            return candidate.resolve()
+    first = candidates[0]
+    return first.resolve() if first.name == "config.md" else (first / "config.md").resolve()
+
+
+def _maybe_skip_audit_log(args: argparse.Namespace, *, root: Path) -> dict[str, object] | None:
+    novel = getattr(args, "novel", None)
+    if not novel or getattr(args, "force", False):
+        return None
+
+    from inspection_flags import InspectionConfigError, load_inspection_flags
+
+    config_path = resolve_novel_config(novel, root=root)
+    try:
+        flags = load_inspection_flags(config_path)
+    except InspectionConfigError as error:
+        raise ValueError(str(error)) from error
+    if flags.audit_log.value == "ON":
+        return None
+    return {
+        "skipped": True,
+        "reason": "AUDIT_LOG=OFF",
+        "config_path": str(config_path),
+        "path": "",
+        "line": "",
+    }
+
+
 def _run_append_cmd(args: argparse.Namespace, *, target: MonthlyTarget) -> int:
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    if target is MonthlyTarget.AUDIT:
+        try:
+            skipped = _maybe_skip_audit_log(args, root=root)
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 1
+        if skipped is not None:
+            if args.json:
+                print(json.dumps(skipped, ensure_ascii=False, indent=2))
+            else:
+                print(f"査証ログをスキップしました: {skipped['reason']}")
+            return 0
     if args.message is not None:
         message = args.message
     else:
@@ -275,7 +344,9 @@ def _verify_monthly_files(
         if not re.match(r"^\d{6}\.md$", p.name):
             errors.append(f"想定外のファイル名（YYYYMM.md 以外）: {p.name}")
             continue
-        text = p.read_text(encoding="utf-8")
+        text, enc_warn = decode_monthly_markdown(p)
+        if enc_warn:
+            warnings.append(f"{p.name}: {enc_warn}")
         lines = text.splitlines()
         if not lines:
             errors.append(f"{p.name}: 空ファイル")
@@ -390,6 +461,17 @@ def main(argv: list[str] | None = None) -> int:
 
     pa = sub.add_parser("append", help="査証ログに1行追記")
     _add_append_flags(pa)
+    pa.add_argument(
+        "--novel",
+        type=str,
+        default=None,
+        help="対象作品フォルダまたは config.md。AUDIT_LOG=OFF なら追記しない",
+    )
+    pa.add_argument(
+        "--force",
+        action="store_true",
+        help="AUDIT_LOG=OFF でも追記する（ユーザー明示時）",
+    )
     pa.set_defaults(func=cmd_append)
 
     pp = sub.add_parser("path", help="指定月の査証ログファイルの絶対パスを表示")

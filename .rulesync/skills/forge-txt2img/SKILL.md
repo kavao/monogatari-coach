@@ -9,13 +9,19 @@ targets: ["*"]
 
 > 移行メモ: 旧スキル名 `forge-txt2img` と旧スクリプト名 `forge_*` は互換名として残す。新しい案内・運用名は **image-provider** / `image_provider_*` を使う。`provider=forge` は Forge WebUI を指す provider 名として継続する。
 
-> 横断正本: 画像生成の承認・失敗時の provider 切替禁止・生成完了条件・生成モード用語は **`.rulesync/rules/concepts.md`** を正とする。このスキルは image-provider 作業での適用手順と provider 別の確認事項を扱う。
+> 横断正本: 画像生成の承認・失敗時の provider 切替禁止・生成完了条件・生成モード用語は **`.rulesync/rules/workflow-specification.md`** を正とする。このスキルは image-provider 作業での適用手順と provider 別の確認事項を扱う。
 
 ## 目的
 
 `_how_to/manga_tag.md` / `manga.md` で **漫画タグ**、`_how_to/tag.md` で **キャラクタータグ**を用意した**あと**、同じプロンプト思想で **Forge / NovelAI / Grok / OpenAI** で画像を生成し、リポジトリ内の決めたフォルダにストックする。
 
 v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `openai` / `openrouter`** を切り替える。既定は `config/image_generation.json` の **`default_provider`**。Forge は UI で読み込んだモデルに追従し、NovelAI は `.env` の **`NOVELAI_ACCESS_TOKEN`**、Grok は **`XAI_API_KEY`**、OpenAI は **`OPENAI_API_KEY`**、OpenRouter は **`OPENROUTER_API_KEY`** を使って REST API に接続する。
+
+### txt2img と restyle/edit の入口分離
+
+`tools/image_provider_generate.py` は従来どおりtxt2imgの正式入口とし、`--action img2img` を追加してrestyle用途へ流用しない。既存画像1枚のNovelAI Image2Image／絵柄リライトは、専用の `tools/image_provider_edit.py` から `--operation image-to-image --intent restyle` を明示して実行し、複数画像を1回の処理へまとめる場合も同じ `image_provider_edit.py` に `--batch` を付けて実行する（batch実装は `tools/image_provider_edit_batch.py` に分離）。edit CLIはNovelAIの入力画像・strength・noise・Vibe参照を検証し、未実装providerへの切替やtxt2imgへの代替を行わない。
+
+edit CLI（単画像・`--batch`）は必ず `--dry-run` で計画とredacted payloadを確認してから、明示した `--execute` で本番要求を送る。batchは1回につき `_restyle/<batch_id>/` を1つ作り、各コマの計画・候補・結果をそこへ集約する。dry-runと保存JSONには元画像base64、Vibe encoding、認証ヘッダーを出さない。候補はrestyle専用runディレクトリへ保存し、採用・正規画像へのコピーは別操作とする。寸法変換、RGBA合成、未検証のV5＋Vibe、明示portionのfallbackは自動で行わない。
 
 ## プロバイダ解決の優先順位（LLM 向け確認手順）
 
@@ -48,7 +54,7 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 | `MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT` | `image_provider_novel_illustration_batch.py` の既定解像度。Grok 向け既定は `2k` |
 | `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
-| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル tier（`standard` / `quality` / 互換 `pro`）。`grok_pro` を直接使う運用では不要 |
+| `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル alias（`standard` / `quality` / 互換 `pro` / `v2`）。`grok_pro` の既定は変えない |
 
 ### grok と grok_pro の使い分け
 
@@ -56,14 +62,18 @@ v2 は **txt2img のみ**・`provider` で **`forge` / `novelai` / `grok` / `ope
 
 | provider | 使用モデル | 主な用途 |
 |----------|-----------|----------|
-| `grok` | `grok-imagine-image`（standard） | キャラタグ一括生成など単体画像 |
-| `grok_pro` | `grok-imagine-image-quality` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵の高品質生成 |
+| `grok` | `grok-imagine-image-2.0` | キャラタグ一括生成など単体画像 |
+| `grok_pro` | `grok-imagine-image-2.0` | 漫画ページ・表紙/挿絵。quality slug は `--model quality`（2026-11-02 退役予定） |
 
-ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として認識し、API 呼び出しは同じ xAI エンドポイントを共有する。プロバイダ名の違いが `config/image_generation.json` の `default_model` を切り替える唯一の手段であり、`MONOCRI_GROK_MODEL_TIER_DEFAULT` はオーバーライド手段として残すが、**漫画・挿絵の高品質生成向けは `grok_pro` を直接指定するほうが意図が明確**。
+ツール内では `_GROK_FAMILY = frozenset({"grok", "grok_pro"})` として認識し、API 呼び出しは同じ xAI エンドポイントを共有する。プロバイダ名の違いが `config/image_generation.json` の `default_model` を切り替える。`MONOCRI_GROK_MODEL_TIER_DEFAULT` は `grok` の上書き手段として残す。**漫画・挿絵の高品質生成向けは `grok_pro` を直接指定する。**
 
-`grok_pro` は旧 provider 名との互換名として残す。xAI の `grok-imagine-image-pro` は 2026-05-15 退役対象のため、現在の `grok_pro.default_model` は `grok-imagine-image-quality` とする。
+`grok_pro` は旧 provider 名との互換名として残す。xAI の `grok-imagine-image-pro` は 2026-05-15 退役対象で quality slug へ寄せた。**quality slug 自体は 2026-11-02 に退役**し、以後は 2.0 `low` 相当へ転送される。`grok` と `grok_pro` の既定 model は `grok-imagine-image-2.0`（alias `v2` / `imagine2`）。1.0 は `--model standard`、quality slug は `--model quality`。
 
-xAI の現行画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付ける。`config/image_generation.json` では、表紙向けに `book_cover` / `cover_portrait` = `2:3`、漫画縦向けに `manga_b5_portrait` / `portrait` = `3:4`、縦長ストーリー向けに `story_vertical` = `9:16` を preset として持つ。
+2.0 にするときは `--model v2`（または実名）を明示する。2.0 専用の API `quality` は `--grok-image-quality low|medium|auto`（内部キー `grok_image_quality`）。**1.x slug や非 Grok へ付けると送信前に停止。** 空文字も停止。比較ジョブでは `auto` を使わない（生成は low、編集は medium になり得る）。優先順位はキーで分ける。**model は CLI > params JSON > config 既定。quality は CLI > params JSON > 未指定**（config の quality 既定はまだ無い）。
+
+保存 JSON の **`response_model`** で実解決モデルを確認する。応答に model が無いときは画像を保存し、`response_model` は `null`、キー一覧は `response_key_outline`（画像本体なし）に残す。要求 model を応答名としては書かない。漫画・挿絵の `--dry-run` は merge 検証を通し、`resolved_model` を表示する。
+
+xAI の画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付ける。preset は表紙 `book_cover` = `2:3`、漫画縦 `manga_b5_portrait` = `3:4`、縦長 `story_vertical` = `9:16`。2.0 は `21:9` / `5:2` も公式に受ける。
 
 ### provider別 prompt formatter
 
@@ -82,7 +92,7 @@ Grok / OpenAI 系は native `negative_prompt` を持たない、または効き�
 プロバイダが不明な場合は **`--dry-run`** でジョブ一覧とプロバイダを確認してから本番実行を案内する。
 
 > **⚠️ ユーザー確認（必須）**
-> プロバイダ・モデル・ジョブ数が確定したら、**`.rulesync/rules/concepts.md` の「画像生成: dry-run から本番まで」**に従い、`--dry-run` の結果提示とユーザー承認を挟んでから本番実行する。
+> プロバイダ・モデル・ジョブ数が確定したら、**`.rulesync/rules/workflow-specification.md` の「画像生成: dry-run から本番まで」**に従い、`--dry-run` の結果提示とユーザー承認を挟んでから本番実行する。
 
 ## 小説執筆の「実行継続」との関係（画像生成は例外）
 
@@ -90,7 +100,7 @@ Grok / OpenAI 系は native `negative_prompt` を持たない、または効き�
 
 ## エラー時の扱い（自動プロバイダ切り替え禁止）
 
-HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concepts.md` の「画像生成失敗時の provider 切替」**に従う。失敗した provider 名、代表エラー、影響範囲を報告し、別 provider への自動切替は行わない。
+HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/workflow-specification.md` の「画像生成失敗時の provider 切替」**に従う。失敗した provider 名、代表エラー、影響範囲を報告し、別 provider への自動切替は行わない。
 
 ## 生成「完了」の定義（幻覚完了の防止）
 
@@ -100,7 +110,7 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 
 ## 漫画生成の用語整理
 
-生成モード用語の横断定義は **`.rulesync/rules/concepts.md` の「生成モード用語」**を正とする。このスキルでは、各モードで推奨する provider と実行コマンドを扱う。会話で明示がない場合は **コマ生成** とみなす。
+生成モード用語の横断定義は **`.rulesync/rules/workflow-specification.md` の「生成モード用語」**を正とする。このスキルでは、各モードで推奨する provider と実行コマンドを扱う。会話で明示がない場合は **コマ生成** とみなす。
 
 ## 推奨プロバイダ分担（Step1 コマ／ページ系）
 
@@ -109,20 +119,20 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 | モード | `image_provider_novel_manga_batch.py` | 推奨プロバイダ | `.env` デフォルト変数 |
 |--------|------------------------------|----------------|----------------------|
 | **コマ生成（Step1）** | `--source step1-panels`（既定） | **NovelAI** / **Forge** / **OpenAI** | `MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai` |
-| **精密ページ生成** | `--source step1-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro` |
-| **ページ生成** | `--source step2-pages` | **grok_pro** または **OpenAI** | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro` |
+| **精密ページ生成** | `--source step1-pages` | **grok_pro** または **OpenAI**。OpenRouterはPageRenderPlanを明示したときだけ | `MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro` |
+| **ページ生成** | `--source step2-pages` | **grok_pro** または **OpenAI**。OpenRouterはPageRenderPlanを明示したときだけ | `MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro` |
 | **背景概念生成** | `--source background-concepts` | **grok**（既定）または **OpenAI** | `MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT=grok` |
 
-**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** を基本とする。1ページを1枚にまとめる **step1-pages / step2-pages** は **`grok_pro`（qualityモデル）を既定**とする。**background-concepts** は本番コマではなく背景資料生成として扱い、既定は `.env` と docs に合わせて **`grok`** とする。
+**Grok の分担ルール**: コマ単体（step1-panels）は **NovelAI / Forge** を基本とする。1ページを1枚にまとめる **step1-pages / step2-pages** は **`grok_pro` を既定**とする（model は 2.0）。**background-concepts** の既定は **`grok`**（model は 2.0）。
 
 ## 漫画生成の API 対応範囲（2026-05-16 時点）
 
 - **コマ生成**:
   **Forge / NovelAI / Grok / OpenAI** に対応。
 - **精密ページ生成**:
-  **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
+  **Grok / OpenAI** を正式対応とし、**OpenRouterは `--page-compiler page_render_plan` のopt-inで対応**する。OpenRouterのlegacyページ経路は従来どおり残す。**Nanobanana は導入予定の想定対応先**。
 - **ページ生成**:
-  **Grok / OpenAI** を正式対応とする。**Nanobanana は導入予定の想定対応先**。
+  **Grok / OpenAI** を正式対応とし、**OpenRouterは `--page-compiler page_render_plan` のopt-inで対応**する。**Nanobanana は導入予定の想定対応先**。
 - **背景概念生成**:
   **Grok** を既定とし、必要に応じて **OpenAI** を選べる。YAML の `background_concepts[]` を入力にする。
 - **固定特徴・状況タグの自動注入**:
@@ -140,7 +150,7 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
   - 例: `webui-user.bat` で `set COMMANDLINE_ARGS=--api` のあと起動。
 - 疎通確認: `python tools/image_provider_generate.py --probe`（`/docs` と `/sdapi/v1/samplers` の結果を表示。**samplers が 404 なら --api なし**の可能性が高い）。
 - 設定はリポジトリルートの **`config/image_generation.json`**（必須）。Forge / NovelAI / Grok の各 `providers.*` と **`default_provider`** をここで管理する。`tools/image_provider_generate.py` の **`--config`** で別ファイルを指すことはできるが、**リポジトリ運用上の正本はこのファイル**とする。
-- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/overview.md` の「画像生成（txt2img）の事前確認」）。
+- **画像生成前**に UI の Checkpoint が FLUX / SDXL のどちらかと `active_model_family` を揃える（詳細は `.rulesync/rules/workflow-specification.md` の「画像生成（txt2img）の事前確認」）。
 
 ### Forge + Flux（ブラウザと API を揃える）
 
@@ -156,6 +166,9 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 
 - `.env.example` を `.env` にコピーし、**`NOVELAI_ACCESS_TOKEN`** を記入する。初回セットアップでは `howto_init.py` / `init.bat` が未作成時に自動コピーする。
 - 設定は **`config/image_generation.json`** の `providers.novelai`。既定の通信先は `https://image.novelai.net/ai/generate-image`。
+- 既定モデルは **`nai-diffusion-5-full`**。Curated は `v5-curated`。V4.5 に戻すときは `v4-5-full`。
+- **Vibe Transfer / ポーション**（`reference_image_paths` または `reference_image_multiple`）は V5 未提供。`model` 未指定なら自動で **`nai-diffusion-4-5-full`**（`vibe_model`）。V5 を明示したまま参照を付けるとエラー。
+- ページ生成の既定 provider は **`grok_pro` のまま**（NovelAI には切り替えない）。
 - params JSON か CLI で **`provider=novelai`** を選ぶ。
 - 画像設定（steps / guidance / sampler など）の意味は NovelAI 公式ドキュメントの Image Generation 節に揃える。REST の詳細は公開仕様が薄いため、エンドポイントや追加フィールドが変わった場合は **config 側で吸収**する前提で運用する。
 - **ベース | キャラクター（`|` 区切り）**: NovelAI のプロンプトで `|` を挟むと左をシーン・画風寄り、右をキャラ固長寄りに振りやすい。`tools/image_provider_generate.py` はプロンプトに `|` が含まれるとき **左側だけ**へ品質接尾辞（例: `rating:general`）を付与する。`tools/image_provider_novel_manga_batch.py` は **`provider=novelai` かつ YAML・`--source step1-panels`** のとき、漫画ページ IR から **`ベースタグ | キャラタグ`** を自動組み立てする（オフは `--no-novelai-pipe-character-tags`）。
@@ -165,18 +178,22 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/concept
 
 - `.env` に **`XAI_API_KEY`** を記入する。
 - 設定は **`config/image_generation.json`** の `providers.grok`。既定の通信先は `https://api.x.ai/v1/images/generations`。
-- params JSON か CLI で **`provider=grok`** を選ぶ。
-- 画像モデルは **`grok-imagine-image`**。`aspect_ratio`、`resolution`、`n`、`response_format` が公式に案内されている。
-- このリポジトリでは `providers.grok.aspect_ratio_presets` により、`square`、`manga_b5_portrait`、`story_vertical` などの preset 名でも切り替えられる。**B5 実寸そのものは xAI の公式 ratio ではない**ため、`manga_b5_portrait` は **`3:4`** の近似 preset。
-- 既定実装は **`response_format: "b64_json"`** で受け、URL の失効前にそのまま保存する。
+- params JSON か CLI で **`provider=grok`** または **`grok_pro`** を選ぶ。
+- 既定画像モデルは `grok` も `grok_pro` も **`grok-imagine-image-2.0`**。1.0 は **`--model standard`**。quality slug は **`--model quality`**（11/2 退役予定）。
+- `aspect_ratio`、`resolution`、`n`、`response_format` が公式に案内されている。2.0 だけ `--grok-image-quality`。
+- preset 名でも切り替えられる。**B5 実寸そのものは xAI の公式 ratio ではない**ため、`manga_b5_portrait` は **`3:4`** の近似 preset。
+- 既定実装は **`response_format: "b64_json"`** で受け、URL の失効前にそのまま保存する。保存 JSON の `response_model` を確認する。
 
-### Grok プロンプト上限と自動圧縮（step1-pages で必須）
+### Grok プロンプト上限（暫定内部ゲート）
 
-Grok の API は **プロンプトの上限が約 8000 UTF-8 バイト**（公式仕様は文字数ではなくバイト数）。日本語は 1 文字 3 バイトのため、YAML IR から組み立てた step1-pages プロンプト（`render_instruction` ＋ パネル詳細 ＋ キャラ固定タグ）は **4 ページ分すべてが上限を超えることが多い**。
+xAI はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。**公式の正確な上限は未確認**である。このリポジトリの `providers.grok.max_prompt_bytes`（既定 **`7800`**）は **暫定の内部ゲート**であり、公式仕様そのものではない。
 
-`config/image_generation.json` の **`providers.grok.max_prompt_bytes`** にバイト上限（既定 **`7800`**）を設定しておくと、`tools/image_provider_novel_manga_batch.py` が step1-pages ジョブ組み立て時に **自動圧縮**（`trim_prompt_to_byte_limit`）を適用する。
+`tools/image_provider_novel_manga_batch.py` が step1-pages / step2-pages 組み立て時にこのゲートを適用する。2.0 にも同じゲートを使う。経路は formatter で分かれる。
 
-圧縮は次の 4 フェーズを順番に試み、上限に収まった時点で停止する：
+- **legacy formatter**: 超過時は従来どおり圧縮してよい（下表の 4 フェーズ）。
+- **PageRenderPlan compiler**: 7800 bytes を超えたら黙って切らず **停止**する。
+
+legacy の圧縮は次の 4 フェーズを順番に試み、上限に収まった時点で打ち切る：
 
 | フェーズ | 除去対象 | 節約効果の目安 |
 |----------|----------|---------------|
@@ -206,16 +223,24 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - `.env` に **`OPENAI_API_KEY`** を記入する。
 - 設定は **`config/image_generation.json`** の `providers.openai`。既定の通信先は `https://api.openai.com/v1/images/generations`。
 - params JSON か CLI で **`provider=openai`** を選ぶ。
-- 既定モデルは `config` の `providers.openai.default_model` で管理する。`gpt-image-2` のような次世代名を直接固定せず、`openai` provider の `model` を config で差し替える。
+- 既定モデルは `config` の `providers.openai.default_model` で管理し、現在は `gpt-image-2` を使う。旧 `gpt-image-1.5` が必要な比較・互換確認では、CLI／params JSON の `model` に明示する。`provider=openai` は OpenAI Images API 直結であり、OpenRouter の `gpt_image_2`（`openai/gpt-image-2`）とは別のモデル指定形式を使う。
+- 漫画batchでは `--aspect-ratio manga_b5_portrait` / `portrait` が `size=1024x1536`、`story_vertical` が `size=864x1536` へ解決される。`--size WIDTHxHEIGHT` を付けると比率presetより優先する。省略時の `size=1024x1024` は維持する。
+- `manga_b5_portrait` の比率はprovider共通ではない。Grok / OpenRouterは `3:4`、OpenAIは `2:3`（`1024x1536`）。同じ3:4で比較するOpenAIジョブは `--aspect-ratio 3:4`（`1024x1344`）を明示する。旧 `gpt-image-1.5` ではGPT Image 2向け任意sizeのAPI受理を前提にしない。
 - YAMLをそのまま読ませる漫画ページ生成や、背景概念のような構造化プロンプトに向く。タグ列だけに強く寄せたい場合は NovelAI / Forge を優先する。
 
 ## 前提（OpenRouter）
 
 - `.env` に **`OPENROUTER_API_KEY`** を記入する。
-- 設定は **`config/image_generation.json`** の `providers.openrouter`。既定の通信先は `https://openrouter.ai/api/v1/chat/completions`。
+- 設定は **`config/image_generation.json`** の `providers.openrouter`。legacyの既定通信先は `https://openrouter.ai/api/v1/chat/completions`。`--page-compiler page_render_plan` のときは専用の `page_generate_path`（`https://openrouter.ai/api/v1/images`）を使う。
 - params JSON か CLI で **`provider=openrouter`** を選ぶ。
-- OpenRouter の画像生成は `modalities: ["image", "text"]` と `image_config` を使う。画像は `choices[].message.images[].image_url.url` に base64 data URL として返る。
-- 画像モデルは OpenRouter Models API の `output_modalities=image` で確認する。2026-05-06 時点では `nano_banana` → `google/gemini-2.5-flash-image`、`nano_banana_2` → `google/gemini-3.1-flash-image-preview`、`gpt_image_2` → `openai/gpt-5.4-image-2` を alias 登録している。Grok Imagine 相当は一覧で未確認。
+- legacyの画像生成は `modalities: ["image", "text"]` と `image_config` を使う。画像は `choices[].message.images[].image_url.url` に base64 data URL として返る。
+- PageRenderPlanの画像生成は公式Image APIの `input_references` を使う。`asset_references[]` の declared orderを保持し、role/order/SHA-256はmanifestと保存JSONのmetadataへ残す。APIへ独自属性を追加しない。
+- PageRenderPlan用の既定modelは `providers.openrouter.page_default_model`（現在は `google/gemini-3.1-flash-image`）。legacyの `default_model`（現在は `google/gemini-2.5-flash-image`）は変えない。CLI／paramsの `model` があれば専用既定より優先する。
+- `provider=openrouter` は共通transportとし、PageRenderPlanでは解決modelを `image_model_profiles` で検証する。Nano Banana 2（`google/gemini-3.1-flash-image`）は `resolution`、GPT Image 2（`openai/gpt-image-2`）は `quality` を使う。非対応の指定は黙って捨てず停止する。
+- `nano_banana_2` は現行の非preview slugへ解決し、`nano_banana_2_preview` は旧preview経路を明示するaliasとして分離する。`gpt_image_2` は `openai/gpt-image-2` へ解決する。
+- OpenRouterの参照枚数はmodel/providerごとに異なるため、profileの上限で検証し、切らない。送信前にpath・MIME・SHA-256を検証し、APIへは検証済みの全参照を宣言順で渡す。
+- 画像モデルは OpenRouter Image Models API と各endpointの `supported_parameters` で確認する。Nano Banana 2は14枚、GPT Image 2は16枚の参照上限をprofileへ記録している。Grok Imagine相当はこのprofile対象外。
+- 漫画batchではGrokのページ既定比率をOpenRouterへ自動継承しない。比較・本番前確認では `--aspect-ratio manga_b5_portrait`（`3:4`）などを明示する。省略時は `1:1` になる。
 
 ## Codex / ChatGPT 内蔵画像生成の保管
 
@@ -243,7 +268,7 @@ python tools/codex_builtin_image_archive.py \
 
 ## 保存先の約束（推奨）
 
-`.rulesync/rules/overview.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
+`.rulesync/rules/workflow-specification.md` の **画像ストック** とスキル **`novel-image-layout`** に合わせるのが第一候補。
 
 | 種別 | 推奨パス（`output_dir`） | メモ |
 |------|-------------------------|------|
@@ -256,12 +281,12 @@ python tools/codex_builtin_image_archive.py \
 
 ## パラメータ JSON（公開スキーマ）
 
-`tools/fixtures/forge_params.example.json`・`forge_params.flux.example.json`・`novelai_params.example.json`・`grok_params.example.json` を基準にする。
+`tools/fixtures/forge_params.example.json`・`forge_params.flux.example.json`・`novelai_params.example.json`・`novelai_v5_params.example.json`・`novelai_v5_chars_params.example.json`・`grok_params.example.json` を基準にする。
 
 - **必須**: `provider`, `prompt`, `output_dir`
 - **共通の任意**: `negative_prompt`, `seed`, `width`, `height`, `steps`, `cfg_scale`, `sampler_name`, `file_prefix`, `count`（1〜`max_count`）
 - **Forge の任意**: `scheduler`, `distilled_cfg_scale`, `aspect_ratio_preset`
-- **NovelAI の任意**: `model`, `action`, `uc_preset`, `quality_toggle`, `params_version`, `sm`, `sm_dyn`
+- **NovelAI の任意**: `model`（`v5-full` 等の alias 可）, `action`, `uc_preset`, `quality_toggle`, `quality_preset`（`standard` / `light`。V5 のみ接尾辞が変わる）, `params_version`, `sm`, `sm_dyn`, `straight_alpha`, `tag_hint_transparent_background`, `upscaled_enhance`（前二者は txt2img の opt-in。`upscaled_enhance` は img2img 専用で、`action=generate` では送ると HTTP 400）, `split_pipe_characters`（opt-in。`ベース | キャラ` を `char_captions` へ分割。既定は off で pipe を `input` 連結のまま）, `character_prompts`（明示リスト。pipe 分割より優先）, `centers`（0–1 の `{x,y}` 配列。件数はキャラ数と一致。未指定の `use_coords` は True になる）, `use_coords`
 - **Grok の任意**: `model`, `response_format`, `aspect_ratio`, `aspect_ratio_preset`, `resolution`
 - **OpenAI の任意**: `model`, `size`, `quality`, `background`, `output_format`, `response_format`, `moderation`
 
@@ -292,6 +317,10 @@ EOF
 
 ```bash
 python tools/image_provider_generate.py --params tools/fixtures/novelai_params.example.json --dry-run
+```
+
+```bash
+python tools/image_provider_generate.py --params tools/fixtures/novelai_v5_params.example.json --dry-run
 ```
 
 ```bash
@@ -386,6 +415,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --aspect-ratio manga_b5_portrait --resolution 2k
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step1-pages --aspect-ratio manga_b5_portrait --resolution 2k
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok_pro --source step1-pages --aspect-ratio manga_b5_portrait --resolution 2k --model v2 --grok-image-quality medium --dry-run
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider grok --source step2-pages --aspect-ratio manga_b5_portrait --resolution 2k
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター --provider novelai --no-character-anchors
 ```
@@ -395,8 +425,10 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - `logs/image_provider_generate.log` に要約を追記。
 - **HTTP 404**（`{"detail":"Not Found"}`）→ **REST API 未登録**。`--api` 付きで Forge を再起動し、`--probe` で `/sdapi/v1/samplers` が 200 になるか確認。
 - **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/image_provider_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
-- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → `nai-diffusion-4*` 系は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
-- **Grok が HTTP 400（プロンプト上限超過）** → xAI API はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 文字 ≒ 3 バイト）。`config/image_generation.json` の `providers.grok.max_prompt_bytes`（既定 `7800`）が設定されていれば `tools/image_provider_novel_manga_batch.py` が自動圧縮する。設定が **未設定**の場合は `7800` を追加してから再実行する（詳細は「Grok プロンプト上限と自動圧縮」節）。
+- **NovelAI が HTTP 500（`Internal Server Error` のみ）** → V4 / V4.5 / V5 は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
+- **NovelAI で「Vibe Transfer は NovelAI V5 では未提供」** → 参照画像付きジョブに V5 を明示している。`model` を `v4-5-full` にするか、参照を外す。`model` 未指定なら自動で V4.5 に残る。
+- **Grok が HTTP 400（プロンプト上限超過）** → UTF-8 バイト制限。内部ゲートは `providers.grok.max_prompt_bytes`（暫定 `7800`、公式上限そのものではない）。未設定なら追加してから再実行する（「Grok プロンプト上限」節）。PageRenderPlan 経路は送信前に超過で停止する。legacy は圧縮後でも超えれば HTTP 400 になり得る。
+- **`grok_image_quality` で停止** → 2.0 以外の model、非 Grok provider、空文字は意図どおりの拒否。`--model v2` と low/medium/auto を確認する。
 - **Grok の URL 応答が期限切れ** → xAI docs でも生成 URL は一時的。`response_format: "b64_json"` を優先し、即保存する。
 - HTTP その他 4xx/5xx → レスポンス先頭を stderr に表示。
 - **返却 PNG が異常に小さい**（既定 512 バイト未満）→ **exit 8**。Forge は `image_generation.json` の Flux 向け数値・VAE・モデルを UI と揃えて再試行。NovelAI は prompt / sampler / model の組み合わせを見直す。
@@ -407,5 +439,5 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - タグ一括: `tools/image_provider_novel_tag_batch.py`（`tag/characters/*.yaml` の `prompt_variants` を YAML 直読みして連続 txt2img）
 - 漫画一括: `tools/image_provider_novel_manga_batch.py`（`manga/manga_*.md` の step1 内 `tag:` ブロックをコマ順に txt2img）
 - 設定: `config/image_generation.json`, `.env`
-- 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/grok_params.example.json`
+- 例: `tools/fixtures/forge_params.example.json`, `tools/fixtures/novelai_params.example.json`, `tools/fixtures/novelai_v5_params.example.json`, `tools/fixtures/grok_params.example.json`
 - タグルール: `_how_to/tag.md`, `_how_to/manga_tag.md`, `_how_to/manga.md`

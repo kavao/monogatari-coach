@@ -44,15 +44,16 @@ targets: ["*"]
    - 資料上の作品名が揺れる場合は、`config.md` に「資料上の別名」を残す。
 4. **作品フォルダへ展開**
    - `novels/<novel_code>_<novel_title>/` を作成、または既存作品を更新する。
+   - **新規作品**は `python tools/novel_onboard.py novels/<novel_code>_<novel_title>` を先に実行する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する。OFF はユーザーが明示したときだけ、`--metron OFF` / `--chronos OFF` を付ける。既存作品へこの初期化を行ってはならない。
    - `proposal.md`, `design_specification.md`, `config.md`, `character.md`, `world.md`, `_meta.md`, `_meta.yaml`, `_novel_text/`, `_reader/` を揃える。
-   - `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` 雛形と `references/novelai/` を作成する。
+   - `novel_onboard.py` が作成した `config.md` の METRON / CHRONOS 行を、資料の整理後も保持する。`python tools/novel_scaffold.py novels/<作品>` は既存作品の不足ディレクトリ・`_meta.yaml` を補う用途で使い、検査フラグを推測で変更しない。
 5. **原資料の保全**
    - 原資料は改変しない。
    - 必要に応じて作品フォルダ内の `_source_material/` に参照用として退避する。
    - 以後の改稿・執筆では、展開済みの `novels/<作品>/` を正とする。
 6. **検証**
    - `tools/novel_code_allocate.py verify novels/<作品>` で `config.md` とフォルダ名を確認する。
-   - `tools/novel_project_check.py novels/<作品>` で執筆前の必須ファイル・ディレクトリを確認する。
+   - `tools/novel_project_check.py novels/<作品> --check-inspection-layers` で執筆前の必須ファイル・ディレクトリと検査レイヤの保存先を確認する。新規フォルダを `--bootstrap` する場合も既定は ON で、OFF は `--metron OFF --chronos OFF` のように明示する。
 
 ## 禁止・注意
 

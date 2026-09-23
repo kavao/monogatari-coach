@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "request_id": "WRQ-0001",
+  "run_id": "run-0001",
+  "input_hashes": [
+    {
+      "path": "_novel_text/novel_text01.md",
+      "raw_sha256": "sha256:653f0702efe7b8a5c2dc00acc0bd694df2f170bf638440730b2b8c25b705028f"
+    },
+    {
+      "path": "_metron/ch01-001/contract.yaml",
+      "raw_sha256": "sha256:ef7f79413f6fec5bd9e1fcb14d68eb6717b8cff22adebcf4e90f99f039bc8c6b"
+    },
+    {
+      "path": "_metron/ch01-001/beats.yaml",
+      "raw_sha256": "sha256:46bd05e9ceea8a1a70fcb7d66038a4d0a0b4d51d400e54b9607c09dc62ade000"
+    },
+    {
+      "path": "chronos/chronos.config.yaml",
+      "raw_sha256": "sha256:91e6e3b164a3c62239315ab0b8fb7e976b1beccc63ba79fc151ff57d4e49202c"
+    },
+    {
+      "path": "chronos/events/ch01.yaml",
+      "raw_sha256": "sha256:72d226d3e3e124aa44e1443f77c5363bc6caa03942043e68333b913b177f66bd"
+    }
+  ],
+  "expected_checks": [
+    {
+      "event_id": "EVT-0001",
+      "actor_id": "CHR-a",
+      "dimension": "outfit",
+      "state_at": "after",
+      "expected_value": "travel"
+    },
+    {
+      "event_id": "EVT-0001",
+      "actor_id": "CHR-a",
+      "dimension": "whereabouts",
+      "state_at": "after",
+      "expected_value": "LOC-station"
+    },
+    {
+      "event_id": "EVT-0002",
+      "actor_id": "CHR-a",
+      "dimension": "whereabouts",
+      "state_at": "after",
+      "expected_value": "LOC-station"
+    }
+  ],
+  "forbidden": [
+    "旅の目的を途中で変える",
+    "切符を買わずに改札を越える"
+  ],
+  "instruction_chars": 92,
+  "prose_start_end": {
+    "start_location": "家の玄関",
+    "end_location": "駅の券売機",
+    "note": "散文。LOC-home / LOC-station へ変換しない"
+  },
+  "unresolved": []
+}

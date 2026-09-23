@@ -24,6 +24,42 @@
 - **優先すべき語彙・レトリック**: (特定の作家の癖や、よく使う比喩)
 - **AIへの「なりきり」指示**: (例: 「今は編集者として厳しく見て」「今は情熱的な作家として一気に書いて」)
 
+## 3.5 Plan Mode Gate B 記録
+企画完了時にスキル **`novel-planning`** の Gate B を実施した事実を残す。`novel_project_check` の OK（Gate A）だけでは企画完了としない。
+
+創作技法は **葉ファイルの契約**である。索引・ディレクトリ目次は selected に入れない（選定補助へ）。`required_missing` はここに status として書かない。selected の `effective_path` が実在しないときは検査失敗として Gate B を完了しない。
+
+**`working_path` に書くパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは working があればそれ、無ければ standard。標準と作業は合成しない。
+
+**`not_applicable` はカタログ全未選択ではない。** プロファイル上の必須候補で選ばなかった葉と、`genre/*` のようなグループだけを理由付きで書く。
+
+既存作品の旧形式リスト（パス箇条書きや索引混在）は、ユーザーが Gate B 再実施を指示するまで置き換えない。
+
+- **作品経路**: (新規起こし / 資料取り込み / 既存作品の洗練)
+- **作品プロファイル**: (複数可。非該当は理由)
+- **創作技法契約**:
+  - **pack_id**: (任意。例: general / mature / body_therapy。無ければ葉列挙のみ。既存作品へ自動では付けない)
+  - **pack_add**: (パックに無い葉の relative_id。無ければなし)
+  - **pack_exclude**: (パックから外す relative_id。無ければなし)
+  - **selected**（再読する葉。パック展開分と重複して書いてよい）:
+    - relative_id: (例: naming.md)
+      - role: (プロファイル必読 / エピソード選択 / 命名 など)
+      - why: (1行)
+      - standard_path: (_how_to.example/... またはなし)
+      - working_path: (_how_to/... またはなし。書いたパスは必ず自己完結ファイル。調整メモは書かない)
+      - effective_path: (実際に読んだ1ファイル)
+      - bound_at: (YYYY-MM-DD)
+  - **not_applicable**（読まない。再読しない。カタログ全未選択は書かない）:
+    - pattern または relative_id: (必須候補の見送り、または例: genre/*)
+      - why: (必須)
+  - **選定補助**（索引。後工程の再読義務なし）:
+    - (例: _how_to/_index.md。無ければ _how_to.example/_index.md)
+- **発動したユーザスキル**: (例: character-body-pick。なければ非該当理由)
+- **pick**: (使った場合: list_id / seed / 採用結果。使わない場合: 非該当理由)
+- **タイトル命名**: (実施 / 既存記録確認 / 例外理由)
+- **設計の厚さ**: (初回: 各章○項目 → 洗練後: 各章○項目。相関図: あり/例外理由。必須構成要素: あり/非該当理由)
+- **Gate A の WARN**: (許容したものがあれば内容と扱い。なければなし)
+
 ---
 
 # II. 外部メタ情報（External Meta: カクヨム等投稿サイト・投稿用）
@@ -122,8 +158,12 @@ novelai:
 - **構図メモ（1行）**: （例: 雨上がりの夕暮れ、主人公が窓辺に立ち手のひらの雨粒を見つめるバストアップ。背後に未整理の机と書きかけの原稿）
 - **画像内文字**: 原則なし（タイトル・著者名は後載せ。要る場合は `cover_plan.md` に安全圏を1行メモ）
 - **計画状態**: （`未` / `計画済` / `YAML済` / `生成済` のいずれか）
+- **題字方針**: （`組版` / `logo_asset` / `後回し` のいずれか。表紙絵に文字を焼かない）
+- **題字ロゴ状態**: （`未` / `計画済` / `生成済` / `採用済` / `—`。方針が `組版` または `後回し` のときは `—`）
+- **題字ロゴ計画**: `cover/title_logo_plan.md`（方針が `logo_asset` のとき。雛形: `_how_to.example/publishing/title_logo_plan.md`）
+- **表紙レイアウト**: `cover.yaml`（配置正本。雛形: `_how_to.example/publishing/cover.yaml.example`）
 
-**§3.2 章別割当表に表紙行を載せない。** 表紙の進捗は本節と `cover_plan.md` で追う。
+**§3.2 章別割当表に表紙行を載せない。** 表紙絵の進捗は本節と `cover_plan.md`、題字・合成は本節と `cover.yaml`（および題字ロゴ計画）で追う。
 
 ## 3.2 章別挿絵割当表（TPO 正本・計画 MD / YAML より先に更新）
 
@@ -181,7 +221,7 @@ Tag Mode の**省略の仕方**を作品ごとに固定する。エージェン�
 
 ### カスタム要素（作品・ユーザー技法）
 
-**ボディー治療・pinkdark 等、`_how_to/` ユーザー領域の技法**に応じて追加する `variant_id` をここに列挙する。共有ルールでは具体名を必須にしない。
+作品固有の衣装・資料ポーズ・特殊な場面に応じて追加する `variant_id` をここに列挙する。共有ルールでは具体名を必須にしない。
 
 | `variant_id` | 見出し（短く） | `combines_with` | 備考 |
 |--------------|----------------|-----------------|------|
@@ -193,10 +233,10 @@ Tag Mode の**省略の仕方**を作品ごとに固定する。エージェン�
 ```markdown
 - **バリアント方針**: テンプレート一式
 - **カスタム要素**（この作品だけ）:
-  - 柚花: `103_show_treatment`, `104_union_vaginal`（combines_with: `006_nude`）
-  - 柚花: `004_body_therapy`, `007_treatment_arousal`（000番・§4 と整合）
+  - 柚花: `103_reference_pose`（combines_with: `001_normal`）
+  - 柚花: `004_special_outfit`（000番・§4 と整合）
 - **除外（ユーザー指定のみ）**: （例: 修司は資料・接触ポーズ不要）
-- **髪型方針**: （例: メッシュ系不使用。`wet_hair`/`messy_hair` は `003_treatment` 以降のみ。）
+- **髪型方針**: （例: メッシュ系不使用。`wet_hair`/`messy_hair` は `003_after_activity` 以降のみ。）
 ```
 
 **髪型方針**フィールドの書き方:
@@ -270,6 +310,30 @@ render_instruction:
 4. `embed_snapshots` → `novel_prompt_ir_validate.py` → エクスポート／生成。
 
 詳細なフィールド定義は **`.rulesync/skills/manga-prompt-ir/SKILL.md`** の「ユーザ指示の正本」を参照。
+
+---
+
+## 7. 出版パッケージ進捗（完成目安）
+
+紙・電子向けの **入稿入力〜閲覧用 proof PDF** の進捗をここに書く。`_meta.yaml`（画像バッチ定量）とは別。操作の正本は `docs/workflow/cover-composition.md` と `docs/workflow/publishing-package.md` / `paper-proof-export.md`。
+
+| 項目 | 状態 | メモ |
+|------|------|------|
+| book.yaml | （`未` / `済`） | 書誌・原稿順・挿絵宣言 |
+| rights.yaml | （`未` / `済`） | 素材・フォント許諾 |
+| cover.yaml | （`未` / `済` / `—`） | 題字・著者レイヤー。表紙なしなら `—` |
+| 題字レイヤー | （`組版` / `logo_asset` / `未` / `—`） | §3.1 題字方針と一致させる |
+| book.lock.yaml | （`未` / `済`） | export review 通過後に lock |
+| interior.pdf | （`未` / `済`） | `_publication_output/<build-id>/` |
+| reader-proof.pdf | （`未` / `済`） | 表紙合成＋本文の閲覧 proof |
+| preflight | （`未` / `errors=0`） | `book_preflight.py` |
+| 権利 confirmed（販売前） | （`未` / `済` / `—`） | 公開・販売時のみ必須。proof 確認だけでは `未` のまま可 |
+
+- **最新 build-id**: （例: `first-bunko-proof`）
+- **プロファイル**: （`bunko` / `jis_b5`）
+- **次回の出版タスク**: （例: reader-proof 目視／題字を logo_asset へ切替／権利 confirmed）
+
+印刷所向け wrap cover（表1・背・表4）と EPUB は本節の完成条件に含めない。
 
 ---
 

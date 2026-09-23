@@ -1,0 +1,11 @@
+schema_version: 1
+merge_order:
+  - _how_to.example/pick_registry
+  - _how_to/pick_registry
+  - novels/<作品>/pick_registry
+fragments:
+  character: character.yaml
+  episode: episode.yaml
+  mature: mature.yaml
+  work: work.yaml
+default_tool: json_weighted_pick

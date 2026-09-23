@@ -1,0 +1,94 @@
+schema_version: 2
+
+book:
+  title: "銀のスライムは洞窟で王になる"
+  subtitle: null
+  volume: 1
+  author:
+    name: "著者名"
+    kana: "ちょしゃめい"
+  illustrator: null
+  genre: [ライトノベル, ファンタジー]
+  synopsis: "洞窟で目覚めた小さな金属スライムが、自分でも知らない強さで仲間を守る。"
+
+format:
+  primary: paperback
+  writing_direction: vertical
+  binding: right
+  trim_size: 文庫
+  target_pages: null
+
+manuscript:
+  frontmatter:
+    - id: characters
+      title: "登場人物"
+      file: book_matter/frontmatter/characters.md
+      start_page_policy: odd_page
+  chapters:
+    - id: ch01
+      title: "第一章　洞窟で目覚めたらぷるぷるだった"
+      file: _novel_text/novel_text01.md
+      start_page_policy: odd_page
+  backmatter:
+    - id: afterword
+      title: "あとがき"
+      file: book_matter/backmatter/afterword.md
+
+illustrations:
+  - id: illust_cover
+    type: cover
+    color: true
+    scene_ref: null
+    brief: "浅い水面に銀色のスライムが映る表紙"
+    status: planned
+    asset: null
+  - id: illust_001
+    type: insert
+    color: true
+    scene_ref: ch01-003
+    brief: "火球から仲間を庇う場面"
+    status: planned
+    asset: null
+
+cover:
+  front:
+    title_display: null
+    credit_author: true
+    credit_illustrator: false
+  spine:
+    enabled: true
+  back:
+    isbn: null
+    barcode: false
+    blurb: null
+
+colophon:
+  publish_date: null
+  edition: 初版
+  publisher: null
+  contact: null
+  printer: null
+  copyright_notice: null
+
+export:
+  paper:
+    bleed_mm: 3
+    format: pdf_x1a
+  ebook:
+    format: epub3
+    cover_image: null
+  web:
+    platform: kakuyomu
+    chapter_split: per_chapter
+
+sales:
+  catch_copy: null
+  description: null
+  tags: [スライム, ファンタジー]
+  price:
+    paper_jpy: null
+    ebook_jpy: null
+
+resources:
+  fonts: [しっぽり明朝]
+  materials: []

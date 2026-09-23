@@ -10,6 +10,16 @@
 
 - [Getting Started](getting-started/index.md)
   初回セットアップ、`uv`、`.env`、主要コマンドの最短導線
+- [Rulesync の固定運用](rulesync.md)
+  固定版バイナリの取得、ルール生成、整合確認
+- [開発者向け検証コマンド](developer-verification.md)
+  変更種別ごとの確認、コミット前の総合ゲート、実クライアント観測
+- [METRON 技術詳細](architecture/metron.md)
+  Beat 単位の本文計測、失敗判定、V1 局所修復の技術仕様
+- [CHRONOS 技術詳細](architecture/chronos.md)
+  物語内部時間のイベント YAML、順序制約、CHR001 の検査
+- [Writing bridge の局所修復と本文反映](architecture/writing-bridge.md)
+  METRON / CHRONOS が ON の作品で、執筆・Deepen・場面保存を同じ本文版へつなぐ
 - [Image Generation](image-generation/index.md)
   Forge / NovelAI / Grok の使い分け、既定値、バッチ生成
 - [Manga prompt IR / パイプライン](image-generation/manga-prompt-ir.md)
@@ -26,8 +36,14 @@
   既存資料を作品フォルダへ展開するときの手順と保存先
 - [Planning](workflow/planning.md)
   企画書・設計書・人物・世界観を揃えて執筆前確認へ進む流れ
+- [Publishing Package（Phase 1）](workflow/publishing-package.md)
+  読者向けの付属原稿、挿絵・権利・奥付の点検、入稿入力の lockfile 管理
+- [表紙合成・題字ロゴ（Phase 1.5）](workflow/cover-composition.md)
+  題字方針（組版／logo_asset）、`cover.yaml`、題字ロゴ計画から reader-proof まで
+- [紙書籍 proof PDF（Phase 2A）](workflow/paper-proof-export.md)
+  lock 済みの出版入力から縦書き本文 proof（`bunko` / `jis_b5`）を生成し、PDF を機械検査する手順
 - [Reader Output](workflow/reader-output.md)
-  下読み・書評・興味判定の保存先とチャット要約の扱い
+  下読み・書評・興味判定・読み進み感想の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
   リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)

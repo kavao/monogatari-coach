@@ -15,17 +15,18 @@ targets: ["*"]
 リポジトリルートで、対象作品フォルダを渡す:
 
 ```bash
-# 基本チェック
+# 基本チェック（character.md 構造 lint 含む・既定）
 python tools/novel_project_check.py novels/NNN_作品タイトル
 
 # 画像保存フォルダも含めた完全チェック（推奨）
 python tools/novel_project_check.py novels/NNN_作品タイトル --check-image-layout --require-tag
 
-# character.md の構造 lint も含める
-python tools/novel_project_check.py novels/NNN_作品タイトル --require-character-structure --character-profile plan
+# character.md 構造 lint をスキップする場合
+python tools/novel_project_check.py novels/NNN_作品タイトル --no-character-structure
 ```
 
 **改善内容（今後の運用）**:
+- **既定で `character.md` 構造 lint**（`plan` profile）。無効化は `--no-character-structure`
 - `--check-image-layout`: `novel_image_layout.py` と連携し、`tag/<romaji>/` と `manga/_assets/` の完全性を検証
 - 出力が明確化（「=== 結果: OK ===」と「次にすべきことリスト」を自動表示）
 - Windows コンソールの文字化け対策（`stdout.reconfigure(utf-8)`）
@@ -48,20 +49,27 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --require-char
 | `--min-file-bytes N` | 空ファイル除けのしきい値（既定 48） |
 | `--json` | CI やエージェント向け JSON 出力 |
 | `--bootstrap` | `_meta.yaml` / `_novel_text/` / `_reader/` / `references/novelai/` を不足分だけ作成してからチェック |
-| `--require-character-structure` | `tools/novel_character_md_check.py` と同じ基準で `character.md` の構造を必須チェック |
+| `--no-character-structure` | `character.md` 構造 lint をスキップ（**既定は実行**） |
+| `--require-character-structure` | 構造 lint を明示的に有効化（既定と同じ。後方互換用） |
 | `--character-profile NAME` | `character.md` 構造 lint の profile（既定 `plan`） |
 | `--character-strict` | 表形式などの移行猶予 WARN を ERROR 扱いにする |
 | `--character-suggest` | `--json` 出力に不足項目追記案・表形式変換案を含める |
+| `--check-inspection-layers` | `config.md` の METRON / CHRONOS / AUDIT_LOG フラグと保存先、本文がある未計測章を確認（WARN は終了コード 0） |
+
+創作技法契約の実在確認は Gate A に含めません。任意で `python tools/novel_howto_contract_check.py novels/<作品>` を使います。`_meta.md` は書き換えません。`--strict` は selected 欠落（パック展開後を含む）または新形式 `errors` を終了コード 1 にします。
 
 ## 不足時の典型対処
 
 - **`_novel_text/` または `_reader/` が無い**: ディレクトリを作成（空でよい。Git 用に `.gitkeep` を置いてもよい）。
 - **`tag/<romaji>/` 未作成の WARN**: スキル **`novel-image-layout`**（`tools/novel_image_layout.py scaffold`）で作成。
 - **採番 NG**: スキル **`novel-code-allocate`** に従い `config.md` の `| novel_ID |` 表とフォルダ名を揃える。
+- **METRON / CHRONOS ON で保存先なし**: `_metron/` を作り、`python tools/chronos_cli.py init novels/<作品>` する。新規起こしの標準は ON。新規フォルダを作るときは `novel_onboard.py` を入口にし、確認の返答がない場合は `config.md` に「未応答・既定 ON」を記録する（明示 OFF の場合だけ `--metron OFF` / `--chronos OFF`）。
+- **METRON ON で `_metron/` が空、または本文のある章に契約・Beat・run がない**: `--check-inspection-layers` の WARN に未計測章と欠落項目が列挙される。契約・Beat を標準値で自動生成せず、章の設計に沿って準備してから `writing_bridge` の `prepare` を実行する。WARN は本文保存の完了ゲートではない。
 - **character.md 構造 NG**: スキル **`novel-character-profile`** に従い、必須ラベルの追加や表形式から `- **ラベル**:` 形式への移行を行う。
 
 ## 正本
 
-- ファイル一覧の意味付け: **`.rulesync/rules/overview.md`** の「小説ファイル (novels/...)」
+- ファイル一覧の意味付け: **`.rulesync/rules/workflow-specification.md`** の「小説ファイル (novels/[novel_code]_[novel_title]/)」
 - 人物プロフィールの構造 lint: スキル **`novel-character-profile`**
 - 本文保存の確認: スキル **`novel-text-file-output`**
+- 検査フラグ: `--check-inspection-layers`。METRON / CHRONOS ON の執筆接続は **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」

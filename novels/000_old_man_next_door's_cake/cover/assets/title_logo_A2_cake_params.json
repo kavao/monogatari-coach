@@ -1,0 +1,10 @@
+{
+  "provider": "grok_pro",
+  "prompt": "Japanese literary novel title logo. Simple quiet thin Mincho vertical single column reading exactly the ten characters: 隣 の 爺 さ ん の ケ ー キ (「隣の爺さんのケーキ」), all fully legible. Same simple elegant base as a quiet book title—not flashy. Integrate a SMALL imperfect homemade sponge cake as a logo emblem inside the composition: short cake with slightly sparse cream and two tiny red strawberry-jam accents; handcrafted, modest, charming. The cake must be secondary to the text (emblem size), placed above, below, or beside the vertical title with a thin vertical rule allowed. Warm ivory cream lettering near #f7f2e8 on solid black background (or transparent). Do not include: people, faces, kitchen interior, room, window, table scene, full book cover illustration, huge cake dominating the frame, food photography poster, horizontal main title, English title, author name, watermark, speech bubble, neon, chrome, glitter, blurry or missing characters.",
+  "output_dir": "novels/000_old_man_next_door's_cake/cover/assets",
+  "file_prefix": "title_logo_A2_cake",
+  "count": 2,
+  "aspect_ratio_preset": "story_vertical",
+  "resolution": "2k",
+  "response_format": "b64_json"
+}

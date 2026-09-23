@@ -11,7 +11,11 @@ targets: ["*"]
 
 First Reader Mode と Interest Check Mode で、評価結果の所在を曖昧にしない。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価出力の保存先」。このスキルは、その保存条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価出力の保存先」。このスキルは、その保存条件を満たすための実行手順を定める。
+
+## 創作技法契約
+
+既定は **評価は契約外**。工程正本（`reader.md` / `standard_reader.md`）は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ再読する。`pack_id` があるときは先に `novel_howto_contract_check.py --strict`。終了コード 0 以外は評価を始めず未完了。0 のときだけ `--json` の `present` を再読する。完了報告に「評価は契約外（工程正本のみ）」または再読した葉の拠り所1句を書く。
 
 ## 保存先（必須）
 
@@ -139,15 +143,17 @@ G3（全文）評価で全文一括読み込みが困難な場合（目安: **�
 - 重要な理由を1〜3行
 - 改善ポイントの要約
 - 保存先ファイルパス
+- 評価は契約外、または再読した契約葉の要約
 
 ## 査証ログとの関係
 
 - `_reader/` は評価本文の正本。
 - `_workingspace/log/` は「評価を実施し、どのファイルへ保存したか」という作業事実だけを追記する。
-- 査証ログの追記はスキル **`workspace-audit-log`** と `tools/workspace_audit_log.py append` に従う。
+- 査証ログの追記はスキル **`workspace-audit-log`** と `tools/workspace_audit_log.py append --novel novels/<作品>` に従う。
 
 ## 関連
 
-- 概念正本: `.rulesync/rules/concepts.md`（評価出力の保存先）
-- 入口ルール: `.rulesync/rules/overview.md` §2.6（First Reader Mode）、§2.7（Interest Check Mode）
+- 概念正本: `.rulesync/rules/workflow-specification.md`（評価出力の保存先）
+- 詳細仕様: `.rulesync/rules/workflow-specification.md`（First Reader / Interest Check）
+- 読み進み感想: **`novel-reader-walk`**
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

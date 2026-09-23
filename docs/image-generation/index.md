@@ -7,12 +7,14 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 ## 関連ファイル
 
 - 実行クライアント: [`/tools/image_provider_generate.py`](../../tools/image_provider_generate.py)
+- 既存画像のImage2Imageリライト: [image-provider-edit.md](image-provider-edit.md)
 - 漫画ページ一括生成: [`/tools/image_provider_novel_manga_batch.py`](../../tools/image_provider_novel_manga_batch.py)
 - キャラタグ一括生成: [`/tools/image_provider_novel_tag_batch.py`](../../tools/image_provider_novel_tag_batch.py)
 - 設定: [`/config/image_generation.json`](../../config/image_generation.json)
 - 環境変数テンプレート: [`/.env.example`](../../.env.example)
 - 詳細スキル: [`image-provider`（旧 `forge-txt2img`）](../../.rulesync/skills/forge-txt2img/SKILL.md)
 - 漫画ページ IR・検証・パイプライン: [manga-prompt-ir.md](manga-prompt-ir.md)
+- 写植と領域合成（ローカル）: [manga-page-edit.md](manga-page-edit.md)
 - 互換 Step1/Step2・タグ生成テンプレ: [manga-tag-generation.md](manga-tag-generation.md)
 - 挿絵・表紙 IR・バッチ生成: [illustration-prompt-ir.md](illustration-prompt-ir.md)
 - Step2 編集時の必読チェック（創作技法・`_how_to`）: [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)
@@ -26,17 +28,17 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 | provider | モデル | 主な用途 |
 |----------|--------|---------|
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
-| `novelai` | `nai-diffusion-4-5-full` など | コマ生成（クラウド） |
-| `grok` | `grok-imagine-image`（standard） | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
-| `grok_pro` | `grok-imagine-image-quality` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵の高品質生成 |
-| `openai` | `gpt-image-1.5` など | ページ生成の代替 |
+| `novelai` | 既定 `nai-diffusion-5-full`。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
+| `grok` | `grok-imagine-image-2.0` | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
+| `grok_pro` | `grok-imagine-image-2.0` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵。1.0 は `--model standard`、quality slug は `--model quality` |
+| `openai` | `gpt-image-2`（旧 `gpt-image-1.5` も明示指定可） | ページ生成の代替 |
 | `openrouter` | `google/gemini-2.5-flash-image` など | OpenRouter 経由の画像生成 |
 
-`grok` と `grok_pro` は同じ xAI API エンドポイントを使いますが、`config/image_generation.json` の `default_model` が異なります。ツール内部では `_GROK_FAMILY = {"grok", "grok_pro"}` として同系として扱います。`grok_pro` は provider 名の互換名として残し、中身は xAI の現行高品質画像モデル `grok-imagine-image-quality` を指します。
+`grok` と `grok_pro` は同じ xAI API エンドポイントを使いますが、`config/image_generation.json` の `default_model` が異なります。ツール内部では同系として扱います。`grok_pro` は provider 名の互換名です。
 
-`grok-imagine-image-pro` は xAI の 2026-05-15 退役対象です。古い設定から移行する場合は `grok-imagine-image-quality` を使います。
+`grok-imagine-image-pro` は 2026-05-15 退役対象で、quality slug へ寄せています。**quality slug は 2026-11-02 に退役**し、以後の同名要求は `grok-imagine-image-2.0` の `quality=low` で処理されます。このリポジトリの `grok` と `grok_pro` の既定 model は 2.0 です。
 
-xAI の画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付けます。代表 preset は `square` = `1:1`、`portrait` / `manga_b5_portrait` = `3:4`、`book_cover` / `cover_portrait` = `2:3`、`story_vertical` = `9:16`、`landscape` / `wide` = `16:9` です。
+xAI の画像生成は `resolution: 1k / 2k` と `aspect_ratio` を受け付けます。代表 preset は `square` = `1:1`、`portrait` / `manga_b5_portrait` = `3:4`、`book_cover` / `cover_portrait` = `2:3`、`story_vertical` = `9:16`、`landscape` / `wide` = `16:9` です。2.0 は `21:9` / `5:2` も受けます。
 
 ---
 
@@ -58,10 +60,10 @@ MONOCRI_CHARACTER_TAG_PROVIDER_DEFAULT=novelai
 # 漫画コマ生成 (--source step1-panels)
 MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT=novelai
 
-# 漫画精密ページ生成 (--source step1-pages)  ← 既定: grok_pro
+# 漫画精密ページ生成 (--source step1-pages)  ← 既定: grok_pro（model は grok-imagine-image-2.0）
 MONOCRI_MANGA_STEP1_PAGES_PROVIDER_DEFAULT=grok_pro
 
-# 漫画ページ生成 (--source step2-pages)  ← 既定: grok_pro
+# 漫画ページ生成 (--source step2-pages)  ← 既定: grok_pro（同上）
 MONOCRI_MANGA_STEP2_PROVIDER_DEFAULT=grok_pro
 
 # 漫画背景概念生成 (--source background-concepts)
@@ -118,6 +120,8 @@ NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 ### NovelAI Vibe Transfer
 
 `tools/image_provider_generate.py` の NovelAI provider は、Vibe Transfer / ポーション用に `reference_image_paths` または `reference_image_multiple` を受け付けます。
+
+Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。通常のコマ生成（参照なし）の既定は `nai-diffusion-5-full` です。
 
 - `reference_image_paths`: PNG / JPEG / WEBP / `.naiv4vibe` / `.naiv4vibeBundle` のパス配列。`.naiv4vibe` / `.naiv4vibeBundle` は、ファイル内の `encodings.*.encoding` を優先して NovelAI API へ渡します。画像を含む形式なら画像も読み込みます。
 - `reference_image_multiple`: 画像をbase64化した文字列配列。`data:image/...;base64,` 付きでも受け付けます。
@@ -196,9 +200,21 @@ python tools/image_provider_generate.py --params path\to\novelai_vibe_params.jso
 - スロットごとに絶対値を直接指定したいときは params JSON で配列 `[0.45, 0.6]` を渡す（乗数モードではない）。
 - 係数は `0.01`〜`1.0` の範囲に自動 clamp されます。`0` を渡しても `0.01` として送信されます（API の不定挙動を回避するための下限）。
 
+#### 困ったとき
+
+- 「Vibe Transfer は NovelAI V5 では未提供」と出るときは、参照画像付きジョブに V5 を明示しています。`model` を `v4-5-full` にするか、参照を外します。
+- 通常のコマ生成で V4.5 に戻したいときは、params または CLI で `model` を `v4-5-full` にします。
+- HTTP 500 だけが返るときは、`uc_preset` を 4（Heavy）以上にし、`v4_prompt` が付いているか `--dry-run` で確認します。
+
 ### xAI / Grok
 
 `provider=grok` または `provider=grok_pro` を使う場合は、`.env` の `XAI_API_KEY` に xAI Console の API キーを入れます。
+
+`grok` と `grok_pro` の既定 model は `grok-imagine-image-2.0` です。1.0 に戻すときは `--model standard`、quality slug は `--model quality`（2026-11-02 退役予定）です。quality の config 既定は無く、省略するとリクエストに `quality` を載せず、API の auto（生成は low、編集は medium）になります。固定するときは `--grok-image-quality low` または `medium` です（CLI では `auto` も受けますが、並び比較には使いません）。優先順位は model が CLI > params JSON > config 既定、quality が CLI > params JSON > 未指定です。OpenAI や NovelAI に `--grok-image-quality` を付けるとエラーになります。
+
+`--dry-run` では `resolved_model` が出ます。本番後のメタ JSON では `response_model` で実際にサーブしたモデルを確認できます。
+
+2K の目安料金（公式、比較用）: quality slug $0.07、2.0 low $0.06、2.0 medium $0.08。入力画像は 1 枚ごとに課金されます。
 
 xAI 公式 Quickstart では、xAI アカウントを作成し、API Console の API Keys page でキーを発行して `XAI_API_KEY` として使う流れが示されています。利用にはクレジットやモデル利用条件が関係するため、料金・利用可能モデルは公式 Console と Pricing を確認してください。
 
@@ -246,6 +262,8 @@ python tools/env_check.py
 
 挿絵/表紙バッチでは `--prompt-formatter` で一時上書きできます。Grok / OpenAI 系では `negative_prompt` を API に送らず、`Do not include:` セクションへ統合します。
 
+`novelai_pipe` の既定は `input` への連結です。params に `split_pipe_characters: true` を付けると、左側が `base_caption`、右側以降が `char_captions` になります。位置は `centers` または `character_prompts[].center`（0–1、または A1–E5）で指定します。漫画 YAML には座標フィールドを足していません。例は `tools/fixtures/novelai_v5_chars_params.example.json` です。
+
 ---
 
 ## 漫画生成の運用
@@ -286,7 +304,7 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 
 複数視点を作る場合は `concept_id` に `establishing` / `wide` / `close` / `reverse` / `overhead` などの視点語を含めると、メタ情報と画像ファイルを追跡しやすいです。
 
-### Grok の縦横比と自動圧縮
+### Grok の縦横比とプロンプト上限
 
 `image_provider_novel_manga_batch.py` で **provider=grok_pro** かつ `--aspect-ratio` 未指定のとき、縦横比は次の順で決まります。
 
@@ -296,7 +314,12 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 
 `--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、設定が正しく渡っています。
 
-プロンプトが長くなりすぎた場合（step1-pages で日本語が多いとき）、`config/image_generation.json` の `max_prompt_bytes` に基づいて自動圧縮されます。圧縮が起きているかは `--dry-run` の出力で確認できます。
+プロンプトが長くなりすぎた場合（step1-pages / step2-pages で日本語が多いとき）、`config/image_generation.json` の `max_prompt_bytes`（既定 7800）が効きます。これは **公式上限そのものではなく、リポジトリ内の暫定ゲート** です。経路は次のとおりです。
+
+- **legacy formatter**: 従来どおり圧縮できます。`--dry-run` で圧縮後のバイト数を確認できます。
+- **PageRenderPlan compiler**: 7800 bytes を超えたら黙って切らず、組み立て時点で停止します。
+
+2.0 でも同じゲートを使います。
 
 ---
 
@@ -322,17 +345,21 @@ python tools/image_provider_novel_tag_batch.py novels/<作品> \
   --prepend-tags solo simple_background --dry-run
 ```
 
-**タグの前後追加**（`prepend_tags` → 固定タグ → `danbooru_tags` → `append_tags`）:
+**タグの前後追加とマスク**（`prepend_tags` → 固定タグ → `danbooru_tags` → `append_tags` → `replace_tags` → `omit_tags`）:
 
 | 層 | 指定 |
 |----|------|
-| 作品 | `_meta.yaml` の `character_tag_batch` |
+| 作品 | `_meta.yaml` の `character_tag_batch`（`omit_tags` / `replace_tags` 含む） |
 | キャラ | `tag/characters/<id>.yaml` の `tag_batch`（任意） |
-| CLI | `--prepend-tags` / `--append-tags`（その実行のみ） |
+| CLI | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW`（その実行のみ） |
 
-negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
+マスクは YAML IR を変えず、生成直前のプロンプトにだけ効きます。negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
 
-dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
+**漫画コマ（step1-panels）のマスク**: 同じ `omit_tags` / `replace_tags` を `image_provider_novel_manga_batch.py` でも使えます。`_meta.yaml` の `manga_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`（step1-panels のみ）。
+
+**挿絵・表紙のマスク**: `image_provider_novel_illustration_batch.py` でも同じ規則を使えます。`_meta.yaml` の `illustration_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`。
+
+dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` / `replace_tags: ...` / `omit_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
 
 ---
 
@@ -419,19 +446,31 @@ python tools/image_provider_novel_manga_batch.py novels/066_作品名 \
 
 環境変数 `MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND=1` でも同じ（CLI フラグが優先）。
 
-### 漫画精密ページ生成（step1-pages / grok_pro = quality）
+### 漫画精密ページ生成（step1-pages / grok_pro）
+
+既定 model は `grok-imagine-image-2.0` です。品質を固定するときは `--grok-image-quality` を付けます。`--dry-run` で `resolved_model` を確認してから本番実行します。`--dry-run` を先に行うのは、API 課金が発生する前に内容を確認するためです。
 
 ```bash
+# 確認（dry-run）— 既定 2.0。provider・resolved_model・保存先を表示する
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
-  --manga-stem manga_01 --source step1-pages \
+  --manga-stem manga_01 --source step1-pages --provider grok_pro \
   --aspect-ratio manga_b5_portrait --resolution 2k --dry-run
 
+# 確認（dry-run）— Imagine 2.0 medium。--provider grok_pro を付け、--model v2 が 2.0 実名へ解決する
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
-  --manga-stem manga_01 --source step1-pages \
+  --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --aspect-ratio manga_b5_portrait --resolution 2k \
+  --model v2 --grok-image-quality medium --dry-run
+
+# 本番実行（承認後。--dry-run を外す。既定 2.0 の例）
+python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
+  --manga-stem manga_01 --source step1-pages --provider grok_pro \
   --aspect-ratio manga_b5_portrait --resolution 2k
 ```
 
-### 漫画ページ生成（step2-pages / grok_pro = quality）
+実行後、`manga/_assets/manga_01/comic/` に画像とメタ JSON が保存されます。2.0 本番では JSON の `response_model` が `grok-imagine-image-2.0` になります。
+
+### 漫画ページ生成（step2-pages / grok_pro）
 
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
@@ -453,7 +492,35 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> \
 # openai を使う
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
   --manga-stem manga_01 --source step1-pages --provider openai
+
+# OpenAIで縦長ページを指定（manga_b5_portrait は 1024x1536 へ解決）
+python tools/image_provider_novel_manga_batch.py novels/<作品> \
+  --manga-stem manga_01 --source step1-pages --provider openai \
+  --aspect-ratio manga_b5_portrait --dry-run
+
+# サイズを直接指定する場合（--size が --aspect-ratio より優先）
+python tools/image_provider_novel_manga_batch.py novels/<作品> \
+  --manga-stem manga_01 --source step1-pages --provider openai \
+  --size 864x1536 --dry-run
 ```
+
+OpenAIの漫画batchは、`--aspect-ratio` を指定しない限り `1024x1024` です。主なpresetは `manga_b5_portrait` / `portrait` / `book_cover` = `1024x1536`、`story_vertical` = `864x1536`、`landscape` / `wide` = `1536x864` です。dry-runの `image_size` で解決後の `size` を確認してから本番実行します。
+
+**provider間の比率差に注意**: 同じ `manga_b5_portrait` でも、OpenAIは `1024x1536`（2:3）、Grok / OpenRouterは `3:4` です。Grok / OpenRouterと同じ3:4でOpenAIを比較するときは `--aspect-ratio 3:4`（`1024x1344`）を指定します。旧 `gpt-image-1.5` は明示指定できますが、GPT Image 2向けの任意サイズがAPI側で受理されるとは限らないため、比較時はサイズとモデルを揃えてください。
+
+### OpenRouterでPageRenderPlanを使う
+
+OpenRouterの新しいページcompilerを使う場合は、`--page-compiler page_render_plan`を明示します。legacyのOpenRouterページ生成は従来どおりです。新compilerは専用のImage APIを使い、Schema 1.1の参照画像を宣言順で渡します。
+
+```bash
+# 確認（dry-run）— provider・resolved_model・/images・文字方針・参照件数を表示
+python tools/image_provider_novel_manga_batch.py tools/manga_prompt_ir/examples/p4_compare \
+  --manga-stem manga_01 --source step1-pages --provider openrouter \
+  --page-compiler page_render_plan --text-mode letter_later \
+  --aspect-ratio manga_b5_portrait --dry-run
+```
+
+新compiler用の既定modelは `providers.openrouter.page_default_model`、legacy用は `providers.openrouter.default_model` です。APIキーの有効性をdry-runだけで確認することはできません。本番実行はdry-runの内容を確認してから行います。
 
 ### Forge の疎通確認
 
@@ -464,6 +531,8 @@ python tools/image_provider_generate.py --probe --provider forge
 ### OpenRouter
 
 `OPENROUTER_API_KEY` には、OpenRouter の通常の API Key を設定します（Management API Key では `HTTP 401: User not found` になります）。
+
+legacyの単体生成は `/chat/completions` を使います。漫画の `page_render_plan` は `/images` と `input_references` を使うため、利用modelがOpenRouterのImage Models APIで画像出力・参照入力に対応していることを確認してください。
 
 ```bash
 python tools/image_provider_generate.py \
@@ -478,11 +547,24 @@ python tools/image_provider_generate.py \
 | alias | OpenRouter model ID |
 |-------|---------------------|
 | `nano_banana` | `google/gemini-2.5-flash-image` |
-| `nano_banana_2` | `google/gemini-3.1-flash-image-preview` |
+| `nano_banana_2` | `google/gemini-3.1-flash-image` |
+| `nano_banana_2_preview` | `google/gemini-3.1-flash-image-preview` |
 | `nano_banana_pro` | `google/gemini-3-pro-image-preview` |
-| `gpt_image_2` | `openai/gpt-5.4-image-2` |
+| `gpt_image_2` | `openai/gpt-image-2` |
 
-2026-05-06 時点の OpenRouter `output_modalities=image` 一覧では、Grok Imagine 相当の model ID は確認できていません。追加された場合は `config/image_generation.json` の `providers.openrouter.model_aliases` に alias を足します。
+PageRenderPlanでは、モデルprofileに応じて送信項目が変わります。Nano Banana 2は `resolution`、GPT Image 2は `quality` を使います。参照画像の上限はprofileで検証し、超過時は切り捨てず停止します。OpenRouterのImage Models APIは提供modelとendpointごとの対応パラメータを更新するため、利用modelを変更する場合はprofileとdry-runを確認します。
+
+GPT Image 2を指定する場合は、次のようにqualityを明示できます。
+
+```powershell
+python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider openrouter `
+  --page-compiler page_render_plan --aspect-ratio manga_b5_portrait `
+  --model gpt_image_2 `
+  --image-quality medium --dry-run
+```
+
+漫画バッチは `--aspect-ratio` を省略するとOpenRouterでは `1:1` になります。比較・本番前確認では `manga_b5_portrait`（`3:4`）などを明示してください。dry-runでは `aspect_ratio`、`resolved_model`、`openrouter_profile`、`image_quality` または `image_resolution` を確認できます。`resolution` と `quality` を同時に送らないため、モデル比較ではそれぞれ別のdry-runを行います。
 
 ---
 

@@ -1,0 +1,106 @@
+schema_version: "1.0"
+meta:
+  intent: manga_page
+  reading_order: left_to_right
+  aspect_ratio: "2:3"
+  page_count: 1
+render_instruction:
+  task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
+  prompt_header: 非連番のpanel_idを保った1ページの漫画として描く。
+  panel_policy: panels[]の列挙順とpanel_idを保持する。
+  character_policy: character_idとvariant_idの組み合わせを保つ。
+  output_policy: コマ境界と読み順を明確にする。
+manga:
+  genre_tags:
+    - manga
+    - full_color
+  visual_tags:
+    - clean_lineart
+  panel_layout: 上段1コマ・下段3コマの4コマ構成
+scene:
+  location: 小さな駅の待合室
+  location_en: small railway station waiting room
+  time_of_day: 夕方
+  time_of_day_en: late afternoon
+character_ids:
+  - hero
+panels:
+  - panel_id: 10
+    summary: 主人公がベンチで封筒を見つめる導入。
+    subjects:
+      - character_id: hero
+        variant_id: 001_normal
+        description: ベンチに座る主人公
+        pose_action: 封筒を両手で持つ
+        position: midground
+        expression: 戸惑い
+    composition:
+      framing: medium shot
+      layout: 上段いっぱい
+      focus: 封筒
+    camera:
+      shot_size: medium shot
+      view_en: solo bust
+    text:
+      dialogue:
+        - speaker: hero
+          content: これは……？
+          bubble_type: small speech bubble
+          placement: upper left
+  - panel_id: 30
+    summary: 机の上の古い切符を見せる情報提示。
+    subjects:
+      - type: object
+        description: 古い切符と駅員のスタンプ
+        description_en: old train ticket and station stamp on a wooden desk
+        pose_action: 机の上に置かれている
+        position: foreground
+    composition:
+      framing: close-up
+      layout: 下段右
+      focus: 切符の印字面
+    text:
+      monologue:
+        - 見覚えのない行き先だ。
+  - panel_id: 50
+    summary: 窓の外のホームに風が通り抜ける背景コマ。
+    subjects:
+      - type: background
+        description: 夕暮れのホームと揺れる案内旗
+        description_en: empty platform at dusk with a fluttering station sign
+        pose_action: 風に揺れている
+        position: background
+    composition:
+      framing: wide shot
+      layout: 下段中央左
+      focus: ホームの案内旗
+    text:
+      narration:
+        - 発車ベルのない夕暮れだった。
+  - panel_id: 80
+    summary: 主人公が立ち上がり、ホームの方へ向き直る決断。
+    subjects:
+      - character_id: hero
+        variant_id: 001_normal
+        description: ホームへ向き直る主人公
+        pose_action: ベンチから立ち上がる
+        position: midground
+        expression: 決意
+    composition:
+      framing: bust up
+      layout: 下段中央右
+      focus: 主人公の手元
+    camera:
+      shot_size: bust up
+      view_en: two faces
+    text:
+      sfx:
+        - content: ぎいっ
+          placement: ベンチの脚元
+          style: 小さな木の軋み
+          meaning: 立ち上がる動き
+technical:
+  quality_level: high
+  negative_tags:
+    - watermark
+    - unreadable text

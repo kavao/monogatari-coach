@@ -242,19 +242,34 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 
 `--dry-run` では `novelai_reference: N file(s) (source=…)` と、merge 後の `width×height`・`novelai_reference_images` をジョブごとに表示します。`provider=novelai` なのに `resolution` を指定した場合は warning を出します。
 
+生成時マスク（`omit_tags` / `replace_tags`）は YAML IR を変えず、タグ組み立て後に適用します。`_meta.yaml` の `illustration_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`。dry-run では `omit_tags:` / `replace_tags:` 行も出ます。
+
 Grok / OpenAI / OpenRouter 系では、挿絵YAMLを `natural_sections` formatter で自然文セクションへ変換します。`technical.negative_tags` や CLI の negative は `Do not include:` に移し、API の `negative_prompt` には渡しません。Forge / NovelAI は従来互換の `tag_csv` を使います。
 
 formatter を比較するときは `--prompt-formatter` を使います。
 
-系列を絞る場合:
+系列を絞る場合（既定は 2.0。`--model quality` は 1.x quality slug の別名で、2026-11-02 退役予定です）:
 
 ```bash
+# 確認（dry-run）— quality slug を明示するとき
 python tools/image_provider_novel_illustration_batch.py \
   novels/NNN_作品名 \
   --illustration-stem illustration_01 \
   --provider grok_pro \
   --prompt-formatter natural_sections \
   --model quality \
+  --aspect-ratio book_cover \
+  --resolution 2k \
+  --dry-run
+
+# 確認（dry-run）— Imagine 2.0 medium
+python tools/image_provider_novel_illustration_batch.py \
+  novels/NNN_作品名 \
+  --illustration-stem illustration_01 \
+  --provider grok_pro \
+  --prompt-formatter natural_sections \
+  --model v2 \
+  --grok-image-quality medium \
   --aspect-ratio book_cover \
   --resolution 2k \
   --dry-run

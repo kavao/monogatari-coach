@@ -11,6 +11,9 @@ Usage:
 
     # 実行前に採番とフォルダパスだけ確認する
     python tools/novel_onboard.py "作品名" --dry-run
+
+    # 新規作成時に検査レイヤを明示的に止める
+    python tools/novel_onboard.py "作品名" --metron OFF --chronos OFF
 """
 
 from __future__ import annotations
@@ -27,6 +30,10 @@ if str(_TOOLS_DIR) not in sys.path:
 
 from novel_code_allocate import scan_novels  # noqa: E402
 from novel_scaffold import bootstrap_novel   # noqa: E402
+from inspection_bootstrap import (          # noqa: E402
+    InspectionBootstrapError,
+    initialize_new_layers,
+)
 from novel_status import (                  # noqa: E402
     _run_project_check,
     determine_next_step,
@@ -101,6 +108,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="採番とフォルダパスを表示するだけで、実際には何も作成しない",
     )
+    p.add_argument(
+        "--metron",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="新規作品の METRON（既定: ON。OFF は明示指定）",
+    )
+    p.add_argument(
+        "--chronos",
+        choices=("ON", "OFF"),
+        default="ON",
+        help="新規作品の CHRONOS（既定: ON。OFF は明示指定）",
+    )
     args = p.parse_args(argv)
 
     root = repo_root()
@@ -117,7 +136,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  novel_code : {novel_code:03d}")
     print(f"  フォルダ   : {novel_dir.relative_to(root)}")
 
+    is_new_target = not novel_dir.exists()
+    inspection_decision = ""
+    if is_new_target:
+        inspection_decision = (
+            "（"
+            f"METRON={'未応答・既定 ON' if args.metron == 'ON' else 'ユーザー明示 OFF'}、"
+            f"CHRONOS={'未応答・既定 ON' if args.chronos == 'ON' else 'ユーザー明示 OFF'}"
+            "）"
+        )
+    print(
+        "  検査レイヤ : "
+        f"METRON={args.metron}, CHRONOS={args.chronos}"
+        + inspection_decision
+    )
+
     if args.dry_run:
+        if is_new_target:
+            print("  作成予定: config.md（検査レイヤ設定）、_metron/・chronos/（ON の場合）")
+        else:
+            print("  既存フォルダ: config.md と検査レイヤ設定は変更しません。")
         print(f"\n  [dry-run] 上記フォルダを作成して scaffold を実行します。")
         print(f"  実行するには --dry-run を外してください。")
         print(f"\n  {'═' * _W}\n")
@@ -126,11 +164,36 @@ def main(argv: list[str] | None = None) -> int:
     print()
 
     # ── フォルダ作成 + scaffold
-    novel_dir.mkdir(parents=True, exist_ok=True)
+    # 新規作成の判定と初期設定を同じ所有者に結び付ける。別プロセスが先に
+    # 同じ作品フォルダを作った場合は、既存作品として設定を変更しない。
+    if is_new_target:
+        try:
+            novel_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            is_new_target = False
+            novel_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        novel_dir.mkdir(parents=True, exist_ok=True)
     try:
         actions = bootstrap_novel(novel_dir, root)
+        if is_new_target:
+            actions.extend(
+                initialize_new_layers(
+                    novel_dir,
+                    novel_code,
+                    novel_dir.name.partition("_")[2],
+                    metron=args.metron,
+                    chronos=args.chronos,
+                )
+            )
     except FileNotFoundError as e:
         print(f"error: scaffold 失敗: {e}", file=sys.stderr)
+        return 2
+    except InspectionBootstrapError as e:
+        print(f"error: 検査レイヤ初期化失敗: {e}", file=sys.stderr)
+        return 2
+    except OSError as e:
+        print(f"error: 初期ファイル作成失敗: {e}", file=sys.stderr)
         return 2
 
     print("  scaffold")
@@ -142,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
     # ── project check
     print(f"\n  プロジェクト状態")
     print(f"  {'─' * (_W - 2)}")
-    check = _run_project_check(novel_dir)
+    check = _run_project_check(novel_dir, check_inspection_layers=True)
     if check.get("ok"):
         print("  [OK]  必須ファイル・ディレクトリが揃っています")
     else:

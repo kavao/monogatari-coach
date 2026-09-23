@@ -1,0 +1,24 @@
+schema: 1
+request_id: WRQ-0001
+run_id: run-0001
+work_rel: 000_neutral_trip
+scene_id: ch01-001
+request_kind: new
+target:
+  text_path: _novel_text/novel_text01.md
+  selector:
+    kind: heading
+    value: 第一章　駅までの道
+  base_raw_sha256: sha256:653f0702efe7b8a5c2dc00acc0bd694df2f170bf638440730b2b8c25b705028f
+  base_text_sha256: sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf
+model:
+  id: local-writer
+  calibrated: true
+permissions:
+  draft: true
+  repair: false
+  publish: false
+  event_patch: false
+flags:
+  metron: ON
+  chronos: ON

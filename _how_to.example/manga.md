@@ -6,6 +6,7 @@
 |------------------|------|
 | ルート [`readme.md`](../readme.md) | 最短入口。**漫画 IR の手順本文は載せない**。`docs/` へのリンクのみ。 |
 | [`docs/image-generation/manga-prompt-ir.md`](../docs/image-generation/manga-prompt-ir.md) | **ツール・パイプライン**に加え、**ページ YAML の型・旧差分表・最小例**（互換 Step1 の元データの説明。アンカー [`#yaml-minimal-step1`](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)）。 |
+| [`docs/image-generation/manga-page-edit.md`](../docs/image-generation/manga-page-edit.md) | **写植と領域合成のコマンド**。文字を画像に描かせるか、空吹き出しへ後載せするかの操作。 |
 | [`docs/image-generation/manga-tag-generation.md`](../docs/image-generation/manga-tag-generation.md) | **漫画タグ生成用**：互換 Step1/Step2 の長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。 |
 | [`manga_tag.md`](manga_tag.md)（本フォルダ） | **英語タグの語彙・置換・追加ルール**（Step1／`prompt_tags` 中心）。 |
 | [`manga_tag_step2.md`](manga_tag_step2.md)（本フォルダ） | **Step2**（`step2_summary`・ページ生成・抽象レイアウト）の**言い換え表・チェックリスト**。※過去に **`manga.md` にあったのではなく** `docs` 側にあった Step2 作法をここへ集約した。 |
@@ -45,6 +46,29 @@ YAML IR では、少なくとも次を分離して持つ。
 **`scene` の英語フィールド（タグ行・txt2img）**
 `location_en` は**必須（非空）**。`time_of_day` / `weather` / `background_notes` を書いたら、対応する `time_of_day_en` / `weather_en` / `background_notes_en` も**必須**（`tools/manga_prompt_ir/schemas/manga_page.py` の `Scene` で検証）。`tools/manga_prompt_ir/scene_prompt.py` は **`*_en` のみ**参照し、日本語の `location` 等にはフォールバックしません。欠けは LLM 側で英語行を補ってから保存する。
 
+**`location_en` には場所だけを書く（体位・進行はコマへ）**
+
+ページの `scene.location_en` は、そのコマに `panels[].scene` が無い限り **全コマのタグ行へ同じ1本として載る**（空白は `_` になる。`background_notes_en` と違いカンマ分割しない）。ページの出来事を `then` でつなぐと、騎乗・持ち上げ・仰向けなどが **まだその体勢でないコマ** にも混ざる。
+
+- **書いてよい**: 部屋・家具・小道具配置など、そのページで共通する場所。例: `bedroom futon, empty pillow unused`
+- **書いてはいけない**: 体位・動作の連鎖、次コマの先読み。例: `cowgirl then lift-and-flip to supine`
+- **体勢の置き場**: そのコマの `panels[].prompt_tags` と `subjects[].pose_action_en`。場所そのものがコマで変わるときだけ `panels[].scene.location_en` で上書きする。
+
+```yaml
+# 悪い例（ページ共通に進行が入る → 全コマへ漏れる）
+scene:
+  location_en: bedroom futon, cowgirl then lift-and-flip to supine, empty pillow unused
+
+# 良い例（場所だけ。体勢はコマ側）
+scene:
+  location_en: bedroom futon, empty pillow unused
+panels:
+  - panel_id: 1
+    prompt_tags: [cowgirl_position]
+  - panel_id: 4
+    prompt_tags: [lift_and_flip, lying_on_back]
+```
+
 `Step1` / `Step2` は生成モード名として残します。YAML 直読では、`Step1` 相当は `panels[]` の詳細情報、`Step2` 相当は `manga.panel_layout` と各コマの要約・配置から組み立てます。正本 YAML に戻せるよう、コマ番号、人物、場所、行為、セリフ話者、効果音、段・大小・読み順を省略しない。
 
 キャラクターの服装・状態差分は、`panels[].subjects[]` に `variant_id` / `prompt_variant_id` / `costume_variant` のいずれかで明示する。値は `tag/characters/<character_id>.yaml` の `prompt_variants[].variant_id` と一致させる。指定がある場合、画像生成バッチは基本衣装ではなく該当バリアントの `danbooru_tags` を優先して注入する。
@@ -54,9 +78,10 @@ YAML IR では、少なくとも次を分離して持つ。
 `image_provider_novel_manga_batch.py` は `subjects[]` の `character_id` を手がかりに、各人物の `tag/characters/<id>.yaml` から固定特徴・バリアントを注入する（`character_snapshots` 優先の上で）。**同じコマ内でも「画の主役＝外見タグの基準にすべき人物」は、行為の主導者とは限らない。**
 
 - **原則**: フレームで**面積・意味の中心になっている身体**の持ち主を、`subjects[]` の**先頭に近いほど主**として書く。複数人物がいるときは「誰の体型・肌・衣装タグが結果を決めるか」がその人物側になるように並べる。
-- **一人称・POV**（`prompt_tags` に `pov`・`first_person_view`・`male perspective` 等がある、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。
+- **一人称・POV**（実装後は `camera.view_en: pov`、既存 YAML では `prompt_tags` の `pov`・`first_person_view`・`male perspective` 等、または本文上そういう視点）で**視界いっぱいに相手が映る**構図では、**視線の先にいる相手**を `subjects` の**第一**にし、その人物の `variant_id` で、画面に占める**腰・太もも・胸**などの状態を示す。視点側の人物は手・腕だけ・縁だけでもよいが、そのときは**別の `subjects` エントリ**として続け、`description` で「手のみ」「前景から伸びる腕のみ」と限定する。`view_en: pov` を書いたコマでは `prompt_tags` に `pov` / `first_person_view` を重ねない。
 - **よくある誤り**: 行為の主体だけを `character_id` にし、**画面上は相手の裸体・腰などが主**なのに視点人物だけを載せる——注入タグが視点人物側に寄り、**見えている身体とずれる**。その場合は**見えている側を主 subject** にする。
 - **話者と画の主役**: モノローグの話者が視点人物でも、画が相手の部位中心なら **`text` は話者、`subjects` の先頭は相手**と分けて書くと混線しない。
+- **視点・被写体収まり**: `camera.view_en` は1コマ1トークンで、`solo bust` / `solo face` / `two faces` / `contact close-up` / `inspect close-up` を使う。距離は `shot_size_en`、接触部位や捜査対象の固有名は `focus_en` と `prompt_tags` に残す。複数の意味が重なるときは `pov` → 接触 → 捜査 → 対顔 → ソロ顔 → ソロバストの順で選び、POV の相手・対象は `subjects[]` と `focus_en` で補う。
 
 ### クローズアップ・接写と `prompt_tags`（見えている部分の特徴を書く）
 
@@ -65,6 +90,7 @@ YAML IR では、少なくとも次を分離して持つ。
 - **`subjects[]`**: 引き続き**誰の身体か**（タグ注入の帰属）を示す。腰だけ・手元だけでも、`character_id` と `description` で「誰の・画面に映っている範囲はどこまでか」を明記する。
 - **`prompt_tags`**: **画に実際に写っている見え方**を優先する。部位・画角・質感の例: `slim waist` `midriff` `thighs` `trembling hands` `extreme close-up` `face focus` `parted lips` `sweat` `flushed` など。**フレーム外の要素**（全身コーデ・画面に入っていない髪型の明示など）は無理に足さず、全身向けの人物ラベルだけで埋めない。キャラの固定特徴の注入は **`subjects` とキャラ YAML／スナップショット**が担うので、`prompt_tags` は**そのコマで絵を決める局所的な記述**に寄せる。
 - **`summary` / `description`（日本語）**: 「誰の・どの部位が・どんな状態で」写っているかを部位レベルで書き、`prompt_tags` の英語と矛盾させない。
+- **比喩動作・作品語の直訳禁止**: 本文の「円を描く」「筋を描く」などを `drawing circles` に落とさない。「すべり」「色づく」「漏斗」や `summary_en` の複文もタグ行に直訳しない。置換は **`manga_tag.md` の「追加ルール」**。
 
 語彙の引き出しは `_how_to/manga_tag.md` の部位・体勢の例と併用する。
 
@@ -101,6 +127,15 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 ```
 
 生成バッチは `character_snapshots` があればこれを最優先し、無い場合だけ `tag/characters/*.yaml` を参照する。
+
+### 連続コマの画角リズム
+
+同じページ内で `panel_id` 順に隣接するコマは、`camera.angle_en` と `camera.shot_size_en` の両方を同じにしない。どちらか一方を変えることで、視線の停滞を避ける。変えるときは、まず距離（引き／寄り）、次に角度（俯瞰／あおり／側面）の順で検討する。
+
+- 据え置きたい理由がある場合はページメモに残してよいが、連続規則の検査対象からは外さない。パイロットでは据え置きを使わず、隣接するどちらかの距離または角度を変える。
+- ページをまたぐ場面転換は、このページ内の連続規則とは分けて考える。
+- `composition.framing_en` は `establishing shot`、`insert shot`、`two shot` などの切り方・配置の補足に使い、`camera.shot_size_en` と同じ距離語を重ねない。
+- 角度と距離の許容語彙は `_how_to/manga_tag.md` と `tools/manga_prompt_ir/data/camera_shot_vocab.yaml` を参照する。
 
 ### バリアントとタグ注入の優先（曖昧にしないための正本）
 
@@ -188,6 +223,29 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 - variant を変えてよいのは、**本文上はっきり境目があるとき**に限る（移動、時間経過、着脱・治療段階の推移など）。迷ったら「直前のページ／コマと **まだ同じ状況か**」を問い、同じなら **同じ variant を維持**する。
 - **ページをまたいでも**、ひと続きの場面なら variant は **引き継ぐ**。場当たり的な付け替えは、絵の一貫性だけでなく、後からの **validate や `character_snapshots`** とも齟齬を生みやすい。
 
+## 文字は描かせるか、後で載せるか
+
+ページの文字方針は、絵の段階で決めます。操作コマンドは [`docs/image-generation/manga-page-edit.md`](../docs/image-generation/manga-page-edit.md) に置きます。
+
+- **絵と一緒に字を描く**ときは、そのコマの話者・文言・吹き出しの種類が IR に揃っていることを先に確認します。字形の正確さは画像モデルに依存します。
+- **空の吹き出しにして後で載せる**ときは、誰のどの文をどの吹き出しへ置くかを IR に残し、生成結果の実位置を見てから文字を載せます。設計上の位置だけで顔へ重ねません。
+- **文字も吹き出しも要らない**ページは、文字入りの完成稿として扱いません。
+
+擬音だけ先に描き、台詞は後載せする、といった要素ごとの例外は、ページごとに明示してからにします。
+
+### 漫画内での基本スタイル
+
+後載せ写植を使うページでは、`manga.lettering` を漫画内の基本スタイルとして扱います。標準は次のとおりです。
+
+```yaml
+lettering:
+  direction: vertical
+  base_font_size: 30
+  size_policy: uniform_then_shrink
+```
+
+基本は縦書きで、ページ内の台詞は同じ基準フォントサイズを使います。吹き出しの形や台詞量のために収まらない項目だけを縮小します。横書きが必要な固有の台詞は、その台詞に `writing_direction: horizontal` を明示します。
+
 ## ページ YAML の型・Step1 互換の元データ（ドキュメントへ移設）
 
 **Monogatari Coach（`_how_to`）では参照されない**、ページ IR の形と旧フォーマット差分・最小 YAML 例は、操作マニュアル **[`docs/image-generation/manga-prompt-ir.md` の「ページ YAML の最小構造と Step1 互換出力の元」](../docs/image-generation/manga-prompt-ir.md#yaml-minimal-step1)** に置いてあります（互換 `manga_XX.md` の Step1 は、この YAML をエクスポートした結果です）。
@@ -197,6 +255,7 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 ## ツール・タグ出力ドキュメントへのリンク
 
 - **検証・バッチ・ネガ合成・novelai-pipe-tags**: [docs/image-generation/manga-prompt-ir.md](../docs/image-generation/manga-prompt-ir.md)
+- **写植・領域合成**: [docs/image-generation/manga-page-edit.md](../docs/image-generation/manga-page-edit.md)
 - **互換 Step1/Step2 の全文テンプレ・実例・レイアウト・運用メモ**: [docs/image-generation/manga-tag-generation.md](../docs/image-generation/manga-tag-generation.md)
 
 ネガの語彙・運用例は引き続き manga_tag.md の「コマ別ネガ」を参照してください。

@@ -1,0 +1,18 @@
+run: 1
+generator:
+  model: fixture
+  granularity: auto
+  temperature: null
+spans:
+- beat: pack_bag
+  start: 13
+  end: 52
+- beat: say_goodbye
+  start: 54
+  end: 83
+- beat: reach_station
+  start: 85
+  end: 108
+missing_markers: []
+parse_errors: []
+fact_annotations: {}

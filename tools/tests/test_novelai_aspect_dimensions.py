@@ -14,7 +14,7 @@ from image_provider_generate import merge_provider_defaults, resolve_novelai_dim
 
 
 NOVELAI_CFG = {
-    "default_model": "nai-diffusion-4-5-full",
+    "default_model": "nai-diffusion-5-full",
     "default_width": 1024,
     "default_height": 1024,
     "default_steps": 28,

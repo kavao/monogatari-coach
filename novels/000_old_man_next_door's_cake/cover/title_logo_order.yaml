@@ -1,0 +1,211 @@
+# 題字ロゴ発注文（Tag Mode 寄りの構造化オーダー）
+# 用途: 画像生成AIへの発注。表紙一枚絵（illustration_00）とは別ジョブ。
+# 配置: cover.yaml layers[id=title] の box に後載せする。
+schema_version: 1
+kind: title_logo_order
+
+meta:
+  novel_id: "000_old_man_next_door's_cake"
+  work_title: "隣の爺さんのケーキ"
+  work_title_en: "The Old Man Next Door's Cake"
+  intent: title_logo
+  language: ja
+  writing_direction: vertical
+  status: draft_order  # draft_order | ordered | delivered | approved
+  related:
+    cover_layout: cover.yaml
+    cover_art_illustration_id: illust_cover
+    cover_plan: illustrations/plans/cover_plan.md
+    plan: cover/title_logo_plan.md
+    asset_dir: cover/assets/
+
+# --- 何を描くか（意味情報。cover.yaml の書誌と一致させる） ---
+content:
+  text: "隣の爺さんのケーキ"
+  text_as_list: ["隣", "の", "爺", "さ", "ん", "の", "ケ", "ー", "キ"]
+  include_author: false
+  include_subtitle: false
+  include_volume: false
+  include_series_mark: false
+  notes_ja: >
+    日本語タイトルのみ。縦書き1列。句読点なし。
+    「ケ」「ー」「キ」のカタカナ3字も明朝／筆致のトーンを本文字と揃える。
+
+# --- どこに載るか（cover.yaml と同期。生成キャンバス設計の根拠） ---
+placement:
+  target_layer_id: title
+  box:
+    x: 0.775
+    y: 0.04
+    w: 0.145
+    h: 0.34
+  finish_hint: JIS B5 portrait front
+  background_context_ja: >
+    表紙上部〜右上の暗色余白。台所の蛍光灯より上。
+    人物の顔・ケーキには被せない。
+  recommended_pixel_size:
+    width: 768
+    height: 1792
+    aspect_note: "approx 1:2.34 tall column matching cover box"
+  preferred_export:
+    format: png
+    alpha: true
+    filename: cover/assets/title_logo.png
+
+# --- 見た目の固定条件 ---
+style:
+  tone_ja:
+    - 文学的
+    - 抑制された温かさ
+    - 晩秋の夜
+    - 手製のケーキがある日常ドラマ
+  color:
+    fill_hex: "#f7f2e8"
+    fill_name_en: warm ivory cream
+    avoid: ["pure white neon", "gold foil flashy", "black lettering on dark", "rainbow"]
+  typography_feel:
+    primary: quiet Japanese Mincho vertical title
+    alternatives:
+      - soft handwritten brush vertical title
+      - minimal vertical with very faint translucent band
+  must:
+    - single vertical column
+    - transparent or easily keyable background
+    - high legibility of all 10 characters
+    - no people
+    - no scene illustration
+    - no author name
+  must_not:
+    - bake logo into full book cover scene
+    - horizontal title layout
+    - English title as main text
+    - speech bubbles, watermark, QR, barcode
+    - comic speed lines, heavy drop shadow, 3D chrome
+
+# --- 案ごとの発注バリアント（Tag Mode の prompt_variants に相当） ---
+prompt_variants:
+  - variant_id: "A_mincho_quiet"
+    label_ja: 静かな明朝縦組み（文字のみ・参考）
+    recommended: false
+    natural_language_ja: >
+      日本語の小説タイトルロゴだけを描く。文字は縦書き1列で
+      「隣の爺さんのケーキ」。背景は完全に透明。人物・室内は描かない。
+      書体は静かで細い明朝体。字間をやや広めにとり、文学書の題字のように落ち着かせる。
+      文字色は生成り色のアイボリー（#f7f2e8 近傍）。装飾は最小限。
+      余白は左右に少し残し、キャンバスは縦長の柱状。
+    natural_language_en: >
+      Japanese novel title logo only, vertical single column text
+      "隣の爺さんのケーキ", transparent background, no people, no kitchen.
+      Quiet thin Mincho-like typeface, slightly open tracking, literary book cover title.
+      Warm ivory cream lettering, minimal decoration, tall narrow canvas.
+    danbooru_style_tags: >-
+      title logo, japanese text, vertical text, transparent background,
+      mincho typeface, literary title, simple, clean, cream colored text,
+      no humans, no scenery, book title design, high legibility
+    negative_tags: >-
+      people, human, face, kitchen, scenery, room, full cover illustration,
+      horizontal text, english title, watermark, speech bubble, comic, 3d, chrome,
+      neon, glitter, heavy shadow, blurry text, missing characters, extra characters,
+      author name
+
+  - variant_id: "A2_mincho_with_cake"
+    label_ja: 静かな明朝縦組み＋小さなケーキ（現行の第一候補）
+    recommended: true
+    natural_language_ja: >
+      日本語の小説タイトルロゴ。ベースはシンプルな細い明朝の縦書きで
+      「隣の爺さんのケーキ」（10字すべて読めること）。
+      ロゴの中に、物語のモチーフである小さな不格好なショートケーキを入れる。
+      ケーキは小さめのエンブレム程度（文字より主張しすぎない）。
+      スポンジにクリームが少し足りず、赤い苺ジャムが二つの島のように乗った手製感。
+      配置の例: 縦組み題字の上か下、または細い縦線のそばに小さなケーキ。
+      背景は黒または完全透過。人物・台所・部屋・窓は描かない。
+      文字色は生成りアイボリー。装飾は最小（細い縦線は可）。文学書の題字＋小さな象徴。
+    natural_language_en: >
+      Japanese literary novel title logo. Keep a simple quiet thin Mincho vertical
+      column reading exactly "隣の爺さんのケーキ" (all 10 characters legible).
+      Integrate a SMALL imperfect homemade sponge cake emblem into the logo
+      (not a full scene): modest cream, slightly uneven frosting, two tiny red
+      strawberry-jam accents. Cake must stay a secondary motif beside or above/below
+      the vertical title, not larger than the title column. Ivory cream lettering
+      on black or transparent background. No people, no kitchen interior, no room,
+      no window, no full book cover illustration. Minimal decoration; a thin vertical
+      rule is allowed. High legibility first.
+    danbooru_style_tags: >-
+      title logo, japanese text, vertical text, mincho typeface, literary title,
+      simple, clean, cream colored text, small cake emblem, sponge cake,
+      strawberry jam, homemade cake, logo design, emblem, no humans, minimal
+    negative_tags: >-
+      people, human, face, full kitchen, room interior, window, table scene,
+      full cover illustration, huge cake dominating frame, photoreal food poster,
+      horizontal text, english title, author name, watermark, speech bubble,
+      comic, neon, chrome, glitter, blurry text, missing characters, extra characters
+
+  - variant_id: "B_brush_soft"
+    label_ja: 柔らかい筆致の縦書き（比較用）
+    recommended: false
+    natural_language_ja: >
+      日本語タイトルロゴのみ。縦書き「隣の爺さんのケーキ」。背景透明。
+      やや手書きの筆致だが、すべての文字がはっきり読めること。
+      線は柔らかく、手製のケーキがある物語の温かさをほんの少しに留める。
+      色は薄い生成り。にじみすぎ・崩しすぎは禁止。
+    natural_language_en: >
+      Japanese title logo only, vertical "隣の爺さんのケーキ", transparent background.
+      Soft brush-like calligraphy, still fully legible, gentle warmth, ivory cream ink.
+      No people, no scene. Avoid messy illegible strokes.
+    danbooru_style_tags: >-
+      title logo, japanese text, vertical text, transparent background,
+      calligraphy, brush lettering, soft lines, cream colored text,
+      no humans, no scenery, high legibility
+    negative_tags: >-
+      people, scenery, kitchen, cake, illegible text, graffiti, heavy ink blot,
+      neon, comic, watermark, horizontal text, english main title
+
+  - variant_id: "C_soft_band"
+    label_ja: ごく薄い縦帯＋題字（可読性保険・比較用）
+    recommended: false
+    natural_language_ja: >
+      日本語タイトルロゴ。縦書き「隣の爺さんのケーキ」。
+      文字の背後に、ごく薄い半透明の縦長の帯（ダークネイビー、不透明度低め）だけを置き、
+      それ以外の背景は透明。帯は表紙の暗がりに溶ける程度で、絵を汚さない。
+      文字は静かな明朝、生成り色。
+    natural_language_en: >
+      Japanese vertical title logo "隣の爺さんのケーキ" with a very faint translucent
+      dark vertical band behind the letters only; rest of canvas transparent.
+      Quiet Mincho, ivory cream text, no people, no full scene.
+    danbooru_style_tags: >-
+      title logo, japanese text, vertical text, soft vertical banner,
+      transparent background, mincho typeface, cream colored text,
+      subtle, minimal, no humans
+    negative_tags: >-
+      people, kitchen, cake, opaque solid panel covering art, comic panel,
+      watermark, neon, heavy shadow, horizontal text
+
+# --- 画像生成ジョブの既定（provider 実行時のヒント。本番は dry-run 後に承認） ---
+generation_hints:
+  color_mode: color
+  purpose: overlay_logo_on_cover
+  count_per_variant: 2
+  preferred_providers_note: >
+    文字品質は provider によって差が大きい。
+    読めない場合は手修正・別ツール・組版 text 継続を選ぶ。
+  postprocess:
+    - trim excess empty margins but keep vertical column balance
+    - ensure PNG has alpha if background is solid dark, key it out carefully
+    - do not recolor to black
+  acceptance:
+    legibility: required
+    matches_text_exactly: required
+    fits_placement_box: required
+    rights_record: required_before_public_sale
+
+# --- 採用後の cover.yaml 差し替えメモ（手動） ---
+integration_when_approved:
+  cover_yaml_title_layer_example:
+    id: title
+    type: logo_asset
+    asset: cover/assets/title_logo.png
+    required: true
+    box: { x: 0.775, y: 0.04, w: 0.145, h: 0.34 }
+  remove_or_keep_text_layer: >
+    組版 title(text) は logo_asset に置き換える（二重に載せない）。
+  rights_material_name_example: title_logo_隣の爺さんのケーキ

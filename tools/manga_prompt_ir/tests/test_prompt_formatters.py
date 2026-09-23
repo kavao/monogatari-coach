@@ -17,6 +17,7 @@ from manga_prompt_ir.prompt_formatters import (  # noqa: E402
     format_illustration_prompt,
     format_manga_panel_prompt,
     format_manga_page_prompt,
+    manga_panel_composition_lines,
     resolve_prompt_formatter,
 )
 
@@ -101,6 +102,14 @@ def test_natural_sections_moves_negative_to_do_not_include() -> None:
     assert "- comic panel borders" in bundle.prompt
     assert bundle.negative_prompt == ""
     assert bundle.negative_mode == INLINE_DO_NOT_INCLUDE
+
+
+def test_manga_panel_camera_line_includes_view_and_legacy_view_fallback() -> None:
+    panel = {"camera": {"angle_en": "eye level", "view_en": "two faces"}}
+    assert "- Camera: eye level, two faces" in manga_panel_composition_lines(panel)
+
+    legacy_panel = {"camera": {"angle_en": "eye level", "view": "solo face"}}
+    assert "- Camera: eye level, solo face" in manga_panel_composition_lines(legacy_panel)
 
 
 def test_natural_sections_keeps_composition_cells_for_multi_cell_illustration() -> None:
@@ -231,6 +240,24 @@ def test_manga_page_instruction_wraps_existing_prompt_and_inlines_negative() -> 
     assert "- logo" in bundle.prompt
     assert bundle.negative_prompt == ""
     assert bundle.negative_mode == INLINE_DO_NOT_INCLUDE
+
+
+def test_manga_page_separates_preserve_from_do_not_include() -> None:
+    page = _sample_illustration_page()
+    page["meta"]["intent"] = "manga_page"
+    bundle = format_manga_page_prompt(
+        page,
+        source="step1-pages",
+        existing_prompt="page instruction",
+        negative_prompt="watermark",
+        formatter=MANGA_PAGE_INSTRUCTION,
+    )
+
+    preserve, do_not_include = bundle.prompt.split("Do not include:", 1)
+    assert "Preserve:" in preserve
+    assert "do not make him a muscular hero" in preserve
+    assert "do not make him a muscular hero" not in do_not_include
+    assert "- watermark" in do_not_include
 
 
 def test_manga_panel_natural_sections_inlines_negative_and_keeps_panel_context() -> None:

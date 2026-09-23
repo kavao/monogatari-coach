@@ -1,0 +1,32 @@
+schema_version: "1.1"
+reference_contract:
+  version: "1.1"
+  role_based_references: offline_contract_verified
+  multi_image_inputs: offline_contract_verified
+  reference_guided_generation: offline_contract_verified
+  ordered_attachments: offline_contract_verified
+provider: novelai
+confirmed_at: "2026-09-19"
+sources:
+  - "https://image.novelai.net/docs/doc.json"
+  - "https://docs.novelai.net/en/image/image2image/"
+  - "https://docs.novelai.net/en/image/strengthnoise/"
+models:
+  nai-diffusion-4-5-full:
+    image_to_image: confirmed_request_shape
+    vibe_transfer: existing_adapter
+    image_to_image_with_vibe: unverified_offline_only
+    action: img2img
+    request_parameters:
+      image: base64_at_execute_only
+      strength: "0..1"
+      noise: "0..1"
+      add_original_image: explicit_only
+      extra_noise_seed: explicit_only
+    dimensions:
+      policy: provisional_multiple_of_64_max_2048
+      automatic_transform: forbidden_without_approval
+    notes:
+      - "Vibe reference and img2img source are separate inputs."
+      - "Payload shape is verified from Swagger; combined quality is not a quality guarantee."
+      - "The common role/order contract is verified offline; provider-specific mapping remains explicit."

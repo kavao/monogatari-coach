@@ -12,7 +12,7 @@ targets: ["*"]
 
 **漫画ページの編集正本は `manga/pages/*.yaml`** とする。`manga/manga_XX.md` は **YAML から機械エクスポートする互換副本**であり、モデルが **会話や Write だけで Step1/Step2 を組み立てる**と、タグ欠落・Step2 不足・【固定見た目】なしなどの簡略版になりやすい。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「漫画IRと互換Markdown」「漫画互換Markdownの完了条件」。本スキルは、その完了条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「漫画IRと互換Markdown」「漫画互換Markdownの完了条件」。本スキルは、その完了条件を満たすための実行手順を定める。
 
 ## 互換 MD「更新完了」の定義
 

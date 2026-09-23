@@ -11,6 +11,7 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 - **「ユーザプラグイン」に相当するもの**は、このリポジトリでは **`_how_to/skills/<名前>/`** に `SKILL.md` を置く運用を指します（`.rulesync/skills/` の公式スキルではありません）。
 - **スクリプト本体**は `.rulesync/skills/` に置けないため、Python は原則 **`_how_to/tools/`** に置き、`SKILL.md` からパスで参照します（リポジトリ全体の正式ツールへ昇格するときは **`tools/`** を検討）。
 - **雛形の正本**は **`_how_to.example/skills/<名前>/`**、一覧は **`_how_to.example/skills/_index.md`** と **`_how_to/_index.md`** の項0・項14などから辿れます。
+- **選定レジストリ**（`list_id` による抽選入口）は **`_how_to.example/pick_registry/`**（雛形）と **`_how_to/pick_registry/`**（ユーザ）に宣言。公式は **content-pick-registry** + `tools/novel_pick_registry.py` のみ参照。
 - 横断の定義（`_how_to/` と `docs/`、正本と副本）は **[`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)** を参照してください。
 
 ---
@@ -22,6 +23,9 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 | 置き場 | `.rulesync/skills/<名前>/`（`SKILL.md` のみ） | `_how_to/skills/<名前>/` |
 | 対象 | LLM の既定動作・ルールと連動した仕様 | 個人・チームの試行・外部サイト連携など |
 | Python | `tools/` に実装（スキル直下には置かない） | `_how_to/tools/`（または昇格時に `tools/`） |
+| 参照の仕方 | エージェントが自動で読む | **発動条件**に当てはまれば checklist / 索引から参照。**`_how_to/skills/_index.md`** が入口 |
+
+`character_checklist.yaml` の profile に **`suggested_pick_lists`** や **`suggested_skill`** があるとき、lint が HINT を出す。具体スキル名・手順は **`_how_to/skills/_index.md`** を確認する。**`_how_to/skills/` は公式 agent skill ではない**点は変わらない。
 
 ---
 
@@ -43,15 +47,28 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 
 ---
 
-## 例：body_therapy ボディー抽選（character-body-pick）
+## 例：プロフィール・トロープ抽選（Pick Registry 経由）
 
-`character.md` の **ボディーの特徴** を書くとき、`episode_mature.json` から性別・年齢帯に応じた候補文を抽選する流れの一例です。構造 lint は公式の **`tools/novel_character_md_check.py`** のまま使い、抽選だけをユーザスキルに分離しています。
+命名・口調候補・エピソードフックなどは **選定レジストリ** の `list_id` で宣言する。抽選の公式入口:
 
-- **雛形（基本）**: [`_how_to.example/skills/character-body-pick/`](../../_how_to.example/skills/character-body-pick/)
-- **完全版（作業用）**: [`_how_to/skills/character-body-pick/`](../../_how_to/skills/character-body-pick/)
-- **実装**: [`_how_to/tools/novel_character_body_pick.py`](../../_how_to/tools/novel_character_body_pick.py)
+```bash
+python tools/novel_pick_registry.py list --visibility public
+python tools/novel_pick_registry.py pick naming_japanese_female_heisei
+python tools/novel_pick_registry.py pick episode_hook_general
+```
 
-チャットでは「`_how_to/skills/character-body-pick/SKILL.md` を読んで、女性・若者でボディー候補を抽選して」と指示すれば動きます。抽選結果を `character.md` に反映したあと、`python tools/novel_character_md_check.py novels/<作品> --profile plan` で必須ラベルを確認してください。
+mature / body 向け list_id（`mature_*`）を使うときは、先に **Pick Registry の user fragment を有効化**する。
+
+1. [`_how_to.example/pick_registry/README.md`](../../_how_to.example/pick_registry/README.md) の「mature / body 利用者の有効化手順」に従う
+2. `mature.yaml.example` を **`_how_to/pick_registry/mature.yaml`** にコピーして編集
+3. `python tools/novel_pick_registry.py validate` と `list --prefix mature_` で確認
+4. 抽選・組み合わせ手順は **`_how_to/skills/_index.md`** から該当スキル（例: character-body-pick、episode-mature-pick）を読む
+
+checklist の `suggested_pick_lists` に合わせて lint HINT が出る。
+
+```bash
+python tools/novel_character_md_check.py novels/<作品> --profile plan --suggest
+```
 
 ---
 
@@ -60,3 +77,5 @@ Monogatari Coach は、投稿サイト向けの変換や個人用ワークフロ
 - [Workflow の入口](index.md)
 - [`_how_to/tools/README.md`](../../_how_to/tools/README.md)（ユーザ用 Python の置き場）
 - [Project Structure の `_how_to/` ガイド](../project-structure/how-to-area.md)
+- 公式スキル: [content-pick-registry](../../.rulesync/skills/content-pick-registry/SKILL.md)
+- Pick Registry セットアップ: [`_how_to.example/pick_registry/README.md`](../../_how_to.example/pick_registry/README.md)

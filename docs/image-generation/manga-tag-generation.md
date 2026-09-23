@@ -4,7 +4,7 @@
 
 **正本の編集**: 運用上は **`novels/<作品>/manga/pages/*.yaml`**。本文書は「Markdown に出力されるときの形」と「タグ作業の叱り方」の参照です。**ツール・コマンド・検証**は [manga-prompt-ir.md](manga-prompt-ir.md) を参照してください。
 
-正本・副本の横断定義は [概念正本](../../.rulesync/rules/concepts.md) の「漫画IRと互換Markdown」にあります。
+正本・副本の横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「漫画IRと互換Markdown」にあります。
 
 **英語タグの語彙**: [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)（ユーザーが `_how_to/manga_tag.md` をカスタムしている場合はそちら優先）。
 

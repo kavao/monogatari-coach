@@ -1,0 +1,37 @@
+# ユーザ fragment テンプレ（visibility: user）
+#
+# 使い方:
+#   1. _how_to/pick_registry/ を作成
+#   2. 本ファイルを mature.yaml にリネームコピー
+#   3. source / path / character_pick を編集
+#   4. python tools/novel_pick_registry.py validate
+#
+# 本ファイル名 (.example) のままでは merge されません。
+
+pick_lists:
+  mature_episode_opening:
+    domain: episode
+    visibility: user
+    description: mature 出だし候補（例）。path は episode_mature.json に合わせて編集
+    source: _how_to/episode/mature/episode_mature.json
+    path: 出だしのきっかけ.内訳
+    tool: json_weighted_pick
+
+  mature_episode_progression:
+    domain: episode
+    visibility: user
+    description: mature 中盤進行（例）
+    source: _how_to/episode/mature/episode_mature.json
+    path: 進行パターン.中盤8型
+    tool: json_weighted_pick
+
+  mature_body_profile_female_young:
+    domain: character
+    visibility: user
+    description: ボディー profile 一括抽選（例）。character-body-pick 連携
+    source: _how_to/episode/mature/episode_mature.json
+    path: ""
+    tool: novel_character_pick
+    character_pick:
+      gender: female
+      age_band: 若者

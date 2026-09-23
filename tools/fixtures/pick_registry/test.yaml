@@ -1,0 +1,8 @@
+pick_lists:
+  test_sample:
+    domain: character
+    visibility: public
+    description: fixture sample
+    source: tools/fixtures/pick_registry/sample.json
+    path: items
+    tool: json_weighted_pick

@@ -1,0 +1,64 @@
+# 表紙レイアウト（どこにどう出すか）。書誌の意味情報は book.yaml を正とする。
+# コピー先: novels/<作品>/cover.yaml
+# 題字は type: text（組版）または logo_asset（採用ロゴ）のどちらか一方。
+# ライトノベル・現代書籍風の横書き（horizontal）を既定とする。
+schema_version: 1
+
+base_art:
+  illustration_id: illust_cover
+  fit: contain
+  background: "#0b0a0c"
+
+layers:
+  # --- logo_asset 題字の例（題字方針: logo_asset、横書き既定） ---
+  - id: title
+    type: logo_asset
+    source: book.title
+    asset: cover/assets/title_logo.png
+    required: true
+    box: { x: 0.05, y: 0.05, w: 0.90, h: 0.22 }
+
+  # --- 組版題字の例（題字方針: 組版、横書き） ---
+  # - id: title
+  #   type: text
+  #   source: book.title
+  #   required: true
+  #   box: { x: 0.05, y: 0.05, w: 0.90, h: 0.20 }
+  #   typography:
+  #     font_ref: title_mincho
+  #     direction: horizontal
+  #     size_pt: 18
+  #     tracking: 0.04
+  #     color: "#f7f2e8"
+
+  - id: author
+    type: text
+    source: book.author.name
+    required: true
+    box: { x: 0.05, y: 0.93, w: 0.42, h: 0.035 }
+    typography:
+      font_ref: credit_gothic
+      direction: horizontal
+      size_pt: 8
+      tracking: 0.02
+      color: "#b8b0a4"
+
+safe_areas:
+  title: { x: 0.00, y: 0.00, w: 1.00, h: 0.35 }
+  credit: { x: 0.00, y: 0.70, w: 1.00, h: 0.30 }
+  author: { x: 0.00, y: 0.90, w: 1.00, h: 0.10 }
+
+fonts:
+  title_mincho:
+    family: "Yu Mincho"
+    file: null
+    subfont_index: 0
+  credit_gothic:
+    family: "BIZ UDPGothic"
+    file: null
+    subfont_index: 0
+
+profiles:
+  reader_front: { canvas: bunko_front }
+  ebook_front: { canvas: ebook_front }
+  paper_wrap: { canvas: printer_template_required }

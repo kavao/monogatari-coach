@@ -47,7 +47,6 @@ character_snapshots:
       - brown_eyes
       - fair_skin
     variant_tags:
-      - Kazuki
       - casual_jacket
       - dark_pants
     do_not_change:

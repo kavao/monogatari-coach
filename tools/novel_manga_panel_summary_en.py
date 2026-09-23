@@ -20,6 +20,7 @@ from manga_prompt_ir.summary_en import (  # noqa: E402
     normalize_summary_text,
     translate_panel_summaries,
 )
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt  # noqa: E402
 
 SUMMARY_EN_MODEL_ENV = "MONOCRI_SUMMARY_EN_MODEL"
 DEFAULT_SUMMARY_EN_MODEL = "gpt-4o-mini"
@@ -71,6 +72,7 @@ def process_page_file(
     dry_run: bool,
 ) -> int:
     data = load_yaml(path)
+    MangaPagePrompt.model_validate(data)
     panels = data.get("panels")
     if not isinstance(panels, list):
         print(f"skip (no panels): {path}")

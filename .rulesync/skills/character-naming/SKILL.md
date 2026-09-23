@@ -92,21 +92,18 @@ targets: ["*"]
 
 ## 実行例
 
-西洋風の姓を 1 件引く:
+**推奨（選定レジストリ経由）**:
+
+```bash
+python tools/novel_pick_registry.py pick naming_western_male
+python tools/novel_pick_registry.py pick naming_japanese_female_heisei -n 3
+```
+
+**fallback（path 直指定）** — registry 未整備時やデバッグ用:
 
 ```bash
 python tools/json_weighted_pick.py _how_to/name_creature.json -p western_last_names --json
-```
-
-西洋風の男性名を 3 件出す:
-
-```bash
 python tools/json_weighted_pick.py _how_to/name_creature.json -p western_male_first_names -n 3 --json
-```
-
-幻想系の候補を複数見る:
-
-```bash
 python tools/json_weighted_pick.py _how_to/name_creature.json -p fantasy_male_creatures -n 5 --json
 ```
 

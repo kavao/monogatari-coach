@@ -1,0 +1,4 @@
+{"schema":1,"at":"2026-09-09T02:40:00+09:00","action":"prepare","run_id":"run-0001","request_id":"WRQ-0001"}
+{"schema":1,"at":"2026-09-09T02:41:00+09:00","action":"receive","run_id":"run-0001","request_id":"WRQ-0001","hashes":{"text_sha256":"sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf"}}
+{"schema":1,"at":"2026-09-09T02:42:00+09:00","action":"inspect","run_id":"run-0001","request_id":"WRQ-0001"}
+{"schema":1,"at":"2026-09-09T02:43:00+09:00","action":"select","run_id":"run-0001","note":"R1 は既存スキルが保存。publish 権限なし"}

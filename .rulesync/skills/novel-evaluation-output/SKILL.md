@@ -11,9 +11,13 @@ targets: ["*"]
 
 First Reader（足切り）通過後の深掘り評価モード（Editor Score / Consistency Audit / Synopsis）で、評価結果の所在を曖昧にしない。
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価ファイル命名と役割」および「足切りと深掘り評価の住み分け」。このスキルは、それらの保存条件を満たすための実行手順を定める。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」および「足切りと深掘り評価の住み分け」。このスキルは、それらの保存条件を満たすための実行手順を定める。
 
 **重要**: 足切り（First Reader）は `.rulesync/skills/novel-reader-output/SKILL.md` が正とする。本スキルは足切り手順を上書きしない。
+
+## 創作技法契約
+
+既定は **評価は契約外**。工程正本（`editor_score.md` / `consistency_audit.md` / `novel_synopsis_for_review.md`）は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ再読する。`pack_id` があるときは先に `novel_howto_contract_check.py --strict`。終了コード 0 以外は評価を始めず未完了。0 のときだけ `--json` の `present` を再読する。完了報告に「評価は契約外（工程正本のみ）」または再読した葉の拠り所1句を書く。
 
 ## 保存先（必須）
 
@@ -46,7 +50,7 @@ First Reader（足切り）通過後の深掘り評価モード（Editor Score /
 4. 結果を `_reader/score_YYYYMMDD_HHMM.md` に保存する。
 5. 作品 `_meta.md` の「評価・足切り履歴」節に Editor Score のパスと点数を追記する。
 
-チャットへは「総合点・致命的弱点の件数・保存先パス」の3点のみ返す。
+チャットへは「総合点・致命的弱点の件数・保存先パス」と契約の扱い（契約外または再読した葉）を返す。
 
 ## Consistency Audit の手順
 
@@ -68,7 +72,7 @@ First Reader（足切り）通過後の深掘り評価モード（Editor Score /
 
 ## 長文多段パイプライン（合計30,000字超 / 章8,000字超）
 
-横断正本は **`.rulesync/rules/concepts.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
 
 ### 作業領域の構造
 
@@ -176,7 +180,8 @@ Editor Score 実施後は、作品 `_meta.md` の「評価・足切り履歴」�
 
 ## 関連
 
-- 横断正本: `.rulesync/rules/concepts.md`（評価ファイル命名と役割・住み分け・長文閾値）
+- 横断正本: `.rulesync/rules/workflow-specification.md`（評価ファイル命名と役割・住み分け・長文閾値）
 - 足切りスキル: `.rulesync/skills/novel-reader-output/SKILL.md`
-- 入口ルール: `.rulesync/rules/overview.md` §2.8（Editor Score）、§2.9（Consistency Audit）
+- 読み進み感想: `.rulesync/skills/novel-reader-walk/SKILL.md`
+- 詳細仕様: `.rulesync/rules/workflow-specification.md`（Editor Score / Consistency Audit）
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

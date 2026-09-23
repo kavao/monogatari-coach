@@ -12,16 +12,19 @@
 |-----------|------|
 | `novelcore.md` | 小説の文法・構成の一般原則 |
 | `novel_structure.md` | 物語構造のパターン集 |
+| `episode/general/episode_reality.md` | リアリティの設計（説得力の配分・帰結払い・力み検出）。雛形は `_how_to.example/episode/general/episode_reality.md` |
+| `episode/general/episode_hindrance.md` | 足を引っ張るキャラクターの設計（失敗の許容・ヘイト返済）。雛形は `_how_to.example/episode/general/episode_hindrance.md` |
 | `manga.md` | 漫画のコマ割り・演出の作法（ツールの検証・バッチ・export のコマンド詳細は [`docs/image-generation/manga-prompt-ir.md`](../image-generation/manga-prompt-ir.md)、互換 Step 長文テンプレは [`manga-tag-generation.md`](../image-generation/manga-tag-generation.md)） |
 | `manga_tag.md` | 漫画タグ生成のルール・形式（英語タグ語彙・置き換え。Step1／`prompt_tags` 中心） |
 | `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |
-| `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md)（Tag Mode 各節）が正本 |
+| `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)（Tag Mode 各節）が正本 |
 | `rewrite.md` | 文章校正・清書の作法 |
 | `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |
 | `editor_score.md` | 足切り通過後の深掘り採点（5項目×20点・致命的弱点の優先順位付け。スキル: `novel-evaluation-output`） |
 | `novel_synopsis_for_review.md` | 長文評価前処理用の客観的あらすじ（400字・ネタバレ可。30,000字超作品で推奨） |
 | `consistency_audit.md` | 複数章の設定・口調・時系列の一貫性監査（表形式。スキル: `novel-evaluation-output`） |
 | `standard_reader.md` | 一般読者視点の興味判定軸 |
+| `reader_walk.md` | 読み進み感想の書き方（一人称・既読のみ・作品評価点なし。任意のペルソナ反応メタデータを含む。スキル: `novel-reader-walk`） |
 | `meta.md` | メタデータ管理のフォーマット（§II 評価・足切り履歴を含む） |
 
 **入れないもの**: ツールのコマンド・プロバイダ設定・環境変数などの運用情報（→ `docs/` へ）
@@ -65,8 +68,7 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 **`_how_to/skills/`** のユーザスキルと一体で使う Python スクリプトは **`_how_to/tools/`** に置きます。リポジトリ全体の共有ツールは **`tools/`**（リポジトリ直下）です。
 
-- 正本ルール: [`.rulesync/rules/concepts.md`](../../.rulesync/rules/concepts.md) の「共有ツールとユーザ用 Python」
-- 入口と昇格の考え方: [`.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) の「`_how_to/tools/`（ユーザ用 Python）」
+- 正本ルールと入口・昇格の考え方: [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md) の「共有ツールとユーザ用 Python」
 - 案内: [`_how_to/tools/README.md`](../../_how_to/tools/README.md)
 
 短命の試行は **`tools_temp/`** を使います（`_how_to/tools/` は運用上そこそこ長く残すスクリプト向け）。
@@ -77,15 +79,25 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 **公式スキル（`.rulesync/skills/`）ではない**、手書きの手順置き場です。雛形は **`_how_to.example/skills/<名前>/`**、作業用にコピー・編集する先は **`_how_to/skills/<名前>/`** です。一覧は各 `skills/_index.md` から辿れます。
 
+ユーザスキルは「チャットで明示したときだけ読む」だけでなく、**checklist の `suggested_skill` / `suggested_pick_lists` や索引の発動条件**に当てはまれば条件付きで参照されるユーザ運用知識でもある。抽選入口の横断定義は **選定レジストリ**（`_how_to.example/pick_registry/`、`_how_to/pick_registry/`、公式 `tools/novel_pick_registry.py`）。横断定義は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)「公式スキルとユーザスキルの接続」「選定レジストリ」。
+
 詳細・索引・具体例（カクヨムルビ連携など）は **[ユーザスキルと雛形の置き場](../workflow/user-skills.md)** を参照してください。
 
 ---
 
 ## `_index.md` で参照するファイルを管理する
 
-`_how_to/_index.md` がこの領域の目次です。どのファイルをLLMが参照するかはこのファイルで制御できるため、**ユーザーが自由に編集・カスタムしてよい**。
+標準の目次は `_how_to.example/_index.md` です。作業用があるときは `_how_to/_index.md` が選定の入口です。使わないファイルはインデックスから外すだけで、新しい選定では参照されにくくなります。
 
-使わないファイルはインデックスから外すだけで参照されなくなります。新しいファイルを追加したときは `_index.md` に行を追記してください。
+標準カタログ `_how_to.example/` に葉を足すときは、次を満たします。
+
+1. `_how_to.example/_index.md` に入口を1行置く。該当サブカタログに README または `_index.md` がある場合はそこにも置く（episode、genre、skills、publishing、image_refs、howto_packs など。ルート直下の葉は `_index.md` だけで足ります）
+2. 既定で読まない旨か発動条件を、索引の当該行、該当 README、または目次の冒頭注記のいずれかに書く
+3. 既存作品の `_meta.md` にある selected は、Gate B のやり直しを頼んだ作品以外は変えない
+
+作業用 `_how_to/_index.md` があるときは、そちらが選定の入口です。標準にだけある新しい葉は、作業用の目次へ行を足すまで選定の対象になりません。標準の目次は、未追随の葉を見つけるための補助です。追随はユーザーが行う調整です。任意の創作技法パック（`howto_packs/`）は、作品 `_meta.md` に `pack_id` を書いたときだけ展開します。索引が長くなっても、指示のない作品の契約行数は増えません。
+
+詳細は [ルール作成規約](../../.rulesync/rules/rule-authoring.md) です。
 
 ---
 

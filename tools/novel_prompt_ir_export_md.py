@@ -22,6 +22,7 @@ from image_provider_novel_manga_batch import (
     comma_split_tags,
     filter_single_panel_tags,
     join_novelai_pipe_tag_line,
+    yaml_panel_tags,
     yaml_panel_tags_novelai_split,
 )
 from manga_prompt_ir.scene_prompt import (
@@ -42,6 +43,8 @@ from manga_prompt_ir.color_mode import (
 from manga_prompt_ir.user_directives import (
     apply_to_tags as apply_user_directives_to_tags,
 )
+from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
+from manga_prompt_ir.page_render_plan import schema_1_1_prompt_context
 
 STYLE_TAGS = ["best_quality", "very_aesthetic", "ultra-detailed", "manga"]
 
@@ -160,24 +163,30 @@ def character_variant_danbooru_line(
     *,
     novelai_pipe_tags: bool,
 ) -> str:
-    """100番台 + combines_with 時は ``資料 | 結合先``（_how_to.example/tag.md）。"""
+    """バッチ実出力と同じ合成結果を記載する（image_provider_novel_tag_batch.compose_job_prompt 準拠）。
+
+    - 100番台 + combines_with + NovelAI: ``資料 | 000_base+結合先``（パイプ）
+    - それ以外の combines_with 持ち（000番台等）: ``状況タグ, 000_base, 結合先`` のカンマ合成
+    - combines_with なし: 状況タグのみ（000〜099 は生成時に 000_base が前置される）
+    """
     tags = as_list(variant.get("danbooru_tags"))
     combines_raw = variant.get("combines_with")
     combines = str(combines_raw).strip() if combines_raw else ""
     vid = str(variant.get("variant_id") or "")
-    if novelai_pipe_tags and combines:
+    if combines:
         from image_provider_novel_tag_batch import (  # noqa: E402
             danbooru_for_combines_with,
             is_reference_slot,
         )
 
-        if is_reference_slot(vid):
-            right = danbooru_for_combines_with(
-                [v for v in variants if isinstance(v, dict)],
-                combines,
-                character,
-            )
+        right = danbooru_for_combines_with(
+            [v for v in variants if isinstance(v, dict)],
+            combines,
+            character,
+        )
+        if novelai_pipe_tags and is_reference_slot(vid):
             return join_novelai_pipe_tag_line(tags, [right])
+        return join_tags(unique([*[str(t) for t in tags], *right]))
     return join_tags(tags)
 
 
@@ -212,7 +221,7 @@ def render_character_md(
         f"- character_id: `{character_id}`",
         f"- 概要: {summary or '構造化IRから生成'}",
         f"- 固定特徴（000_base 正本）: {', '.join(str(v) for v in base_tags) or 'なし'}",
-        "- バッチ合成: 000〜099 は 000_base + 状況タグ。100番台は 資料タグ | combines_with（000_base+結合先）",
+        "- バッチ合成: 000〜099 は 000_base + 状況タグ（combines_with 持ちは 状況タグ + 000_base + 結合先を合成済みで記載）。100番台は 資料タグ | combines_with（000_base+結合先）",
         f"- 変更禁止: {', '.join(str(v) for v in do_not_change) or 'なし'}",
         f"- Negative Tags: {', '.join(str(v) for v in as_list(character.get('negative_tags'))) or 'なし'}",
         "",
@@ -301,43 +310,8 @@ def subject_text(subject: dict[str, Any], characters: dict[str, dict[str, Any]])
 
 
 def panel_tags(page: dict[str, Any], panel: dict[str, Any], characters: dict[str, dict[str, Any]]) -> list[str]:
-    """互換 Markdown の Step1 タグ行用。image_provider_novel_manga_batch.yaml_panel_tags(..., single_panel=True) と整合させる。"""
-    manga = page.get("manga") or {}
-    scene = panel.get("scene") or page.get("scene") or {}
-    composition = panel.get("composition") or {}
-    camera = panel.get("camera") or {}
-    lighting = panel.get("lighting") or {}
-    tags: list[str] = []
-    tags.extend(STYLE_TAGS)
-    tags.extend(str(v) for v in as_list(manga.get("genre_tags")))
-    tags.extend(str(v) for v in as_list(manga.get("visual_tags")))
-    tags.extend(comma_split_tags(scene_prompt_background_notes(scene)))
-    tags.extend(str(v) for v in as_list(manga.get("background_tags")))
-    tags.extend(str(v) for v in as_list(panel.get("prompt_tags")))
-    loc_pt, tod_pt, wx_pt = scene_prompt_location_time_weather(scene)
-    tags.extend(str(v) for v in [loc_pt, tod_pt, wx_pt] if v)
-    tags.extend(composition_tag_tokens(composition))
-    tags.extend(camera_tag_tokens(camera))
-    tags.extend(lighting_tag_tokens(lighting))
-    # composition.layout は single_panel 時はコマ割りメモ向けのためタグ列から除外
-    tags.extend(composition_layout_tag_token(composition, single_panel=True))
-    for subject in as_list(panel.get("subjects")):
-        if not isinstance(subject, dict):
-            continue
-        cid = subject.get("character_id")
-        snapshot = subject_snapshot(page, subject)
-        if snapshot:
-            tags.append(str(snapshot.get("name_en") or snapshot.get("name") or cid))
-            tags.extend(snapshot_tags(snapshot))
-        elif cid and cid in characters:
-            tags.append(str(characters[cid].get("name_en") or cid))
-            tags.extend(resolve_variant_danbooru_tags(characters[cid], selected_subject_variant_id(subject)))
-        else:
-            tags.append(subject_tag_line_token(subject))
-        tags.extend(subject_situational_tag_tokens(subject))
-    tags.extend(panel_mood_atmosphere_tag_tokens(panel))
-    tags = apply_user_directives_to_tags(unique(tags), page, panel)
-    return filter_single_panel_tags(tags)
+    """互換 Markdown の Step1 タグ行用。生成バッチの yaml_panel_tags に委譲（人名単独タグなし）。"""
+    return yaml_panel_tags(page, panel, characters, single_panel=True)
 
 
 def panel_tag_line_for_export(
@@ -361,9 +335,11 @@ def render_text_block(panel: dict[str, Any]) -> list[str]:
         if isinstance(item, dict):
             lines.append(f"- セリフ: {item.get('speaker', '不明')}「{item.get('content', '')}」")
     for item in as_list(text.get("monologue")):
-        lines.append(f"- モノローグ: {item}")
+        content = item.get("content", item.get("text", "")) if isinstance(item, dict) else item
+        lines.append(f"- モノローグ: {content}")
     for item in as_list(text.get("narration")):
-        lines.append(f"- ナレーション: {item}")
+        content = item.get("content", item.get("text", "")) if isinstance(item, dict) else item
+        lines.append(f"- ナレーション: {content}")
     for item in as_list(text.get("sfx")):
         if isinstance(item, dict):
             meaning = f"（{item.get('meaning')}）" if item.get("meaning") else ""
@@ -520,6 +496,9 @@ def render_manga_page_section(
         f"共通舞台: {loc_s} / {tod_s} / {scene_prompt_background_notes(scene)}",
         "",
     ]
+    schema_context = schema_1_1_prompt_context(page)
+    if schema_context:
+        lines.extend(["### Schema 1.1 context", *schema_context, ""])
     for panel in panels:
         if not isinstance(panel, dict):
             continue
@@ -677,6 +656,7 @@ def main(argv: list[str] | None = None) -> int:
         pages: list[tuple[Path | None, dict[str, Any]]] = []
         for manga_page_path in args.manga_page:
             page = load_data(manga_page_path)
+            MangaPagePrompt.model_validate(page)
             if "panels" not in page:
                 raise ValueError(f"invalid manga page IR: {manga_page_path}")
             pages.append((manga_page_path, page))
@@ -696,6 +676,7 @@ def main(argv: list[str] | None = None) -> int:
         ill_pages: list[tuple[Path, dict[str, Any]]] = []
         for illustration_page_path in args.illustration_page:
             page = load_data(illustration_page_path)
+            MangaPagePrompt.model_validate(page)
             if "panels" not in page:
                 raise ValueError(f"invalid illustration page IR: {illustration_page_path}")
             meta = page.get("meta") or {}

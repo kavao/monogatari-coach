@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "request_id": "WRQ-0001",
+  "run_id": "run-0001",
+  "target_text_sha256": "sha256:afdfb80c8271130b1698d54e43d73f07e429d9fe3c175995c99ca1547cc57baf",
+  "text_save": "success",
+  "metron": "findings",
+  "chronos_registered": "success",
+  "text_state": "success",
+  "findings": [
+    {
+      "code": null,
+      "note": "METRON V0 は観測のみ。fixture の床は短い。BeatThin は classify しない（R1・未校正扱いはしないが repair 権限なし）"
+    }
+  ],
+  "repair_history": [],
+  "open_issues": []
+}
