@@ -43,6 +43,8 @@ globs: ["docs/**/*.md"]
 
 ## 5. CLI コマンドの記述
 
+コマンド例の `python` は、実行時には `uv run python` とする。素の `python` は Windows で Microsoft Store のスタブに当たることがある。セットアップ手順では省略せず `uv run python` と書く。
+
 コマンドブロックを書くときは、次の順序で構成する。
 
 1. **コマンドの前に**「何をするコマンドか」を 1 文で説明する

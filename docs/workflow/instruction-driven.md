@@ -75,13 +75,13 @@ uv sync
 uv run python howto_init.py
 
 # 初回のみ: 固定版 Rulesync を取得
-python tools/install_rulesync.py
+uv run python tools/install_rulesync.py
 
 # ルール・スキルの生成物を同期
-python tools/rulesync.py generate
+uv run python tools/rulesync.py generate
 
 # .env の不足確認
-python tools/env_check.py
+uv run python tools/env_check.py
 ```
 
 ---

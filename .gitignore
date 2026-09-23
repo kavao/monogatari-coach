@@ -1,4 +1,5 @@
 __pycache__/
+.venv/
 _how_to/*
 !_how_to/.gitkeep
 # _workingspace: 査証ログ・日記・計画の運用 README のみ追跡し、月次 *.md はコミットしない

@@ -2,6 +2,8 @@
 
 `tools/` 配下のスクリプトとシステム管理コマンドの一覧です。Monogatari Coach が内部で自動呼び出しするものと、ユーザーが手動でも実行できるものの両方を掲載しています。
 
+コマンド例の `python` は、実行時には `uv run python` とします。Windows では素の `python` が Microsoft Store のスタブに当たることがあります。
+
 チャット指示とセットで動く操作フローは [指示出しベースのワークフロー](../workflow/instruction-driven.md) を参照してください。
 
 ---
@@ -1062,7 +1064,7 @@ python tools/rulesync.py generate --check
 
 ### `howto_init.py` — 初回セットアップ
 
-`_how_to.example/` から `_how_to/` を、`.env.example` から `.env` を、未作成時にコピーします。
+`_how_to.example/` から `_how_to/` をサブフォルダ込みで、`.env.example` から `.env` を、未作成時にコピーします。あわせて Cursor / VS Code が `.venv` を使うよう、未設定の Python インタープリタキーだけ `.vscode/settings.json` へ足します。
 
 ```bash
 uv run python howto_init.py

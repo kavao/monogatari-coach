@@ -30,34 +30,39 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ## 3. Python 環境を整える
 
-依存関係と `.venv` を作ります。エディタ（Cursor/VSCode）の静的解析が別の Python を見ている場合も、この手順で警告を減らせます。
+依存関係と `.venv` を作ります。このリポジトリは uv が管理する CPython だけを使うため、Windows に入っている Microsoft Store の `python` は使いません。
 
 ```bash
 uv sync
 ```
 
-エディタで `インポート "pydantic" を解決できませんでした` のような警告が残る場合は、コマンドパレットで `Developer: Reload Window` を実行します。
+以降のツール実行は、素の `python` ではなく `uv run python` を使います。Windows では `python` がストア用スタブ（0 バイトの `WindowsApps\python.exe`）に当たり、何も起動しないことがあります。
 
 `.venv` が使えているかだけ確認したい場合は、次を実行します。
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import pydantic; print(pydantic.__version__)"
+uv run python -c "import pydantic; print(pydantic.__version__)"
 ```
+
+エディタで `インポート "pydantic" を解決できませんでした` のような警告が残る場合は、次の初回セットアップのあと、コマンドパレットで `Developer: Reload Window` を実行します。
 
 ## 4. 初回セットアップ
 
-プロジェクトルートで実行します。
+プロジェクトルートで実行します。`uv run` は必要なら先に `uv sync` 相当も行います。
 
 ```bash
 uv run python howto_init.py
 ```
 
+Windows では `init.bat` をダブルクリックしても同じ処理です。
+
 この処理で次が整います。
 
-- `_how_to.example/` から `_how_to/` を未作成時にコピー
+- `_how_to.example/` から `_how_to/` を、サブフォルダ込みで未作成時にコピー
 - `.env.example` から `.env` を未作成時にコピー
+- Cursor / VS Code が `.venv` の Python を使うよう、未設定キーだけ `.vscode/settings.json` へ足す
 
-既に `_how_to/` や `.env` がある場合は上書きしません。`.env.example` がない場所で実行した場合、`.env` は作れません。
+既に `_how_to/` の同名ファイルや `.env`、既存のインタープリタ設定がある場合は上書きしません。`.env.example` がない場所で実行した場合、`.env` は作れません。
 
 `.env.example` / `.env` が見つからない場合は、まず作業場所を確認します。
 
@@ -76,10 +81,10 @@ git status --short
 `.rulesync/` のルール・スキルから、AI ツールごとの入口ファイルを生成します。固定版 Rulesync 15.0.1 の単体バイナリを使うため、Node.js・pnpm・グローバル npm は不要です（詳細は [Rulesync](../rulesync.md)）。
 
 ```powershell
-python tools/install_rulesync.py
-python tools/rulesync.py generate --dry-run
-python tools/rulesync.py generate
-python tools/rulesync.py generate --check
+uv run python tools/install_rulesync.py
+uv run python tools/rulesync.py generate --dry-run
+uv run python tools/rulesync.py generate
+uv run python tools/rulesync.py generate --check
 ```
 
 ## 6. `.env` を埋める
@@ -110,7 +115,7 @@ MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT=2k
 テンプレート更新後の不足確認:
 
 ```bash
-python tools/env_check.py
+uv run python tools/env_check.py
 ```
 
 ## 7. 最小成功チェック
@@ -120,9 +125,9 @@ python tools/env_check.py
 ```bash
 uv sync
 uv run python howto_init.py
-python tools/install_rulesync.py
-python tools/rulesync.py generate
-python tools/env_check.py
+uv run python tools/install_rulesync.py
+uv run python tools/rulesync.py generate
+uv run python tools/env_check.py
 ```
 
 `env_check.py` が API キー不足を出す場合でも、まだ画像生成をしないなら設定待ちとして扱えます。使う provider が決まったら `.env` にキーを入れて再実行します。
@@ -138,9 +143,9 @@ uv run python howto_init.py
 ルール再生成:
 
 ```powershell
-python tools/rulesync.py generate --dry-run
-python tools/rulesync.py generate
-python tools/rulesync.py generate --check
+uv run python tools/rulesync.py generate --dry-run
+uv run python tools/rulesync.py generate
+uv run python tools/rulesync.py generate --check
 ```
 
 `.rulesync/` のルール・スキルを更新したあとに実行します。生成後は `AGENTS.md` / `CLAUDE.md` の差分を確認し、入口ファイルに意図しない肥大化や欠落がないか見ます。
@@ -157,10 +162,10 @@ uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 
 ```bash
 # 作品名を渡すと採番→フォルダ作成→scaffold→状態確認まで一括実行
-python tools/novel_onboard.py "作品タイトル"
+uv run python tools/novel_onboard.py "作品タイトル"
 
 # 実行前にフォルダパスと採番だけ確認する
-python tools/novel_onboard.py "作品タイトル" --dry-run
+uv run python tools/novel_onboard.py "作品タイトル" --dry-run
 ```
 
 新規作成では METRON / CHRONOS が標準 ON です。確認への返答がない場合も、`config.md` に **「未応答・既定 ON」** と記録して進みます。明示的に OFF にする場合だけ `--metron OFF` / `--chronos OFF` を指定します。

@@ -7,7 +7,7 @@
 固定版 Rulesync をまだ取得していない環境では、最初にバイナリを検証付きで取得します。
 
 ```powershell
-python tools/install_rulesync.py
+uv run python tools/install_rulesync.py
 ```
 
 成功すると Rulesync 15.0.1 のキャッシュ済みパスが表示されます。

@@ -35,7 +35,7 @@ python tools/novel_pick_registry.py pick naming_japanese_female_heisei
 
 ## mature / body 利用者の有効化手順
 
-1. **`_how_to/` を用意**（未作成なら `python howto_init.py` または `_how_to.example/` からコピー）
+1. **`_how_to/` を用意**（未作成なら `uv run python howto_init.py` または `_how_to.example/` からコピー）
 2. **`_how_to/pick_registry/`** ディレクトリを作成
 3. 本ディレクトリの **`mature.yaml.example`** を **`_how_to/pick_registry/mature.yaml`** にコピー
 4. `list_id`・`source`・`path` を自分の運用に合わせて編集（JSON トップレベルキーは `_how_to/episode/mature/episode_mature.json` の `_meta.pick_paths_examples` 等を参照）

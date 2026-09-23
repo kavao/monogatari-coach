@@ -1,51 +1,35 @@
 @echo off
-REM Initialize _how_to directory from _how_to.example without overwriting existing files
+REM Initialize local Python workspace via uv + howto_init.py
 
-setlocal ENABLEDELAYEDEXPANSION
+setlocal
 
-set "SRC=_how_to.example"
-set "DEST=_how_to"
+cd /d "%~dp0"
 
-if not exist "%SRC%" (
-  echo Source directory "%SRC%" does not exist.
+where uv >nul 2>&1
+if errorlevel 1 (
+  echo uv was not found. Install it first:
+  echo   https://docs.astral.sh/uv/
+  echo   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
   goto :END
 )
 
-if not exist "%DEST%" (
-  echo Creating destination directory "%DEST%"...
-  mkdir "%DEST%"
+echo Running uv sync...
+uv sync
+if errorlevel 1 (
+  echo uv sync failed.
+  goto :END
 )
 
-echo Copying template files from "%SRC%" to "%DEST%" (without overwriting existing files)...
-
-for %%F in ("%SRC%\*") do (
-  set "NAME=%%~nxF"
-  if not exist "%DEST%\!NAME!" (
-    echo   Copying !NAME!
-    copy "%%F" "%DEST%\!NAME!" >nul
-  ) else (
-    echo   Skipping !NAME! (already exists)
-  )
+echo Running howto_init.py...
+uv run python howto_init.py
+if errorlevel 1 (
+  echo howto_init.py failed.
+  goto :END
 )
 
 echo.
-echo Preparing environment template files...
-if exist ".env.example" (
-  if not exist ".env" (
-    echo   Copying .env.example ^> .env
-    copy ".env.example" ".env" >nul
-  ) else (
-    echo   Skipping .env ^(already exists^)
-  )
-) else (
-  echo   Skipping .env.example ^(source not found^)
-)
-
-echo.
-echo Initialization finished.
+echo Use uv run python to execute tools after this.
 
 :END
 endlocal
 pause
-
-
