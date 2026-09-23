@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 character_id: yui
 name: 結
 name_en: Yui
@@ -14,17 +14,6 @@ appearance:
   skin_tone: fair skin
   distinctive_features:
     - small mole near the left eye
-costume:
-  outfit_tags:
-    - cream_cardigan
-    - plaid_skirt
-  main_outfit: クリームのカーディガンとチェックのスカート
-  accessories:
-    - canvas_tote
-  color_palette:
-    - cream
-    - brown
-    - green
 personality:
   archetype_tags:
     - straightforward_friend
@@ -38,12 +27,12 @@ manga_rules:
     - brown_hair
     - green_eyes
     - fair_skin
-    - cream_cardigan
   do_not_change:
     - 髪色を茶以外にしない
     - カーディガンを別の固定衣装に置き換えない
 prompt_variants:
   - variant_id: "000_base"
+    variant_kind: base
     title: 基本外見
     description: 固定特徴。
     danbooru_tags:
@@ -53,11 +42,24 @@ prompt_variants:
       - green_eyes
       - fair_skin
   - variant_id: "001_normal"
+    variant_kind: costume
     title: 通常時
     description: 駅前の会話用の通常衣装。
-    danbooru_tags:
-      - cream_cardigan
-      - plaid_skirt
+    visual_spec:
+      outer:
+        type: cardigan
+        color: cream
+        hood: false
+        collar: v_neck
+        closure: buttons
+      inner:
+        type: blouse
+        color: white
+      bottom:
+        type: plaid_skirt
+        color: brown
+      accessories:
+        - canvas_tote
 negative_tags:
   - extra_fingers
   - bad_hands

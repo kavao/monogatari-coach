@@ -100,8 +100,17 @@ from manga_prompt_ir.page_render_plan import (
     PageRenderPlan,
     PageRenderPlanError,
     compile_page_render_plan,
+    page_yaml_text_mode,
+    resolve_text_mode,
 )
+from manga_prompt_ir.renderer_capabilities import (
+    RendererCapabilityError,
+    resolve_renderer_capability_key,
+)
+from manga_prompt_ir.local_frame_source import build_local_frame_source_record
+from manga_prompt_ir.page_edit import write_json as write_page_json
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
+from novel_meta_yaml import suggest_text_mode_for_lettering
 
 PROVIDER_CHOICES = ("forge", "novelai", "grok", "grok_pro", "openai", "openrouter")
 _GROK_FAMILY = frozenset({"grok", "grok_pro"})
@@ -184,8 +193,9 @@ MANGA_BACKGROUND_PROVIDER_ENV = "MONOCRI_MANGA_BACKGROUND_PROVIDER_DEFAULT"
 # 漫画バッチのみ。CLI --aspect-ratio 未指定かつ provider=grok_pro のとき、
 # config の default_aspect_ratio（多くは 1:1）の代わりに使う。
 MANGA_GROK_PRO_DEFAULT_ASPECT_ENV = "MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO"
-# grok_pro で CLI・.env とも未指定のとき（config の default_aspect_ratio 1:1 回避）
+# grok_pro 全ソース、および NovelAI のページ生成で CLI 未指定のとき（config の 1:1 回避）
 MANGA_GROK_PRO_ASPECT_FALLBACK = "manga_b5_portrait"
+MANGA_PAGE_ASPECT_SOURCES = frozenset({"step1-pages", "step2-pages"})
 
 
 def dotenv_or_env(root: Path, name: str) -> str | None:
@@ -199,22 +209,50 @@ def dotenv_or_env(root: Path, name: str) -> str | None:
     return None
 
 
+def manga_page_effective_aspect_ratio(
+    cli_aspect: str | None,
+    provider: str,
+    *,
+    source: str | None = None,
+    root: Path | None = None,
+) -> str | None:
+    """CLI が優先。ページ生成の NovelAI と grok_pro は config の 1:1 に落とさない。"""
+    if cli_aspect is not None:
+        return cli_aspect
+    if provider == "grok_pro":
+        raw = dotenv_or_env(root, MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) if root is not None else None
+        if not raw:
+            raw = (os.environ.get(MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) or "").strip()
+        return raw or MANGA_GROK_PRO_ASPECT_FALLBACK
+    if provider == "novelai" and source in MANGA_PAGE_ASPECT_SOURCES:
+        return MANGA_GROK_PRO_ASPECT_FALLBACK
+    return None
+
+
 def manga_grok_pro_effective_aspect_ratio(
     cli_aspect: str | None, provider: str, *, root: Path | None = None
 ) -> str | None:
-    """CLI が優先。OpenAIはCLI指定を渡し、grok_proだけ既定を補完する。"""
-    if cli_aspect is not None:
-        return cli_aspect
-    if provider != "grok_pro":
-        return None
-    raw = dotenv_or_env(root, MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) if root is not None else None
-    if not raw:
-        raw = (os.environ.get(MANGA_GROK_PRO_DEFAULT_ASPECT_ENV) or "").strip()
-    return raw or MANGA_GROK_PRO_ASPECT_FALLBACK
+    """後方互換。source なし（NovelAI ページ補完は manga_page_effective_aspect_ratio）。"""
+    return manga_page_effective_aspect_ratio(
+        cli_aspect, provider, source=None, root=root
+    )
 
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+
+def resolve_saved_artifact(reported: str | Path, output_dir: Path) -> Path:
+    """stdout の絶対パスがコンソール文字化けしても、output_dir 上のファイル名で拾う。"""
+    path = Path(str(reported))
+    if path.is_file():
+        return path.resolve()
+    fallback = Path(output_dir) / path.name
+    if fallback.is_file():
+        return fallback.resolve()
+    raise FileNotFoundError(
+        f"生成成果物が見つかりません: reported={reported} fallback={fallback}"
+    )
 
 
 def resolve_manga_assets_stem_dir(manga_dir: Path, stem: str) -> Path:
@@ -243,7 +281,8 @@ STEP2_GROK_STYLE_HELPER = """\
 - キャラクターの顔は安定して描写
 - 背景は情報量を保ちつつ主役を邪魔しない
 - 各コマの役割差が一目で分かる
-- 吹き出しや文字は必要最小限で、絵として破綻しない構成
+- YAMLで指定された台詞・モノローグ・ナレーション・効果音は、text_policyがgenerateなら指定位置へ読みやすい日本語で描く
+- 指定されていない文字、吹き出し、パネル番号、話者名ラベルは追加しない
 - ページ全体を1枚で完成させ、裁ち切れやコマ欠けを避ける
 """
 
@@ -253,7 +292,8 @@ STEP1_PAGE_GROK_STYLE_HELPER = """\
 - 各コマ情報をなるべく落とさず精密に反映
 - 各コマの人物、表情、構図、背景、距離感の差を明確に描き分ける
 - コマごとの役割差が伝わるように密度と抜きを作る
-- 吹き出しや文字は必要最小限で、絵として破綻しない構成
+- YAMLで指定された台詞・モノローグ・ナレーション・効果音は、text_policyがgenerateなら指定位置へ読みやすい日本語で描く
+- 指定されていない文字、吹き出し、パネル番号、話者名ラベルは追加しない
 - ページ全体を1枚で完成させ、裁ち切れやコマ欠けを避ける
 """
 
@@ -447,6 +487,28 @@ def preview_merged_params(root: Path, provider: str, payload: dict[str, Any]) ->
     dotenv_map = gen_load_dotenv(root / ".env")
     provider_cfg = get_provider_cfg(root_cfg, provider, dotenv_map=dotenv_map)
     return merge_provider_defaults(provider, provider_cfg, payload, root=root)
+
+
+def resolve_page_renderer_identity(
+    root: Path,
+    provider: str,
+    *,
+    requested_model: str | None = None,
+) -> tuple[str | None, str | None]:
+    payload: dict[str, Any] = {
+        "provider": provider,
+        "prompt": "",
+        "metadata": {"page_render_plan": {"compiler": PAGE_COMPILER}},
+    }
+    if requested_model:
+        payload["model"] = requested_model
+    merged = preview_merged_params(root, provider, payload)
+    profile = merged.get("openrouter_image_profile")
+    profile_id = None
+    if isinstance(profile, dict):
+        profile_id = str(profile.get("profile_id") or "").strip() or None
+    model = str(merged.get("model") or "").strip() or None
+    return model, profile_id
 
 
 def normalize_tag_body(raw: str) -> str:
@@ -647,19 +709,26 @@ def load_character_ir_map(novel_dir: Path) -> dict[str, dict]:
         return {}
     characters: dict[str, dict] = {}
     for path in sorted(character_dir.glob("*.yaml")):
-        character = load_yaml(path)
-        character_id = character.get("character_id")
-        if character_id:
-            characters[str(character_id)] = character
+        from manga_prompt_ir.schemas.character import CharacterPrompt
+
+        model = CharacterPrompt.model_validate(load_yaml(path))
+        characters[str(model.character_id)] = model.model_dump(mode="json")
     return characters
 
 
 def selected_subject_variant_id(subject: dict) -> str | None:
-    for key in ("prompt_variant_id", "costume_variant", "variant_id"):
-        value = subject.get(key)
-        if value:
-            return str(value)
-    return None
+    declared = [
+        str(value)
+        for key in ("prompt_variant_id", "costume_variant", "variant_id")
+        if (value := subject.get(key))
+    ]
+    unique_ids = list(dict.fromkeys(declared))
+    if len(unique_ids) > 1:
+        raise ValueError(
+            "prompt_variant_id / costume_variant / variant_id が食い違っています: "
+            + ", ".join(unique_ids)
+        )
+    return unique_ids[0] if unique_ids else None
 
 
 def find_character_variant(character: dict, variant_id: str | None) -> dict | None:
@@ -673,6 +742,10 @@ def find_character_variant(character: dict, variant_id: str | None) -> dict | No
 
 def character_ir_tags(character: dict, variant_id: str | None = None) -> list[str]:
     """Resolve character tags for manga batch (000_base + variant + combines_with)."""
+    if str(character.get("schema_version", "1.0")) == "1.1":
+        from manga_prompt_ir.character_visual_resolver import resolve_character_visual
+
+        return unique(resolve_character_visual(character, variant_id).danbooru_tags)
     variant = find_character_variant(character, variant_id)
     variants = [v for v in as_list(character.get("prompt_variants")) if isinstance(v, dict)]
     if variant:
@@ -719,7 +792,16 @@ def subject_snapshot(page: dict, subject: dict) -> dict | None:
         return None
     snapshots = page_snapshot_map(page)
     variant_id = selected_subject_variant_id(subject)
-    return snapshots.get(snapshot_key(str(cid), variant_id)) or snapshots.get(snapshot_key(str(cid), None))
+    exact = snapshots.get(snapshot_key(str(cid), variant_id))
+    visual = any(
+        isinstance(item, dict)
+        and str(item.get("character_id") or "") == str(cid)
+        and item.get("character_source_sha256")
+        for item in as_list(page.get("character_snapshots"))
+    )
+    if visual:
+        return exact
+    return exact or snapshots.get(snapshot_key(str(cid), None))
 
 
 def snapshot_tags(snapshot: dict) -> list[str]:
@@ -731,7 +813,13 @@ def snapshot_tags(snapshot: dict) -> list[str]:
 
 def character_visual_summary_for_step2(character: dict, variant_id: str | None = None) -> str:
     """Step2 向け: tag/characters の appearance / costume から短い日本語の固定見た目列を組む。"""
-    _ = variant_id  # 将来: バリアント別の差分を足す余地
+    name = str(character.get("name") or character.get("character_id") or "?")
+    if str(character.get("schema_version", "1.0")) == "1.1":
+        from manga_prompt_ir.character_visual_resolver import resolve_character_visual
+
+        resolved = resolve_character_visual(character, variant_id)
+        return f"{name}: {resolved.natural}"
+    _ = variant_id  # 1.0 はバリアント差を costume.* に持たない
     app = character.get("appearance") or {}
     cos = character.get("costume") or {}
     name = str(character.get("name") or character.get("character_id") or "?")
@@ -777,7 +865,13 @@ def subject_step2_character_clause(
     variant_id = selected_subject_variant_id(subject)
     if snapshot:
         label = str(snapshot.get("name") or snapshot.get("name_en") or cid)
-        # Step2 の固定見た目は外見の要約のみ（costume_summary は衣装・状況説明が長くなりがちなため含めない）
+        # 1.1 は visual_natural / costume_summary を優先する
+        if snapshot.get("visual_natural"):
+            return f"{label}: " + str(snapshot["visual_natural"]).strip()
+        if snapshot.get("costume_summary"):
+            appearance = str(snapshot.get("appearance_summary") or "").strip()
+            costume = str(snapshot["costume_summary"]).strip()
+            return f"{label}: " + " / ".join(part for part in (appearance, costume) if part)
         if snapshot.get("appearance_summary"):
             return f"{label}: " + str(snapshot["appearance_summary"]).strip()
         tags = snapshot_tags(snapshot)
@@ -793,8 +887,12 @@ def step2_character_anchor_segments(
     page: dict,
     panel: dict,
     characters: dict[str, dict],
+    *,
+    include_character_visual: bool = True,
 ) -> list[str]:
     """同一コマ内の登場キャラごとの固定見た目（character_id 単位で重複除去）。"""
+    if not include_character_visual:
+        return []
     seen: set[str] = set()
     out: list[str] = []
     for subject in as_list(panel.get("subjects")):
@@ -837,6 +935,8 @@ def build_step2_panel_line(
     characters: dict[str, dict],
     *,
     apply_paraphrase: bool | None = None,
+    include_character_visual: bool = True,
+    include_text_elements: bool = False,
 ) -> str:
     """互換 Markdown Step2 の1コマ行（layout・summary の後に固定見た目を任意で付与）。"""
     comp = panel.get("composition") or {}
@@ -844,10 +944,20 @@ def build_step2_panel_line(
     layout = comp.get("layout") or ""
     body = panel_step2_description(panel, apply_paraphrase=apply_paraphrase)
     base = f"- コマ{pid}: {layout}。{body}"
-    anchors = step2_character_anchor_segments(page, panel, characters)
-    if not anchors:
-        return base
-    return f"{base} 【固定見た目】{' ｜ '.join(anchors)}"
+    anchors = step2_character_anchor_segments(
+        page,
+        panel,
+        characters,
+        include_character_visual=include_character_visual,
+    )
+    parts = [base]
+    if include_text_elements:
+        text_lines = yaml_text_lines(panel)
+        if text_lines:
+            parts.extend(["文字要素（YAMLのtextをそのまま反映）:", *text_lines])
+    if anchors:
+        parts.append(f"【固定見た目】{' ｜ '.join(anchors)}")
+    return "\n".join(parts)
 
 
 SINGLE_PANEL_BLOCKLIST_EXACT = {
@@ -1158,6 +1268,7 @@ def yaml_panel_tags(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     include_quality_prefix: bool = True,
+    include_character_visual_tags: bool = True,
 ) -> list[str]:
     """Flat tag list for tag_csv / Forge / illustration batch.
 
@@ -1200,10 +1311,12 @@ def yaml_panel_tags(
         cid = subject.get("character_id")
         snapshot = subject_snapshot(page, subject)
         if snapshot:
-            tags.extend(snapshot_tags(snapshot))
+            if include_character_visual_tags:
+                tags.extend(snapshot_tags(snapshot))
         elif cid and cid in characters:
             character = characters[cid]
-            tags.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
+            if include_character_visual_tags:
+                tags.extend(character_ir_tags(character, selected_subject_variant_id(subject)))
         else:
             tags.append(subject_tag_line_token(subject))
         tags.extend(subject_situational_tag_tokens(subject))
@@ -1387,58 +1500,139 @@ def omit_page_japanese_gloss_lines(prompt: str) -> str:
     return "\n".join(kept).strip()
 
 
-def trim_prompt_to_byte_limit(prompt: str, max_bytes: int) -> str:
-    """
-    UTF-8 バイト数が max_bytes を超えるプロンプトを段階的に圧縮する。
-    step1-pages の Grok 向け主用途。
-    圧縮順: render_instruction 行 → tag 行 → 日本語訳 行 → 末尾カット
+_PAGE_LETTERING_PREFIXES = (
+    "- セリフ:",
+    "- モノローグ:",
+    "- ナレーション:",
+    "- 効果音:",
+    "- dialogue:",
+    "- monologue:",
+    "- narration:",
+    "- sfx:",
+)
+_PANEL_LETTERING_RE = re.compile(
+    r"^- panel \S+ (dialogue|monologue|narration|sfx)\b"
+)
+_RI_TRIM_TRIGGERS = (
+    "このYAMLを、漫画1ページ分の作画依頼書として扱う",
+    "panels[]の順番とpanel_idを守り",
+    "character_snapshotsの外見",
+    "text.dialogue",
+    "1枚の完成漫画ページとして",
+    "prompt_tagsは各コマの",
+    "technical.negative_tags",
+    "sceneはページ共通の",
+    "render_instruction",
+    "作画補助:",
+    "panel_policy:",
+    "character_policy:",
+    "text_policy:",
+    "output_policy:",
+    "notes:",
+    "- prompt_tags",
+    "- technical",
+    "- sceneは",
+)
+
+
+def _is_ri_trim_line(line: str) -> bool:
+    text = line.strip()
+    return any(text.startswith(trigger) or trigger in text for trigger in _RI_TRIM_TRIGGERS)
+
+
+def _lettering_line_mask(lines: list[str]) -> list[bool]:
+    """Mark YAML text lines and the compiler-owned Text: block as protected."""
+    protected = [False] * len(lines)
+    in_text_block = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "Text:" or stripped.startswith("Text:"):
+            in_text_block = True
+        if in_text_block:
+            protected[index] = True
+            continue
+        if any(stripped.startswith(prefix) for prefix in _PAGE_LETTERING_PREFIXES):
+            protected[index] = True
+            continue
+        if _PANEL_LETTERING_RE.match(stripped):
+            protected[index] = True
+    return protected
+
+
+def _drop_unprotected_lines(
+    lines: list[str],
+    protected: list[bool],
+    drop: Any,
+) -> list[str]:
+    kept: list[str] = []
+    for line, keep_text in zip(lines, protected):
+        if keep_text or not drop(line):
+            kept.append(line)
+    return kept
+
+
+def _collapse_blank_lines(lines: list[str]) -> list[str]:
+    collapsed: list[str] = []
+    blank = False
+    for line in lines:
+        if not line.strip():
+            if blank:
+                continue
+            blank = True
+            collapsed.append("")
+            continue
+        blank = False
+        collapsed.append(line)
+    while collapsed and not collapsed[-1].strip():
+        collapsed.pop()
+    return collapsed
+
+
+def _join_prompt_lines(lines: list[str]) -> str:
+    return "\n".join(_collapse_blank_lines(lines)).strip()
+
+
+def trim_prompt_to_byte_limit(
+    prompt: str,
+    max_bytes: int,
+    *,
+    preserve_lettering: bool = True,
+) -> str:
+    """Compress a page prompt without dropping dialogue, narration, monologue, or sfx.
+
+    Order: render_instruction boilerplate → ``- tag:`` → ``- 日本語訳:`` →
+    duplicate ``- 人物・対象:`` / ``- 構図:``. Lettering lines and the ``Text:``
+    block stay. If the prompt still exceeds ``max_bytes``, raise instead of
+    cutting the tail — unless ``preserve_lettering`` is false (background jobs).
     """
     if len(prompt.encode("utf-8")) <= max_bytes:
         return prompt
 
     lines = prompt.splitlines()
+    phases = (
+        _is_ri_trim_line,
+        lambda line: line.strip().startswith("- tag:"),
+        lambda line: line.strip().startswith("- 日本語訳:"),
+        lambda line: line.strip().startswith("- 人物・対象:"),
+        lambda line: line.strip().startswith("- 構図:"),
+    )
+    trimmed = lines
+    for drop in phases:
+        trimmed = _drop_unprotected_lines(trimmed, _lettering_line_mask(trimmed), drop)
+        compact = _join_prompt_lines(trimmed)
+        if len(compact.encode("utf-8")) <= max_bytes:
+            return compact
+        trimmed = compact.splitlines()
 
-    # フェーズ1: render_instruction ブロック（このYAMLは〜で始まる段落）を除去
-    def _is_ri_line(line: str) -> bool:
-        triggers = (
-            "このYAMLを、漫画1ページ分の作画依頼書として扱う",
-            "panels[]の順番とpanel_idを守り",
-            "character_snapshotsの外見",
-            "text.dialogue",
-            "1枚の完成漫画ページとして",
-            "prompt_tagsは各コマの",
-            "technical.negative_tags",
-            "sceneはページ共通の",
-            "render_instruction",
-            "作画補助:",
-            "panel_policy:",
-            "character_policy:",
-            "text_policy:",
-            "output_policy:",
-            "notes:",
-            "- prompt_tags",
-            "- technical",
-            "- sceneは",
+    compact = _join_prompt_lines(trimmed)
+    if len(compact.encode("utf-8")) <= max_bytes:
+        return compact
+    if preserve_lettering:
+        raise PageRenderPlanError(
+            "promptがprovider上限を超えています（文字要素は省略しません）: "
+            f"{len(compact.encode('utf-8'))} > {max_bytes} bytes"
         )
-        s = line.strip()
-        return any(s.startswith(t) or t in s for t in triggers)
-
-    trimmed = [l for l in lines if not _is_ri_line(l)]
-    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
-        return "\n".join(trimmed)
-
-    # フェーズ2: 「- tag:」行を除去（キャラ固定タグはanchor_blockで補完）
-    trimmed = [l for l in trimmed if not l.strip().startswith("- tag:")]
-    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
-        return "\n".join(trimmed)
-
-    # フェーズ3: 「- 日本語訳:」行を除去（summaryと重複）
-    trimmed = [l for l in trimmed if not l.strip().startswith("- 日本語訳:")]
-    if len("\n".join(trimmed).encode("utf-8")) <= max_bytes:
-        return "\n".join(trimmed)
-
-    # フェーズ4: バイト上限での末尾カット（最終手段）
-    encoded = "\n".join(trimmed).encode("utf-8")
+    encoded = compact.encode("utf-8")
     truncated = encoded[:max_bytes].decode("utf-8", errors="ignore")
     last_nl = truncated.rfind("\n")
     return truncated[:last_nl] + "\n[...省略]" if last_nl > 0 else truncated
@@ -1450,7 +1644,12 @@ def yaml_page_step1_text(
     page_number: int,
     *,
     color_mode_override: str | None = None,
+    include_character_visual_tags: bool = True,
+    include_text_elements: bool = True,
 ) -> str:
+    from manga_prompt_ir.character_visual_page import validate_page_character_visual
+
+    validate_page_character_visual(page, characters)
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     scene = page.get("scene") or {}
@@ -1484,8 +1683,8 @@ def yaml_page_step1_text(
                 f"コマ{panel.get('panel_id', '?')}: {panel.get('summary', '')}",
                 f"- 人物・対象: {' / '.join(subjects)}",
                 f"- 構図: {comp.get('layout', '')} / {comp.get('framing', '')} / {comp.get('focus', '')} / {camera.get('angle', '')}",
-                *yaml_text_lines(panel),
-                f"- tag: {join_tags(yaml_panel_tags(page, panel, characters, include_quality_prefix=False))}",
+                *(yaml_text_lines(panel) if include_text_elements else []),
+                f"- tag: {join_tags(yaml_panel_tags(page, panel, characters, include_quality_prefix=False, include_character_visual_tags=include_character_visual_tags))}",
                 f"- 日本語訳: {panel.get('translation') or panel.get('summary', '')}",
                 "",
             ]
@@ -1499,7 +1698,12 @@ def yaml_page_step2_text(
     characters: dict[str, dict],
     *,
     apply_paraphrase: bool | None = None,
+    include_character_visual: bool = True,
+    include_text_elements: bool = False,
 ) -> str:
+    from manga_prompt_ir.character_visual_page import validate_page_character_visual
+
+    validate_page_character_visual(page, characters)
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     panels = as_list(page.get("panels"))
@@ -1512,7 +1716,14 @@ def yaml_page_step2_text(
     for panel in panels:
         if isinstance(panel, dict):
             lines.append(
-                build_step2_panel_line(page, panel, characters, apply_paraphrase=apply_paraphrase)
+                build_step2_panel_line(
+                    page,
+                    panel,
+                    characters,
+                    apply_paraphrase=apply_paraphrase,
+                    include_character_visual=include_character_visual,
+                    include_text_elements=include_text_elements,
+                )
             )
     return "\n".join(lines).strip()
 
@@ -2059,13 +2270,16 @@ def iter_yaml_manga_jobs(
     mask_rules: MaskRuleSet | None = None,
     page_compiler: str = "legacy",
     text_mode: str | None = None,
+    bubble_frame_mode: str | None = None,
     novelai_model: str | None = None,
+    requested_model: str | None = None,
 ) -> list[dict[str, Any]]:
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
     if not pages_dir.is_dir():
         raise FileNotFoundError(f"manga/pages/ がありません: {pages_dir}")
     characters = load_character_ir_map(novel_dir)
+    cli_text_mode = text_mode
     rules = mask_rules or MaskRuleSet.empty()
     # プロバイダごとのプロンプトバイト上限を config から取得
     # novel_dir = novels/<作品名>/ → 2階層上がプロジェクトルート
@@ -2093,9 +2307,29 @@ def iter_yaml_manga_jobs(
             )
 
     all_jobs: list[dict[str, Any]] = []
+    compact_grok_page_prompt = (
+        page_compiler == PAGE_COMPILER and provider in {"grok", "grok_pro"}
+    )
+    resolved_model = novelai_model
+    resolved_profile: str | None = None
+    if page_compiler == PAGE_COMPILER:
+        try:
+            resolved_model, resolved_profile = resolve_page_renderer_identity(
+                repo_root(),
+                provider,
+                requested_model=requested_model or novelai_model,
+            )
+        except (ValueError, KeyError, FileNotFoundError) as exc:
+            raise PageRenderPlanError(f"renderer model を解決できません: {exc}") from exc
     for index, path in enumerate(paths, start=1):
         page = load_yaml(path)
         MangaPagePrompt.model_validate(page)
+        yaml_text_mode = page_yaml_text_mode(page)
+        page_text_mode = cli_text_mode
+        if page_text_mode is None and yaml_text_mode is None:
+            page_text_mode = suggest_text_mode_for_lettering(
+                novel_dir, provider=provider, requested=None
+            )
         panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
         if not panels:
             continue
@@ -2104,6 +2338,18 @@ def iter_yaml_manga_jobs(
         stem_assets = resolve_manga_assets_stem_dir(manga_dir, stem)
         comic_dir = stem_assets / MANGA_ASSET_SUBDIR_COMIC
         color_label = page_color_mode_label(page, override=color_mode_override)
+        grok_page_text_mode: str | None = None
+        include_grok_text_elements = False
+        if provider in _GROK_FAMILY and source in MANGA_PAGE_ASPECT_SOURCES:
+            requested_text_mode = page_text_mode
+            grok_page_text_mode, _grok_text_policy, _grok_text_warnings = resolve_text_mode(
+                page, requested_text_mode
+            )
+            # PageRenderPlan owns the final Text manifest.  The legacy Grok
+            # formatter needs the exact YAML text lines in its source prompt.
+            include_grok_text_elements = (
+                grok_page_text_mode == "generate" and page_compiler != PAGE_COMPILER
+            )
         if source == "background-concepts":
             for job in yaml_background_concept_jobs(
                 page,
@@ -2122,14 +2368,27 @@ def iter_yaml_manga_jobs(
                 job["output_dir"] = (stem_assets / output_subdir).as_posix()
                 prompt_text = str(job.get("prompt") or "")
                 if max_prompt_bytes and len(prompt_text.encode("utf-8")) > max_prompt_bytes:
-                    job["prompt"] = trim_prompt_to_byte_limit(prompt_text, max_prompt_bytes)
+                    job["prompt"] = trim_prompt_to_byte_limit(
+                        prompt_text,
+                        max_prompt_bytes,
+                        preserve_lettering=False,
+                    )
                 all_jobs.append(job)
         elif source == "step2-pages":
             body = yaml_page_step2_text(
-                page, page_num, characters, apply_paraphrase=step2_paraphrase
+                page,
+                page_num,
+                characters,
+                apply_paraphrase=step2_paraphrase,
+                include_character_visual=not compact_grok_page_prompt,
+                include_text_elements=include_grok_text_elements,
             )
             helper = resolve_page_style_helper(provider, "step2-pages", style_helper)
-            anchor_block = yaml_character_anchor_block(page, characters)
+            anchor_block = (
+                ""
+                if compact_grok_page_prompt
+                else yaml_character_anchor_block(page, characters)
+            )
             instruction_block = yaml_render_instruction_block(page)
             extra_text = "\n\n".join(blk for blk in (instruction_block, helper, anchor_block) if blk)
             prompt = (
@@ -2152,8 +2411,11 @@ def iter_yaml_manga_jobs(
                     provider=provider,
                     existing_prompt=prompt,
                     negative_prompt=page_negative,
-                    text_mode=text_mode,
-                    novelai_model=novelai_model,
+                    text_mode=page_text_mode,
+                    bubble_frame_mode=bubble_frame_mode,
+                    resolved_model=resolved_model,
+                    resolved_profile=resolved_profile,
+                    novelai_model=resolved_model if provider == "novelai" else novelai_model,
                     asset_base_dir=novel_dir,
                     characters=characters,
                 )
@@ -2177,11 +2439,6 @@ def iter_yaml_manga_jobs(
             if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
                 prompt = omit_page_japanese_gloss_lines(prompt)
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
-                if plan is not None:
-                    raise PageRenderPlanError(
-                        f"PageRenderPlan のpromptがprovider上限を超えています: "
-                        f"{len(prompt.encode('utf-8'))} > {max_prompt_bytes} bytes"
-                    )
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry: dict[str, Any] = {
                 "stem": stem,
@@ -2226,9 +2483,19 @@ def iter_yaml_manga_jobs(
                 characters,
                 page_num,
                 color_mode_override=color_mode_override,
+                include_character_visual_tags=not compact_grok_page_prompt,
+                include_text_elements=(
+                    include_grok_text_elements
+                    if provider in _GROK_FAMILY
+                    else True
+                ),
             )
             helper = resolve_page_style_helper(provider, "step1-pages", style_helper)
-            anchor_block = yaml_character_anchor_block(page, characters)
+            anchor_block = (
+                ""
+                if compact_grok_page_prompt
+                else yaml_character_anchor_block(page, characters)
+            )
             extra_text = "\n\n".join(blk for blk in (helper, anchor_block) if blk)
             intro = (
                 f"以下は{color_label}1ページ分の詳細指示です。"
@@ -2248,8 +2515,11 @@ def iter_yaml_manga_jobs(
                     provider=provider,
                     existing_prompt=prompt,
                     negative_prompt=page_negative,
-                    text_mode=text_mode,
-                    novelai_model=novelai_model,
+                    text_mode=page_text_mode,
+                    bubble_frame_mode=bubble_frame_mode,
+                    resolved_model=resolved_model,
+                    resolved_profile=resolved_profile,
+                    novelai_model=resolved_model if provider == "novelai" else novelai_model,
                     asset_base_dir=novel_dir,
                     characters=characters,
                 )
@@ -2273,11 +2543,6 @@ def iter_yaml_manga_jobs(
             if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
                 prompt = omit_page_japanese_gloss_lines(prompt)
             if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
-                if plan is not None:
-                    raise PageRenderPlanError(
-                        f"PageRenderPlan のpromptがprovider上限を超えています: "
-                        f"{len(prompt.encode('utf-8'))} > {max_prompt_bytes} bytes"
-                    )
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry = {
                 "stem": stem,
@@ -2422,7 +2687,9 @@ def iter_jobs_by_input(
     mask_rules: MaskRuleSet | None = None,
     page_compiler: str = "legacy",
     text_mode: str | None = None,
+    bubble_frame_mode: str | None = None,
     novelai_model: str | None = None,
+    requested_model: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2441,7 +2708,9 @@ def iter_jobs_by_input(
             mask_rules=mask_rules,
             page_compiler=page_compiler,
             text_mode=text_mode,
+            bubble_frame_mode=bubble_frame_mode,
             novelai_model=novelai_model,
+            requested_model=requested_model,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -2531,8 +2800,11 @@ def main(argv: list[str] | None = None) -> int:
         "--aspect-ratio",
         default=None,
         help=(
-            "Forge/Grok/OpenAI 用の比率 preset 名または比率文字列（例: manga_b5_portrait, portrait, 3:4, 9:16）。"
-            f" 未指定かつ provider=grok_pro のときは環境変数 {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV} で上書き可能"
+            "Forge/Grok/OpenAI/NovelAI 用の比率 preset 名または比率文字列"
+            "（例: manga_b5_portrait, portrait, 3:4, 9:16）。"
+            f" 未指定かつ provider=grok_pro のときは環境変数 {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV}。"
+            " 未指定の NovelAI ページ生成（step1-pages / step2-pages）は manga_b5_portrait"
+            "（1:1 には落とさない）"
         ),
     )
     p.add_argument(
@@ -2649,7 +2921,8 @@ def main(argv: list[str] | None = None) -> int:
         default="legacy",
         help=(
             "ページ生成の実行経路。既定はlegacy。"
-            f" {PAGE_COMPILER} はschema 1.0/1.1を読み取り、opt-inのPageRenderPlanと文字manifestを作る。"
+            f" Grok / Grok Pro のページ本番・dry-runは {PAGE_COMPILER} を明示する。"
+            f" {PAGE_COMPILER} はschema 1.0/1.1を読み取り、PageRenderPlanと文字manifestを作る。"
             " step1-panels・background-concepts・Markdown入力では使えない"
         ),
     )
@@ -2659,7 +2932,22 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "PageRenderPlanの実効文字方針（generate / letter_later / none）。"
-            " YAMLのtext_policy明示値と衝突する場合は送信前に停止する"
+            " 省略時、ページ YAML の text_mode があればそれを使う。"
+            " それも無いとき、NovelAI の page_render_plan は generate（T1 と同じ slot 割り当て）。"
+            " Grok / GPT Image は作品 _meta.yaml の manga_lettering.enabled が true なら letter_later、"
+            " false と未設定は generate（元の吹き出しに字・写植なし）。CLI 明示は YAML より優先する。"
+            " YAMLのtext_policy明示値と衝突する場合は送信前に停止する。"
+            " page_compiler が legacy でも、Grok ページの台詞行の有無に同じ方針を使う"
+        ),
+    )
+    p.add_argument(
+        "--bubble-frame-mode",
+        choices=("provider", "local"),
+        default=None,
+        help=(
+            "吹き出し枠の描画戦略。既定は provider。"
+            " NovelAI の先も provider（T1 割り当て）。"
+            " local は割り当てが崩れた退避で、page_render_plan の NovelAI 入口でのみ選べる"
         ),
     )
     p.add_argument("--min-page", type=int, default=None, help="処理する Page 番号の下限（含む）")
@@ -2706,7 +2994,8 @@ def main(argv: list[str] | None = None) -> int:
         metavar="ID",
         help=(
             "作品 _meta.yaml の novelai.portions から使う ID。"
-            " 未指定時は portion_default"
+            " 未指定時は portion_default。"
+            " none / off で Vibe Transfer の自動適用を切る（NovelAI V5 の bubble_frame_mode=local では必須）"
         ),
     )
     p.add_argument(
@@ -2806,6 +3095,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.text_mode is not None:
         print(
             "error: --text-mode は --page-compiler page_render_plan と併用してください",
+            file=sys.stderr,
+        )
+        return 2
+    elif args.bubble_frame_mode is not None:
+        print(
+            "error: --bubble-frame-mode は --page-compiler page_render_plan と併用してください",
             file=sys.stderr,
         )
         return 2
@@ -2943,7 +3238,9 @@ def main(argv: list[str] | None = None) -> int:
             mask_rules=mask_rules,
             page_compiler=args.page_compiler,
             text_mode=args.text_mode,
+            bubble_frame_mode=args.bubble_frame_mode,
             novelai_model=(provider_cfg.get("default_model") if provider == "novelai" else None),
+            requested_model=args.model,
         )
     except (FileNotFoundError, ValueError, PageRenderPlanError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -2970,8 +3267,8 @@ def main(argv: list[str] | None = None) -> int:
         print("error: 指定範囲に該当するジョブが0件です", file=sys.stderr)
         return 2
 
-    aspect_effective = manga_grok_pro_effective_aspect_ratio(
-        args.aspect_ratio, provider, root=root
+    aspect_effective = manga_page_effective_aspect_ratio(
+        args.aspect_ratio, provider, source=args.source, root=root
     )
 
     provider_cli = root / "tools" / "image_provider_generate.py"
@@ -2986,11 +3283,13 @@ def main(argv: list[str] | None = None) -> int:
     if aspect_effective is not None:
         if args.aspect_ratio is not None:
             print(f"aspect_ratio: {aspect_effective} (--aspect-ratio)")
-        else:
+        elif provider == "grok_pro":
             print(
                 f"aspect_ratio: {aspect_effective} "
                 f"(env {MANGA_GROK_PRO_DEFAULT_ASPECT_ENV})"
             )
+        else:
+            print(f"aspect_ratio: {aspect_effective} (manga page default)")
     print(f"jobs: {len(jobs)}")
     if args.model is not None:
         print(f"model: {args.model} (--model)")
@@ -3088,6 +3387,28 @@ def main(argv: list[str] | None = None) -> int:
         except (ValueError, KeyError, FileNotFoundError) as exc:
             print(f"error: provider merge に失敗しました ({job['prefix']}): {exc}", file=sys.stderr)
             return 2
+        if isinstance(page_plan, PageRenderPlan):
+            profile = None
+            openrouter_profile = merged.get("openrouter_image_profile")
+            if isinstance(openrouter_profile, dict):
+                profile = openrouter_profile.get("profile_id")
+            try:
+                merged_key = resolve_renderer_capability_key(
+                    provider=provider,
+                    model=str(merged.get("model") or ""),
+                    profile=str(profile) if profile else None,
+                )
+            except RendererCapabilityError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+            if merged_key != page_plan.capability_key:
+                print(
+                    f"error: 解決済み model の capability_key={merged_key} が "
+                    f"PageRenderPlan の {page_plan.capability_key} と一致しません "
+                    f"(model={merged.get('model')!r} profile={profile!r})",
+                    file=sys.stderr,
+                )
+                return 2
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {out_dir_posix}")
             print(
@@ -3096,6 +3417,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             if merged.get("aspect_ratio"):
                 print(f"    aspect_ratio: {merged['aspect_ratio']}")
+            if provider == "novelai" and merged.get("width") and merged.get("height"):
+                print(f"    image_size: {merged['width']}x{merged['height']}")
             if merged.get("model"):
                 print(f"    resolved_model: {merged['model']}")
             if merged.get("grok_image_quality"):
@@ -3130,6 +3453,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(
                     f"    page_render_plan: compiler={page_plan.compiler_version} "
                     f"text_mode={page_plan.text_mode} "
+                    f"bubble_frame_mode={page_plan.bubble_frame_mode} "
+                    f"capability_key={page_plan.capability_key} "
+                    f"bubbles_suppressed={page_plan.effective_settings.get('bubbles_suppressed')} "
                     f"text_manifest={len(page_plan.text_manifest)} "
                     f"character_slots={len(page_plan.character_slots)}"
                 )
@@ -3192,6 +3518,8 @@ def main(argv: list[str] | None = None) -> int:
         r = None
         for retry_i in range(10):
             try:
+                child_env = os.environ.copy()
+                child_env["PYTHONIOENCODING"] = "utf-8"
                 r = subprocess.run(
                     [
                         sys.executable,
@@ -3205,6 +3533,7 @@ def main(argv: list[str] | None = None) -> int:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
+                    env=child_env,
                 )
                 if r.returncode == 4: # Concurrent generation is locked
                     wait_sec = 20 if retry_i >= 5 else 10
@@ -3230,6 +3559,41 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"error: image provider の実行に失敗しました ({job['prefix']})", file=sys.stderr)
                 return 1
         _safe_print_stdout(r.stdout.strip())
+        if isinstance(page_plan, PageRenderPlan) and page_plan.bubble_frame_mode == "local":
+            try:
+                saved_payload = json.loads(r.stdout)
+            except json.JSONDecodeError:
+                print(
+                    "error: 生成結果 JSON を読めず local frame 記録を書けません",
+                    file=sys.stderr,
+                )
+                return 2
+            job_out = Path(payload["output_dir"])
+            for item in saved_payload.get("saved") or []:
+                png = item.get("png")
+                if not png:
+                    continue
+                try:
+                    png_path = resolve_saved_artifact(png, job_out)
+                except FileNotFoundError as exc:
+                    print(f"error: {exc}", file=sys.stderr)
+                    return 2
+                record = build_local_frame_source_record(
+                    image_path=png_path,
+                    plan=page_plan,
+                    resolved_model=str(merged.get("model") or ""),
+                )
+                sidecar = png_path.with_name(png_path.stem + ".local_frame.json")
+                write_page_json(sidecar, record)
+                if not item.get("json"):
+                    continue
+                try:
+                    gen_json = resolve_saved_artifact(item["json"], job_out)
+                except FileNotFoundError:
+                    continue
+                existing = json.loads(gen_json.read_text(encoding="utf-8"))
+                existing.update(record)
+                write_page_json(gen_json, existing)
 
     return 0
 

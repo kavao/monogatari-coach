@@ -32,6 +32,12 @@ def _page() -> dict:
     return yaml.safe_load((_PAGES / "manga_01_p01.yaml").read_text(encoding="utf-8"))
 
 
+def _bind_sha(image: Path, geometry: dict) -> dict:
+    bound = dict(geometry)
+    bound["source_sha256"] = sha256_file(image)
+    return bound
+
+
 def test_design_geometry_is_not_actual() -> None:
     geometry = project_design_geometry(_page(), image_size=(100, 200))
     assert geometry["kind"] == "design_projected"
@@ -152,7 +158,7 @@ def test_lettering_without_font_is_incomplete(tmp_path: Path) -> None:
             image,
             tmp_path / "lettered.png",
             font_path=tmp_path / "missing.ttf",
-            geometry=geometry,
+            geometry=_bind_sha(image, geometry),
         )
 
 
@@ -198,7 +204,7 @@ def test_lettering_unplaced_and_overflow_are_incomplete(tmp_path: Path) -> None:
         image,
         tmp_path / "lettered.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
         font_size=28,
     )
     assert result["complete"] is False
@@ -220,11 +226,14 @@ def test_lettering_ink_stays_inside_rect(tmp_path: Path) -> None:
         image,
         tmp_path / "lettered.png",
         font_path=_test_font(),
-        geometry={
+        geometry=_bind_sha(
+            image,
+            {
             "kind": "actual",
             "panels": [{"panel_id": 10, "rect_px": [1, 1, 390, 490]}],
             "texts": [{"text_id": "p10-sfx-01", "rect_px": rect}],
         },
+        ),
         font_size=160,
     )
     assert any(item["text_id"] == "p10-sfx-01" for item in result["placed"])
@@ -258,7 +267,7 @@ def test_lettering_size_ratio_scales_fitted_size(tmp_path: Path) -> None:
         image,
         tmp_path / "full.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
         font_size=160,
     )
     reduced = letter_page(
@@ -266,7 +275,7 @@ def test_lettering_size_ratio_scales_fitted_size(tmp_path: Path) -> None:
         image,
         tmp_path / "reduced.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
         font_size=160,
         size_ratio=0.7,
     )
@@ -289,7 +298,7 @@ def test_lettering_vertical_scale_stretches_height_only(tmp_path: Path) -> None:
         image,
         tmp_path / "full.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
         font_size=80,
         size_ratio=0.7,
     )
@@ -298,7 +307,7 @@ def test_lettering_vertical_scale_stretches_height_only(tmp_path: Path) -> None:
         image,
         tmp_path / "tall.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
         font_size=80,
         size_ratio=0.7,
         vertical_scale=1.08,
@@ -332,7 +341,7 @@ def test_lettering_uses_page_style_and_uniform_base_size(tmp_path: Path) -> None
         image,
         tmp_path / "lettered.png",
         font_path=_test_font(),
-        geometry=geometry,
+        geometry=_bind_sha(image, geometry),
     )
     assert result["complete"] is True
     assert {item["writing_direction"] for item in result["placed"]} == {"vertical"}
@@ -354,7 +363,9 @@ def test_horizontal_writing_keeps_original_punctuation(tmp_path: Path) -> None:
         image,
         tmp_path / "lettered.png",
         font_path=_test_font(),
-        geometry={
+        geometry=_bind_sha(
+            image,
+            {
             "kind": "actual",
             "panels": [{"panel_id": 10, "rect_px": [1, 1, 390, 790]}],
             "texts": [
@@ -364,6 +375,7 @@ def test_horizontal_writing_keeps_original_punctuation(tmp_path: Path) -> None:
                 {"text_id": "p40-dialogue-01", "rect_px": [200, 260, 380, 460]},
             ],
         },
+        ),
     )
     assert result["complete"] is True
     first = next(item for item in result["placed"] if item["text_id"] == "p10-dialogue-01")
@@ -392,3 +404,26 @@ def test_bind_actual_geometry_keeps_text_rects(tmp_path: Path) -> None:
     assert bound["kind"] == "actual"
     assert bound["texts"][0]["text_id"] == "p10-dialogue-01"
     assert bound["texts"][0]["rect_px"] == [2, 2, 9, 9]
+
+
+def test_lettering_rejects_stale_image_hash(tmp_path: Path) -> None:
+    image = tmp_path / "page.png"
+    other = tmp_path / "other.png"
+    Image.new("RGB", (200, 300), (255, 255, 255)).save(image)
+    Image.new("RGB", (200, 300), (10, 10, 10)).save(other)
+    geometry = _bind_sha(
+        other,
+        {
+            "kind": "actual",
+            "panels": [{"panel_id": 10, "rect_px": [1, 1, 50, 50]}],
+            "texts": [{"text_id": "p10-dialogue-01", "rect_px": [10, 10, 80, 80]}],
+        },
+    )
+    with pytest.raises(PageEditError, match="再利用"):
+        letter_page(
+            _page(),
+            image,
+            tmp_path / "lettered.png",
+            font_path=_test_font(),
+            geometry=geometry,
+        )

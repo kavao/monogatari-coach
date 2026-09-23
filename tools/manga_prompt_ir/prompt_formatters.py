@@ -97,6 +97,8 @@ def character_line(
     snapshot: dict[str, Any],
     *,
     subject_notes: list[str] | None = None,
+    include_variant_tags: bool = True,
+    compact_visual: bool = False,
 ) -> str:
     name = str(
         snapshot.get("name_en")
@@ -105,13 +107,29 @@ def character_line(
         or "character"
     )
     details: list[str] = []
-    for key in ("appearance_summary", "costume_summary"):
-        value = snapshot.get(key)
-        if value:
-            details.append(str(value))
-    fixed = [str(x) for x in as_list(snapshot.get("fixed_tags")) if x]
-    if fixed:
-        details.append(", ".join(fixed[:12]))
+    visual_natural = snapshot.get("visual_natural")
+    appearance = snapshot.get("appearance_summary")
+    if appearance and not (compact_visual and visual_natural):
+        details.append(str(appearance))
+    if visual_natural:
+        details.append(str(visual_natural))
+        if include_variant_tags:
+            variant = [str(x) for x in as_list(snapshot.get("variant_tags")) if x]
+            if variant:
+                details.append(", ".join(variant))
+    else:
+        costume = snapshot.get("costume_summary")
+        if costume:
+            details.append(str(costume))
+        fixed = [str(x) for x in as_list(snapshot.get("fixed_tags")) if x]
+        if snapshot.get("character_source_sha256"):
+            variant = [str(x) for x in as_list(snapshot.get("variant_tags")) if x]
+            if fixed:
+                details.append(", ".join(fixed))
+            if variant:
+                details.append(", ".join(variant))
+        elif fixed:
+            details.append(", ".join(fixed))
     if subject_notes:
         details.extend(subject_notes)
     return f"- {name}: " + "; ".join(details)
@@ -197,7 +215,13 @@ def illustration_composition_lines(page: dict[str, Any]) -> list[str]:
     return lines
 
 
-def illustration_character_lines(page: dict[str, Any]) -> list[str]:
+def illustration_character_lines(
+    page: dict[str, Any],
+    *,
+    include_variant_tags: bool = True,
+    compact_visual: bool = False,
+    include_subject_notes: bool = True,
+) -> list[str]:
     snapshots = character_snapshot_map(page)
     lines: list[str] = []
     used: set[str] = set()
@@ -209,18 +233,31 @@ def illustration_character_lines(page: dict[str, Any]) -> list[str]:
                 continue
             cid = str(subject.get("character_id") or "")
             snapshot = snapshots.get(cid)
-            notes = subject_notes(subject)
+            notes = subject_notes(subject) if include_subject_notes else []
             if snapshot:
                 key = cid or str(snapshot.get("name_en") or snapshot.get("name"))
                 if key in used:
                     continue
                 used.add(key)
-                lines.append(character_line(snapshot, subject_notes=notes))
+                lines.append(
+                    character_line(
+                        snapshot,
+                        subject_notes=notes,
+                        include_variant_tags=include_variant_tags,
+                        compact_visual=compact_visual,
+                    )
+                )
             elif notes:
                 lines.append("- " + "; ".join(notes))
     for cid, snapshot in snapshots.items():
         if cid not in used:
-            lines.append(character_line(snapshot))
+            lines.append(
+                character_line(
+                    snapshot,
+                    include_variant_tags=include_variant_tags,
+                    compact_visual=compact_visual,
+                )
+            )
     return lines
 
 
@@ -313,7 +350,12 @@ def manga_page_header(source: str) -> str:
     )
 
 
-def manga_page_layout_lines(page: dict[str, Any], source: str) -> list[str]:
+def manga_page_layout_lines(
+    page: dict[str, Any],
+    source: str,
+    *,
+    reading_order_as_layout_constraint: bool = False,
+) -> list[str]:
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
@@ -323,7 +365,19 @@ def manga_page_layout_lines(page: dict[str, Any], source: str) -> list[str]:
         lines.append(f"- Panel count: {len(panels)}")
     reading_order = meta.get("reading_order")
     if reading_order:
-        lines.append(f"- Reading order: {reading_order}")
+        if reading_order_as_layout_constraint:
+            flow = (
+                "right-to-left"
+                if str(reading_order) == "right_to_left"
+                else "left-to-right"
+            )
+            lines.append(
+                "- Non-rendered layout constraint: use Japanese manga panel flow "
+                f"{flow}; this is layout metadata only. Do not draw arrows, labels, "
+                "captions, or reading-order text."
+            )
+        else:
+            lines.append(f"- Reading order: {reading_order}")
     panel_layout = manga.get("panel_layout")
     if panel_layout:
         lines.append(f"- Page layout: {panel_layout}")
@@ -333,13 +387,22 @@ def manga_page_layout_lines(page: dict[str, Any], source: str) -> list[str]:
     return lines
 
 
-def manga_page_text_policy_lines(page: dict[str, Any]) -> list[str]:
+def manga_page_text_policy_lines(
+    page: dict[str, Any],
+    *,
+    omit_reading_order_phrases: bool = False,
+) -> list[str]:
     instruction = page.get("render_instruction") or {}
     manga = page.get("manga") if isinstance(page.get("manga"), dict) else {}
     lines: list[str] = []
     for key in ("text_policy", "output_policy", "panel_policy"):
         value = instruction.get(key)
         if value:
+            if omit_reading_order_phrases and any(
+                phrase in str(value).lower()
+                for phrase in ("右から左", "左から右", "読み順", "reading order")
+            ):
+                continue
             lines.append(f"- {value}")
     lettering = manga.get("lettering") if isinstance(manga, dict) else {}
     if not isinstance(lettering, dict):
@@ -406,6 +469,10 @@ def format_manga_page_prompt(
     existing_prompt: str,
     negative_prompt: str,
     formatter: str,
+    include_character_variant_tags: bool = True,
+    compact_character_visual: bool = False,
+    include_character_subject_notes: bool = True,
+    reading_order_as_layout_constraint: bool = False,
 ) -> PromptBundle:
     if formatter not in VALID_FORMATTERS:
         raise ValueError(f"unknown prompt formatter: {formatter}")
@@ -419,10 +486,31 @@ def format_manga_page_prompt(
 
     prompt_parts: list[str] = [
         manga_page_header(source),
-        named_section("Page Structure", manga_page_layout_lines(page, source)),
+        named_section(
+            "Page Structure",
+            manga_page_layout_lines(
+                page,
+                source,
+                reading_order_as_layout_constraint=reading_order_as_layout_constraint,
+            ),
+        ),
         named_section("Panel Outline", manga_page_panel_outline_lines(page)),
-        named_section("Character Anchors", illustration_character_lines(page)),
-        named_section("Text and Output Policy", manga_page_text_policy_lines(page)),
+        named_section(
+            "Character Anchors",
+            illustration_character_lines(
+                page,
+                include_variant_tags=include_character_variant_tags,
+                compact_visual=compact_character_visual,
+                include_subject_notes=include_character_subject_notes,
+            ),
+        ),
+        named_section(
+            "Text and Output Policy",
+            manga_page_text_policy_lines(
+                page,
+                omit_reading_order_phrases=reading_order_as_layout_constraint,
+            ),
+        ),
         named_section("Preserve", preserve_lines(page)),
         named_section(
             "Do not include",

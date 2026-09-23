@@ -78,12 +78,16 @@ def test_page_render_plan_compiles_three_providers_without_mutating_1_0(
     page = _page()
     before = copy.deepcopy(page)
 
+    extra = {}
+    if provider == "openrouter":
+        extra["resolved_profile"] = "nano_banana_2"
     plan = compile_page_render_plan(
         page,
         source=source,
         provider=provider,
         existing_prompt=_existing_prompt(),
         negative_prompt="watermark",
+        **extra,
     )
 
     assert page == before
@@ -94,11 +98,13 @@ def test_page_render_plan_compiles_three_providers_without_mutating_1_0(
     if provider == "novelai":
         assert plan.negative_prompt == "watermark"
         assert plan.negative_mode == "native"
+        assert plan.text_mode == "generate"
     else:
         assert plan.negative_prompt == ""
         assert plan.negative_mode == "inline_do_not_include"
-    assert plan.text_mode == "generate"
+        assert plan.text_mode == "generate"
     assert len(plan.text_manifest) == 4
+    assert plan.text_manifest[0]["text_id"] == "p10-dialogue-01"
     assert {item["type"] for item in plan.text_manifest} == {
         "dialogue",
         "monologue",
@@ -119,14 +125,18 @@ def test_page_render_plan_compiles_three_providers_without_mutating_1_0(
         assert "Page Structure:" in plan.prompt
         assert "Panel Outline:" in plan.prompt
     if provider == "novelai":
-        text_part = plan.prompt.split("Text:", 1)[1]
+        assert "Text:" in plan.prompt
         assert "speaker=" not in plan.prompt
-        assert "これは……？" in text_part
-        assert "ぎいっ" not in text_part
-        assert plan.prompt.rstrip().endswith("これは……？")
+        assert "これは……？" in plan.prompt
+        assert "exactly 1 empty" not in plan.prompt
+        assert "Text Layout (structural; no lettering):" not in plan.prompt
+        assert "text, speech bubble" in plan.prompt
+        assert "白い吹き出し" not in plan.prompt
     else:
         assert "Text:" in plan.prompt
         assert plan.prompt.rstrip().endswith("ぎいっ")
+        assert "text, speech bubble" not in plan.prompt
+        assert "白い吹き出し" not in plan.prompt
     assert plan.metadata()["ordered_image_inputs"] == []
     assert plan.metadata()["name_images"] == []
     assert plan.metadata()["text_manifest_count"] == 4
@@ -173,6 +183,7 @@ def test_novelai_and_grok_page_sends_omit_japanese_gloss(tmp_path: Path) -> None
             novel_dir, "manga_01", "step1-pages", provider, None, **common
         )
         assert "- 日本語訳:" not in jobs[0]["prompt"]
+        assert "- 日本語訳:" not in jobs[0]["page_render_plan"].prompt
         assert "コマ10:" not in jobs[0]["prompt"]
         assert "panel_id" not in jobs[0]["prompt"]
         assert "上段いっぱい:" in jobs[0]["prompt"]
@@ -254,7 +265,45 @@ def test_rtl_page_is_preserved_as_page_direction() -> None:
         negative_prompt="",
     )
 
-    assert "Reading order: right_to_left" in plan.prompt
+    assert "Non-rendered layout constraint:" in plan.prompt
+    assert "right-to-left" in plan.prompt
+    assert "Do not draw arrows, labels" in plan.prompt
+    assert "Reading order: right_to_left" not in plan.prompt
+
+
+def test_grok_layout_constraint_does_not_repeat_visible_reading_order_hints() -> None:
+    page = _page()
+    page["meta"]["reading_order"] = "right_to_left"
+    page["render_instruction"]["output_policy"] = "コマ境界と右から左の読み順を明確にする。"
+    existing = (
+        "カラー漫画、1ページ4コマ、読み順: right_to_left\n"
+        "コマ境界と右から左の読み順を明確にする。\n"
+        "bottom panel: two characters"
+    )
+    grok = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="grok_pro",
+        existing_prompt=existing,
+        negative_prompt="",
+        text_mode="letter_later",
+    )
+    assert "Non-rendered layout constraint:" in grok.prompt
+    assert "right-to-left" in grok.prompt
+    assert "読み順:" not in grok.prompt
+    assert "右から左" not in grok.prompt
+    assert "Do not draw arrows, labels" in grok.prompt
+
+    openai = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="openai",
+        existing_prompt=existing,
+        negative_prompt="",
+        text_mode="letter_later",
+    )
+    assert "Reading order: right_to_left" in openai.prompt
+    assert "読み順: right_to_left" in openai.prompt
 
 
 def test_generate_without_dialogue_keeps_novelai_text_marker() -> None:
@@ -272,6 +321,7 @@ def test_generate_without_dialogue_keeps_novelai_text_marker() -> None:
     )
 
     assert plan.text_manifest == []
+    assert "text, speech bubble" in plan.prompt
     assert plan.prompt.endswith("\n\nText:\n")
     augmented = _novelai_augment_page_prompt(
         "nai-diffusion-5-full",
@@ -290,7 +340,7 @@ def test_page_compiler_rejects_formatter_budget_overflow(overflow: str) -> None:
         expected = "Panel Outline"
     else:
         page["character_snapshots"] = [{"character_id": "hero"}]
-        page["character_snapshots"][0]["fixed_tags"] = [f"tag-{i}" for i in range(13)]
+        page["character_snapshots"][0]["fixed_tags"] = [f"tag-{i}" for i in range(65)]
         expected = "character_line"
 
     with pytest.raises(PageRenderPlanError, match=expected):
@@ -301,6 +351,20 @@ def test_page_compiler_rejects_formatter_budget_overflow(overflow: str) -> None:
             existing_prompt=_existing_prompt(),
             negative_prompt="",
         )
+
+
+def test_page_compiler_keeps_fourteen_fixed_tags() -> None:
+    page = _page()
+    page["character_snapshots"] = [{"character_id": "hero"}]
+    page["character_snapshots"][0]["fixed_tags"] = [f"tag-{i}" for i in range(14)]
+    plan = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="grok",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+    )
+    assert "tag-13" in plan.prompt
 
 
 def test_explicit_text_policy_is_recorded_and_conflicts_are_rejected() -> None:
@@ -537,6 +601,7 @@ def test_schema_1_1_novelai_slots_use_layout_centers_and_panel_negative(tmp_path
         cli_negative_prompt="",
         prompt_formatter="manga_page_instruction",
         page_compiler="page_render_plan",
+        text_mode="generate",
     )
 
     assert len(jobs) == 1
@@ -660,7 +725,7 @@ def test_schema_1_1_novelai_slot_dialogue_is_not_a_page_text_block() -> None:
         existing_prompt=_existing_prompt(),
         negative_prompt="",
         text_mode="generate",
-        novelai_model="nai-diffusion-4-5-curated",
+        novelai_model="nai-diffusion-5-curated",
     )
 
     assert f"白い吹き出し「{line}」" in plan.character_slots[0]["prompt"]
@@ -835,6 +900,9 @@ def test_openrouter_page_compiler_cli_dry_run_uses_image_api_bridge(
     assert "transport: OpenRouter Image API (/images)" in captured.out
     assert "aspect_ratio: 3:4" in captured.out
     assert "text_mode=letter_later" in captured.out
+    assert "capability_key=nano_banana_2" in captured.out
+    assert "resolved_model: google/gemini-3.1-flash-image" in captured.out
+    assert "openrouter_profile: nano_banana_2" in captured.out
     assert "unsupported:" in captured.out
     assert not (novel_dir / "manga" / "_assets").exists()
 
@@ -874,6 +942,7 @@ def test_openrouter_page_compiler_cli_dry_run_shows_gpt_image_profile(
     assert rc == 0
     assert "resolved_model: openai/gpt-image-2" in captured.out
     assert "openrouter_profile: gpt_image_2 parameter_family=quality" in captured.out
+    assert "capability_key=gpt_image_2" in captured.out
     assert "image_quality: high" in captured.out
     assert not (novel_dir / "manga" / "_assets").exists()
 
@@ -983,6 +1052,7 @@ def test_openrouter_page_compiler_accepts_schema_1_1_and_keeps_reference_order(
         negative_prompt="watermark",
         text_mode="letter_later",
         asset_base_dir=tmp_path,
+        resolved_profile="gpt_image_2",
     )
 
     assert plan.provider == "openrouter"
@@ -1094,3 +1164,198 @@ def test_p3_name_renderer_uses_geometry_order_and_emits_numbered_proof(tmp_path:
     assert Path(rendered["numbered"]["path"]).is_file()
     assert Path(rendered["model"]["path"]).is_file()
     assert rendered["numbered"]["sha256"] != rendered["model"]["sha256"]
+
+
+def test_local_frame_mode_is_novelai_page_render_plan_only() -> None:
+    page = _page()
+    page["schema_version"] = "1.1"
+    with pytest.raises(PageRenderPlanError, match="NovelAI"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="grok",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            bubble_frame_mode="local",
+        )
+    with pytest.raises(PageRenderPlanError, match="NovelAI"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="openai",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            bubble_frame_mode="local",
+        )
+    with pytest.raises(PageRenderPlanError, match="併用"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="novelai",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            text_mode="letter_later",
+            bubble_frame_mode="local",
+        )
+
+
+def test_novelai_local_strips_slot_balloons_and_text_layout() -> None:
+    page = _page()
+    page["schema_version"] = "1.1"
+    plan = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="novelai",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+        bubble_frame_mode="local",
+    )
+    assert plan.bubble_frame_mode == "local"
+    assert plan.text_mode == "none"
+    assert plan.capability_key == "novelai_v5"
+    assert plan.effective_settings["capability"]["postprocess_recommended"] is True
+    assert plan.effective_settings["bubbles_suppressed"] is True
+    assert plan.effective_settings["resolved_model"] in {None, "nai-diffusion-5-full"}
+    assert plan.character_slots
+    assert all("白い吹き出し" not in slot["prompt"] for slot in plan.character_slots)
+    assert "exactly 1 empty speech bubble" not in plan.prompt
+    assert "Text Layout" not in plan.prompt
+    grok = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="grok",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+        text_mode="letter_later",
+    )
+    assert grok.capability_key == "grok_imagine_2"
+    assert grok.bubble_frame_mode == "provider"
+    assert grok.effective_settings["capability"]["provisional"] is True
+    assert grok.effective_settings["bubbles_suppressed"] is False
+    assert "exactly 1 empty speech bubble" in grok.prompt
+
+
+def test_novelai_omitted_text_mode_is_generate_t1() -> None:
+    page = _page()
+    page["schema_version"] = "1.1"
+    plan = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="novelai",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+    )
+    assert plan.text_mode == "generate"
+    assert plan.bubble_frame_mode == "provider"
+    assert plan.effective_settings["bubbles_suppressed"] is False
+    slot_text = "\n".join(slot["prompt"] for slot in plan.character_slots)
+    assert "白い吹き出し「これは……？」" in slot_text
+    assert "text, speech bubble" in plan.prompt
+    assert "exactly 1 empty speech bubble" not in plan.prompt
+    grok = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="grok",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+    )
+    assert grok.text_mode == "generate"
+    assert grok.bubble_frame_mode == "provider"
+    grok_slots = "\n".join(slot["prompt"] for slot in grok.character_slots)
+    assert "白い吹き出し" not in grok.prompt
+    assert "白い吹き出し" not in grok_slots
+    assert "text, speech bubble" not in grok.prompt
+
+
+def test_unregistered_resolved_models_stop_at_compiler() -> None:
+    page = _page()
+    with pytest.raises(PageRenderPlanError, match="未登録"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="openai",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            resolved_model="gpt-image-1.5",
+        )
+    with pytest.raises(PageRenderPlanError, match="未登録"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="grok",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            resolved_model="grok-imagine-image",
+        )
+    with pytest.raises(PageRenderPlanError, match="未登録"):
+        compile_page_render_plan(
+            page,
+            source="step1-pages",
+            provider="novelai",
+            existing_prompt=_existing_prompt(),
+            negative_prompt="",
+            resolved_model="nai-diffusion-4-5-full",
+        )
+
+
+def test_yaml_text_mode_beats_work_lettering_flag(tmp_path: Path) -> None:
+    novel_dir = tmp_path / "001_fixture"
+    pages_dir = novel_dir / "manga" / "pages"
+    pages_dir.mkdir(parents=True)
+    src = (
+        _TOOLS_ROOT
+        / "manga_prompt_ir"
+        / "examples"
+        / "p4_compare"
+        / "manga"
+        / "pages"
+        / "manga_01_p01.yaml"
+    )
+    shutil.copy2(src, pages_dir / "manga_01_p01.yaml")
+    char_src = (
+        _TOOLS_ROOT / "manga_prompt_ir" / "examples" / "p4_compare" / "tag" / "characters"
+    )
+    char_dst = novel_dir / "tag" / "characters"
+    shutil.copytree(char_src, char_dst)
+    (novel_dir / "_meta.yaml").write_text(
+        "version: 1\nmanga_lettering:\n  enabled: true\n",
+        encoding="utf-8",
+    )
+    jobs = iter_yaml_manga_jobs(
+        novel_dir,
+        "manga_01",
+        "step1-pages",
+        "grok",
+        None,
+        cli_negative_prompt="",
+        prompt_formatter="manga_page_instruction",
+        page_compiler="page_render_plan",
+    )
+    assert len(jobs) == 1
+    assert jobs[0]["page_render_plan"].text_mode == "generate"
+
+
+def test_lettering_flag_hides_legacy_grok_text_when_yaml_omits_mode(
+    tmp_path: Path,
+) -> None:
+    novel_dir = tmp_path / "001_fixture"
+    pages_dir = novel_dir / "manga" / "pages"
+    pages_dir.mkdir(parents=True)
+    shutil.copy2(_FIXTURE, pages_dir / "manga_01_p01.yaml")
+    (novel_dir / "_meta.yaml").write_text(
+        "version: 1\nmanga_lettering:\n  enabled: true\n",
+        encoding="utf-8",
+    )
+    jobs = iter_yaml_manga_jobs(
+        novel_dir,
+        "manga_01",
+        "step1-pages",
+        "grok",
+        None,
+        cli_negative_prompt="",
+        prompt_formatter="manga_page_instruction",
+        page_compiler="legacy",
+    )
+    assert len(jobs) == 1
+    assert "page_render_plan" not in jobs[0]
+    assert "これは……？" not in jobs[0]["prompt"]

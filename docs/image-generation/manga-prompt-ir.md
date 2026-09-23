@@ -2,7 +2,7 @@
 
 **読者**: リポジトリの **操作マニュアル**（`docs/`）として、YAML の正本置き場・検証・画像生成バッチまでの**機械的な手順**を扱います。
 
-**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。空吹き出しへの写植とマスク合成のコマンド（→ [manga-page-edit.md](manga-page-edit.md)）。
+**扱わないこと**: コマの英語タグの語彙表・置換ルール（→ [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)）。物語の書き方・レイアウトの創作指針（→ [`_how_to.example/manga.md`](../../_how_to.example/manga.md)）。Step2 の**具体語→構図の言い換え表**（→ [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)）。互換 Markdown の Step1/Step2 の**長文テンプレと叱り方の全文**（→ [manga-tag-generation.md](manga-tag-generation.md)）。後載せ写植・NovelAI の T1 割り当て・local 枠の退避・マスク合成のコマンド（→ [manga-page-edit.md](manga-page-edit.md)）。
 
 **本書で扱うこと**: 後述の「ページ YAML の最小構造と Step1 互換出力の元」で、**IR のフィールド形**と **エクスポート先の Step1 との関係**を述べる（創作技法ではなくドキュメント）。
 
@@ -63,6 +63,9 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 | スキーマ（Pydantic） | `tools/manga_prompt_ir/schemas/manga_page.py` |
 | 互換 Markdown（人間向けの副本・再生成・バッチ用） | `novels/<作品>/manga/manga_XX.md`（**ページ定義の唯一の正本にしない**。推敲・可読参照に用いる） |
 | キャラ外見の正本 | `tag/characters/<character_id>.yaml` |
+| キャラ schema 1.1 の例 | `tools/manga_prompt_ir/examples/character_1_1.yaml` |
+
+キャラクター YAML の `schema_version` は漫画ページの 1.1 とは別です。1.1 の衣装は `visual_spec` が正本で、`python tools/novel_prompt_ir_embed_snapshots.py` が `character_source_sha256` と `character_schema_version: "1.1"` を snapshot に入れます。1.0 の `outfit_tags` 運用はそのまま使えます。固定の持ち物は `manga_rules.consistency_tags`、その衣装だけの小物は `visual_spec.accessories` に分けます。
 
 **Manga Tag Mode**: 初手は **YAML IR 作成** → `novel_prompt_ir_validate.py` → 必要なら `novel_prompt_ir_export_md.py`。`manga_XX.md` を直接新規作成して正本にしない。
 
@@ -121,15 +124,21 @@ python tools/novel_manga_panel_summary_en.py novels/NNN_作品名
 
 `--source step1-pages` / `--source step2-pages` は、YAML から作った既存のページ指示文を素材にしつつ、provider 設定に応じて `tools/manga_prompt_ir/prompt_formatters.py` の formatter を通します。Grok / OpenAI / OpenRouter 系の既定は `manga_page_instruction` で、英語の `Page Structure` / `Panel Outline` / `Character Anchors` / `Do not include` を添え、`negative_prompt` は prompt 内の `Do not include` へ移します。
 
+Grok / Grok Pro のページ本番・dry-run では `--page-compiler page_render_plan` を付けます。省略すると CLI 既定の legacy になり、文字を切らず上限超過で停止します。
+
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
-  --manga-stem manga_01 --source step1-pages --provider grok_pro --dry-run
+  --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --page-compiler page_render_plan --dry-run
 
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
-  --manga-stem manga_01 --source step2-pages --provider grok_pro --dry-run
+  --manga-stem manga_01 --source step2-pages --provider grok_pro \
+  --page-compiler page_render_plan --dry-run
 ```
 
 `--prompt-formatter tag_csv` を付けると、旧来の日本語ページ指示文と native `negative_prompt` の形に戻して比較できます。既定値は `config/image_generation.json` の `providers.*.prompt_formatter` で管理します。
+
+Grok / `grok_pro` のページ生成では、YAML の `text.dialogue`・`text.monologue`・`text.narration`・`text.sfx` がページプロンプトへ反映されます。`render_instruction.text_policy` または `manga.text_policy` が `generate` の場合は、指定された文字だけを吹き出し・ナレーション枠・効果音として描く指示になります。`letter_later` または `none` の場合は、本文を描かず、後載せ写植用の空き領域を残します。`page_render_plan` を使う場合はコンパイラが文字マニフェストを管理し、legacy formatter の場合はページ本文の文字要素として送信します。
 
 ### OpenAIの漫画ページを縦長で生成するとき
 
@@ -140,7 +149,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 ```powershell
 python tools/image_provider_novel_manga_batch.py tools/manga_prompt_ir/examples/p4_compare `
   --manga-stem manga_01 --source step1-pages --provider openai `
-  --page-compiler page_render_plan --text-mode letter_later `
+  --page-compiler page_render_plan --text-mode generate `
   --aspect-ratio manga_b5_portrait --max-page 1 --dry-run
 ```
 
@@ -155,7 +164,7 @@ OpenRouterのSchema 1.1ページ生成は、`--page-compiler page_render_plan` �
 ```powershell
 python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
   --manga-stem manga_01 --source step1-pages --provider openrouter `
-  --page-compiler page_render_plan --text-mode letter_later `
+  --page-compiler page_render_plan --text-mode generate `
   --aspect-ratio manga_b5_portrait --dry-run
 ```
 
@@ -179,7 +188,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
   --image-quality medium --dry-run
 ```
 
-漫画バッチは `--aspect-ratio` を省略すると `1:1` になります。Grokページ生成の既定比率はOpenRouterへ自動継承されないため、比較・本番前確認では `manga_b5_portrait`（`3:4`）などを明示します。
+漫画バッチの OpenRouter は `--aspect-ratio` を省略すると `1:1` になります。Grokページ生成の既定比率はOpenRouterへ自動継承されないため、比較・本番前確認では `manga_b5_portrait`（`3:4`）などを明示します。NovelAI の `step1-pages` / `step2-pages` は省略時 `manga_b5_portrait`（832×1216）です。
 
 ### コマ生成の provider 別 formatter
 

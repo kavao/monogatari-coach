@@ -14,7 +14,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 - 環境変数テンプレート: [`/.env.example`](../../.env.example)
 - 詳細スキル: [`image-provider`（旧 `forge-txt2img`）](../../.rulesync/skills/forge-txt2img/SKILL.md)
 - 漫画ページ IR・検証・パイプライン: [manga-prompt-ir.md](manga-prompt-ir.md)
-- 写植と領域合成（ローカル）: [manga-page-edit.md](manga-page-edit.md)
+- 写植と領域合成（ローカル）。吹き出しの native / NovelAI 空泡（先）/ local 退避: [manga-page-edit.md](manga-page-edit.md)
 - 互換 Step1/Step2・タグ生成テンプレ: [manga-tag-generation.md](manga-tag-generation.md)
 - 挿絵・表紙 IR・バッチ生成: [illustration-prompt-ir.md](illustration-prompt-ir.md)
 - Step2 編集時の必読チェック（創作技法・`_how_to`）: [`_how_to.example/manga_tag_step2.md`](../../_how_to.example/manga_tag_step2.md)
@@ -306,18 +306,32 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 
 ### Grok の縦横比とプロンプト上限
 
-`image_provider_novel_manga_batch.py` で **provider=grok_pro** かつ `--aspect-ratio` 未指定のとき、縦横比は次の順で決まります。
+`image_provider_novel_manga_batch.py` で **`--aspect-ratio` 未指定**のとき、縦横比は次のとおりです。
+
+**provider=grok_pro（全ソース）**
 
 1. CLI `--aspect-ratio`
 2. `.env` の `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO`（例: `manga_b5_portrait` → `3:4`）
 3. コード既定: `manga_b5_portrait`（`1:1` には落ちない）
 
-`--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、設定が正しく渡っています。
+**provider=novelai かつ `--source step1-pages` / `step2-pages`**
+
+1. CLI `--aspect-ratio`
+2. コード既定: `manga_b5_portrait`（NovelAI では 832×1216。config の `default_width`/`default_height` 1024² には落とさない）
+
+コマ生成（`step1-panels`）の NovelAI は従来どおり config の正方形既定です。ページ比較で正方形にしたいときだけ `--aspect-ratio square` を明示します。
+
+`--dry-run` 実行時に `aspect_ratio: ...` 行が出ていれば、設定が正しく渡っています。NovelAI ページでは `image_size: 832x1216` も出ます。
 
 プロンプトが長くなりすぎた場合（step1-pages / step2-pages で日本語が多いとき）、`config/image_generation.json` の `max_prompt_bytes`（既定 7800）が効きます。これは **公式上限そのものではなく、リポジトリ内の暫定ゲート** です。経路は次のとおりです。
 
-- **legacy formatter**: 従来どおり圧縮できます。`--dry-run` で圧縮後のバイト数を確認できます。
-- **PageRenderPlan compiler**: 7800 bytes を超えたら黙って切らず、組み立て時点で停止します。
+- **本番の Grok / Grok Pro ページは `--page-compiler page_render_plan` を付けます。** 省略すると CLI 既定の legacy 経路になります。
+- **legacy と PageRenderPlan**: 超過時は `render_instruction`・`- tag:`・`- 日本語訳:`・重複の `- 人物・対象:` / `- 構図:` から先に削ります。台詞・ナレーション・モノローグ・効果音と末尾の `Text:` は残します。
+- **それでも収まらないとき**: 文字を切らずに停止します。末尾カットはページ生成では使いません。
+
+`page_render_plan` の Grok / Grok Pro では、固定見た目を `Character Anchors` へ一度だけ集約し、各コマの固定衣装タグなどを重複送信しません。YAML と snapshot / manifest の正本情報は削りません。
+
+また、`reading_order` は正本・manifestには保持したまま、Grok向けには「非描画のレイアウト制約」として渡します。画像内に読み順の矢印・ラベル・キャプション・「右から左へ」などの文字を描かないよう指定します。
 
 2.0 でも同じゲートを使います。
 
@@ -333,9 +347,9 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 4. **`--dry-run` を実行してユーザーに確認を取る** — プロバイダ名・モデル・ジョブ数・保存先を示し、承認を得てから本番実行する
 
 ```bash
-# dry-run 例（漫画精密ページ生成）
+# dry-run 例（漫画精密ページ生成。Grok 本番前は page_render_plan を付ける）
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
-  --manga-stem manga_01 --source step1-pages --dry-run
+  --manga-stem manga_01 --source step1-pages --page-compiler page_render_plan --dry-run
 
 # dry-run 例（キャラタグ一括）
 python tools/image_provider_novel_tag_batch.py novels/<作品> --dry-run
@@ -448,23 +462,26 @@ python tools/image_provider_novel_manga_batch.py novels/066_作品名 \
 
 ### 漫画精密ページ生成（step1-pages / grok_pro）
 
-既定 model は `grok-imagine-image-2.0` です。品質を固定するときは `--grok-image-quality` を付けます。`--dry-run` で `resolved_model` を確認してから本番実行します。`--dry-run` を先に行うのは、API 課金が発生する前に内容を確認するためです。
+既定 model は `grok-imagine-image-2.0` です。品質を固定するときは `--grok-image-quality` を付けます。`--dry-run` で `resolved_model` を確認してから本番実行します。`--dry-run` を先に行うのは、API 課金が発生する前に内容を確認するためです。Grok のページは `--page-compiler page_render_plan` を付けます。省略すると legacy になり、文字を切らず上限超過で停止します。
 
 ```bash
 # 確認（dry-run）— 既定 2.0。provider・resolved_model・保存先を表示する
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
   --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --resolution 2k --dry-run
 
 # 確認（dry-run）— Imagine 2.0 medium。--provider grok_pro を付け、--model v2 が 2.0 実名へ解決する
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
   --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --resolution 2k \
   --model v2 --grok-image-quality medium --dry-run
 
 # 本番実行（承認後。--dry-run を外す。既定 2.0 の例）
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
   --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --resolution 2k
 ```
 
@@ -474,11 +491,11 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
-  --manga-stem manga_01 --source step2-pages \
+  --manga-stem manga_01 --source step2-pages --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --resolution 2k --dry-run
 
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
-  --manga-stem manga_01 --source step2-pages \
+  --manga-stem manga_01 --source step2-pages --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --resolution 2k
 ```
 
@@ -487,22 +504,28 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 ```bash
 # grok_pro を明示
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
-  --manga-stem manga_01 --source step1-pages --provider grok_pro
+  --manga-stem manga_01 --source step1-pages --provider grok_pro \
+  --page-compiler page_render_plan
 
 # openai を使う
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
-  --manga-stem manga_01 --source step1-pages --provider openai
+  --manga-stem manga_01 --source step1-pages --provider openai \
+  --page-compiler page_render_plan
 
 # OpenAIで縦長ページを指定（manga_b5_portrait は 1024x1536 へ解決）
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
   --manga-stem manga_01 --source step1-pages --provider openai \
+  --page-compiler page_render_plan \
   --aspect-ratio manga_b5_portrait --dry-run
 
 # サイズを直接指定する場合（--size が --aspect-ratio より優先）
 python tools/image_provider_novel_manga_batch.py novels/<作品> \
   --manga-stem manga_01 --source step1-pages --provider openai \
+  --page-compiler page_render_plan \
   --size 864x1536 --dry-run
 ```
+
+NovelAI でページを出すときは既定を Grok から切り替えません。先は `--page-compiler page_render_plan` です（`--text-mode` 省略時は T1 と同じ `generate`。ページに `text, speech bubble`、話者 slot に `白い吹き出し「台詞」`）。吹き出しの割り当てを正とし、標準はモデル字を残します。字形が崩れたとき、または作品が写植 `する` のときだけ actual 写植します。空泡にするときだけ `--text-mode letter_later` を付けます。割り当てが崩れたときだけ `--bubble-frame-mode local` へ退避します。手順は [manga-page-edit.md](manga-page-edit.md) です。失敗した Grok 画像を NovelAI へ振り替えません。Grok / GPT の吹き出し指定は変えません。
 
 OpenAIの漫画batchは、`--aspect-ratio` を指定しない限り `1024x1024` です。主なpresetは `manga_b5_portrait` / `portrait` / `book_cover` = `1024x1536`、`story_vertical` = `864x1536`、`landscape` / `wide` = `1536x864` です。dry-runの `image_size` で解決後の `size` を確認してから本番実行します。
 

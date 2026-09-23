@@ -49,6 +49,9 @@ outputs/
 logs/
 .tools/
 
+# p4 comparison fixture generated manga images (local-only)
+tools/manga_prompt_ir/examples/p4_compare/manga/_assets/
+
 # LLM / ローカル試行用（中身はコミットしない。README のみ追跡）
 tools_temp/*
 !tools_temp/README.md

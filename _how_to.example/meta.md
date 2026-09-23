@@ -95,6 +95,7 @@ python tools/novel_scaffold.py novels/NNN_作品名
 |------|------|------|
 | 執筆進捗・伏線・投稿文 | `_meta.md` | LLM 向け散文 |
 | NovelAI ポーション（path / strength） | `_meta.yaml` → `novelai.portions` | `image_provider_novel_manga_batch.py` が自動読込 |
+| 漫画の後載せ写植の有無 | `_meta.md` §2.1 方針、`_meta.yaml` → `manga_lettering` | スタイルはページ YAML の `manga.lettering` |
 | コマのタグ・variant | `manga/pages/*.yaml` | 実行の最終正本 |
 
 **優先順位（ポーション）**: CLI `--novelai-reference-image-path` ＞ `_meta.yaml` ＞ `.env` ＞ なし。
@@ -122,6 +123,19 @@ novelai:
 - **コマ生成 (step1-panels)**: （例: novelai）
 - **ページ生成 (step1-pages / step2-pages)**: （例: grok_pro）
 - **背景資料 (background-concepts)**: （例: grok）
+
+## 2.1 漫画写植（任意）
+
+ページ YAML の `manga.lettering`（縦書き・文字サイズ）や `render_instruction.text_mode`（generate / letter_later / none）とは別です。ここは **この作品で後載せ写植をするか** の方針だけを書きます。§4 variant 表・§5 常時タグへ混ぜない。
+
+- **後載せ写植**: （`する` / `しない`。未記入は **しない**）
+- **写植しないとき（Grok / GPT Image）**: 元の吹き出しへモデルが日本語を描く（`text_mode=generate`）。後載せはしない
+- **写植するとき（Grok / GPT Image）**: 空泡（`letter_later`）のあと actual 写植
+- **NovelAI**: 先は T1 の割り当て（`generate`）。標準はモデル字を残す。`する` または字形が崩れたときだけ写植
+- **モデル字**: （`残す` / `仮として空ける`。横断既定は `残す`）
+- **備考**: （特定章だけしない、など）
+
+バッチが読むときは作品 `_meta.yaml` の `manga_lettering`（雛形: `_how_to.example/_meta.yaml.example`）。散文の方針は本節が正本。ツールは本節の Markdown を自動解析しない。
 
 ## 3. 挿絵・表紙（任意・作品ごと）
 

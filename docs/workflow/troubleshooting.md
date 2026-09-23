@@ -101,6 +101,7 @@ ls novels/NNN_作品名/manga/_assets/manga_01/comic/
 | 進捗・伏線・次のタスク・引き継ぎ情報 | `_meta.md` |
 | 外部投稿用のあらすじ・キャッチコピー | `_meta.md` |
 | NovelAI ポーション設定（パスや強度） | `_meta.yaml` |
+| 漫画の後載せ写植の有無（横断既定はしない） | `_meta.md` §2.1、または `_meta.yaml` の `manga_lettering` |
 | 名前付きレシピ（`workflows`） | `_meta.yaml` |
 | §4/§5 のタグ層・TPO 表 | `_meta.md`（現行）または将来 `_meta.yaml` |
 

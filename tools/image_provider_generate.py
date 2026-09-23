@@ -844,6 +844,29 @@ def write_json(path: Path, data: Any) -> None:
     )
 
 
+def attach_saved_image_record(
+    meta: dict[str, Any],
+    image_path: str | Path,
+    merged: dict[str, Any],
+) -> dict[str, Any]:
+    """Record PNG hash and page-compiler flags so local frame can reuse this JSON."""
+    path = Path(image_path)
+    meta["source_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    metadata = merged.get("metadata")
+    plan = None
+    if isinstance(metadata, dict) and isinstance(metadata.get("page_render_plan"), dict):
+        plan = metadata["page_render_plan"]
+        meta["page_render_plan"] = plan
+    if isinstance(plan, dict):
+        settings = plan.get("effective_settings") if isinstance(plan.get("effective_settings"), dict) else {}
+        meta["bubble_frame_mode"] = plan.get("bubble_frame_mode") or settings.get("bubble_frame_mode")
+        meta["text_mode"] = plan.get("text_mode") or settings.get("text_mode")
+        meta["capability_key"] = plan.get("capability_key") or settings.get("capability_key")
+        if meta.get("bubble_frame_mode") == "local" and meta.get("text_mode") == "none":
+            meta["bubbles_suppressed"] = True
+    return meta
+
+
 def append_log(log_path: Path, message: str) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1449,6 +1472,8 @@ def merge_provider_defaults(
         "file_prefix": params.get("file_prefix", provider),
         "count": int(params.get("count", 1)),
     }
+    if isinstance(params.get("metadata"), dict):
+        out["metadata"] = params["metadata"]
     if "grok_image_quality" in params and provider not in _GROK_FAMILY:
         bind_grok_image_quality(provider, params)
     openrouter_profile: dict[str, Any] | None = None
@@ -2190,6 +2215,7 @@ def save_forge_response(
     }
     if "info" in resp:
         meta["info"] = resp["info"]
+    attach_saved_image_record(meta, png_path, merged)
     write_json(meta_path, meta)
     return [{"png": str(png_path), "json": str(meta_path), "seed": seed_i}]
 
@@ -2277,6 +2303,7 @@ def save_novelai_response(
             "negative_prompt": merged["negative_prompt"],
             "response_content_type": content_type,
         }
+        attach_saved_image_record(meta, png_path, merged)
         write_json(meta_path, meta)
         saved.append({"png": str(png_path), "json": str(meta_path), "seed": seed_i})
     return saved
@@ -2412,6 +2439,7 @@ def save_grok_response(
         }
         if response_key_outline is not None:
             meta["response_key_outline"] = response_key_outline
+        attach_saved_image_record(meta, image_path, merged)
         write_json(meta_path, meta)
         saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
     return saved
@@ -2470,6 +2498,7 @@ def save_openai_response(
         }
         if response_key_outline is not None:
             meta["response_key_outline"] = response_key_outline
+        attach_saved_image_record(meta, image_path, merged)
         write_json(meta_path, meta)
         saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
     return saved
@@ -2559,6 +2588,7 @@ def save_openrouter_response(
             "response_image": item,
             "image_source": source,
         }
+        attach_saved_image_record(meta, image_path, merged)
         write_json(meta_path, meta)
         saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
     return saved
@@ -2636,6 +2666,7 @@ def save_openrouter_image_api_response(
         }
         if response_key_outline is not None:
             meta["response_key_outline"] = response_key_outline
+        attach_saved_image_record(meta, image_path, merged)
         write_json(meta_path, meta)
         saved.append({"png": str(image_path), "json": str(meta_path), "index": idx})
     return saved

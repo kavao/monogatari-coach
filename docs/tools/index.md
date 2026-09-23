@@ -766,7 +766,7 @@ python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
 
 ### `novel_meta_yaml.py` — `_meta.yaml` 読み込み（内部モジュール）
 
-作品 `_meta.yaml` の読み込み・`novelai.portions` 解決・`character_tag_batch` 参照を提供する Python モジュールです。**単独の公開 CLI ではありません。** `image_provider_novel_*_batch.py`・`novel_status.py` などから import されます。雛形は `_how_to.example/_meta.yaml.example`、運用説明は [Image Generation — 名前付きレシピ](../image-generation/index.md#名前付きレシピworkflows) を参照してください。
+作品 `_meta.yaml` の読み込み・`novelai.portions` 解決・`character_tag_batch` 参照・`manga_lettering`（後載せ写植の有無）を提供する Python モジュールです。**単独の公開 CLI ではありません。** `image_provider_novel_*_batch.py`・`novel_status.py` などから import されます。雛形は `_how_to.example/_meta.yaml.example`、運用説明は [Image Generation — 名前付きレシピ](../image-generation/index.md#名前付きレシピworkflows) を参照してください。
 
 ---
 

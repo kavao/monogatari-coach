@@ -3,7 +3,8 @@
 """作品フォルダ ``_meta.yaml`` の読み込み（画像生成の機械可読メタ）。
 
 現行スコープ: ``novelai.portions``（Vibe Transfer / ポーション）、
-``character_tag_batch``（キャラタグ一括の前後タグ挿入・生成時マスク）、``workflows`` など。
+``character_tag_batch``（キャラタグ一括の前後タグ挿入・生成時マスク）、
+``manga_lettering``（後載せ写植の有無）、``workflows`` など。
 散文・進捗は ``_meta.md`` のまま。
 """
 
@@ -29,6 +30,15 @@ class NovelaiPortion:
     strength: float
     information_extracted: float
     label: str = ""
+    source: str = "_meta.yaml"
+
+
+@dataclass(frozen=True)
+class MangaLetteringPolicy:
+    """Work-level lettering switch. None means the key is unset."""
+
+    enabled: bool | None
+    clear_native_glyphs: bool = True
     source: str = "_meta.yaml"
 
 
@@ -63,6 +73,73 @@ def load_meta_yaml(novel_dir: Path) -> dict[str, Any] | None:
             f"{path}: unsupported version={version!r} (supported: {SUPPORTED_VERSION})"
         )
     return data
+
+
+def _as_bool(value: Any, *, field: str, path: Path) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "yes", "1", "on"}:
+            return True
+        if text in {"false", "no", "0", "off"}:
+            return False
+    raise ValueError(f"{path}: manga_lettering.{field} は true/false です: {value!r}")
+
+
+def load_manga_lettering(novel_dir: Path) -> MangaLetteringPolicy:
+    """Return work lettering policy. Missing file or key leaves enabled unset."""
+    path = find_meta_yaml_path(novel_dir)
+    if path is None:
+        return MangaLetteringPolicy(enabled=None, source="unset")
+    data = load_meta_yaml(novel_dir) or {}
+    raw = data.get("manga_lettering")
+    if raw is None:
+        return MangaLetteringPolicy(enabled=None, source="unset")
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: manga_lettering は mapping である必要があります")
+    enabled: bool | None
+    if "enabled" not in raw:
+        enabled = None
+    else:
+        enabled = _as_bool(raw.get("enabled"), field="enabled", path=path)
+    clear = True
+    if "clear_native_glyphs" in raw:
+        clear = _as_bool(
+            raw.get("clear_native_glyphs"),
+            field="clear_native_glyphs",
+            path=path,
+        )
+    return MangaLetteringPolicy(
+        enabled=enabled,
+        clear_native_glyphs=clear,
+        source=str(path),
+    )
+
+
+NATIVE_BALLOON_PROVIDERS = frozenset({"grok", "grok_pro", "openai", "openrouter"})
+
+
+def suggest_text_mode_for_lettering(
+    novel_dir: Path,
+    *,
+    provider: str,
+    requested: str | None,
+) -> str | None:
+    """Choose omitted text_mode for Grok / GPT Image from work lettering policy.
+
+    CLI or caller ``requested`` always wins. Unset or disabled policy leaves
+    the compiler default (generate; 写植なし). NovelAI assignment stays generate;
+    this helper does not change it.
+    """
+    if requested is not None:
+        return requested
+    policy = load_manga_lettering(novel_dir)
+    if policy.enabled is None:
+        return None
+    if provider not in NATIVE_BALLOON_PROVIDERS:
+        return None
+    return "letter_later" if policy.enabled else "generate"
 
 
 # 後方互換エイリアス

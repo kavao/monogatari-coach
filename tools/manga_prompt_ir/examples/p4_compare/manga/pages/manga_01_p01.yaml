@@ -1,8 +1,8 @@
-schema_version: "1.1"
+schema_version: '1.1'
 meta:
   intent: manga_page
   reading_order: right_to_left
-  aspect_ratio: "2:3"
+  aspect_ratio: '2:3'
   page_count: 1
 render_instruction:
   task: 漫画1ページとして描く。
@@ -13,10 +13,10 @@ render_instruction:
   output_policy: コマ枠と右から左を明確にする。
 manga:
   genre_tags:
-    - manga
-    - full_color
+  - manga
+  - full_color
   visual_tags:
-    - clean_lineart
+  - clean_lineart
   panel_layout: 上1・中2・下1
   lettering:
     direction: vertical
@@ -28,218 +28,309 @@ scene:
   time_of_day: 夕方
   time_of_day_en: late afternoon
 character_ids:
-  - kazuki
-  - yui
+- kazuki
+- yui
 character_snapshots:
-  - character_id: kazuki
-    name: 和紀
-    name_en: Kazuki
-    selected_variant_id: "001_normal"
-  - character_id: yui
-    name: 結
-    name_en: Yui
-    selected_variant_id: "001_normal"
+- character_id: kazuki
+  name: 和紀
+  name_en: Kazuki
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、masculine、slim、black、short messy hair、brown、fair skin、tired but alert eyes
+  costume_summary: navy harrington jacket, fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight
+    pants
+  visual_natural: 1boy, young man, black hair, brown eyes, fair skin, tired but alert eyes, smartphone; navy harrington jacket,
+    fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight pants
+  fixed_tags:
+  - 1boy
+  - young_man
+  - black_hair
+  - brown_eyes
+  - fair_skin
+  - tired but alert eyes
+  - smartphone
+  variant_tags:
+  - navy_harrington_jacket
+  - fold_down_collar
+  - zip_front
+  - no_hood
+  - gray_crew_neck_tshirt
+  - dark_navy_straight_pants
+  do_not_change:
+  - 髪色を黒以外にしない
+  - スマホを別の固定小物に置き換えない
+  character_source_sha256: 1d9a5aae70f70fc559a3c0f0d1f9e5284ad4d659a059437143b70c27ee47b922
+  character_schema_version: '1.1'
+- character_id: yui
+  name: 結
+  name_en: Yui
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、feminine、slim、brown、shoulder-length straight hair、green、fair skin、small mole near the left
+    eye
+  costume_summary: cream cardigan, v neck collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  visual_natural: 1girl, young woman, brown hair, green eyes, fair skin, small mole near the left eye; cream cardigan, v neck
+    collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  fixed_tags:
+  - 1girl
+  - young_woman
+  - brown_hair
+  - green_eyes
+  - fair_skin
+  - small mole near the left eye
+  variant_tags:
+  - cream_cardigan
+  - v_neck_collar
+  - button_front
+  - no_hood
+  - white_blouse
+  - brown_plaid_skirt
+  - canvas_tote
+  do_not_change:
+  - 髪色を茶以外にしない
+  - カーディガンを別の固定衣装に置き換えない
+  character_source_sha256: 5028141c5eccca890572b5dcb66289ba3445c63170409709ea1c2747f7c84438
+  character_schema_version: '1.1'
 dramaturgy:
   purpose: 切符を見て2人が行き先を決める。
   purpose_en: Two friends choose a destination from a ticket.
 background_concepts:
-  - concept_id: station_waiting_room
-    title: 待合室
-    description: 木のベンチのある小さな待合室。
-    prompt: manga background, station waiting room, wooden bench, no characters
-    negative_tags:
-      - people
+- concept_id: station_waiting_room
+  title: 待合室
+  description: 木のベンチのある小さな待合室。
+  prompt: manga background, station waiting room, wooden bench, no characters
+  negative_tags:
+  - people
 layout_geometry:
   panels:
-    - panel_id: 10
-      rect: {x: 0.04, y: 0.03, w: 0.92, h: 0.28}
-    - panel_id: 20
-      rect: {x: 0.52, y: 0.34, w: 0.44, h: 0.30}
-    - panel_id: 30
-      rect: {x: 0.04, y: 0.34, w: 0.44, h: 0.30}
-    - panel_id: 40
-      rect: {x: 0.04, y: 0.67, w: 0.92, h: 0.30}
-continuity_tracks:
-  - entity_id: ticket
-    panel_id: 10
-    state: in Yui's right hand
-  - entity_id: ticket
-    panel_id: 30
-    state: printed face close-up
-asset_references:
-  - asset_id: paper-ticket
-    role: prop
-panels:
   - panel_id: 10
-    summary: ベンチで2人。結が切符を出す。
-    summary_en: Two teens on a bench; Yui holds out a ticket.
-    dramaturgy:
-      role: establish
-      purpose: 場所・2人・切符を見せる。
-      purpose_en: Show place, both people, and the ticket.
-    background_density: medium
-    subjects:
-      - subject_id: p10-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 座る和紀
-        pose_action: 切符を見る
-        pose_action_en: looking at the ticket
-        position: midground
-        expression: 戸惑い
-        expression_en: hesitant
-      - subject_id: p10-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 切符を持つ結
-        pose_action: 切符を差し出す
-        pose_action_en: holding out a paper ticket
-        position: midground
-        expression: 笑顔
-        expression_en: smile
-      - subject_id: p10-s03
-        type: object
-        description: 紙の切符
-        description_en: paper train ticket
-        pose_action: 右手に持つ
-        pose_action_en: in her right hand
-        position: foreground
-    composition:
-      framing: medium shot
-      framing_en: two-shot
-      layout: 上段
-      layout_en: top panel
-      focus: 切符
-      focus_en: paper ticket
-    camera:
-      shot_size: medium shot
-      view_en: two people on a bench
-    text:
-      dialogue:
-        - text_id: p10-dialogue-01
-          speaker: yui
-          content: これ、見て。
-          bubble_type: speech bubble
+    rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.28
   - panel_id: 20
-    summary: 和紀が切符を見て聞き返す。
-    summary_en: Kazuki asks about the ticket.
-    dramaturgy:
-      role: reverse
-      purpose: 和紀の台詞を明確にする。
-      purpose_en: Make Kazuki's line clear.
-    background_density: sparse
-    subjects:
-      - subject_id: p20-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 和紀の顔
-        pose_action: 眉を寄せる
-        pose_action_en: slight frown
-        position: foreground
-        expression: 疑問
-        expression_en: questioning
-    composition:
-      framing: close-up
-      framing_en: bust
-      layout: 中段右
-      layout_en: middle-right
-      focus: 口元
-      focus_en: mouth
-    camera:
-      shot_size: close-up
-      view_en: solo bust
-    text:
-      dialogue:
-        - text_id: p20-dialogue-01
-          speaker: kazuki
-          content: 駅の切符？
-          bubble_type: small speech bubble
+    rect:
+      x: 0.52
+      y: 0.34
+      w: 0.44
+      h: 0.3
   - panel_id: 30
-    summary: 結が切符の印刷面を見せる。
-    summary_en: Yui shows the printed ticket face.
-    dramaturgy:
-      role: information
-      purpose: 切符の印刷面を大きく出す。
-      purpose_en: Show the printed ticket face large.
-    background_density: sparse
-    subjects:
-      - subject_id: p30-s01
-        character_id: yui
-        variant_id: "001_normal"
-        description: 切符を掲げる結
-        pose_action: 印刷面を向ける
-        pose_action_en: turning the ticket to camera
-        position: midground
-        expression: 笑顔
-        expression_en: smile
-      - subject_id: p30-s02
-        type: object
-        description: 切符の印刷面
-        description_en: printed ticket face
-        pose_action: 指で支える
-        pose_action_en: held in fingers
-        position: foreground
-    composition:
-      framing: close-up
-      framing_en: ticket close-up
-      layout: 中段左
-      layout_en: middle-left
-      focus: 印字面
-      focus_en: printed face
-    camera:
-      shot_size: close-up
-      view_en: ticket and hand
-    text:
-      dialogue:
-        - text_id: p30-dialogue-01
-          speaker: yui
-          content: 今日の行き先。
-          bubble_type: speech bubble
+    rect:
+      x: 0.04
+      y: 0.34
+      w: 0.44
+      h: 0.3
   - panel_id: 40
-    summary: 2人が立ち上がる。
-    summary_en: Both stand to leave.
-    dramaturgy:
-      role: decision
-      purpose: 同意して立つ。
-      purpose_en: They agree and stand.
-    background_density: medium
-    subjects:
-      - subject_id: p40-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 立つ和紀
-        pose_action: ホーム側を見る
-        pose_action_en: looking toward the platform
-        position: midground
-        expression: 決意
-        expression_en: resolved
-      - subject_id: p40-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 立つ結
-        pose_action: 切符を持って立つ
-        pose_action_en: standing with the ticket
-        position: midground
-        expression: 満足
-        expression_en: satisfied
-    composition:
-      framing: medium shot
-      framing_en: two-shot
-      layout: 下段
-      layout_en: bottom panel
-      focus: 2人と切符
-      focus_en: both figures and ticket
-    camera:
-      shot_size: medium shot
-      view_en: two standing figures
-    text:
-      dialogue:
-        - text_id: p40-dialogue-01
-          speaker: kazuki
-          content: ……行こう。
-          bubble_type: small speech bubble
+    rect:
+      x: 0.04
+      y: 0.67
+      w: 0.92
+      h: 0.3
+continuity_tracks:
+- entity_id: ticket
+  panel_id: 10
+  state: in Yui's right hand
+- entity_id: ticket
+  panel_id: 30
+  state: printed face close-up
+asset_references:
+- asset_id: paper-ticket
+  role: prop
+panels:
+- panel_id: 10
+  summary: ベンチで2人。結が切符を出す。
+  summary_en: Two teens on a bench; Yui holds out a ticket.
+  summary_en_source: ベンチで2人。結が切符を出す。
+  dramaturgy:
+    role: establish
+    purpose: 場所・2人・切符を見せる。
+    purpose_en: Show place, both people, and the ticket.
+  background_density: medium
+  subjects:
+  - subject_id: p10-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 座る和紀
+    pose_action: 切符を見る
+    pose_action_en: looking at the ticket
+    position: midground
+    expression: 戸惑い
+    expression_en: hesitant
+  - subject_id: p10-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 切符を持つ結
+    pose_action: 切符を差し出す
+    pose_action_en: holding out a paper ticket
+    position: midground
+    expression: 笑顔
+    expression_en: smile
+  - subject_id: p10-s03
+    type: object
+    description: 紙の切符
+    description_en: paper train ticket
+    pose_action: 右手に持つ
+    pose_action_en: in her right hand
+    position: foreground
+  composition:
+    framing: medium shot
+    framing_en: two-shot
+    layout: 上段
+    layout_en: top panel
+    focus: 切符
+    focus_en: paper ticket
+  camera:
+    shot_size: medium shot
+    view_en: two faces
+  prompt_tags:
+  - seated
+  - paper_ticket
+  - holding_ticket
+  - looking_at_ticket
+  - two_shot
+  text:
+    dialogue:
+    - text_id: p10-dialogue-01
+      speaker: yui
+      content: これ、見て。
+      bubble_type: speech bubble
+- panel_id: 20
+  summary: 和紀が切符を見て聞き返す。
+  summary_en: Kazuki asks about the ticket.
+  summary_en_source: 和紀が切符を見て聞き返す。
+  dramaturgy:
+    role: reverse
+    purpose: 和紀の台詞を明確にする。
+    purpose_en: Make Kazuki's line clear.
+  background_density: sparse
+  subjects:
+  - subject_id: p20-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 和紀の顔
+    pose_action: 眉を寄せる
+    pose_action_en: slight frown
+    position: foreground
+    expression: 疑問
+    expression_en: questioning
+  composition:
+    framing: close-up
+    framing_en: bust
+    layout: 中段右
+    layout_en: middle-right
+    focus: 口元
+    focus_en: mouth
+  camera:
+    shot_size: close-up
+    view_en: solo bust
+  prompt_tags:
+  - questioning_expression
+  - slight_frown
+  - mouth_focus
+  - close-up
+  text:
+    dialogue:
+    - text_id: p20-dialogue-01
+      speaker: kazuki
+      content: 駅の切符？
+      bubble_type: small speech bubble
+- panel_id: 30
+  summary: 結が切符の印刷面を見せる。
+  summary_en: Yui shows the printed ticket face.
+  summary_en_source: 結が切符の印刷面を見せる。
+  dramaturgy:
+    role: information
+    purpose: 切符の印刷面を大きく出す。
+    purpose_en: Show the printed ticket face large.
+  background_density: sparse
+  subjects:
+  - subject_id: p30-s01
+    character_id: yui
+    variant_id: 001_normal
+    description: 切符を掲げる結
+    pose_action: 印刷面を向ける
+    pose_action_en: turning the ticket to camera
+    position: midground
+    expression: 笑顔
+    expression_en: smile
+  - subject_id: p30-s02
+    type: object
+    description: 切符の印刷面
+    description_en: printed ticket face
+    pose_action: 指で支える
+    pose_action_en: held in fingers
+    position: foreground
+  composition:
+    framing: close-up
+    framing_en: ticket close-up
+    layout: 中段左
+    layout_en: middle-left
+    focus: 印字面
+    focus_en: printed face
+  camera:
+    shot_size: close-up
+    view_en: inspect close-up
+  prompt_tags:
+  - paper_ticket
+  - printed_ticket
+  - holding_ticket
+  - close-up
+  text:
+    dialogue:
+    - text_id: p30-dialogue-01
+      speaker: yui
+      content: 今日の行き先。
+      bubble_type: speech bubble
+- panel_id: 40
+  summary: 2人が立ち上がる。
+  summary_en: Both stand to leave.
+  summary_en_source: 2人が立ち上がる。
+  dramaturgy:
+    role: decision
+    purpose: 同意して立つ。
+    purpose_en: They agree and stand.
+  background_density: medium
+  subjects:
+  - subject_id: p40-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 立つ和紀
+    pose_action: ホーム側を見る
+    pose_action_en: looking toward the platform
+    position: midground
+    expression: 決意
+    expression_en: resolved
+  - subject_id: p40-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 立つ結
+    pose_action: 切符を持って立つ
+    pose_action_en: standing with the ticket
+    position: midground
+    expression: 満足
+    expression_en: satisfied
+  composition:
+    framing: medium shot
+    framing_en: two-shot
+    layout: 下段
+    layout_en: bottom panel
+    focus: 2人と切符
+    focus_en: both figures and ticket
+  camera:
+    shot_size: medium shot
+    view_en: two faces
+  prompt_tags:
+  - standing
+  - looking_toward_exit
+  - two_shot
+  - resolved_expression
+  text:
+    dialogue:
+    - text_id: p40-dialogue-01
+      speaker: kazuki
+      content: ……行こう。
+      bubble_type: small speech bubble
 technical:
   quality_level: high
   negative_tags:
-    - watermark
-    - extra_fingers
+  - watermark
+  - extra_fingers

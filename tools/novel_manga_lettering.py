@@ -50,6 +50,22 @@ def main(argv: list[str] | None = None) -> int:
     bind.add_argument("--geometry", type=Path, required=True)
     bind.add_argument("--image", type=Path, required=True)
     bind.add_argument("--out", type=Path, required=True)
+    bind.add_argument("--page", type=Path, help="指定すると未知／panel不一致の text_id を停止する")
+
+    bubbles = sub.add_parser("validate-bubbles", help="local frame 用 bubbles sidecar を検証する")
+    bubbles.add_argument("--page", type=Path, required=True)
+    bubbles.add_argument("--bubbles", type=Path, required=True)
+    bubbles.add_argument("--generation-json", type=Path, required=True, help="泡抑止記録（local+none+bubbles_suppressed）")
+    bubbles.add_argument("--image", type=Path, help="指定すると正規化座標を画素へ投影する")
+    bubbles.add_argument("--out", type=Path, help="投影結果の書き出し先")
+
+    frames = sub.add_parser("render-bubbles", help="clean PNG へ local 吹き出し枠を描く")
+    frames.add_argument("--page", type=Path, required=True)
+    frames.add_argument("--bubbles", type=Path, required=True)
+    frames.add_argument("--generation-json", type=Path, required=True)
+    frames.add_argument("--image", type=Path, required=True)
+    frames.add_argument("--out", type=Path, required=True)
+    frames.add_argument("--result-json", type=Path)
 
     crop = sub.add_parser("crop", help="指定panelを切り出す")
     crop.add_argument("--image", type=Path, required=True)
@@ -103,13 +119,70 @@ def main(argv: list[str] | None = None) -> int:
             print(f"kind=design_projected panels={len(payload['panels'])} -> {args.out}")
             return 0
         if args.command == "bind-actual":
-            payload = bind_actual_geometry(_load_json(args.geometry), image_path=args.image)
+            page = _load_page(args.page) if args.page else None
+            payload = bind_actual_geometry(
+                _load_json(args.geometry),
+                image_path=args.image,
+                page=page,
+            )
             write_json(args.out, payload)
             print(
                 f"kind=actual panels={len(payload['panels'])} "
                 f"texts={len(payload['texts'])} -> {args.out}"
             )
             return 0
+        if args.command == "validate-bubbles":
+            from manga_prompt_ir.bubble_geometry import (
+                project_bubble_design,
+                validate_bubble_design,
+            )
+
+            page = _load_page(args.page)
+            sidecar = yaml.safe_load(args.bubbles.read_text(encoding="utf-8"))
+            generation = _load_json(args.generation_json)
+            document = validate_bubble_design(
+                page,
+                sidecar,
+                source_generation=generation,
+                image_path=args.image,
+            )
+            if args.image is None:
+                print(f"kind=design_projected bubbles={len(document.bubbles)}")
+                return 0
+            with Image.open(args.image) as image:
+                size = image.size
+            projected = project_bubble_design(
+                page,
+                sidecar,
+                image_size=size,
+                source_generation=generation,
+                image_path=args.image,
+            )
+            if args.out:
+                write_json(args.out, projected)
+                print(f"kind=design_projected bubbles={len(projected['bubbles'])} -> {args.out}")
+            else:
+                print(f"kind=design_projected bubbles={len(projected['bubbles'])}")
+            return 0
+        if args.command == "render-bubbles":
+            from manga_prompt_ir.bubble_frame_render import render_local_bubble_frames
+
+            result = render_local_bubble_frames(
+                _load_page(args.page),
+                yaml.safe_load(args.bubbles.read_text(encoding="utf-8")),
+                image_path=args.image,
+                out_path=args.out,
+                source_generation=_load_json(args.generation_json),
+            )
+            if args.result_json:
+                write_json(args.result_json, result)
+            print(
+                json.dumps(
+                    {k: result[k] for k in ("complete", "frame_count", "path")},
+                    ensure_ascii=False,
+                )
+            )
+            return 0 if result["complete"] else 3
         if args.command == "region-edit":
             if args.provider:
                 refuse_region_edit_provider(args.provider)

@@ -54,6 +54,16 @@ novelai:
 #     - from: old_token
 #       to: new_token
 
+# ── 漫画の後載せ写植（novel_manga_lettering.py）────────────────
+# この作品で actual 写植をするか。未設定はしない（ページ生成の字を残す）。
+# Grok / GPT Image で enabled: false / 未設定のときは generate（元の吹き出しに字）。
+# enabled: true のときは letter_later（空泡）のあと写植。CLI とページ YAML の明示 text_mode は上書きしない。
+# NovelAI の割り当て（generate）は変えない。enabled は写植するかどうかだけ。
+# ページ YAML の manga.lettering（縦書き・サイズ）はここでは上書きしない。
+# manga_lettering:
+#   enabled: false
+#   clear_native_glyphs: false
+
 # ── 名前付きレシピ（--workflow で呼び出す）──────────────────────────
 # 優先順位: CLI 明示フラグ > workflow 設定 > .env / 既定値
 # 利用可能 ID を確認: python tools/image_provider_novel_manga_batch.py novels/NNN --list-workflows
