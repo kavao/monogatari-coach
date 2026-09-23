@@ -15,13 +15,13 @@ targets: ["*"]
 リポジトリルートで実行する。
 
 ```bash
-python tools/env_check.py
+uv run python tools/env_check.py
 ```
 
 機械処理や CI では JSON を使う。
 
 ```bash
-python tools/env_check.py --json
+uv run python tools/env_check.py --json
 ```
 
 ## 判定対象
@@ -35,7 +35,7 @@ python tools/env_check.py --json
 
 - まず不足しているキー名をそのまま出す。
 - provider 由来の認証不足は「用途」「provider default のキー」「必要な auth key」を1行で示す。
-- 末尾に `python tools/env_check.py` を再実行するよう案内する。
+- 末尾に `uv run python tools/env_check.py` を再実行するよう案内する。
 
 ## `.env` バージョン
 

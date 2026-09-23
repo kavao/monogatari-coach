@@ -16,6 +16,10 @@ dev = [
   "pyright>=1.1,<2",
 ]
 
+[tool.uv]
+# Windows の Microsoft Store スタブを使わず、uv 管理の CPython だけを使う
+python-preference = "only-managed"
+
 [tool.pytest.ini_options]
 testpaths = ["tools/tests", "tools/manga_prompt_ir/tests"]
 

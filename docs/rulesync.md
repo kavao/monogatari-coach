@@ -7,7 +7,7 @@
 リポジトリのルートで、検証付きの単体バイナリを取得します。ダウンロード先は Git 管理外の `.tools/` です。
 
 ```powershell
-python tools/install_rulesync.py
+uv run python tools/install_rulesync.py
 ```
 
 この処理は固定 URL から `rulesync-windows-x64.exe` を取得し、SHA-256 と `rulesync --version` が 15.0.1 と一致したときだけ配置します。管理者権限や PATH の変更は不要です。
@@ -18,13 +18,13 @@ python tools/install_rulesync.py
 
 ```powershell
 # 確認: 更新される生成物だけを表示する
-python tools/rulesync.py generate --dry-run
+uv run python tools/rulesync.py generate --dry-run
 
 # 本番: 生成物を同期する
-python tools/rulesync.py generate
+uv run python tools/rulesync.py generate
 
 # 確認: 生成物が正本と一致していることを検査する
-python tools/rulesync.py generate --check
+uv run python tools/rulesync.py generate --check
 ```
 
 生成物の `AGENTS.md`、`CLAUDE.md`、各ツール設定は直接編集しません。内容を変えるときは `.rulesync/rules/` または `.rulesync/skills/` を編集してから再生成します。通常の generate は削除を実行しません。不要な生成物を消す作業は、対象を確認した別作業として扱います。
@@ -40,7 +40,7 @@ Monocri は `agentsmd` を `AGENTS.md` の所有 target として使います。
 以前のコマンドを使う環境では、次も同じ固定バイナリで全 target を生成します。
 
 ```powershell
-python sync_rules.py
+uv run python sync_rules.py
 ```
 
 ## 故障時
@@ -48,7 +48,7 @@ python sync_rules.py
 取得物が壊れた、または再取得したいときは、次を実行します。
 
 ```powershell
-python tools/install_rulesync.py --force
+uv run python tools/install_rulesync.py --force
 ```
 
 `rulesync update` や `latest` URL は使いません。Rulesync の版を更新する場合は、リリース、SHA-256、隔離生成の差分を改めて確認します。

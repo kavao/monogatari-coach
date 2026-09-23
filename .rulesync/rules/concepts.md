@@ -8,6 +8,11 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 このファイルは、すべての作業で必要な最小の判断だけを置く。作品・画像・出版の詳細は [ワークフロー詳細仕様](workflow-specification.md) と該当スキルを正とする。
 
+## Python 実行
+
+- ツールは `uv run python` で実行する。素の `python` は Windows でストア用スタブに当たることがある。
+- 初回は `uv sync` のあと `uv run python howto_init.py`。
+
 ## 正本と副本
 
 - ルール・スキルの正本は `.rulesync/rules/` と `.rulesync/skills/`、`AGENTS.md` / `CLAUDE.md` は生成物である。

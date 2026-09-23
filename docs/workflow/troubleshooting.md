@@ -4,6 +4,30 @@
 
 ---
 
+## `python` が起動しない / セットアップが途中で止まる
+
+### 症状
+
+Windows で `python` や `python --version` を実行すると、`Python` とだけ表示されて終わる。または `python tools/...` が動かない。
+
+### 原因
+
+Microsoft Store 用の `WindowsApps\python.exe`（0 バイトのスタブ）が、リポジトリの `.venv` より先に解決されています。`uv` と `.venv` があっても、素の `python` はそれを使いません。
+
+### 次の一手
+
+1. リポジトリルートで `uv run python howto_init.py` を実行する（または `init.bat`）
+2. 以降のコマンドは `uv run python tools/...` にする
+3. Cursor で `Developer: Reload Window` を実行し、インタープリタが `.venv` になっているか確認する
+
+```powershell
+uv run python -c "import sys; print(sys.executable)"
+```
+
+表示が `.venv\Scripts\python.exe` なら Python 実行環境は整っています。ストア用スタブの無効化は必須ではありません。
+
+---
+
 ## IR 検証（`novel_prompt_ir_validate.py`）でエラーが出た
 
 ### 症状

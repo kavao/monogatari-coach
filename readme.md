@@ -37,19 +37,19 @@ uv run python howto_init.py
 
 ```bash
 # 初回のみ: 固定版 15.0.1 の検証済み単体バイナリを取得
-python tools/install_rulesync.py
+uv run python tools/install_rulesync.py
 
 # 生成前の確認
-python tools/rulesync.py generate --dry-run
+uv run python tools/rulesync.py generate --dry-run
 
 # 生成と整合確認
-python tools/rulesync.py generate
-python tools/rulesync.py generate --check
+uv run python tools/rulesync.py generate
+uv run python tools/rulesync.py generate --check
 ```
 
 4. `.env` を整える
 
-`howto_init.py` が `.env.example` から `.env` を未作成時にコピーします。画像生成を使う場合は、使う provider に応じて `.env` に API キーを入れます。
+`howto_init.py` が `.env.example` から `.env` を未作成時にコピーし、`_how_to.example/` をサブフォルダ込みで `_how_to/` へ足します。画像生成を使う場合は、使う provider に応じて `.env` に API キーを入れます。ツール実行は素の `python` ではなく `uv run python` を使います。
 
 ```dotenv
 NOVELAI_ACCESS_TOKEN=
@@ -61,7 +61,7 @@ XAI_API_KEY=
 不足確認:
 
 ```bash
-python tools/env_check.py
+uv run python tools/env_check.py
 ```
 
 `.env.example` が見つからない場合は、別フォルダで実行していないか確認します。
@@ -133,9 +133,9 @@ uv run python howto_init.py
 ルール再生成:
 
 ```bash
-python tools/rulesync.py generate --dry-run
-python tools/rulesync.py generate
-python tools/rulesync.py generate --check
+uv run python tools/rulesync.py generate --dry-run
+uv run python tools/rulesync.py generate
+uv run python tools/rulesync.py generate --check
 ```
 
 `.rulesync/` 側の正本を更新したあとに実行します。初回取得・再取得・固定版の詳細は [Rulesync の固定運用](docs/rulesync.md) を参照してください。
@@ -149,7 +149,7 @@ uv run python tools/novel_char_count.py novels/NNN_作品タイトル
 Grok dry-run:
 
 ```bash
-python tools/image_provider_generate.py --provider grok --params tools/fixtures/grok_params.tier_test.example.json --dry-run
+uv run python tools/image_provider_generate.py --provider grok --params tools/fixtures/grok_params.tier_test.example.json --dry-run
 ```
 
 ## ライセンス
