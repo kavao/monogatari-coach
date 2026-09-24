@@ -1235,6 +1235,44 @@ def test_novelai_local_strips_slot_balloons_and_text_layout() -> None:
     assert "exactly 1 empty speech bubble" in grok.prompt
 
 
+def test_novelai_local_overrides_native_generate_policy() -> None:
+    page = _page()
+    page["schema_version"] = "1.1"
+    page["manga"]["text_policy"] = (
+        "Render the exact Japanese dialogue, narration, monologue, and sound effects as legible text."
+    )
+    plan = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="novelai",
+        existing_prompt=_existing_prompt(),
+        negative_prompt="",
+        text_mode="none",
+        bubble_frame_mode="local",
+    )
+    assert plan.text_mode == "none"
+    assert plan.effective_settings["bubbles_suppressed"] is True
+    assert "Text:" not in plan.prompt
+
+
+def test_novelai_local_removes_manifest_payload_from_visual_prompt() -> None:
+    page = _page()
+    page["schema_version"] = "1.1"
+    plan = compile_page_render_plan(
+        page,
+        source="step1-pages",
+        provider="novelai",
+        existing_prompt=_existing_prompt() + "\nVisual note: ぎいっ is only a sound cue.",
+        negative_prompt="",
+        text_mode="none",
+        bubble_frame_mode="local",
+    )
+
+    assert plan.text_mode == "none"
+    assert all(item["content"] not in plan.prompt for item in plan.text_manifest)
+    assert not any("text content remains" in warning for warning in plan.warnings)
+
+
 def test_novelai_omitted_text_mode_is_generate_t1() -> None:
     page = _page()
     page["schema_version"] = "1.1"

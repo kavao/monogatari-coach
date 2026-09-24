@@ -68,7 +68,10 @@ class DesignBubble(BaseModel):
 
     text_id: str
     panel_id: int
-    bubble_type: Literal["speech", "narration"]
+    # ``sfx`` has a text rectangle but no visible balloon. It remains in
+    # this document so the later lettering pass uses the same coordinate
+    # contract as dialogue, narration, and monologue.
+    bubble_type: Literal["speech", "narration", "thought", "sfx"]
     frame_rect: NormalizedRect
     text_rect: NormalizedRect
     tail: BubbleTail | None = None

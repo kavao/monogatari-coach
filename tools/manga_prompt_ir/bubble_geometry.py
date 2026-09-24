@@ -17,8 +17,14 @@ from manga_prompt_ir.schemas.bubble_frame import BubbleDesignDocument, Normalize
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 from manga_prompt_ir.text_ids import assigned_text_id
 
-LOCAL_FRAME_KINDS = ("dialogue", "narration")
-UNSUPPORTED_KINDS = ("monologue", "sfx")
+LOCAL_FRAME_KINDS = ("dialogue", "narration", "monologue", "sfx")
+
+TEXT_BUBBLE_TYPES = {
+    "dialogue": "speech",
+    "narration": "narration",
+    "monologue": "thought",
+    "sfx": "sfx",
+}
 
 
 class BubbleGeometryError(PageEditError):
@@ -60,12 +66,11 @@ def page_lettering_targets(page: dict[str, Any] | MangaPagePrompt) -> list[dict[
 
 
 def local_frame_targets(page: dict[str, Any] | MangaPagePrompt) -> list[dict[str, Any]]:
-    targets = page_lettering_targets(page)
-    unsupported = [item for item in targets if item["type"] in UNSUPPORTED_KINDS]
-    if unsupported:
-        ids = ", ".join(f"{item['text_id']}({item['type']})" for item in unsupported)
-        raise BubbleGeometryError(f"local frame MVP は speech/narration のみです: {ids}")
-    return [item for item in targets if item["type"] in LOCAL_FRAME_KINDS]
+    return [
+        item
+        for item in page_lettering_targets(page)
+        if item["type"] in LOCAL_FRAME_KINDS
+    ]
 
 
 def load_bubble_design(data: dict[str, Any]) -> BubbleDesignDocument:
@@ -102,12 +107,18 @@ def require_clean_source(
         )
     if image_path is None:
         return
-    declared = str(record.get("source_sha256") or "").strip().lower()
+    # A clean generation record uses source_sha256.  After the local frame
+    # pass, the render result uses output_sha256; lettering must bind to that
+    # framed PNG, not back to the clean source.
+    hash_key = "output_sha256" if record.get("output_sha256") else "source_sha256"
+    declared = str(record.get(hash_key) or "").strip().lower()
     if len(declared) != 64:
-        raise BubbleGeometryError("local frame の生成記録に入力 PNG の source_sha256 が必要です")
+        raise BubbleGeometryError(
+            f"local frame の生成記録に画像の {hash_key} が必要です"
+        )
     actual = sha256_file(image_path)
     if declared != actual:
-        raise BubbleGeometryError("生成記録の source_sha256 が入力 PNG と一致しません")
+        raise BubbleGeometryError(f"生成記録の {hash_key} が入力 PNG と一致しません")
 
 
 def validate_bubble_design(
@@ -142,7 +153,7 @@ def validate_bubble_design(
             )
         if int(bubble.panel_id) not in known_panels:
             raise BubbleGeometryError(f"未知の panel_id です: {bubble.panel_id}")
-        expected_type = "speech" if target["type"] == "dialogue" else "narration"
+        expected_type = TEXT_BUBBLE_TYPES[target["type"]]
         if bubble.bubble_type != expected_type:
             raise BubbleGeometryError(
                 f"bubble_type が text 種別と一致しません: {bubble.text_id} "
@@ -246,7 +257,10 @@ def bind_bubble_actual(
     if list(declared_size) != [width, height]:
         raise BubbleGeometryError("投影時の画像寸法と bind 画像の寸法が一致しません")
     page_dict = _as_dict(page)
-    design_panels = project_design_geometry(page_dict, image_size=(width, height))
+    model = MangaPagePrompt.model_validate(page_dict)
+    design_panels = None
+    if model.layout_geometry is not None:
+        design_panels = project_design_geometry(page_dict, image_size=(width, height))
     actual_texts = []
     for item in projected.get("texts") or []:
         actual_texts.append(
@@ -256,19 +270,33 @@ def bind_bubble_actual(
                 "rect_px": list(item["rect_px"]),
             }
         )
-    bound = bind_actual_geometry(
-        {
+    if design_panels is not None:
+        bound = bind_actual_geometry(
+            {
+                "kind": "actual",
+                "source_sha256": digest,
+                "panels": [
+                    {"panel_id": item["panel_id"], "rect_px": item["rect_px"]}
+                    for item in design_panels["panels"]
+                ],
+                "texts": actual_texts,
+            },
+            image_path=path,
+            page=page_dict,
+        )
+    else:
+        # schema 1.0 deliberately has no layout_geometry.  The bubble
+        # sidecar is still sufficient for lettering, so keep panel geometry
+        # empty instead of falling back to the forbidden text manifest or
+        # inventing panel rectangles.
+        bound = {
             "kind": "actual",
             "source_sha256": digest,
-            "panels": [
-                {"panel_id": item["panel_id"], "rect_px": item["rect_px"]}
-                for item in design_panels["panels"]
-            ],
+            "image_path": str(path),
+            "image_size": [width, height],
+            "panels": [],
             "texts": actual_texts,
-        },
-        image_path=path,
-        page=page_dict,
-    )
+        }
     bubbles = []
     for item in projected.get("bubbles") or []:
         bubble = dict(item)

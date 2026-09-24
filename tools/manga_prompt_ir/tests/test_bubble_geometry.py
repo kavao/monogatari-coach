@@ -104,13 +104,38 @@ def test_text_rect_outside_frame_and_overlap_stop() -> None:
     validate_bubble_design(_page(), overlap, source_generation=_clean_source())
 
 
-def test_unsupported_kind_and_dirty_source_stop() -> None:
+def test_all_text_kinds_use_bubble_design_coordinates() -> None:
     page = _page()
     page["panels"][0]["text"]["monologue"] = [
         {"text_id": "p10-monologue-01", "content": "内心"}
     ]
-    with pytest.raises(BubbleGeometryError, match="speech/narration"):
-        validate_bubble_design(page, _bubbles(), source_generation=_clean_source())
+    page["panels"][1]["text"]["sfx"] = [
+        {"text_id": "p20-sfx-01", "content": "ドン"}
+    ]
+    sidecar = _bubbles()
+    sidecar["bubbles"].extend(
+        [
+            {
+                "text_id": "p10-monologue-01",
+                "panel_id": 10,
+                "bubble_type": "thought",
+                "frame_rect": {"x": 0.08, "y": 0.22, "width": 0.22, "height": 0.10},
+                "text_rect": {"x": 0.10, "y": 0.24, "width": 0.18, "height": 0.06},
+            },
+            {
+                "text_id": "p20-sfx-01",
+                "panel_id": 20,
+                "bubble_type": "sfx",
+                "frame_rect": {"x": 0.08, "y": 0.56, "width": 0.20, "height": 0.10},
+                "text_rect": {"x": 0.10, "y": 0.58, "width": 0.16, "height": 0.06},
+            },
+        ]
+    )
+    document = validate_bubble_design(page, sidecar, source_generation=_clean_source())
+    assert [bubble.bubble_type for bubble in document.bubbles[-2:]] == ["thought", "sfx"]
+
+
+def test_dirty_source_still_stops() -> None:
 
     with pytest.raises(BubbleGeometryError, match="生成記録"):
         validate_bubble_design(_page(), _bubbles())
@@ -191,6 +216,20 @@ def test_project_and_bind_keeps_text_inside_frame(tmp_path: Path) -> None:
     ]
     with pytest.raises(PageEditError, match="design_projected"):
         bind_actual_geometry(projected, image_path=image, page=page)
+
+
+def test_bind_bubble_actual_allows_schema_page_without_layout_geometry(tmp_path: Path) -> None:
+    page = _page()
+    page.pop("layout_geometry", None)
+    image = tmp_path / "clean.png"
+    Image.new("RGB", (832, 1216), (240, 240, 240)).save(image)
+    projected = project_bubble_design(
+        page, _bubbles(), image_size=(832, 1216), source_generation=_clean_source()
+    )
+    bound = bind_bubble_actual(projected, image_path=image, page=page)
+    assert bound["kind"] == "actual"
+    assert bound["panels"] == []
+    assert len(bound["texts"]) == 4
 
 
 def test_bind_actual_rejects_duplicate_and_unknown_text_id(tmp_path: Path) -> None:

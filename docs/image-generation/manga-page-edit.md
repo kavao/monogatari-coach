@@ -148,7 +148,20 @@ python tools/novel_manga_lettering.py render-bubbles `
   --result-json path/to/page.bubbles.json
 ```
 
-実行後、`frame_count` と `complete` を確認します。枠付き PNG のハッシュ付き `actual` 座標を作ってから写植します。`design_projected` のままでは写植しません。
+実行後、`frame_count` と `complete` を確認します。`dialogue` は speech、`narration` は narration、`monologue` は thought の枠として描き、`sfx` は枠なしの文字領域として保持します。続けて、枠付きPNGの出力ハッシュを使って `actual` 座標を確定してから写植します。`design_projected` のままでは写植しません。
+
+枠付きPNGを入力にして、`bubbles` の設計座標を画像ハッシュ付き `actual` geometryへ確定します。`--generation-json` には `render-bubbles` の `--result-json` を渡します。これにより、actual は枠付きPNGに結び付き、別画像への誤適用を停止できます。
+
+```powershell
+python tools/novel_manga_lettering.py bind-bubbles-actual `
+  --page novels/<作品>/manga/pages/manga_01_p01.yaml `
+  --bubbles path/to/page.bubbles.yaml `
+  --generation-json path/to/page.bubbles.json `
+  --image path/to/page.bubbles.png `
+  --out path/to/page.bubbles.actual.json
+```
+
+実行後、`kind=actual`、`texts` 件数、`source_sha256` が枠付きPNGのハッシュと一致することを確認します。
 
 Grok など native の `letter_later` PNG と、NovelAI の `generate` / `letter_later` PNG は、この枠コマンドの入力にしません。枠は `local` の clean PNG だけです。NovelAI の `generate` PNG は、枠を重ねずに actual 写植の入力にします。
 

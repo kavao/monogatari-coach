@@ -201,6 +201,56 @@ def test_cli_render_bubbles(tmp_path: Path) -> None:
     assert payload["frame_count"] == 4
     assert out.is_file()
 
+    actual = tmp_path / "actual.json"
+    bind_code = main(
+        [
+            "bind-bubbles-actual",
+            "--page",
+            str(_PAGES / "manga_01_p01.yaml"),
+            "--bubbles",
+            str(_PAGES / "manga_01_p01.bubbles.yaml"),
+            "--generation-json",
+            str(result_json),
+            "--image",
+            str(out),
+            "--out",
+            str(actual),
+        ]
+    )
+    assert bind_code == 0
+    actual_payload = json.loads(actual.read_text(encoding="utf-8"))
+    assert actual_payload["kind"] == "actual"
+    assert actual_payload["source_sha256"] == sha256_file(out)
+
+
+def test_cli_bind_bubbles_actual(tmp_path: Path) -> None:
+    source, record = _clean_png(tmp_path / "clean.png")
+    generation = tmp_path / "generation.json"
+    generation.write_text(json.dumps(record), encoding="utf-8")
+    out = tmp_path / "actual.json"
+    from novel_manga_lettering import main
+
+    code = main(
+        [
+            "bind-bubbles-actual",
+            "--page",
+            str(_PAGES / "manga_01_p01.yaml"),
+            "--bubbles",
+            str(_PAGES / "manga_01_p01.bubbles.yaml"),
+            "--generation-json",
+            str(generation),
+            "--image",
+            str(source),
+            "--out",
+            str(out),
+        ]
+    )
+    assert code == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["kind"] == "actual"
+    assert payload["source_sha256"] == sha256_file(source)
+    assert len(payload["texts"]) == 4
+
 
 def test_local_frame_source_record_matches_png_hash(tmp_path: Path) -> None:
     from manga_prompt_ir.local_frame_source import build_local_frame_source_record

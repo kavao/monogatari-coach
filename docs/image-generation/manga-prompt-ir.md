@@ -138,6 +138,23 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 `--prompt-formatter tag_csv` を付けると、旧来の日本語ページ指示文と native `negative_prompt` の形に戻して比較できます。既定値は `config/image_generation.json` の `providers.*.prompt_formatter` で管理します。
 
+### NovelAIページのプロンプト圧縮
+
+NovelAIのページ生成では、必要なときだけ `--prompt-compaction safe` を指定できます。YAMLを変更せず、ページ共通タグ・人物固定タグ・衣装variant・コマ差分を決定的に整理してから、NovelAI用の送信文へ変換します。既定値は `off` で、Grok / OpenAI / OpenRouter / Forge の既存プロンプトとpayloadには影響しません。
+
+```powershell
+# 圧縮結果を確認する（APIへ送信しない）
+uv run python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
+  --manga-stem manga_01 --source step1-pages --provider novelai `
+  --page-compiler page_render_plan --prompt-compaction safe --dry-run
+```
+
+`safe` / `promote-fixed` は `provider=novelai`、YAML、`step1-pages` または `step2-pages`、`page_render_plan` の組み合わせだけで使用できます。別providerや `step1-panels` / legacyへ明示すると停止し、従来出力へ黙って戻りません。NovelAIの `step1-panels` は従来どおり `ベース | キャラ` を使います。
+
+文字の送信先は固定されています。slotがないページでは台詞本文だけが末尾の `Text:` に入り、モノローグ・ナレーション・効果音は `Panel Text Cues:` に残ります。slotがあるページでは `Text:` を付けず、台詞はcharacter slotへ渡します。`text_id`、speaker、panel_id、順序はページmanifestで追跡できます。品質接尾辞は送信側で一度だけ視覚本文へ付け、文字欄より前に置きます。本文は上限超過時も切らずに停止します。
+
+`--prompt-compaction off` は全providerの既存経路を選びます。P4回帰では、圧縮coreを呼ばないこと、NovelAI legacyコマの出力を変えないこと、`Panel Text Cues:` の順序・文字種別・本文を保持することを確認します。
+
 Grok / `grok_pro` のページ生成では、YAML の `text.dialogue`・`text.monologue`・`text.narration`・`text.sfx` がページプロンプトへ反映されます。`render_instruction.text_policy` または `manga.text_policy` が `generate` の場合は、指定された文字だけを吹き出し・ナレーション枠・効果音として描く指示になります。`letter_later` または `none` の場合は、本文を描かず、後載せ写植用の空き領域を残します。`page_render_plan` を使う場合はコンパイラが文字マニフェストを管理し、legacy formatter の場合はページ本文の文字要素として送信します。
 
 ### OpenAIの漫画ページを縦長で生成するとき

@@ -49,6 +49,11 @@ def _draw_narration(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int]) -
     draw.rounded_rectangle(box, radius=radius, fill=FILL, outline=OUTLINE, width=STROKE)
 
 
+def _draw_thought(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int]) -> None:
+    # The optional tail points carry the connection to the character.
+    draw.ellipse(box, fill=FILL, outline=OUTLINE, width=STROKE)
+
+
 def _require_png_path(path: Path, *, role: str) -> None:
     if path.suffix.lower() != ".png":
         raise BubbleGeometryError(f"{role} は PNG に限定します: {path.name}")
@@ -87,17 +92,26 @@ def render_local_bubble_frames(
     )
     draw = ImageDraw.Draw(working)
     bubbles = projected["bubbles"]
+    visible_frame_count = 0
     for bubble in bubbles:
+        bubble_type = bubble["bubble_type"]
+        # Sound effects use a text rectangle but no visible balloon.  They
+        # stay in the projected/actual record for the lettering pass.
+        if bubble_type == "sfx":
+            continue
         tail = bubble.get("tail_px")
         if tail:
             _draw_tail(draw, tail)
         box = _as_box(bubble["frame_rect_px"])
-        if bubble["bubble_type"] == "speech":
+        if bubble_type == "speech":
             _draw_speech(draw, box)
-        elif bubble["bubble_type"] == "narration":
+        elif bubble_type == "narration":
             _draw_narration(draw, box)
+        elif bubble_type == "thought":
+            _draw_thought(draw, box)
         else:
-            raise BubbleGeometryError(f"未対応の bubble_type です: {bubble['bubble_type']}")
+            raise BubbleGeometryError(f"未対応の bubble_type です: {bubble_type}")
+        visible_frame_count += 1
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     working.save(destination, format="PNG")
@@ -105,14 +119,18 @@ def render_local_bubble_frames(
     if after_source != source_digest:
         raise BubbleGeometryError("入力 PNG が枠描画中に変わりました")
     output_digest = sha256_file(destination)
-    if output_digest == source_digest:
+    if visible_frame_count and output_digest == source_digest:
         raise BubbleGeometryError("枠が描画されていません")
     if len(bubbles) != len(projected["texts"]):
         raise BubbleGeometryError("frame 件数と text 件数が一致しません")
     return {
         "complete": True,
+        "bubble_frame_mode": "local",
+        "text_mode": "none",
+        "bubbles_suppressed": True,
         "path": str(destination),
-        "frame_count": len(bubbles),
+        "frame_count": visible_frame_count,
+        "text_count": len(bubbles),
         "source_sha256": source_digest,
         "output_sha256": output_digest,
         "bubbles": [

@@ -338,11 +338,13 @@ def _novelai_augment_page_prompt(
     quality_toggle: bool = True,
     quality_preset: str = "standard",
 ) -> str:
-    """Keep a compiler-owned ``Text:`` block at the end of page prompts.
+    """Keep compiler-owned text sections at the end of page prompts.
 
     NovelAI's quality suffixes historically append to the whole prompt and
-    some V4.5 presets include ``no text``. PageRenderPlan owns the final text
-    block, so only the visual instruction prefix may receive that suffix.
+    some V4.5 presets include ``no text``. PageRenderPlan owns the final
+    ``Panel Text Cues:`` / ``Text:`` sections, so only the visual instruction
+    prefix may receive that suffix. The cues marker is checked first because
+    it may be followed by the dialogue marker.
     Legacy prompts and panel generation continue through the old helper.
     """
     plan_metadata = metadata.get("page_render_plan") if isinstance(metadata, dict) else None
@@ -354,8 +356,11 @@ def _novelai_augment_page_prompt(
             quality_preset=quality_preset,
         )
 
-    marker = "\n\nText:\n"
+    marker = "\n\nPanel Text Cues:\n"
     visual_prompt, separator, text_block = prompt.rpartition(marker)
+    if not separator:
+        marker = "\n\nText:\n"
+        visual_prompt, separator, text_block = prompt.rpartition(marker)
     if not separator:
         # Dialogue lives in per-panel character slots. Quality suffix stays on the page prompt.
         return _novelai_augment_prompt(

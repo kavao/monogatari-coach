@@ -1461,19 +1461,26 @@ def yaml_page_number(path: Path, fallback: int) -> int:
     return int(match.group(1)) if match else fallback
 
 
-def yaml_render_instruction_block(page: dict) -> str:
+def yaml_render_instruction_block(
+    page: dict,
+    *,
+    include_text_policy: bool = True,
+) -> str:
     instruction = page.get("render_instruction") or {}
     if not isinstance(instruction, dict):
         return ""
     lines: list[str] = []
-    for key in (
+    keys = (
         "prompt_header",
         "task",
         "panel_policy",
         "character_policy",
         "text_policy",
         "output_policy",
-    ):
+    )
+    if not include_text_policy:
+        keys = tuple(key for key in keys if key != "text_policy")
+    for key in keys:
         value = instruction.get(key)
         if value:
             lines.append(str(value))
@@ -2271,9 +2278,20 @@ def iter_yaml_manga_jobs(
     page_compiler: str = "legacy",
     text_mode: str | None = None,
     bubble_frame_mode: str | None = None,
+    prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
 ) -> list[dict[str, Any]]:
+    if prompt_compaction != "off" and not (
+        provider == "novelai"
+        and source in {"step1-pages", "step2-pages"}
+        and page_compiler == PAGE_COMPILER
+    ):
+        raise PageRenderPlanError(
+            "prompt_compaction の safe / promote-fixed は "
+            "provider=novelai + YAML + step1-pages/step2-pages + "
+            "--page-compiler page_render_plan 専用です（黙ってlegacyへ戻しません）"
+        )
     manga_dir = novel_dir / "manga"
     pages_dir = manga_dir / "pages"
     if not pages_dir.is_dir():
@@ -2295,7 +2313,11 @@ def iter_yaml_manga_jobs(
     max_prompt_bytes: int | None = (
         root_cfg.get("providers", {}).get(provider, {}).get("max_prompt_bytes")
     )
-    paths = sorted(pages_dir.glob("*.yaml"))
+    paths = sorted(
+        path
+        for path in pages_dir.glob("*.yaml")
+        if not path.name.endswith(".bubbles.yaml")
+    )
     if only_stem:
         paths = [
             path for path in paths
@@ -2333,6 +2355,7 @@ def iter_yaml_manga_jobs(
         panels = [panel for panel in as_list(page.get("panels")) if isinstance(panel, dict)]
         if not panels:
             continue
+        local_text_suppressed = provider == "novelai" and bubble_frame_mode == "local"
         stem = yaml_page_stem(path, page)
         page_num = yaml_page_number(path, index)
         stem_assets = resolve_manga_assets_stem_dir(manga_dir, stem)
@@ -2389,7 +2412,10 @@ def iter_yaml_manga_jobs(
                 if compact_grok_page_prompt
                 else yaml_character_anchor_block(page, characters)
             )
-            instruction_block = yaml_render_instruction_block(page)
+            instruction_block = yaml_render_instruction_block(
+                page,
+                include_text_policy=not local_text_suppressed,
+            )
             extra_text = "\n\n".join(blk for blk in (instruction_block, helper, anchor_block) if blk)
             prompt = (
                 f"以下は{color_label}1ページ分の構成指示です。"
@@ -2418,7 +2444,19 @@ def iter_yaml_manga_jobs(
                     novelai_model=resolved_model if provider == "novelai" else novelai_model,
                     asset_base_dir=novel_dir,
                     characters=characters,
+                    prompt_compaction=prompt_compaction,
+                    style_helper=helper,
                 )
+                if prompt_compaction != "off":
+                    compaction_metrics = plan.effective_settings.setdefault(
+                        "compaction", {}
+                    )
+                    compaction_metrics["original_prompt_bytes"] = len(
+                        prompt.encode("utf-8")
+                    )
+                    compaction_metrics["compiled_prompt_bytes"] = len(
+                        plan.prompt.encode("utf-8")
+                    )
                 bundle_prompt = plan.prompt
                 bundle_negative = plan.negative_prompt
                 bundle_formatter = plan.formatter
@@ -2438,7 +2476,11 @@ def iter_yaml_manga_jobs(
             prompt = bundle_prompt
             if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
                 prompt = omit_page_japanese_gloss_lines(prompt)
-            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+            if (
+                max_prompt_bytes
+                and len(prompt.encode("utf-8")) > max_prompt_bytes
+                and not (provider == "novelai" and page_compiler == PAGE_COMPILER)
+            ):
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry: dict[str, Any] = {
                 "stem": stem,
@@ -2487,7 +2529,7 @@ def iter_yaml_manga_jobs(
                 include_text_elements=(
                     include_grok_text_elements
                     if provider in _GROK_FAMILY
-                    else True
+                    else not local_text_suppressed
                 ),
             )
             helper = resolve_page_style_helper(provider, "step1-pages", style_helper)
@@ -2496,7 +2538,13 @@ def iter_yaml_manga_jobs(
                 if compact_grok_page_prompt
                 else yaml_character_anchor_block(page, characters)
             )
-            extra_text = "\n\n".join(blk for blk in (helper, anchor_block) if blk)
+            instruction_block = yaml_render_instruction_block(
+                page,
+                include_text_policy=not local_text_suppressed,
+            )
+            extra_text = "\n\n".join(
+                blk for blk in (instruction_block, helper, anchor_block) if blk
+            )
             intro = (
                 f"以下は{color_label}1ページ分の詳細指示です。"
                 f"各コマの人物、行動、背景、表情、構図差をできるだけ保持しつつ、"
@@ -2522,7 +2570,19 @@ def iter_yaml_manga_jobs(
                     novelai_model=resolved_model if provider == "novelai" else novelai_model,
                     asset_base_dir=novel_dir,
                     characters=characters,
+                    prompt_compaction=prompt_compaction,
+                    style_helper=helper,
                 )
+                if prompt_compaction != "off":
+                    compaction_metrics = plan.effective_settings.setdefault(
+                        "compaction", {}
+                    )
+                    compaction_metrics["original_prompt_bytes"] = len(
+                        prompt.encode("utf-8")
+                    )
+                    compaction_metrics["compiled_prompt_bytes"] = len(
+                        plan.prompt.encode("utf-8")
+                    )
                 bundle_prompt = plan.prompt
                 bundle_negative = plan.negative_prompt
                 bundle_formatter = plan.formatter
@@ -2542,7 +2602,11 @@ def iter_yaml_manga_jobs(
             prompt = bundle_prompt
             if provider in _PAGE_GLOSS_OMIT_PROVIDERS:
                 prompt = omit_page_japanese_gloss_lines(prompt)
-            if max_prompt_bytes and len(prompt.encode("utf-8")) > max_prompt_bytes:
+            if (
+                max_prompt_bytes
+                and len(prompt.encode("utf-8")) > max_prompt_bytes
+                and not (provider == "novelai" and page_compiler == PAGE_COMPILER)
+            ):
                 prompt = trim_prompt_to_byte_limit(prompt, max_prompt_bytes)
             job_entry = {
                 "stem": stem,
@@ -2688,6 +2752,7 @@ def iter_jobs_by_input(
     page_compiler: str = "legacy",
     text_mode: str | None = None,
     bubble_frame_mode: str | None = None,
+    prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -2709,6 +2774,7 @@ def iter_jobs_by_input(
             page_compiler=page_compiler,
             text_mode=text_mode,
             bubble_frame_mode=bubble_frame_mode,
+            prompt_compaction=prompt_compaction,
             novelai_model=novelai_model,
             requested_model=requested_model,
         )
@@ -2821,6 +2887,12 @@ def main(argv: list[str] | None = None) -> int:
         "--model",
         default=None,
         help="モデル名または alias（例: v2, grok-imagine-image-2.0）。CLI が params より優先",
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="生成 seed。off / safe などの比較時に同一条件を固定する",
     )
     p.add_argument(
         "--grok-image-quality",
@@ -2938,6 +3010,18 @@ def main(argv: list[str] | None = None) -> int:
             " false と未設定は generate（元の吹き出しに字・写植なし）。CLI 明示は YAML より優先する。"
             " YAMLのtext_policy明示値と衝突する場合は送信前に停止する。"
             " page_compiler が legacy でも、Grok ページの台詞行の有無に同じ方針を使う"
+        ),
+    )
+    p.add_argument(
+        "--prompt-compaction",
+        "--novelai-prompt-compaction",
+        dest="prompt_compaction",
+        choices=("off", "safe", "promote-fixed"),
+        default="off",
+        help=(
+            "ページIRの決定的な共通プロンプト圧縮。既定はoff。"
+            " safe / promote-fixed は NovelAI + YAML + page_render_plan のみ対応し、"
+            "それ以外の明示指定は停止する"
         ),
     )
     p.add_argument(
@@ -3110,6 +3194,19 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    if args.prompt_compaction != "off" and not (
+        provider == "novelai"
+        and args.input == "yaml"
+        and args.source in {"step1-pages", "step2-pages"}
+        and args.page_compiler == PAGE_COMPILER
+    ):
+        print(
+            "error: --prompt-compaction safe / promote-fixed は "
+            "provider=novelai + YAML + step1-pages/step2-pages + "
+            "--page-compiler page_render_plan 専用です（黙ってlegacyへ戻しません）",
+            file=sys.stderr,
+        )
+        return 2
     if args.size is not None and provider != "openai":
         print(
             "error: --size は provider=openai のときだけ指定できます",
@@ -3239,6 +3336,7 @@ def main(argv: list[str] | None = None) -> int:
             page_compiler=args.page_compiler,
             text_mode=args.text_mode,
             bubble_frame_mode=args.bubble_frame_mode,
+            prompt_compaction=args.prompt_compaction,
             novelai_model=(provider_cfg.get("default_model") if provider == "novelai" else None),
             requested_model=args.model,
         )
@@ -3352,7 +3450,7 @@ def main(argv: list[str] | None = None) -> int:
             "output_dir": out_dir_posix,
             "file_prefix": job["prefix"],
             "count": 1,
-            "seed": None,
+            "seed": args.seed,
             "prompt_formatter": job.get("prompt_formatter", prompt_formatter),
             "negative_mode": job.get("negative_mode", NATIVE_NEGATIVE),
         }
@@ -3463,6 +3561,17 @@ def main(argv: list[str] | None = None) -> int:
                     "    effective_settings: "
                     f"{json.dumps(page_plan.effective_settings, ensure_ascii=False, sort_keys=True)}"
                 )
+                compaction = page_plan.effective_settings.get("compaction")
+                if isinstance(compaction, dict):
+                    print(
+                        "    prompt_compaction: "
+                        f"mode={page_plan.effective_settings.get('prompt_compaction')} "
+                        f"bytes={compaction.get('original_prompt_bytes', '?')}->"
+                        f"{compaction.get('compiled_prompt_bytes', '?')} "
+                        f"common={compaction.get('page_common_tag_count', 0)} "
+                        f"fixed={compaction.get('character_anchor_count', 0)} "
+                        f"delta={compaction.get('panel_delta_count', 0)}"
+                    )
                 if provider == "openrouter":
                     print("    transport: OpenRouter Image API (/images)")
                 for warning in page_plan.warnings:

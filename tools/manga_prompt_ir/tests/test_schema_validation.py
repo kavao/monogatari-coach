@@ -22,7 +22,11 @@ from manga_prompt_ir.schemas.character import CharacterPrompt
 from manga_prompt_ir.schemas.manga_page import Camera, MangaPagePrompt
 
 from image_provider_novel_manga_batch import filter_single_panel_tags
-from novel_prompt_ir_validate import _schema_1_1_advisories, quality_warnings_for_page
+from novel_prompt_ir_validate import (
+    _schema_1_1_advisories,
+    discover_page_yaml_files,
+    quality_warnings_for_page,
+)
 
 
 def test_character_yaml_validates() -> None:
@@ -30,6 +34,17 @@ def test_character_yaml_validates() -> None:
     assert character.character_id == "kazuki"
     assert "black_hair" in character.fixed_prompt_tags()
     assert "1boy" in character.fixed_prompt_tags()
+
+
+def test_page_discovery_ignores_bubble_sidecars(tmp_path: Path) -> None:
+    pages = tmp_path / "manga" / "pages"
+    pages.mkdir(parents=True)
+    page = pages / "manga_01_p01.yaml"
+    sidecar = pages / "manga_01_p01.bubbles.yaml"
+    page.write_text("meta: {}\n", encoding="utf-8")
+    sidecar.write_text("bubbles: []\n", encoding="utf-8")
+
+    assert discover_page_yaml_files(pages, "manga_") == [page]
 
 
 def test_manga_page_yaml_validates_and_renders() -> None:

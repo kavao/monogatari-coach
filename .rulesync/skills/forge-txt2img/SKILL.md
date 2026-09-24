@@ -240,6 +240,20 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 
 **注意**: `max_prompt_bytes` が未設定のまま step1-pages を Grok へ送ると **HTTP 400（プロンプト上限超過）** が返る。必ず `config/image_generation.json` の `providers.grok.max_prompt_bytes` を確認してから実行すること。
 
+## provider隔離とNovelAIページ圧縮（P4）
+
+ページIRの圧縮は、provider-neutralな共通結果とprovider adapterを分離して扱う。既定は `--prompt-compaction off` とし、Grok / OpenAI / OpenRouter / Forgeのprompt・payloadを変更しない。`safe` / `promote-fixed` は **NovelAI + YAML + `step1-pages` / `step2-pages` + `page_render_plan`** だけで受け付け、対象外の明示指定は従来経路へフォールバックせず停止する。NovelAIの `step1-panels` legacyは既存の `ベース | キャラ` 形式を維持する。
+
+NovelAI adapterの文字契約は次のとおり固定する。
+
+- slotなし: 台詞本文だけを末尾の `Text:` に置く。
+- slotなし: モノローグ、ナレーション、効果音は `Panel Text Cues:` に置き、text manifestの `text_id` / speaker / panel_id / 順序と対応させる。
+- slotあり: `Text:` は付けず、台詞はcharacter slotへ渡す。
+- 品質接尾辞は送信側で一度だけ視覚本文へ付け、`Panel Text Cues:` と `Text:` より前に置く。
+- 本文上限超過、`generate` と `no text` の競合、protected tag欠落、variant混線は停止する。本文を切らない。
+
+`off` のprovider隔離、legacy NovelAI panel形状、文字欄の送信順、品質接尾辞の一回適用は、P4の共通回帰テストで固定する。
+
 ## 前提（OpenAI Images API）
 
 - `.env` に **`OPENAI_API_KEY`** を記入する。

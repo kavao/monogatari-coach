@@ -57,6 +57,10 @@ from .renderer_capabilities import (
     resolve_renderer_capability_key,
 )
 from .text_ids import assigned_text_id
+from .prompt_compactors import (
+    PromptCompactionResult,
+    compact_page_prompt,
+)
 
 
 PAGE_COMPILER = "page_render_plan"
@@ -226,7 +230,12 @@ def page_yaml_text_mode(page: dict[str, Any]) -> str | None:
     return next(iter(modes)) if modes else None
 
 
-def resolve_text_mode(page: dict[str, Any], requested: str | None = None) -> tuple[str, str, list[str]]:
+def resolve_text_mode(
+    page: dict[str, Any],
+    requested: str | None = None,
+    *,
+    ignore_page_policy: bool = False,
+) -> tuple[str, str, list[str]]:
     """Resolve mode and policy while distinguishing omitted from explicit YAML keys.
 
     CLI ``requested`` wins over YAML ``text_mode``. YAML ``text_mode`` wins over
@@ -236,8 +245,8 @@ def resolve_text_mode(page: dict[str, Any], requested: str | None = None) -> tup
         raise PageRenderPlanError(
             f"text_mode は generate / letter_later / none のいずれかです: {requested!r}"
         )
-    yaml_mode = page_yaml_text_mode(page)
-    declared = explicit_text_policies(page)
+    yaml_mode = None if ignore_page_policy else page_yaml_text_mode(page)
+    declared = [] if ignore_page_policy else explicit_text_policies(page)
     classified: list[tuple[str, str]] = []
     warnings: list[str] = []
     for key, value in declared:
@@ -279,6 +288,48 @@ def resolve_text_mode(page: dict[str, Any], requested: str | None = None) -> tup
         "none": "Do not render text or lettering; preserve the composition and acting space for a text-free image.",
     }
     return mode, policies[mode], warnings
+
+
+def _validate_generate_no_text_conflict(
+    page: dict[str, Any],
+    *,
+    mode: str,
+    negative_prompt: str,
+) -> None:
+    """Reject explicit ``generate`` + ``no text`` contradictions.
+
+    The quality suffix may contain ``no text`` for NovelAI, but that suffix is
+    applied later to the visual prefix and is therefore intentionally not part
+    of this IR validation.
+    """
+    if mode != "generate":
+        return
+    positive_values: list[Any] = []
+    manga = page.get("manga") or {}
+    positive_values.extend(_as_list(manga.get("genre_tags")))
+    positive_values.extend(_as_list(manga.get("visual_tags")))
+    instruction = page.get("render_instruction") or {}
+    if isinstance(instruction, dict):
+        directives = instruction.get("user_directives") or {}
+        defaults = directives.get("defaults") if isinstance(directives, dict) else {}
+        if isinstance(defaults, dict):
+            positive_values.extend(_as_list(defaults.get("required_prompt_tags")))
+    negative_values: list[Any] = [negative_prompt]
+    technical = page.get("technical") or {}
+    negative_values.extend(_as_list(technical.get("negative_tags")))
+    for panel in _as_list(page.get("panels")):
+        if not isinstance(panel, dict):
+            continue
+        positive_values.extend(_as_list(panel.get("prompt_tags")))
+        negative_values.extend(_as_list(panel.get("negative_tags")))
+    if any(_NO_TEXT_RE.search(str(value or "")) for value in positive_values):
+        raise PageRenderPlanError(
+            "text_mode=generate と positive 側の no text 指示が衝突しています"
+        )
+    if any(_NO_TEXT_RE.search(str(value or "")) for value in negative_values):
+        raise PageRenderPlanError(
+            "text_mode=generate と negative_prompt 側の no text 指示が衝突しています"
+        )
 
 
 def _lettering_style(page: dict[str, Any]) -> dict[str, Any]:
@@ -380,6 +431,22 @@ def _strip_text_content(prompt: str, manifest: list[dict[str, Any]]) -> str:
     ).strip()
 
 
+def _strip_manifest_content(prompt: str, manifest: list[dict[str, Any]]) -> str:
+    """Remove exact text payloads from the local no-text provider prompt.
+
+    Local bubble rendering must not leave a dialogue or SFX token in an
+    otherwise visual description.  This is deliberately exact replacement:
+    the YAML manifest remains the source of truth, while unrelated prose is
+    not semantically rewritten by the compiler.
+    """
+    cleaned = prompt
+    for item in manifest:
+        content = str(item.get("content") or "").strip()
+        if content:
+            cleaned = cleaned.replace(content, "")
+    return cleaned
+
+
 def _strip_page_japanese_gloss_lines(prompt: str) -> str:
     """Remove legacy human-readable Japanese gloss lines from provider prompts."""
     had_trailing_newline = prompt.endswith("\n")
@@ -435,6 +502,136 @@ def _novelai_dialogue_text_block(manifest: list[dict[str, Any]]) -> str:
     if len(lines) == 1:
         return "Text:\n"
     return "\n".join(lines)
+
+
+def _compaction_manifest_dicts(result: PromptCompactionResult) -> list[dict[str, Any]]:
+    return [
+        {
+            "text_id": item.text_id,
+            "panel_id": item.panel_id,
+            "type": item.type,
+            "content": item.content,
+            "speaker": item.speaker,
+            "placement": item.placement,
+            "bubble_type": item.bubble_type,
+            "meaning": item.meaning,
+            "writing_direction": item.writing_direction,
+        }
+        for item in result.text_manifest
+    ]
+
+
+def _novelai_panel_text_cues(
+    result: PromptCompactionResult,
+    *,
+    character_slots: list[dict[str, Any]],
+    text_mode: str,
+) -> str:
+    """Render non-dialogue cues outside the quality-suffix protected Text block."""
+    if text_mode != "generate":
+        return ""
+    assigned = {
+        str(content).strip()
+        for slot in character_slots
+        for content in (slot.get("rendered_contents") or [])
+        if str(content).strip()
+    }
+    lines: list[str] = []
+    for item in result.text_manifest:
+        if item.type == "dialogue" or item.content in assigned:
+            continue
+        lines.append(f"- panel {item.panel_id} {item.type}: {item.content}")
+    return "Panel Text Cues:\n" + "\n".join(lines) if lines else ""
+
+
+def _render_novelai_compacted_prompt(
+    result: PromptCompactionResult,
+    *,
+    page: dict[str, Any],
+    text_mode: str,
+    character_slots: list[dict[str, Any]],
+) -> str:
+    """NovelAI adapter for the provider-neutral compaction result."""
+    lines = [
+        "Create one complete Japanese manga page as a single image.",
+        "Page Structure:",
+        *[f"- {value}" for value in result.page_structure],
+    ]
+    if text_mode == "generate":
+        lines.append("- Render specified text as legible Japanese lettering in speech bubbles.")
+    if result.style_helper:
+        lines.extend(["Style:", f"- {result.style_helper}"])
+    if result.page_policy:
+        lines.extend(["Page Policy:", *[f"- {value}" for value in result.page_policy]])
+    if result.page_common_tags:
+        lines.extend(["Page Common:", f"- tags: {', '.join(result.page_common_tags)}"])
+    if result.character_anchors:
+        lines.append("Character Anchors:")
+        for anchor in result.character_anchors:
+            tags = ", ".join(anchor.tags) or "(identity anchor is structural)"
+            lines.append(f"- {anchor.character_id}: {tags}")
+            if anchor.do_not_change:
+                lines.append(
+                    f"- {anchor.character_id} invariants: "
+                    + "; ".join(anchor.do_not_change)
+                )
+    if result.variant_anchors:
+        lines.append("Variant Anchors:")
+        for anchor in result.variant_anchors:
+            tags = ", ".join(anchor.tags) or "(no additional costume tags)"
+            lines.append(
+                f"- {anchor.character_id} / {anchor.selected_variant_id}: {tags}"
+            )
+    if result.panel_outlines:
+        lines.append("Panel Outline:")
+        lines.extend(f"- panel {item.panel_id}: {item.text}" for item in result.panel_outlines)
+    if result.panel_subjects:
+        lines.append("Panel Subjects:")
+        lines.extend(
+            f"- panel {item.panel_id} subject {item.subject_index}: {item.text}"
+            for item in result.panel_subjects
+        )
+    if result.panel_visuals:
+        lines.append("Panel Visual:")
+        for item in result.panel_visuals:
+            suffix = f"; {item.text}" if item.text else ""
+            tags = ", ".join(item.tags) if item.tags else "(see outline and subjects)"
+            lines.append(f"- panel {item.panel_id}: {tags}{suffix}")
+    if result.panel_deltas:
+        lines.append("Panel Deltas:")
+        for item in result.panel_deltas:
+            target = f"panel {item.panel_id}"
+            if item.subject_index is not None:
+                target += f" subject {item.subject_index}"
+            tags = ", ".join(item.tags) if item.tags else "(no tag delta; retain the panel facts above)"
+            lines.append(f"- {target}: {tags}")
+
+    cue_block = _novelai_panel_text_cues(
+        result,
+        character_slots=character_slots,
+        text_mode=text_mode,
+    )
+    if cue_block:
+        lines.extend(["", cue_block])
+    if text_mode == "letter_later":
+        layout = _letter_later_text_layout_block(
+            page, _compaction_manifest_dicts(result)
+        )
+        if layout:
+            lines.extend(["", layout])
+    elif text_mode == "generate" and not character_slots:
+        # Keep the compiler-owned marker at the end.  The send-side adapter
+        # splits at Panel Text Cues first, then applies quality suffixes only
+        # to the visual prefix.
+        lines.extend(["", _novelai_dialogue_text_block(_compaction_manifest_dicts(result))])
+    rendered = "\n".join(lines).strip()
+    if text_mode == "generate" and not character_slots:
+        dialogue_exists = any(
+            item.type == "dialogue" and item.content for item in result.text_manifest
+        )
+        if not dialogue_exists:
+            rendered += "\n"
+    return rendered
 
 
 def _text_block(manifest: list[dict[str, Any]]) -> str:
@@ -501,7 +698,7 @@ def _letter_later_text_layout_block(
     emitted = False
     for ordinal, panel in enumerate(panels, start=1):
         panel_id = panel.get("panel_id")
-        items = by_panel.get(panel_id, [])
+        items = by_panel.get(panel_id, []) or by_panel.get(str(panel_id), [])
         if not items:
             continue
         emitted = True
@@ -696,17 +893,25 @@ def _slot_appearance_tags(
     snapshot: dict[str, Any],
     character: dict[str, Any] | None,
     variant_ids: list[str],
+    *,
+    include_fixed: bool = True,
 ) -> list[str]:
-    snapshot_tags = _unique_strings(
-        [
-            *_as_list(snapshot.get("fixed_tags")),
-            *_as_list(snapshot.get("variant_tags")),
-        ]
-    )
-    if snapshot_tags:
-        return snapshot_tags
+    fixed, variant = _slot_appearance_tag_groups(snapshot, character, variant_ids)
+    return _unique_strings([*(fixed if include_fixed else []), *variant])
+
+
+def _slot_appearance_tag_groups(
+    snapshot: dict[str, Any],
+    character: dict[str, Any] | None,
+    variant_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    """Return fixed identity tags separately from selected costume/state tags."""
+    fixed = _unique_strings(_as_list(snapshot.get("fixed_tags")))
+    variant = _unique_strings(_as_list(snapshot.get("variant_tags")))
+    if fixed or variant:
+        return fixed, variant
     if not character:
-        return []
+        return [], []
     if is_character_schema_1_1(character):
         unique_variants = list(dict.fromkeys(str(item) for item in variant_ids if item))
         if len(unique_variants) != 1:
@@ -714,7 +919,10 @@ def _slot_appearance_tags(
                 "1.1 キャラクターは variant_id の完全一致が必要です"
             )
         try:
-            return resolve_character_visual(character, unique_variants[0]).danbooru_tags
+            visual = resolve_character_visual(character, unique_variants[0])
+            return list(visual.identity_tags), _unique_strings(
+                [*visual.costume_tags, *visual.state_tags]
+            )
         except VisualResolverError as exc:
             raise PageRenderPlanError(str(exc)) from exc
     from manga_prompt_ir.character_fixed_tags import (
@@ -722,10 +930,12 @@ def _slot_appearance_tags(
         resolve_variant_danbooru_tags,
     )
 
+    fixed = base_fixed_tags_from(character)
     unique_variants = list(dict.fromkeys(variant_ids))
     if len(unique_variants) == 1:
-        return resolve_variant_danbooru_tags(character, unique_variants[0])
-    return base_fixed_tags_from(character)
+        all_tags = resolve_variant_danbooru_tags(character, unique_variants[0])
+        variant = [tag for tag in all_tags if tag not in fixed]
+    return fixed, variant
 
 
 def _speaker_keys(
@@ -821,6 +1031,7 @@ def build_novelai_character_slots(
     characters: dict[str, dict[str, Any]] | None = None,
     text_mode: str = "generate",
     attach_novelai_bubbles: bool = False,
+    include_fixed_appearance: bool = True,
 ) -> list[dict[str, Any]]:
     """Build one V5 character slot per person in a panel.
 
@@ -866,6 +1077,7 @@ def build_novelai_character_slots(
                 snapshot,
                 character if isinstance(character, dict) else None,
                 [variant_id] if variant_id else [],
+                include_fixed=include_fixed_appearance,
             )
             keys = _speaker_keys(
                 character_id,
@@ -1382,6 +1594,8 @@ def compile_page_render_plan(
     openrouter_profile: str | None = None,
     asset_base_dir: str | Path | None = None,
     characters: dict[str, dict[str, Any]] | None = None,
+    prompt_compaction: str = "off",
+    style_helper: str | None = None,
 ) -> PageRenderPlan:
     """Compile a schema 1.0/1.1 page without changing the source mapping."""
     if source not in {"step1-pages", "step2-pages"}:
@@ -1389,6 +1603,16 @@ def compile_page_render_plan(
     if provider not in SUPPORTED_PROVIDERS:
         raise PageRenderPlanError(
             f"provider={provider} はページcompiler未対応です（Forgeはlegacy）"
+        )
+    if prompt_compaction not in {"off", "safe", "promote-fixed"}:
+        raise PageRenderPlanError(
+            "prompt_compaction は off / safe / promote-fixed のいずれかです: "
+            f"{prompt_compaction!r}"
+        )
+    if prompt_compaction != "off" and provider != "novelai":
+        raise PageRenderPlanError(
+            "prompt_compaction の safe / promote-fixed は NovelAI page_render_plan専用です: "
+            f"provider={provider!r}"
         )
     frame_mode = str(bubble_frame_mode or "provider").strip()
     if frame_mode not in BUBBLE_FRAME_MODES:
@@ -1449,7 +1673,19 @@ def compile_page_render_plan(
     if provider == "novelai" and text_mode is None:
         # T1: 話者 slot に白い吹き出し「台詞」を割り当てる。空泡の letter_later は明示時。
         text_mode = "generate"
-    mode, policy, policy_warnings = resolve_text_mode(page, text_mode)
+    mode, policy, policy_warnings = resolve_text_mode(
+        page,
+        text_mode,
+        # local is an explicit provider-side safety override: the source page
+        # may still describe the failed native generate route, but this
+        # branch must send no lettering or bubble instruction to NovelAI.
+        ignore_page_policy=frame_mode == "local",
+    )
+    _validate_generate_no_text_conflict(
+        page,
+        mode=mode,
+        negative_prompt=negative_prompt,
+    )
     manifest = build_text_manifest(page, page_hash)
     character_slots = build_novelai_character_slots(
         render_page,
@@ -1458,6 +1694,7 @@ def compile_page_render_plan(
         characters=characters,
         text_mode=mode,
         attach_novelai_bubbles=provider == "novelai",
+        include_fixed_appearance=prompt_compaction != "promote-fixed",
     )
     page_context = schema_1_1_prompt_context(
         render_page,
@@ -1476,35 +1713,64 @@ def compile_page_render_plan(
             for_image=True,
         )
     )
-    prompt_source = existing_prompt.strip()
+    compaction_result: PromptCompactionResult | None = None
+    if provider == "novelai" and prompt_compaction != "off":
+        try:
+            compaction_result = compact_page_prompt(
+                render_page,
+                source=source,
+                characters=characters,
+                text_manifest=manifest,
+                style_helper=style_helper,
+                negative_prompt=negative_prompt,
+                mode=prompt_compaction,
+            )
+        except ValueError as exc:
+            raise PageRenderPlanError(f"Prompt Compactionの検証に失敗しました: {exc}") from exc
+        prompt_source = _render_novelai_compacted_prompt(
+            compaction_result,
+            page=render_page,
+            text_mode=mode,
+            character_slots=character_slots,
+        )
+    else:
+        prompt_source = existing_prompt.strip()
     grok_layout_constraint = provider in {"grok", "grok_pro"}
     if grok_layout_constraint:
         prompt_source = _remove_visible_reading_order_hints(prompt_source)
-    if mode in {"letter_later", "none"}:
+    if compaction_result is None and mode in {"letter_later", "none"}:
         prompt_source = _strip_text_lines(prompt_source, manifest)
-    if mode == "letter_later":
+    if compaction_result is None and mode == "letter_later":
         text_layout = _letter_later_text_layout_block(page, manifest)
         if text_layout:
             prompt_source = f"{prompt_source}\n\n{text_layout}"
     if provider == "novelai":
-        # 英語のページ説明を前に重ねない。コマ指示と文字方針だけを送る。
-        placed = {
-            str(content)
-            for slot in character_slots
-            for content in (slot.get("rendered_contents") or [])
-            if content
-        }
-        if placed:
-            prompt_source = _strip_lines_containing(prompt_source, placed)
-        prompt_source = f"{prompt_source}\n\nEffective text mode: {mode}.\n{policy}"
-        if mode == "generate":
-            prompt_source = _with_novelai_generate_bubble_tags(prompt_source)
-        bundle = PromptBundle(
-            prompt=prompt_source,
-            negative_prompt=negative_prompt,
-            formatter=MANGA_PAGE_INSTRUCTION,
-            negative_mode=NATIVE_NEGATIVE,
-        )
+        if compaction_result is not None:
+            bundle = PromptBundle(
+                prompt=prompt_source,
+                negative_prompt=negative_prompt,
+                formatter=MANGA_PAGE_INSTRUCTION,
+                negative_mode=NATIVE_NEGATIVE,
+            )
+        else:
+            # 英語のページ説明を前に重ねない。コマ指示と文字方針だけを送る。
+            placed = {
+                str(content)
+                for slot in character_slots
+                for content in (slot.get("rendered_contents") or [])
+                if content
+            }
+            if placed:
+                prompt_source = _strip_lines_containing(prompt_source, placed)
+            prompt_source = f"{prompt_source}\n\nEffective text mode: {mode}.\n{policy}"
+            if mode == "generate":
+                prompt_source = _with_novelai_generate_bubble_tags(prompt_source)
+            bundle = PromptBundle(
+                prompt=prompt_source,
+                negative_prompt=negative_prompt,
+                formatter=MANGA_PAGE_INSTRUCTION,
+                negative_mode=NATIVE_NEGATIVE,
+            )
     else:
         prompt_source = (
             f"{_provider_label(provider)}.\n\n{prompt_source}\n\n"
@@ -1550,6 +1816,12 @@ def compile_page_render_plan(
     compiled_prompt = bundle.prompt
     if mode in {"letter_later", "none"}:
         compiled_prompt = _strip_text_content(compiled_prompt, manifest)
+        if frame_mode == "local" and mode == "none":
+            compiled_prompt = _strip_manifest_content(compiled_prompt, manifest)
+    elif compaction_result is not None:
+        # The NovelAI adapter already emitted Panel Text Cues and, for a
+        # slotless page, the compiler-owned Text block in the required order.
+        pass
     elif provider == "novelai" and character_slots:
         # 台詞は各枠の白い吹き出しに入っている。ページ末尾の Text: は付けない。
         pass
@@ -1561,6 +1833,8 @@ def compile_page_render_plan(
         compiled_prompt = _strip_page_japanese_gloss_lines(compiled_prompt)
     compiled_prompt = scrub_image_prompt_identifiers(compiled_prompt, page)
     warnings = list(policy_warnings)
+    if compaction_result is not None:
+        warnings.extend(compaction_result.warnings)
     effective_settings: dict[str, Any] = {
         "text_mode": mode,
         "bubble_frame_mode": frame_mode,
@@ -1585,16 +1859,27 @@ def compile_page_render_plan(
     if declared_schema == "1.1":
         effective_settings["schema_1_1_context"] = "common_prompt_sections"
         effective_settings["character_slot_count"] = len(character_slots)
-        if provider == "novelai" and mode == "generate" and not character_slots:
-            profile, text_limit = _validate_novelai_text_limit(
-                manifest,
-                model=novelai_model,
-            )
-            effective_settings["novelai_text_limit"] = {
-                "model": novelai_model or "nai-diffusion-5-full",
-                "profile": profile,
-                "characters": text_limit,
-            }
+    if provider == "novelai" and mode == "generate" and not character_slots:
+        profile, text_limit = _validate_novelai_text_limit(
+            manifest,
+            model=novelai_model,
+        )
+        effective_settings["novelai_text_limit"] = {
+            "model": novelai_model or "nai-diffusion-5-full",
+            "profile": profile,
+            "characters": text_limit,
+        }
+    if compaction_result is not None:
+        effective_settings["prompt_compaction"] = prompt_compaction
+        effective_settings["compaction"] = {
+            "page_common_tag_count": len(compaction_result.page_common_tags),
+            "character_anchor_count": len(compaction_result.character_anchors),
+            "variant_anchor_count": len(compaction_result.variant_anchors),
+            "panel_delta_count": len(compaction_result.panel_deltas),
+            "removed_occurrence_count": len(compaction_result.removed_occurrences),
+            "warnings": list(compaction_result.warnings),
+            "result": compaction_result.to_dict(),
+        }
     if provider == "novelai" and mode == "generate" and character_slots:
         effective_settings["quality_text_policy"] = "dialogue_in_character_slots"
         warnings.append(

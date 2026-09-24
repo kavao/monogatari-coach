@@ -335,6 +335,17 @@ Monogatari Coach は `--dry-run` で内容を提示してから、承認を受�
 
 2.0 でも同じゲートを使います。
 
+### providerをまたぐ共通回帰とNovelAI圧縮
+
+ページIRの圧縮は、provider-neutralな共通結果を作ってから、送信先ごとのadapterで整形します。現在、圧縮modeを受け付けるのはNovelAIの`page_render_plan`だけです。
+
+- 既定の `--prompt-compaction off` は、Grok / OpenAI / OpenRouter / Forge の既存prompt・payloadを変更しません。
+- `safe` / `promote-fixed` は NovelAIのYAMLページ生成だけで使えます。対象外の組み合わせは停止します。
+- NovelAIの `step1-panels` legacy は `ベース | キャラ` の既存形式を維持します。
+- slotなしの `Text:` は台詞本文だけ、`Panel Text Cues:` はモノローグ・ナレーション・効果音を保持します。slotありでは `Text:` を付けません。
+
+圧縮を試す場合は、APIへ送信しない `--dry-run` でpromptの先頭、resolved model、文字方針、圧縮前後のbytesを確認します。
+
 ---
 
 ## 生成前の確認フロー（必須）

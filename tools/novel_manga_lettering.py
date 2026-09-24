@@ -59,6 +59,16 @@ def main(argv: list[str] | None = None) -> int:
     bubbles.add_argument("--image", type=Path, help="指定すると正規化座標を画素へ投影する")
     bubbles.add_argument("--out", type=Path, help="投影結果の書き出し先")
 
+    bubbles_actual = sub.add_parser(
+        "bind-bubbles-actual",
+        help="bubbles設計座標を画像hash付きactual geometryへ確定する",
+    )
+    bubbles_actual.add_argument("--page", type=Path, required=True)
+    bubbles_actual.add_argument("--bubbles", type=Path, required=True)
+    bubbles_actual.add_argument("--generation-json", type=Path, required=True)
+    bubbles_actual.add_argument("--image", type=Path, required=True)
+    bubbles_actual.add_argument("--out", type=Path, required=True)
+
     frames = sub.add_parser("render-bubbles", help="clean PNG へ local 吹き出し枠を描く")
     frames.add_argument("--page", type=Path, required=True)
     frames.add_argument("--bubbles", type=Path, required=True)
@@ -163,6 +173,35 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"kind=design_projected bubbles={len(projected['bubbles'])} -> {args.out}")
             else:
                 print(f"kind=design_projected bubbles={len(projected['bubbles'])}")
+            return 0
+        if args.command == "bind-bubbles-actual":
+            from manga_prompt_ir.bubble_geometry import (
+                bind_bubble_actual,
+                project_bubble_design,
+            )
+
+            page = _load_page(args.page)
+            sidecar = yaml.safe_load(args.bubbles.read_text(encoding="utf-8"))
+            generation = _load_json(args.generation_json)
+            with Image.open(args.image) as image:
+                size = image.size
+            projected = project_bubble_design(
+                page,
+                sidecar,
+                image_size=size,
+                source_generation=generation,
+                image_path=args.image,
+            )
+            payload = bind_bubble_actual(
+                projected,
+                image_path=args.image,
+                page=page,
+            )
+            write_json(args.out, payload)
+            print(
+                f"kind=actual bubbles={len(payload['bubbles'])} "
+                f"texts={len(payload['texts'])} -> {args.out}"
+            )
             return 0
         if args.command == "render-bubbles":
             from manga_prompt_ir.bubble_frame_render import render_local_bubble_frames

@@ -55,6 +55,17 @@ def load_yaml(path: Path) -> dict:
     return data
 
 
+def discover_page_yaml_files(directory: Path, prefix: str) -> list[Path]:
+    """Discover page IR files without treating bubble sidecars as page IR."""
+    if not directory.is_dir():
+        return []
+    return sorted(
+        path
+        for path in directory.glob(f"{prefix}*.yaml")
+        if not path.name.endswith(".bubbles.yaml")
+    )
+
+
 def collect_files(args: argparse.Namespace) -> tuple[list[Path], list[Path]]:
     character_files = [Path(p) for p in args.character]
     page_files = [Path(p) for p in args.manga_page]
@@ -64,8 +75,12 @@ def collect_files(args: argparse.Namespace) -> tuple[list[Path], list[Path]]:
         if not novel_dir.is_absolute():
             novel_dir = (repo_root() / novel_dir).resolve()
         character_files.extend(sorted((novel_dir / "tag" / "characters").glob("*.yaml")))
-        page_files.extend(sorted((novel_dir / "manga" / "pages").glob("*.yaml")))
-        page_files.extend(sorted((novel_dir / "illustrations" / "pages").glob("*.yaml")))
+        page_files.extend(
+            discover_page_yaml_files(novel_dir / "manga" / "pages", "manga_")
+        )
+        page_files.extend(
+            discover_page_yaml_files(novel_dir / "illustrations" / "pages", "illustration_")
+        )
     return character_files, page_files
 
 
