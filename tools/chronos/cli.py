@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from .check import check_store
@@ -86,6 +87,7 @@ def _handle_view(args: argparse.Namespace) -> int:
     suffix = f"; {'; '.join(notes)}" if notes else ""
     print(f"{label} ({len(selected)} events{suffix})")
     actor_states = None
+    dimension_order: list[str] = []
     if args.actor and resolution is not None:
         actor = resolution.actors.get(args.actor)
         if actor is not None and actor.events is not None:
@@ -126,7 +128,7 @@ def _view_notes(
     return notes
 
 
-def _format_state_line(state: dict[str, object], dimension_order: list[str]) -> str:
+def _format_state_line(state: Mapping[str, object], dimension_order: Sequence[str]) -> str:
     parts = [
         f"{name}={format_state_value(state[name])}"
         for name in dimension_order

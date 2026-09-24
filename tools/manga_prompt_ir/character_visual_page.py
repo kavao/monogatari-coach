@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from manga_prompt_ir.character_visual_resolver import (
@@ -99,7 +100,7 @@ def page_requires_character_yaml(page: dict[str, Any]) -> bool:
 
 
 def validated_character_map(
-    characters: dict[str, dict[str, Any] | CharacterPrompt] | None,
+    characters: Mapping[str, Mapping[str, Any] | CharacterPrompt] | None,
 ) -> dict[str, CharacterPrompt]:
     validated: dict[str, CharacterPrompt] = {}
     if not characters:
@@ -176,7 +177,7 @@ def apply_resolved_snapshot(snapshot: dict[str, Any], resolved: Any) -> None:
 
 def rebuild_resolved_snapshots(
     page: dict[str, Any],
-    characters: dict[str, dict[str, Any] | CharacterPrompt] | None,
+    characters: Mapping[str, Mapping[str, Any] | CharacterPrompt] | None,
 ) -> None:
     validated = validated_character_map(characters)
     for snapshot in page.get("character_snapshots") or []:
@@ -196,7 +197,7 @@ def rebuild_resolved_snapshots(
 
 def validate_page_character_visual(
     page: dict[str, Any],
-    characters: dict[str, dict[str, Any] | CharacterPrompt] | None,
+    characters: Mapping[str, Mapping[str, Any] | CharacterPrompt] | None,
 ) -> dict[str, CharacterPrompt]:
     reject_duplicate_snapshots(page)
     validated = validated_character_map(characters)

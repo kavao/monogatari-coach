@@ -48,8 +48,8 @@ class ResolvedVisual:
 
 
 def is_character_schema_1_1(character: dict[str, Any] | Any) -> bool:
-    if hasattr(character, "schema_version"):
-        return str(character.schema_version) == "1.1"
+    if not isinstance(character, dict) and hasattr(character, "schema_version"):
+        return str(getattr(character, "schema_version")) == "1.1"
     if isinstance(character, dict):
         return str(character.get("schema_version", "1.0")) == "1.1"
     return False

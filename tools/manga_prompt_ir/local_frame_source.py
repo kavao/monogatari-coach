@@ -25,7 +25,8 @@ def build_local_frame_source_record(
         capability_key = plan.capability_key
         settings = plan.effective_settings
     else:
-        settings = plan.get("effective_settings") if isinstance(plan.get("effective_settings"), dict) else plan
+        raw_settings = plan.get("effective_settings")
+        settings = raw_settings if isinstance(raw_settings, dict) else plan
         frame_mode = str(plan.get("bubble_frame_mode") or settings.get("bubble_frame_mode") or "")
         text_mode = str(plan.get("text_mode") or settings.get("text_mode") or "")
         capability_key = str(plan.get("capability_key") or settings.get("capability_key") or "")

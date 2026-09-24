@@ -475,9 +475,12 @@ def _repair_scene_impl(
         checkpoint(dict(beat_texts))
     if dispatch and checkpoint:
         original_dispatch = dispatch
-        def dispatch(operation, beat_id, prompt):
+
+        def checkpointed_dispatch(operation: str, beat_id: str | None, prompt: str) -> str:
             checkpoint(dict(beat_texts))
             return original_dispatch(operation, beat_id, prompt)
+
+        dispatch = checkpointed_dispatch
     by_id = {beat.id: beat for beat in beat_plan.beats}
     index_by_id = {beat.id: index for index, beat in enumerate(beat_plan.beats)}
     expansions: dict[str, RepairResult] = {}

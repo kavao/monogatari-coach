@@ -438,7 +438,8 @@ _PANEL_ORDINALS = (
 
 def image_panel_label(panel: dict[str, Any], ordinal: int) -> str:
     """Position words for an image model. Schema panel_id stays out of the prompt."""
-    composition = panel.get("composition") if isinstance(panel.get("composition"), dict) else {}
+    raw_composition = panel.get("composition")
+    composition = raw_composition if isinstance(raw_composition, dict) else {}
     for key in ("layout_en", "layout"):
         value = str(composition.get(key) or "").strip()
         if value and not value.isdigit():

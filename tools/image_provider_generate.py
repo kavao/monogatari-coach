@@ -863,7 +863,8 @@ def attach_saved_image_record(
         plan = metadata["page_render_plan"]
         meta["page_render_plan"] = plan
     if isinstance(plan, dict):
-        settings = plan.get("effective_settings") if isinstance(plan.get("effective_settings"), dict) else {}
+        raw_settings = plan.get("effective_settings")
+        settings = raw_settings if isinstance(raw_settings, dict) else {}
         meta["bubble_frame_mode"] = plan.get("bubble_frame_mode") or settings.get("bubble_frame_mode")
         meta["text_mode"] = plan.get("text_mode") or settings.get("text_mode")
         meta["capability_key"] = plan.get("capability_key") or settings.get("capability_key")
@@ -1837,6 +1838,7 @@ def merge_provider_defaults(
             )
             return out
 
+        assert openrouter_profile is not None  # page_render_plan 経路では上で解決済み
         parameter_family = str(openrouter_profile.get("parameter_family", "")).strip()
         if parameter_family == "resolution":
             if "quality" in params:

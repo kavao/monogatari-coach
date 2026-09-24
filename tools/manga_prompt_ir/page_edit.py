@@ -315,11 +315,12 @@ def composite_masked_region(
     composed = source.copy()
     src_px = source.load()
     rep_px = replacement.load()
-    mask_px = mask.load()
     out_px = composed.load()
+    assert src_px is not None and rep_px is not None and out_px is not None
+    mask_values = mask.tobytes()  # mode "L": one byte per pixel, row-major
     for y in range(height):
         for x in range(width):
-            if mask_px[x, y] > 0:
+            if mask_values[y * width + x] > 0:
                 out_px[x, y] = rep_px[x, y]
     target = Path(output_path).expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -329,11 +330,12 @@ def composite_masked_region(
     if saved.size != source.size:
         raise PageEditError("書き出した画像の寸法が元ページと一致しません")
     saved_px = saved.load()
+    assert saved_px is not None
     outside_ok = True
     changed = 0
     for y in range(height):
         for x in range(width):
-            if mask_px[x, y] == 0:
+            if mask_values[y * width + x] == 0:
                 if saved_px[x, y] != src_px[x, y]:
                     outside_ok = False
             elif saved_px[x, y] != src_px[x, y]:
@@ -349,7 +351,7 @@ def composite_masked_region(
     }
 
 
-def _load_font(font_path: str | Path | None, size: int) -> ImageFont.ImageFont:
+def _load_font(font_path: str | Path | None, size: int) -> ImageFont.FreeTypeFont:
     if font_path is None:
         raise PageEditError("写植フォントが指定されていません")
     path = Path(font_path).expanduser().resolve()
@@ -436,15 +438,16 @@ def _verticalize_text(content: str) -> str:
     return str(content).translate(_VERTICAL_PRESENTATION_TRANSLATION)
 
 
-def _line_ink(draw: ImageDraw.ImageDraw, line: str, font: ImageFont.ImageFont) -> tuple[int, int, int, int]:
+def _line_ink(draw: ImageDraw.ImageDraw, line: str, font: ImageFont.FreeTypeFont) -> tuple[int, int, int, int]:
     """Glyph bounds at the draw origin. Top bearing is included so height matches the pixels."""
-    return draw.textbbox((0, 0), line, font=font)
+    x0, y0, x1, y1 = draw.textbbox((0, 0), line, font=font)
+    return int(x0), int(y0), int(x1), int(y1)
 
 
 def _block_metrics(
     draw: ImageDraw.ImageDraw,
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
 ) -> tuple[int, int]:
     width_used = 0
     heights: list[int] = []
@@ -459,7 +462,7 @@ def _block_metrics(
 def _vertical_layout(
     draw: ImageDraw.ImageDraw,
     content: str,
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     max_width: int,
     max_height: int,
 ) -> tuple[list[str], int, int] | None:
@@ -489,7 +492,7 @@ def _vertical_layout(
 def _layout_metrics(
     draw: ImageDraw.ImageDraw,
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     direction: str,
 ) -> tuple[int, int]:
     if direction == "vertical":
@@ -519,7 +522,7 @@ def _fit_text(
     max_size: int,
     size_ratio: float = 1.0,
     direction: str = "horizontal",
-) -> tuple[ImageFont.ImageFont, list[str], tuple[int, int, int, int]] | None:
+) -> tuple[ImageFont.FreeTypeFont, list[str], tuple[int, int, int, int]] | None:
     left, top, right, bottom = rect
     max_width = max(1, right - left - _RECT_PAD * 2)
     max_height = max(1, bottom - top - _RECT_PAD * 2)
@@ -545,7 +548,7 @@ def _fit_text(
 def _wrap_lines(
     draw: ImageDraw.ImageDraw,
     content: str,
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     max_width: int,
 ) -> list[str]:
     text = str(content).replace("\n", "")
@@ -570,7 +573,7 @@ def _draw_vertical_layout(
     canvas: Image.Image,
     rect: tuple[int, int, int, int],
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     used_w: int,
     used_h: int,
     vertical_scale: float,
@@ -652,7 +655,8 @@ def letter_page(
         if record is None:
             unplaced.append(text_id)
             continue
-        rect = tuple(int(value) for value in record["rect_px"])
+        rx0, ry0, rx1, ry1 = (int(value) for value in record["rect_px"])
+        rect = (rx0, ry0, rx1, ry1)
         fitted = _fit_text(
             draw,
             content,

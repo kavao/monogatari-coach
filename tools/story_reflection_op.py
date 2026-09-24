@@ -554,6 +554,8 @@ def same_lock_file(fd: int, path: Path) -> bool:
 
 
 def _windows_delete_on_close(fd: int) -> None:
+    if sys.platform != "win32":
+        raise OSError("delete-on-close via SetFileInformationByHandle is Windows-only")
     import ctypes
     import msvcrt
     from ctypes import wintypes

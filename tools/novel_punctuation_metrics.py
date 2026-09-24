@@ -468,7 +468,7 @@ def main() -> int:
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
-        if args.gate and gate_report["status"] == "fail":
+        if gate_report is not None and gate_report["status"] == "fail":
             return 1
         return 0
 

@@ -321,7 +321,7 @@ def _page_common_candidates(page: dict[str, Any]) -> tuple[str, ...]:
     instruction = page.get("render_instruction") or {}
     directives = instruction.get("user_directives") if isinstance(instruction, dict) else {}
     defaults = directives.get("defaults") if isinstance(directives, dict) else {}
-    values: list[str] = []
+    values: list[Any] = []  # normalize_tags drops None / empty values
     values.extend(_as_list(manga.get("genre_tags")))
     values.extend(_as_list(manga.get("visual_tags")))
     values.extend(_as_list(manga.get("background_tags")))

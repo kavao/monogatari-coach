@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import Field
 
@@ -207,6 +207,8 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         raise BridgeError("BAD_ID", "intent must be auto or explicit_deepen")
     if scope not in {"scene", "beats"}:
         raise BridgeError("BAD_ID", "scope must be scene or beats")
+    checked_intent = cast(Literal["auto", "explicit_deepen"], intent)
+    checked_scope = cast(Literal["scene", "beats"], scope)
     raw_ids = list(beat_ids or [])
     if intent == "auto" and raw_ids:
         raise BridgeError("JOB_CONFLICT", "beat-ids requires --intent explicit_deepen")
@@ -273,7 +275,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         if scope == "scene":
             force_deepen_ids = [
                 beat.id for beat in plan.beats
-                if (by_id.get(beat.id).chars if by_id.get(beat.id) else 0) < beat.budget.chars_hint
+                if (found.chars if (found := by_id.get(beat.id)) else 0) < beat.budget.chars_hint
             ]
             force_ending = any(item.failure == Failure.ENDING_RUSH for item in classified.findings)
         else:
@@ -300,7 +302,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         input_hashes=_hashes(root, request), calibration_hash=raw_sha256(calibration_path),
         authorization=authorization, source_path=source.relative_to(root).as_posix(),
         source_hash=raw_sha256(source), source_marked=marked, prefix=prefix, suffix=suffix,
-        intent=intent, scope=scope, beat_ids=normalized)
+        intent=checked_intent, scope=checked_scope, beat_ids=normalized)
     _save(dest, state)
     _journal(dest, request, JournalAction.REPAIR_BEGIN)
     return 0, f"repair begun: {dest}; use repair-next"
@@ -447,7 +449,8 @@ def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
     text = candidate.read_text(encoding="utf-8") if candidate else ""
     try:
         submit_result(state.session, job_id=job_id, model=model, candidate=text,
-                      error=error, review=review)
+                      error=error,
+                      review=cast(Literal["confirmed", "unverified", "rejected"], review))
     except ValueError as failure:
         raise BridgeError("JOB_CONFLICT", str(failure)) from failure
     _save(dest, state)  # Confirm once before any derived output or measurements.
@@ -481,6 +484,7 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
         raise BridgeError("MISSING_FIELD", "record the user's repair authorization source")
     if reason not in {"floor_met", "author_stop"}:
         raise BridgeError("BAD_ID", "reason must be floor_met or author_stop")
+    stop_reason = cast(Literal["floor_met", "author_stop"], reason)
     state = read_state(dest / "repair_state.json")
     _guard(root, dest, request, state, repo_root)
     analyzed, candidate_hash, plan = _reanalyze_current(root, dest, request, state, repo_root)
@@ -541,11 +545,11 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
         state.skipped_jobs.append(SkippedJob(
             job_id=pending.job_id, job_hash=job_hash,
             prompt_hash=pending.prompt_hash, input_hash=pending.input_hash,
-            operation=pending.operation, beat_id=pending.beat_id, reason=reason,
+            operation=pending.operation, beat_id=pending.beat_id, reason=stop_reason,
             at=now_iso(), recorder="tool", candidate_hash=candidate_hash,
             metrics_source_raw_sha256=metrics_hash))
         state.session.pending = None
-    state.stop_reason = reason
+    state.stop_reason = stop_reason
     state.status = "escalated" if (unrepairable or not floor_met) else "completed"
     _save(dest, state)
     code, message = _export(root, dest, request, state, repo_root)
