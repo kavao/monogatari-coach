@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 SKIP_NAMES = {"__pycache__", ".git", ".DS_Store"}
@@ -89,7 +89,8 @@ def write_editor_python_settings(root: Path) -> None:
 
 
 def is_windows_store_stub(executable: Path) -> bool:
-    return "WindowsApps" in executable.parts
+    # PureWindowsPath treats both "\\" and "/" as separators, so this also works on POSIX.
+    return any(part.lower() == "windowsapps" for part in PureWindowsPath(str(executable)).parts)
 
 
 def describe_python_runtime(root: Path) -> None:

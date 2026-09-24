@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from test_writing_bridge import FIXTURE, ROOT, _copy_ok, _run_cli  # also puts tools/ on sys.path
 from novel_punctuation_metrics import evaluate_gate, measure_text
-from test_writing_bridge import FIXTURE, ROOT, _copy_ok, _run_cli
 from writing_bridge.commands import prepare, receive
 from writing_bridge.errors import BridgeError
 from writing_bridge.hashes import raw_sha256, text_sha256
@@ -154,6 +154,14 @@ def _plant(
 
 def _ready_ok(tmp_path: Path) -> Path:
     work = _copy_ok(tmp_path)
+    # The fixture's canonical text already equals the candidate; make it an older draft so
+    # "original" and "intended" bytes differ, as the preflight/stale checks below assume.
+    live = work / "_novel_text" / "novel_text01.md"
+    older = live.read_text(encoding="utf-8").replace(
+        "　二人は家を出て、駅の券売機の前に立った。", "　二人は家を出た。"
+    )
+    assert older != live.read_text(encoding="utf-8")
+    live.write_text(older, encoding="utf-8", newline="\n")
     prepare(
         work,
         scene_id="ch01-001",

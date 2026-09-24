@@ -196,7 +196,11 @@ def test_compaction_off_golden_prompt_and_payload_are_provider_stable(
     formatter: str,
     prompt_sha256: str,
     payload_sha256: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Golden hashes were taken in full_color; pin it so a local .env (or its absence in CI)
+    # does not change the prompt. Process env takes precedence over .env.
+    monkeypatch.setenv("MONOCRI_MANGA_COLOR_MODE_DEFAULT", "full_color")
     jobs = iter_yaml_manga_jobs(
         _P4,
         "manga_01",

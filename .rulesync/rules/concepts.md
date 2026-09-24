@@ -6,12 +6,11 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 # 概念正本
 
-このファイルは、すべての作業で必要な最小の判断だけを置く。作品・画像・出版の詳細は [ワークフロー詳細仕様](workflow-specification.md) と該当スキルを正とする。
+このファイルは全作業に必要な最小の判断だけを置く。作品・画像・出版の詳細は [ワークフロー詳細仕様](workflow-specification.md) と該当スキルを正とする。
 
 ## Python 実行
 
-- ツールは `uv run python` で実行する。素の `python` は Windows でストア用スタブに当たることがある。
-- 初回は `uv sync` のあと `uv run python howto_init.py`。
+- `uv run python` で実行する（Windows の素の `python` はストア用スタブになりうる）。初回は `uv sync` → `uv run python howto_init.py`。
 
 ## 正本と副本
 
@@ -20,8 +19,8 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 操作説明は `docs/`、チャットは要約である。
 - 小説本文は `novels/<作品>/_novel_text/novel_text*.md`、キャラクタータグは `tag/characters/*.yaml`、漫画ページは `manga/pages/*.yaml`、挿絵ページは `illustrations/pages/*.yaml` を正本とする。
 - 正本を更新できる場合、副本だけを直して完了扱いにしない。生成物を変えたいときは先に正本を変え、再生成する。
-- 漫画の後載せ写植は、ページYAMLの `manga.lettering` を基本スタイル正本とする。既定は縦書き・基準サイズ30・矩形中央寄せ・必要時のみ縮小。個別 `writing_direction` は明示時だけ上書き。縦書き約物は縦組み字形へ変換するが `？` は通常字形のまま（IR本文は変えない）。
-- 漫画ページの吹き出しはページ生成時に描く。標準は写植なし。後載せと NovelAI の T1 割り当て詳細は `workflow-specification.md` の「漫画ページの吹き出し描画」と「漫画写植の作品メタ」。既定ページ provider は `grok_pro`。操作は `docs/image-generation/manga-page-edit.md`。
+- 漫画の後載せ写植はページYAMLの `manga.lettering` を基本スタイル正本とする。既定は縦書き・基準サイズ30・矩形中央寄せ・必要時のみ縮小。個別 `writing_direction` は明示時だけ上書き。縦書き約物は縦組み字形へ変換するが `？` は通常字形のまま（IR本文は不変）。
+- 漫画ページの吹き出しはページ生成時に描く。標準は写植なし。後載せと NovelAI の T1 割り当ては `workflow-specification.md`「漫画ページの吹き出し描画」「漫画写植の作品メタ」。既定 provider `grok_pro`。操作は `docs/image-generation/manga-page-edit.md`。
 
 ## 完了扱い条件
 

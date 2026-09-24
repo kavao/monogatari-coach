@@ -33,7 +33,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
 
 import yaml
@@ -247,7 +247,8 @@ def resolve_saved_artifact(reported: str | Path, output_dir: Path) -> Path:
     path = Path(str(reported))
     if path.is_file():
         return path.resolve()
-    fallback = Path(output_dir) / path.name
+    # Windows 形式の報告パスも POSIX 上で basename を取れるよう、"\\" と "/" の両方で区切る。
+    fallback = Path(output_dir) / PureWindowsPath(str(reported)).name
     if fallback.is_file():
         return fallback.resolve()
     raise FileNotFoundError(
