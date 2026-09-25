@@ -166,6 +166,21 @@ class Subject(BaseModel):
     expression: str | None = None
     expression_en: str | None = None
 
+    @model_validator(mode="after")
+    def variant_aliases_agree(self) -> "Subject":
+        declared = [
+            str(value).strip()
+            for value in (self.prompt_variant_id, self.costume_variant, self.variant_id)
+            if value and str(value).strip()
+        ]
+        unique = list(dict.fromkeys(declared))
+        if len(unique) > 1:
+            raise ValueError(
+                "prompt_variant_id / costume_variant / variant_id が食い違っています: "
+                + ", ".join(unique)
+            )
+        return self
+
 
 class CharacterSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -179,6 +194,9 @@ class CharacterSnapshot(BaseModel):
     fixed_tags: list[str] = Field(default_factory=list)
     variant_tags: list[str] = Field(default_factory=list)
     do_not_change: list[str] = Field(default_factory=list)
+    character_source_sha256: str | None = None
+    visual_natural: str | None = None
+    character_schema_version: Literal["1.0", "1.1"] | None = None
 
 
 _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
@@ -500,6 +518,19 @@ class MangaPagePrompt(BaseModel):
                 for item in collection:
                     if isinstance(item, StructuredText) and item.writing_direction is None:
                         item.writing_direction = direction
+        return self
+
+    @model_validator(mode="after")
+    def unique_character_snapshot_pairs(self) -> "MangaPagePrompt":
+        seen: set[tuple[str, str]] = set()
+        for snapshot in self.character_snapshots:
+            key = (snapshot.character_id, str(snapshot.selected_variant_id or ""))
+            if key in seen:
+                raise ValueError(
+                    "character_snapshots が (character_id, selected_variant_id) で重複しています: "
+                    f"{snapshot.character_id}/{snapshot.selected_variant_id}"
+                )
+            seen.add(key)
         return self
 
     @model_validator(mode="before")

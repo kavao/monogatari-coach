@@ -31,12 +31,13 @@
 
 **`working_path` に書くパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは working があればそれ、無ければ standard。標準と作業は合成しない。
 
-**`not_applicable` はカタログ全未選択ではない。** プロファイル上の必須候補で選ばなかった葉と、`genre/*` のようなグループだけを理由付きで書く。
+**`not_applicable` はカタログ全未選択ではない。** プロファイル・ジャンル上の必須候補で選ばなかった葉と、経路・プロファイル・ジャンルから外れるグループ（例: ジャンル軸が「なし」のときの `genre/*`）だけを理由付きで書く。
 
 既存作品の旧形式リスト（パス箇条書きや索引混在）は、ユーザーが Gate B 再実施を指示するまで置き換えない。
 
 - **作品経路**: (新規起こし / 資料取り込み / 既存作品の洗練)
 - **作品プロファイル**: (複数可。非該当は理由)
+- **ジャンル**: (genre/ の葉の relative_id。複数可。該当なしは「なし」と理由)
 - **創作技法契約**:
   - **pack_id**: (任意。例: general / mature / body_therapy。無ければ葉列挙のみ。既存作品へ自動では付けない)
   - **pack_add**: (パックに無い葉の relative_id。無ければなし)
@@ -50,7 +51,7 @@
       - effective_path: (実際に読んだ1ファイル)
       - bound_at: (YYYY-MM-DD)
   - **not_applicable**（読まない。再読しない。カタログ全未選択は書かない）:
-    - pattern または relative_id: (必須候補の見送り、または例: genre/*)
+    - pattern または relative_id: (必須候補の見送り、または例: ジャンル軸が「なし」のときの genre/*)
       - why: (必須)
   - **選定補助**（索引。後工程の再読義務なし）:
     - (例: _how_to/_index.md。無ければ _how_to.example/_index.md)
@@ -95,6 +96,7 @@ python tools/novel_scaffold.py novels/NNN_作品名
 |------|------|------|
 | 執筆進捗・伏線・投稿文 | `_meta.md` | LLM 向け散文 |
 | NovelAI ポーション（path / strength） | `_meta.yaml` → `novelai.portions` | `image_provider_novel_manga_batch.py` が自動読込 |
+| 漫画の後載せ写植の有無 | `_meta.md` §2.1 方針、`_meta.yaml` → `manga_lettering` | スタイルはページ YAML の `manga.lettering` |
 | コマのタグ・variant | `manga/pages/*.yaml` | 実行の最終正本 |
 
 **優先順位（ポーション）**: CLI `--novelai-reference-image-path` ＞ `_meta.yaml` ＞ `.env` ＞ なし。
@@ -122,6 +124,19 @@ novelai:
 - **コマ生成 (step1-panels)**: （例: novelai）
 - **ページ生成 (step1-pages / step2-pages)**: （例: grok_pro）
 - **背景資料 (background-concepts)**: （例: grok）
+
+## 2.1 漫画写植（任意）
+
+ページ YAML の `manga.lettering`（縦書き・文字サイズ）や `render_instruction.text_mode`（generate / letter_later / none）とは別です。ここは **この作品で後載せ写植をするか** の方針だけを書きます。§4 variant 表・§5 常時タグへ混ぜない。
+
+- **後載せ写植**: （`する` / `しない`。未記入は **しない**）
+- **写植しないとき（Grok / GPT Image）**: 元の吹き出しへモデルが日本語を描く（`text_mode=generate`）。後載せはしない
+- **写植するとき（Grok / GPT Image）**: 空泡（`letter_later`）のあと actual 写植
+- **NovelAI**: 先は T1 の割り当て（`generate`）。標準はモデル字を残す。`する` または字形が崩れたときだけ写植
+- **モデル字**: （`残す` / `仮として空ける`。横断既定は `残す`）
+- **備考**: （特定章だけしない、など）
+
+バッチが読むときは作品 `_meta.yaml` の `manga_lettering`（雛形: `_how_to.example/_meta.yaml.example`）。散文の方針は本節が正本。ツールは本節の Markdown を自動解析しない。
 
 ## 3. 挿絵・表紙（任意・作品ごと）
 

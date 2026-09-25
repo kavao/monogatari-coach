@@ -122,6 +122,8 @@ def camera_shot_advisories_for_page(
         raw = getattr(panel, "panel_id", None)
         if raw is None and isinstance(panel, Mapping):
             raw = panel.get("panel_id")
+        if raw is None:
+            raise TypeError("panel_id is required")
         return int(raw)
 
     for panel in sorted(panels, key=_panel_id):

@@ -98,6 +98,12 @@ profiles:
 
 
 def _make_exportable_package(tmp_path: Path, *, with_cover_yaml: bool = False) -> Path:
+    if with_cover_yaml:
+        # cover.yaml fixture uses "Yu Mincho"; export-gate review fails without a resolvable font.
+        try:
+            resolve_font_path(family="Yu Mincho")
+        except FontError as exc:
+            pytest.skip(str(exc))
     package = tmp_path / "001_test"
     package.mkdir()
     book = (FIXTURES / "book.yaml").read_text(encoding="utf-8")

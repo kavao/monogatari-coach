@@ -46,7 +46,7 @@ def render_page_prompt(
         panel_parts.append(_panel_to_text(panel, characters))
         tags.extend(panel.prompt_tags)
         for subject in panel.subjects:
-            snapshot = _subject_snapshot(page, subject)
+            snapshot = _subject_snapshot(page, subject, characters)
             if snapshot:
                 tags.extend(snapshot.fixed_tags)
                 tags.extend(snapshot.variant_tags)
@@ -188,11 +188,13 @@ def _panel_to_text(panel: Panel, characters: dict[str, CharacterPrompt]) -> str:
     )
 
 
-def _subject_snapshot(page: MangaPagePrompt, subject):
+def _subject_snapshot(page: MangaPagePrompt, subject, characters: dict[str, CharacterPrompt]):
     if not subject.character_id:
         return None
     variant_id = _subject_variant_id(subject)
     fallback = None
+    character = characters.get(subject.character_id)
+    require_exact = character is not None and character.schema_version == "1.1"
     for snapshot in page.character_snapshots:
         if snapshot.character_id != subject.character_id:
             continue
@@ -200,11 +202,27 @@ def _subject_snapshot(page: MangaPagePrompt, subject):
             return snapshot
         if snapshot.selected_variant_id is None:
             fallback = snapshot
+    if require_exact:
+        raise ValueError(
+            f"snapshot が (character_id, selected_variant_id) と一致しません: "
+            f"{subject.character_id}/{variant_id}"
+        )
     return fallback
 
 
 def _subject_variant_id(subject) -> str | None:
-    return subject.prompt_variant_id or subject.costume_variant or subject.variant_id
+    declared = [
+        str(value).strip()
+        for value in (subject.prompt_variant_id, subject.costume_variant, subject.variant_id)
+        if value and str(value).strip()
+    ]
+    unique = list(dict.fromkeys(declared))
+    if len(unique) > 1:
+        raise ValueError(
+            "prompt_variant_id / costume_variant / variant_id が食い違っています: "
+            + ", ".join(unique)
+        )
+    return unique[0] if unique else None
 
 
 def _subject_character_tags(character: CharacterPrompt, subject) -> list[str]:

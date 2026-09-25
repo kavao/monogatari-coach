@@ -32,6 +32,7 @@ def text_sha(text: str) -> str:
 def dump(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.suffix == ".jsonl":
+        assert isinstance(payload, list)
         lines = [json.dumps(item, ensure_ascii=False, separators=(",", ":")) for item in payload]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
         return

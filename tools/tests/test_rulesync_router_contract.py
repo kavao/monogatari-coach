@@ -5,9 +5,21 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / ".rulesync" / "rules"
+
+# Codex CLI は AGENTS.md をルートから作業ディレクトリまで連結し、既定 32 KiB
+# （project_doc_max_bytes）を超えた分を警告なしで切り捨てる。サブディレクトリの
+# AGENTS.md や将来の追記の余地を残すため、生成後の見積もりは 24 KiB までとする。
+CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
+AGENTS_MD_BUDGET_BYTES = 24 * 1024
+# concepts.md は Claude / Cursor / Copilot では glob 条件付き、Kilo では常時読込になる。
+# 日本語は UTF-8 で 1 字約 3 バイトなので、文字数ではなくバイト数で管理する。
+CONCEPTS_MAX_BYTES = 24 * 1024
 
 
 def load_rulesync_runner():
@@ -41,8 +53,54 @@ def test_router_and_constant_rules_stay_small() -> None:
     assert len(overview.read_text(encoding="utf-8").splitlines()) <= 250
     assert len(overview.read_text(encoding="utf-8")) <= 10_000
     assert len(concepts.read_text(encoding="utf-8").splitlines()) <= 200
-    assert len(concepts.read_text(encoding="utf-8")) <= 8_000
+    assert len(concepts.read_bytes()) <= CONCEPTS_MAX_BYTES
     assert 'globs: ["**/*"]' not in frontmatter(concepts)
+
+
+
+def split_rule(path: Path) -> tuple[dict, str]:
+    _, meta, body = path.read_text(encoding="utf-8").split("---", 2)
+    return yaml.safe_load(meta) or {}, body
+
+
+def estimate_agents_md_bytes() -> int:
+    """agentsmd target が書く AGENTS.md の大きさを正本から多めに見積もる。
+
+    AGENTS.md には root ルールの本文と、非 root ルールの参照リスト（パス・説明・glob）だけが入る。
+    Rulesync の Windows バイナリは CI で動かせないため、生成物ではなく正本から見積もる。
+    """
+    header_overhead = 1024
+    total = header_overhead
+    for path in sorted(RULES.glob("*.md")):
+        meta, body = split_rule(path)
+        targets = meta.get("targets") or ["*"]
+        if "*" not in targets and "agentsmd" not in targets:
+            continue
+        if meta.get("root"):
+            total += len(body.encode("utf-8"))
+            continue
+        entry = f"@.agents/memories/{path.name} {meta.get('description', '')} {meta.get('globs', '')}"
+        total += len(entry.encode("utf-8")) + 64
+    return total
+
+
+def test_generated_agents_md_fits_codex_project_doc_limit() -> None:
+    assert AGENTS_MD_BUDGET_BYTES < CODEX_PROJECT_DOC_MAX_BYTES
+    estimate = estimate_agents_md_bytes()
+    assert estimate <= AGENTS_MD_BUDGET_BYTES, (
+        f"AGENTS.md の見積もり {estimate} B が予算 {AGENTS_MD_BUDGET_BYTES} B を超えます。"
+        "root ルール（overview.md）の本文を skill や非 root ルールへ移してください。"
+    )
+
+
+def test_local_agents_md_fits_codex_project_doc_limit() -> None:
+    agents_md = ROOT / "AGENTS.md"
+    if not agents_md.exists():
+        pytest.skip("AGENTS.md は未生成（Git 管理外）")
+    size = len(agents_md.read_bytes())
+    assert size <= AGENTS_MD_BUDGET_BYTES, (
+        f"AGENTS.md が {size} B あり、Codex の既定上限 {CODEX_PROJECT_DOC_MAX_BYTES} B に近すぎます。"
+    )
 
 
 def test_long_workflow_specification_is_not_sent_to_codexcli() -> None:
@@ -50,6 +108,20 @@ def test_long_workflow_specification_is_not_sent_to_codexcli() -> None:
     metadata = frontmatter(specification)
     assert "codexcli" not in metadata
     assert "novels/**" in metadata
+
+
+# Kilo v7 は kilo.jsonc の instructions に並んだファイルを glob に関係なく常時読み込む。
+# 長い詳細仕様と開発者向けルールは Kilo へ送らず、AGENTS.md の参照リストから読ませる。
+KILO_EXCLUDED_RULES = ("workflow-specification.md", "docs-writing.md", "rule-authoring.md")
+
+
+@pytest.mark.parametrize("name", KILO_EXCLUDED_RULES)
+def test_heavy_or_developer_rules_are_not_always_loaded_by_kilo(name: str) -> None:
+    meta, _ = split_rule(RULES / name)
+    targets = meta.get("targets") or []
+    assert "*" not in targets
+    assert "kilo" not in targets
+    assert "agentsmd" in targets
 
 
 def test_workflow_specification_keeps_relocated_mode_contracts() -> None:

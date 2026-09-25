@@ -230,7 +230,7 @@ def _validate_character_state(store: ChronosStore) -> None:
 
     for name, spec in dimensions.items():
         if spec.type is DimensionType.LOC_REF and spec.default is not None:
-            _require_location(store, spec.default, f"dimensions.{name}.default")
+            _require_location(store, str(spec.default), f"dimensions.{name}.default")
 
     registered = set(store.characters_by_id)
     if not registered:

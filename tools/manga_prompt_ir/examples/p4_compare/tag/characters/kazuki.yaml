@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 character_id: kazuki
 name: 和紀
 name_en: Kazuki
@@ -14,17 +14,6 @@ appearance:
   skin_tone: fair skin
   distinctive_features:
     - tired but alert eyes
-costume:
-  outfit_tags:
-    - casual_jacket
-    - dark_pants
-  main_outfit: 地味なジャケットと黒いパンツ
-  accessories:
-    - smartphone
-  color_palette:
-    - black
-    - gray
-    - white
 personality:
   archetype_tags:
     - reluctant_hero
@@ -44,6 +33,7 @@ manga_rules:
     - スマホを別の固定小物に置き換えない
 prompt_variants:
   - variant_id: "000_base"
+    variant_kind: base
     title: 基本外見
     description: 固定特徴。
     danbooru_tags:
@@ -53,11 +43,22 @@ prompt_variants:
       - brown_eyes
       - fair_skin
   - variant_id: "001_normal"
+    variant_kind: costume
     title: 通常時
     description: 駅前の会話用の通常衣装。
-    danbooru_tags:
-      - casual_jacket
-      - dark_pants
+    visual_spec:
+      outer:
+        type: harrington_jacket
+        color: navy
+        hood: false
+        collar: fold_down
+        closure: zipper
+      inner:
+        type: crew_neck_tshirt
+        color: gray
+      bottom:
+        type: straight_pants
+        color: dark_navy
 negative_tags:
   - extra_fingers
   - bad_hands

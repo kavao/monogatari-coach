@@ -1,5 +1,5 @@
 ---
-targets: ["cursor", "claudecode", "kilo", "agentsmd"]
+targets: ["cursor", "claudecode", "agentsmd"]
 description: "作品・画像・出版ワークフローの詳細仕様（必要な作業で参照）"
 globs: ["novels/**", "_how_to/**", "_how_to.example/**"]
 ---
@@ -663,6 +663,57 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 参照:
 
 - 画像生成スキル: `.rulesync/skills/forge-txt2img/SKILL.md`
+
+## 漫画ページの吹き出し描画
+
+定義:
+吹き出しの意味はページ YAML の `text`。描き方だけレンダラ能力で切り替える。全モデルを後処理そろえにはしない。
+
+必須:
+
+- 既定ページ provider は `grok_pro`。Grok / GPT Image / Nano Banana は native のまま。空泡にするときは Grok 側で `letter_later` を明示する。
+- NovelAI ページは `--page-compiler page_render_plan` の opt-in。省略時の文字方針は `generate`。手本は `outputs/novelai_manga_tests` の T1 と、受入例 `p4_compare` の `manga_01_p01_step1page_20260923_014501_1819231479.png`（ページ `text, speech bubble`、slot `白い吹き出し「台詞」`）。`bubble_frame_mode` の既定は `provider`。
+- NovelAI 専用の「白い吹き出し「台詞」」と `text, speech bubble` は NovelAI の page_render_plan にだけ付ける。Grok / GPT の送信 prompt に入れない。
+- NovelAI `generate` の吹き出し位置・話者割り当てを正とする。標準はモデル字を残す。字形が崩れたとき、または作品が写植 `する` のときだけ `kind: actual` で載せ直す。`generate` PNG へ `local` 枠は重ねない。
+- 空泡の `letter_later` は NovelAI でも明示したときだけ。`local` は NovelAI かつ `page_render_plan` だけで、割り当てが崩れたときの退避。`text_mode=none`。native / `letter_later` / `generate` の PNG へ枠を重ねない。
+- 失敗した Grok 画像を NovelAI へ振り替えない。
+
+禁止:
+
+- NovelAI ページの先として `local` を選ばない。
+- `auto` の既定化と provider 領域編集 API を、別承認なく入れない。
+
+参照:
+
+- 概念: `.rulesync/rules/concepts.md`
+- 作業手順: `.rulesync/skills/forge-txt2img/SKILL.md`、`.rulesync/skills/manga-prompt-ir/SKILL.md`
+- 操作: `docs/image-generation/manga-page-edit.md`
+
+## 漫画写植の作品メタ
+
+定義:
+後載せ写植をするかは作品方針である。縦書き・文字サイズはページ YAML の `manga.lettering`。generate / letter_later / none はページの `text_mode` と CLI。三つを一つの表に混ぜない。
+
+必須:
+
+- 横断既定は **しない**（ページ生成の字を残す）。方針は作品 `_meta.md` の **III. 画像・漫画生成設定 §2.1 漫画写植**（`する` / `しない`）。バッチが読む値は `_meta.yaml` の `manga_lettering.enabled`。
+- §4 variant 表・§5 常時タグに写植フラグを書かない。
+- **Grok / GPT Image** で `しない` は、元の吹き出しへモデルが字を描く（省略時 `text_mode=generate`）。`する` は空泡（省略時 `letter_later`）のあと actual 写植。
+- **NovelAI** の先は T1 の `generate` のまま。`しない` ならモデル字を残す。`する` ならモデル字を仮として写植。
+- 未設定の既存作品は横断既定どおり **しない**（Grok / GPT Image も NovelAI も省略時 `generate`。生成後の写植は自動ではかけない）。
+- CLI とページ YAML の明示 `text_mode` はフラグで変えない。
+- スタイル（方向・フォントサイズ）は従来どおりページ YAML の `manga.lettering` が正本。
+
+禁止:
+
+- `_meta.md` のタグ層テーブルへ `lettering: true` を足してページ IR を置き換えない。
+- フラグで NovelAI の T1 割り当てや、明示済みの `text_mode` を上書きしない。
+
+参照:
+
+- 記載例: `_how_to.example/meta.md` §2.1
+- 機械可読: `_how_to.example/_meta.yaml.example` の `manga_lettering`
+- 操作: `docs/image-generation/manga-page-edit.md`
 
 ## 完了扱い条件
 

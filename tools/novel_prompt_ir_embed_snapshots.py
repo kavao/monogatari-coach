@@ -15,6 +15,7 @@ _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
+from manga_prompt_ir.schemas.character import CharacterPrompt  # noqa: E402
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt  # noqa: E402
 
 
@@ -55,10 +56,8 @@ def load_characters(novel_dir: Path) -> dict[str, dict[str, Any]]:
         raise FileNotFoundError(f"tag/characters/ がありません: {character_dir}")
     characters: dict[str, dict[str, Any]] = {}
     for path in sorted(character_dir.glob("*.yaml")):
-        character = load_yaml(path)
-        character_id = character.get("character_id")
-        if character_id:
-            characters[str(character_id)] = character
+        character = CharacterPrompt.model_validate(load_yaml(path))
+        characters[str(character.character_id)] = character.model_dump(mode="json")
     return characters
 
 
@@ -118,10 +117,38 @@ def fixed_tags(character: dict[str, Any], *, include_default_costume: bool) -> l
 
 
 def build_snapshot(character: dict[str, Any], variant_id: str | None) -> dict[str, Any]:
-    costume = character.get("costume") or {}
+    from manga_prompt_ir.character_visual_resolver import (
+        character_source_sha256,
+        is_character_schema_1_1,
+        resolve_character_visual,
+    )
+
     rules = character.get("manga_rules") or {}
+    if is_character_schema_1_1(character):
+        if not variant_id:
+            raise ValueError(
+                f"1.1 キャラクターの snapshot に variant_id が必要です: {character.get('character_id')}"
+            )
+        resolved = resolve_character_visual(character, variant_id)
+        snapshot: dict[str, Any] = {
+            "character_id": character["character_id"],
+            "name": character.get("name"),
+            "name_en": character.get("name_en"),
+            "selected_variant_id": variant_id,
+            "appearance_summary": appearance_summary(character),
+            "costume_summary": resolved.costume_summary,
+            "visual_natural": resolved.natural,
+            "fixed_tags": resolved.identity_tags,
+            "variant_tags": [*resolved.costume_tags, *resolved.state_tags],
+            "do_not_change": [str(v) for v in as_list(rules.get("do_not_change"))],
+            "character_source_sha256": character_source_sha256(character),
+            "character_schema_version": "1.1",
+        }
+        return {key: value for key, value in snapshot.items() if value not in (None, [], "")}
+
+    costume = character.get("costume") or {}
     variant = find_variant(character, variant_id)
-    snapshot: dict[str, Any] = {
+    snapshot = {
         "character_id": character["character_id"],
         "name": character.get("name"),
         "name_en": character.get("name_en"),
@@ -161,7 +188,7 @@ def embed_snapshots(path: Path, characters: dict[str, dict[str, Any]], *, dry_ru
     for character_id, variant_id in page_character_variants(page):
         character = characters.get(character_id)
         if not character:
-            continue
+            raise ValueError(f"キャラクター YAML を解決できません: {character_id}")
         snapshots.append(build_snapshot(character, variant_id))
     page["character_snapshots"] = snapshots
     MangaPagePrompt.model_validate(page)

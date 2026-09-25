@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from .models import Canon, DimensionType, Finding, IllustrationBind, Severity, StateAt
@@ -146,7 +147,7 @@ def _match_variants(
     store: ChronosStore,
     event_id: str,
     actor_id: str,
-    state: dict[str, object],
+    state: Mapping[str, object],
     variant_id: str,
     allowed: dict[tuple[str, str, str], set[str]],
     severity: Severity,

@@ -63,6 +63,7 @@ from .models import (
     Selector,
     SelectorKind,
     Severity,
+    TargetSpec,
 )
 from .observe import inspect_observations
 from .paths import resolve_work_path, work_rel_path
@@ -172,7 +173,7 @@ def prepare(
         work_rel=root.name,
         scene_id=scene_id,
         request_kind=request_kind,
-        target={
+        target=TargetSpec.model_validate({
             "text_path": rel_text,
             "selector": selector.model_dump(mode="json") if selector else None,
             "base_raw_sha256": raw_sha256(text_file) if text_exists else EMPTY_RAW_SHA256,
@@ -182,7 +183,7 @@ def prepare(
                 else EMPTY_TEXT_SHA256
             ),
             "base_exists": text_exists,
-        },
+        }),
         model=ModelRef(
             id=model_id,
             calibrated=peek_model_calibrated(repo_root / "config" / "metron_models.yaml", model_id),
@@ -207,6 +208,7 @@ def prepare(
             raise BridgeError("UNKNOWN_REF", str(error)) from error
     links = None
     if flags.chronos is InspectionFlag.ON:
+        assert store is not None
         if selector is None:
             selector = Selector(kind=SelectorKind.HEADING, value=scene_id)
         if links_path is not None:

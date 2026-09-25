@@ -1,6 +1,6 @@
 # - 創作技法ファイル (how_to/)
 
-葉は **既定では読まない**（この冒頭注記で足りる。行ごとや該当 README に発動条件を足してもよい）。Plan Mode は索引からプロファイルに合う葉だけを選び、作品 `_meta.md` の selected に固定する。新しい葉を足すときは、このファイルに入口を1行置き、該当サブカタログに README または `_index.md` があればそこにも置く。作業用 `_how_to/_index.md` がある環境では、そちらへ追随するまで新葉は選定対象外。既存作品の selected は自動では増やさない。手順は `.rulesync/rules/rule-authoring.md`「2.2 創作技法葉の追加」。
+葉は **既定では読まない**（この冒頭注記で足りる。行ごとや該当 README に発動条件を足してもよい）。例外として `genre/` の葉は、Plan Mode のジャンル軸が該当すれば必読である（「一からストーリーを出して」のような案出しでも、案を出す前に読む）。Plan Mode は索引からプロファイルに合う葉だけを選び、作品 `_meta.md` の selected に固定する。新しい葉を足すときは、このファイルに入口を1行置き、該当サブカタログに README または `_index.md` があればそこにも置く。作業用 `_how_to/_index.md` がある環境では、そちらへ追随するまで新葉は選定対象外。既存作品の selected は自動では増やさない。手順は `.rulesync/rules/rule-authoring.md`「2.2 創作技法葉の追加」。
 
 0. **（画像参照・横断）** [`image_refs/novelai/README.md`](image_refs/novelai/README.md)
    - NovelAI Vibe / ポーション（`.naiv4vibebundle`）。普段使いは `_how_to/image_refs/novelai/` に置く。作品固有は `novels/<作品>/references/novelai/`。
@@ -37,6 +37,7 @@
 7. world_wear.md
    - 世界の色彩や、人物デザインを考えるときの参考にする
 7.5. [`genre/`](genre/README.md)（ジャンル別・横断創作リファレンス）
+   - **発動条件**: Plan Mode のジャンル軸（依頼文・`config.md` のジャンル・キーワード）が次のいずれかに該当するとき、その葉を必読とする。該当しないときは読まない。
    - [`genre/inshu_mura.md`](genre/inshu_mura.md) … 因習村・閉鎖的村落。地理、共同体、禁忌、儀礼、排除、秘密、物語構造、配慮。
    - [`genre/isekai_craft.md`](genre/isekai_craft.md) … 異世界クラフト。技術ツリー、スキル制約、社会波及、発明と障害。
    - [`genre/isekai_modern_knowledge.md`](genre/isekai_modern_knowledge.md) … 異世界現代知識無双。知識範囲、解説演出、受容の階梯、実装の壁、考証。

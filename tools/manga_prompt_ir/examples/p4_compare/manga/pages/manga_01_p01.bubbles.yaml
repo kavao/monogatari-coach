@@ -1,0 +1,60 @@
+kind: design_projected
+coordinate_space: normalized
+bubbles:
+  - text_id: p10-dialogue-01
+    panel_id: 10
+    bubble_type: speech
+    frame_rect:
+      x: 0.62
+      y: 0.05
+      width: 0.28
+      height: 0.14
+    text_rect:
+      x: 0.64
+      y: 0.07
+      width: 0.24
+      height: 0.10
+    tail:
+      points:
+        - [0.72, 0.19]
+        - [0.70, 0.24]
+        - [0.76, 0.19]
+  - text_id: p20-dialogue-01
+    panel_id: 20
+    bubble_type: speech
+    frame_rect:
+      x: 0.58
+      y: 0.36
+      width: 0.32
+      height: 0.16
+    text_rect:
+      x: 0.60
+      y: 0.38
+      width: 0.28
+      height: 0.12
+  - text_id: p30-dialogue-01
+    panel_id: 30
+    bubble_type: speech
+    frame_rect:
+      x: 0.08
+      y: 0.36
+      width: 0.32
+      height: 0.16
+    text_rect:
+      x: 0.10
+      y: 0.38
+      width: 0.28
+      height: 0.12
+  - text_id: p40-dialogue-01
+    panel_id: 40
+    bubble_type: speech
+    frame_rect:
+      x: 0.10
+      y: 0.72
+      width: 0.28
+      height: 0.16
+    text_rect:
+      x: 0.12
+      y: 0.74
+      width: 0.24
+      height: 0.12

@@ -35,6 +35,24 @@ Monocri は `agentsmd` を `AGENTS.md` の所有 target として使います。
 
 `--simulate-skills` や `--simulate-subagents` は有効にしません。疑似定義が `AGENTS.md` を膨らませ、軽量ルーター化の目的に反するためです。これ以外の出力、未知の警告、エラー、終了コードはそのまま表示・返却されます。
 
+### 入口ファイルの大きさ
+
+Codex CLI は `AGENTS.md` を既定で 32 KiB まで読み、超えた分を警告なしで切り捨てます。`AGENTS.md` に本文が入るのは root ルール（`overview.md`）だけで、他のルールは参照リストとして載ります。`tools/tests/test_rulesync_router_contract.py` は、正本から見積もった `AGENTS.md` が 24 KiB 以内であること、`concepts.md` が UTF-8 で 24 KiB 以内であることを確認します。生成済みの `AGENTS.md` が手元にあれば、その実サイズも確認します。
+
+### Kilo で常時読み込まれるルール
+
+Kilo は、`kilo.jsonc` の `instructions` に並んだファイルを glob に関係なく毎回読み込みます。そのため、大きな `workflow-specification.md` と、ルールや docs を編集するときだけ使う `docs-writing.md`・`rule-authoring.md` は、`targets` から `kilo` を外しています。Kilo でも `AGENTS.md` の参照リストから、必要なときだけ読めます。
+
+Rulesync は `kilo.jsonc` の `instructions` を既存の値とマージし、通常の generate は削除も行いません。以前に生成した環境では、再生成後に次のものを手で消してください。
+
+```text
+kilo.jsonc の instructions にある次の3行
+  ".kilo/rules/workflow-specification.md"
+  ".kilo/rules/docs-writing.md"
+  ".kilo/rules/rule-authoring.md"
+.kilo/rules/ にある同名の3ファイル
+```
+
 ## 互換コマンド
 
 以前のコマンドを使う環境では、次も同じ固定バイナリで全 target を生成します。

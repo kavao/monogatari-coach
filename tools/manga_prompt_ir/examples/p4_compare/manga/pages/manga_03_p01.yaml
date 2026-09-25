@@ -1,8 +1,8 @@
-schema_version: "1.1"
+schema_version: '1.1'
 meta:
   intent: manga_page
   reading_order: right_to_left
-  aspect_ratio: "2:3"
+  aspect_ratio: '2:3'
   page_count: 2
 render_instruction:
   task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
@@ -13,10 +13,10 @@ render_instruction:
   output_policy: コマ境界と右から左の読み順を明確にする。
 manga:
   genre_tags:
-    - manga
-    - full_color
+  - manga
+  - full_color
   visual_tags:
-    - clean_lineart
+  - clean_lineart
   panel_layout: 上段到着・下段着席の2段
   lettering:
     direction: vertical
@@ -30,149 +30,216 @@ scene:
   weather: 晴れ
   weather_en: clear evening light
 character_ids:
-  - kazuki
-  - yui
+- kazuki
+- yui
 character_snapshots:
-  - character_id: kazuki
-    name: 和紀
-    name_en: Kazuki
-    selected_variant_id: "001_normal"
-    costume_summary: 地味なジャケット
-  - character_id: yui
-    name: 結
-    name_en: Yui
-    selected_variant_id: "001_normal"
-    costume_summary: クリームのカーディガン
+- character_id: kazuki
+  name: 和紀
+  name_en: Kazuki
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、masculine、slim、black、short messy hair、brown、fair skin、tired but alert eyes
+  costume_summary: navy harrington jacket, fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight
+    pants
+  visual_natural: 1boy, young man, black hair, brown eyes, fair skin, tired but alert eyes, smartphone; navy harrington jacket,
+    fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight pants
+  fixed_tags:
+  - 1boy
+  - young_man
+  - black_hair
+  - brown_eyes
+  - fair_skin
+  - tired but alert eyes
+  - smartphone
+  variant_tags:
+  - navy_harrington_jacket
+  - fold_down_collar
+  - zip_front
+  - no_hood
+  - gray_crew_neck_tshirt
+  - dark_navy_straight_pants
+  do_not_change:
+  - 髪色を黒以外にしない
+  - スマホを別の固定小物に置き換えない
+  character_source_sha256: 1d9a5aae70f70fc559a3c0f0d1f9e5284ad4d659a059437143b70c27ee47b922
+  character_schema_version: '1.1'
+- character_id: yui
+  name: 結
+  name_en: Yui
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、feminine、slim、brown、shoulder-length straight hair、green、fair skin、small mole near the left
+    eye
+  costume_summary: cream cardigan, v neck collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  visual_natural: 1girl, young woman, brown hair, green eyes, fair skin, small mole near the left eye; cream cardigan, v neck
+    collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  fixed_tags:
+  - 1girl
+  - young_woman
+  - brown_hair
+  - green_eyes
+  - fair_skin
+  - small mole near the left eye
+  variant_tags:
+  - cream_cardigan
+  - v_neck_collar
+  - button_front
+  - no_hood
+  - white_blouse
+  - brown_plaid_skirt
+  - canvas_tote
+  do_not_change:
+  - 髪色を茶以外にしない
+  - カーディガンを別の固定衣装に置き換えない
+  character_source_sha256: 5028141c5eccca890572b5dcb66289ba3445c63170409709ea1c2747f7c84438
+  character_schema_version: '1.1'
 dramaturgy:
   purpose: 同じ場所へ2人が入り、次ページの会話へつなぐ。
   purpose_en: Both enter the same place and set up the next-page conversation.
   emotional_arc: 移動から着席へ
   emotional_arc_en: From arrival to sitting down.
 background_concepts:
-  - concept_id: station_waiting_room
-    title: 駅の待合室
-    description: 木のベンチと切符売り窓口。次ページと同じ場所。
-    prompt: Japanese manga background, small railway waiting room, wooden benches, ticket window, late afternoon light, no characters
-    negative_tags:
-      - people
-    usage: ページCの場所連続性
+- concept_id: station_waiting_room
+  title: 駅の待合室
+  description: 木のベンチと切符売り窓口。次ページと同じ場所。
+  prompt: Japanese manga background, small railway waiting room, wooden benches, ticket window, late afternoon light, no characters
+  negative_tags:
+  - people
+  usage: ページCの場所連続性
 layout_geometry:
   panels:
-    - panel_id: 10
-      rect: {x: 0.04, y: 0.03, w: 0.92, h: 0.45}
-    - panel_id: 20
-      rect: {x: 0.04, y: 0.52, w: 0.92, h: 0.45}
-continuity_tracks:
-  - entity_id: location
-    panel_id: 10
-    state: entering the waiting room
-  - entity_id: yui
-    panel_id: 20
-    state: sitting with ticket in hand
-asset_references:
-  - asset_id: kazuki-normal
-    role: character
-    character_id: kazuki
-    variant_id: "001_normal"
-  - asset_id: yui-normal
-    role: character
-    character_id: yui
-    variant_id: "001_normal"
-  - asset_id: station-room
-    role: location
-    concept_id: station_waiting_room
-panels:
   - panel_id: 10
-    summary: 待合室の入口から2人が並んで入ってくる。
-    summary_en: Both enter the waiting room side by side.
-    dramaturgy:
-      role: establish
-      purpose: 場所と衣装を次ページと同じ状態で固定する。
-      purpose_en: Lock location and costumes for the following page.
-    background_density: dense
-    subjects:
-      - subject_id: p10-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 入口に立つ和紀
-        pose_action: ドア枠の内側で立ち止まる
-        pose_action_en: pausing just inside the doorway
-        position: midground
-        expression: 落ち着き
-        expression_en: calm
-      - subject_id: p10-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 隣に立つ結
-        pose_action: 切符を持って和紀の少し前を歩く
-        pose_action_en: walking a step ahead while holding the ticket
-        position: midground
-        expression: 案内する顔
-        expression_en: guiding
-    composition:
-      framing: wide shot
-      framing_en: wide arrival shot
-      layout: 上段
-      layout_en: top panel
-      focus: 入口と2人の全身
-      focus_en: doorway and both full figures
-    camera:
-      shot_size: wide shot
-      view_en: two figures entering
-    text:
-      dialogue:
-        - text_id: p10-dialogue-01
-          speaker: yui
-          content: ここ。
-          bubble_type: speech bubble
-          placement: upper right
+    rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.45
   - panel_id: 20
-    summary: 同じベンチに2人が座り、結が切符を膝の上に置く。
-    summary_en: They sit on the same bench; Yui rests the ticket on her lap.
-    dramaturgy:
-      role: settle
-      purpose: 次ページと同じ着席状態へ移す。
-      purpose_en: Move into the seated state used on the next page.
-      relation_to_previous: 入口からベンチへ移動したあと。
-      relation_to_previous_en: After moving from the door to the bench.
-    background_density: medium
-    subjects:
-      - subject_id: p20-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: ベンチに座る和紀
-        pose_action: 両手を膝に置いて座る
-        pose_action_en: sitting with both hands on his knees
-        position: midground
-        expression: 待つ
-        expression_en: waiting
-      - subject_id: p20-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 隣に座る結
-        pose_action: 切符を膝の上に置く
-        pose_action_en: placing the ticket on her lap
-        position: midground
-        expression: 穏やか
-        expression_en: calm
-    composition:
-      framing: medium shot
-      framing_en: seated two-shot
-      layout: 下段
-      layout_en: bottom panel
-      focus: ベンチ上の2人
-      focus_en: both seated on the bench
-    camera:
-      shot_size: medium shot
-      view_en: seated pair
-    text:
-      dialogue:
-        - text_id: p20-dialogue-01
-          speaker: kazuki
-          content: 待ってる。
-          bubble_type: small speech bubble
-          placement: upper left
+    rect:
+      x: 0.04
+      y: 0.52
+      w: 0.92
+      h: 0.45
+continuity_tracks:
+- entity_id: location
+  panel_id: 10
+  state: entering the waiting room
+- entity_id: yui
+  panel_id: 20
+  state: sitting with ticket in hand
+asset_references:
+- asset_id: kazuki-normal
+  role: character
+  character_id: kazuki
+  variant_id: 001_normal
+- asset_id: yui-normal
+  role: character
+  character_id: yui
+  variant_id: 001_normal
+- asset_id: station-room
+  role: location
+  concept_id: station_waiting_room
+panels:
+- panel_id: 10
+  summary: 待合室の入口から2人が並んで入ってくる。
+  summary_en: Both enter the waiting room side by side.
+  summary_en_source: 待合室の入口から2人が並んで入ってくる。
+  dramaturgy:
+    role: establish
+    purpose: 場所と衣装を次ページと同じ状態で固定する。
+    purpose_en: Lock location and costumes for the following page.
+  background_density: dense
+  subjects:
+  - subject_id: p10-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 入口に立つ和紀
+    pose_action: ドア枠の内側で立ち止まる
+    pose_action_en: pausing just inside the doorway
+    position: midground
+    expression: 落ち着き
+    expression_en: calm
+  - subject_id: p10-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 隣に立つ結
+    pose_action: 切符を持って和紀の少し前を歩く
+    pose_action_en: walking a step ahead while holding the ticket
+    position: midground
+    expression: 案内する顔
+    expression_en: guiding
+  composition:
+    framing: wide shot
+    framing_en: wide arrival shot
+    layout: 上段
+    layout_en: top panel
+    focus: 入口と2人の全身
+    focus_en: doorway and both full figures
+  camera:
+    shot_size: long shot
+  prompt_tags:
+  - doorway
+  - entering
+  - standing
+  - two_shot
+  text:
+    dialogue:
+    - text_id: p10-dialogue-01
+      speaker: yui
+      content: ここ。
+      bubble_type: speech bubble
+      placement: upper right
+- panel_id: 20
+  summary: 同じベンチに2人が座り、結が切符を膝の上に置く。
+  summary_en: They sit on the same bench; Yui rests the ticket on her lap.
+  summary_en_source: 同じベンチに2人が座り、結が切符を膝の上に置く。
+  dramaturgy:
+    role: settle
+    purpose: 次ページと同じ着席状態へ移す。
+    purpose_en: Move into the seated state used on the next page.
+    relation_to_previous: 入口からベンチへ移動したあと。
+    relation_to_previous_en: After moving from the door to the bench.
+  background_density: medium
+  subjects:
+  - subject_id: p20-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: ベンチに座る和紀
+    pose_action: 両手を膝に置いて座る
+    pose_action_en: sitting with both hands on his knees
+    position: midground
+    expression: 待つ
+    expression_en: waiting
+  - subject_id: p20-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 隣に座る結
+    pose_action: 切符を膝の上に置く
+    pose_action_en: placing the ticket on her lap
+    position: midground
+    expression: 穏やか
+    expression_en: calm
+  composition:
+    framing: medium shot
+    framing_en: seated two-shot
+    layout: 下段
+    layout_en: bottom panel
+    focus: ベンチ上の2人
+    focus_en: both seated on the bench
+  camera:
+    shot_size: medium shot
+    view_en: two faces
+  prompt_tags:
+  - seated
+  - paper_ticket
+  - ticket_on_lap
+  - two_shot
+  text:
+    dialogue:
+    - text_id: p20-dialogue-01
+      speaker: kazuki
+      content: 待ってる。
+      bubble_type: small speech bubble
+      placement: upper left
 technical:
   quality_level: high
   negative_tags:
-    - watermark
+  - watermark

@@ -16,6 +16,7 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 from .schemas.manga_page import MangaPagePrompt
+from .text_ids import assigned_text_id
 
 
 class PageEditError(ValueError):
@@ -24,6 +25,22 @@ class PageEditError(ValueError):
 
 def sha256_file(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def require_matching_source_sha256(record: dict[str, Any], image_path: str | Path) -> str:
+    """Refuse geometry that was measured against a different image."""
+    path = Path(image_path).expanduser().resolve()
+    if not path.is_file():
+        raise PageEditError(f"参照画像が見つかりません: {path}")
+    actual_sha = sha256_file(path)
+    declared = str(record.get("source_sha256") or "").strip().lower()
+    if len(declared) != 64:
+        raise PageEditError("actual_geometryにsource_sha256がありません")
+    if declared != actual_sha:
+        raise PageEditError(
+            "画像hashが変わったため古いactual_geometryは再利用できません"
+        )
+    return actual_sha
 
 
 def _pixel_rect(rect: Any, width: int, height: int) -> tuple[int, int, int, int]:
@@ -69,21 +86,15 @@ def bind_actual_geometry(
     record: dict[str, Any],
     *,
     image_path: str | Path,
+    page: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Accept only actual rects that still match the source image hash."""
     path = Path(image_path).expanduser().resolve()
     if not path.is_file():
         raise PageEditError(f"参照画像が見つかりません: {path}")
-    actual_sha = sha256_file(path)
-    declared = str(record.get("source_sha256") or "").strip().lower()
-    if len(declared) != 64:
-        raise PageEditError("actual_geometryにsource_sha256がありません")
-    if declared != actual_sha:
-        raise PageEditError(
-            "画像hashが変わったため古いactual_geometryは再利用できません"
-        )
     if record.get("kind") == "design_projected":
         raise PageEditError("design_projectedをactual_geometryとして使えません")
+    actual_sha = require_matching_source_sha256(record, path)
     panels = record.get("panels")
     if not isinstance(panels, list) or not panels:
         raise PageEditError("actual_geometry.panelsが空です")
@@ -109,12 +120,16 @@ def bind_actual_geometry(
     if not isinstance(texts, list):
         raise PageEditError("actual_geometry.textsは配列である必要があります")
     bound_texts = []
+    seen_text_ids: set[str] = set()
     for index, item in enumerate(texts, start=1):
         if not isinstance(item, dict):
             raise PageEditError(f"actual_geometry.texts[{index}]がobjectではありません")
         text_id = str(item.get("text_id") or "").strip()
         if not text_id:
             raise PageEditError(f"actual_geometry.texts[{index}]にtext_idがありません")
+        if text_id in seen_text_ids:
+            raise PageEditError(f"actual_geometry.texts の text_id が重複しています: {text_id}")
+        seen_text_ids.add(text_id)
         bound_texts.append(
             {
                 "text_id": text_id,
@@ -128,6 +143,8 @@ def bind_actual_geometry(
                 ),
             }
         )
+    if page is not None:
+        _reject_unknown_or_mismatched_texts(page, bound_texts)
     return {
         "kind": "actual",
         "source_sha256": actual_sha,
@@ -138,6 +155,40 @@ def bind_actual_geometry(
         "reviewer": str(record.get("reviewer") or ""),
         "review_note": str(record.get("review_note") or ""),
     }
+
+
+def _page_text_index(page: dict[str, Any]) -> dict[str, int]:
+    model = MangaPagePrompt.model_validate(page)
+    index: dict[str, int] = {}
+    for panel in model.panels:
+        for kind in ("dialogue", "sfx", "monologue", "narration"):
+            items = getattr(panel.text, kind)
+            for offset, item in enumerate(items, start=1):
+                content = str(getattr(item, "content", item) or "").strip()
+                if not content:
+                    continue
+                text_id = assigned_text_id(
+                    item, panel_id=panel.panel_id, kind=kind, index=offset
+                )
+                index[text_id] = int(panel.panel_id)
+    return index
+
+
+def _reject_unknown_or_mismatched_texts(
+    page: dict[str, Any],
+    bound_texts: list[dict[str, Any]],
+) -> None:
+    index = _page_text_index(page)
+    for item in bound_texts:
+        text_id = str(item["text_id"])
+        if text_id not in index:
+            raise PageEditError(f"未知の text_id です: {text_id}")
+        panel_id = item.get("panel_id")
+        if panel_id is not None and int(panel_id) != int(index[text_id]):
+            raise PageEditError(
+                f"panel_id が一致しません: {text_id} "
+                f"geometry={panel_id} page={index[text_id]}"
+            )
 
 
 def _validate_rect_px(
@@ -264,11 +315,12 @@ def composite_masked_region(
     composed = source.copy()
     src_px = source.load()
     rep_px = replacement.load()
-    mask_px = mask.load()
     out_px = composed.load()
+    assert src_px is not None and rep_px is not None and out_px is not None
+    mask_values = mask.tobytes()  # mode "L": one byte per pixel, row-major
     for y in range(height):
         for x in range(width):
-            if mask_px[x, y] > 0:
+            if mask_values[y * width + x] > 0:
                 out_px[x, y] = rep_px[x, y]
     target = Path(output_path).expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -278,11 +330,12 @@ def composite_masked_region(
     if saved.size != source.size:
         raise PageEditError("書き出した画像の寸法が元ページと一致しません")
     saved_px = saved.load()
+    assert saved_px is not None
     outside_ok = True
     changed = 0
     for y in range(height):
         for x in range(width):
-            if mask_px[x, y] == 0:
+            if mask_values[y * width + x] == 0:
                 if saved_px[x, y] != src_px[x, y]:
                     outside_ok = False
             elif saved_px[x, y] != src_px[x, y]:
@@ -298,7 +351,7 @@ def composite_masked_region(
     }
 
 
-def _load_font(font_path: str | Path | None, size: int) -> ImageFont.ImageFont:
+def _load_font(font_path: str | Path | None, size: int) -> ImageFont.FreeTypeFont:
     if font_path is None:
         raise PageEditError("写植フォントが指定されていません")
     path = Path(font_path).expanduser().resolve()
@@ -314,32 +367,21 @@ def _collect_page_text(model: MangaPagePrompt) -> list[tuple[str, str, str]]:
     items: list[tuple[str, str, str]] = []
     default_direction = model.manga.lettering.direction
     for panel in model.panels:
-        for item in panel.text.dialogue:
-            items.append(
-                (
-                    item.text_id or f"p{panel.panel_id}-dialogue",
-                    item.content,
-                    item.writing_direction or default_direction,
+        for kind in ("dialogue", "sfx", "monologue", "narration"):
+            for index, item in enumerate(getattr(panel.text, kind), start=1):
+                content = str(getattr(item, "content", item) or "").strip()
+                if not content:
+                    continue
+                direction = getattr(item, "writing_direction", None) or default_direction
+                items.append(
+                    (
+                        assigned_text_id(
+                            item, panel_id=panel.panel_id, kind=kind, index=index
+                        ),
+                        content,
+                        direction,
+                    )
                 )
-            )
-        for item in panel.text.sfx:
-            items.append(
-                (
-                    item.text_id or f"p{panel.panel_id}-sfx",
-                    item.content,
-                    item.writing_direction or default_direction,
-                )
-            )
-        for item in panel.text.monologue:
-            content = item.content if hasattr(item, "content") else str(item)
-            text_id = getattr(item, "text_id", None) or f"p{panel.panel_id}-monologue"
-            direction = getattr(item, "writing_direction", None) or default_direction
-            items.append((str(text_id), content, direction))
-        for item in panel.text.narration:
-            content = item.content if hasattr(item, "content") else str(item)
-            text_id = getattr(item, "text_id", None) or f"p{panel.panel_id}-narration"
-            direction = getattr(item, "writing_direction", None) or default_direction
-            items.append((str(text_id), content, direction))
     return items
 
 
@@ -396,15 +438,16 @@ def _verticalize_text(content: str) -> str:
     return str(content).translate(_VERTICAL_PRESENTATION_TRANSLATION)
 
 
-def _line_ink(draw: ImageDraw.ImageDraw, line: str, font: ImageFont.ImageFont) -> tuple[int, int, int, int]:
+def _line_ink(draw: ImageDraw.ImageDraw, line: str, font: ImageFont.FreeTypeFont) -> tuple[int, int, int, int]:
     """Glyph bounds at the draw origin. Top bearing is included so height matches the pixels."""
-    return draw.textbbox((0, 0), line, font=font)
+    x0, y0, x1, y1 = draw.textbbox((0, 0), line, font=font)
+    return int(x0), int(y0), int(x1), int(y1)
 
 
 def _block_metrics(
     draw: ImageDraw.ImageDraw,
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
 ) -> tuple[int, int]:
     width_used = 0
     heights: list[int] = []
@@ -419,7 +462,7 @@ def _block_metrics(
 def _vertical_layout(
     draw: ImageDraw.ImageDraw,
     content: str,
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     max_width: int,
     max_height: int,
 ) -> tuple[list[str], int, int] | None:
@@ -449,7 +492,7 @@ def _vertical_layout(
 def _layout_metrics(
     draw: ImageDraw.ImageDraw,
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     direction: str,
 ) -> tuple[int, int]:
     if direction == "vertical":
@@ -479,7 +522,7 @@ def _fit_text(
     max_size: int,
     size_ratio: float = 1.0,
     direction: str = "horizontal",
-) -> tuple[ImageFont.ImageFont, list[str], tuple[int, int, int, int]] | None:
+) -> tuple[ImageFont.FreeTypeFont, list[str], tuple[int, int, int, int]] | None:
     left, top, right, bottom = rect
     max_width = max(1, right - left - _RECT_PAD * 2)
     max_height = max(1, bottom - top - _RECT_PAD * 2)
@@ -505,7 +548,7 @@ def _fit_text(
 def _wrap_lines(
     draw: ImageDraw.ImageDraw,
     content: str,
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     max_width: int,
 ) -> list[str]:
     text = str(content).replace("\n", "")
@@ -530,7 +573,7 @@ def _draw_vertical_layout(
     canvas: Image.Image,
     rect: tuple[int, int, int, int],
     lines: list[str],
-    font: ImageFont.ImageFont,
+    font: ImageFont.FreeTypeFont,
     used_w: int,
     used_h: int,
     vertical_scale: float,
@@ -583,6 +626,7 @@ def letter_page(
     """
     if geometry.get("kind") != "actual":
         raise PageEditError("design_projectedでは写植できません")
+    require_matching_source_sha256(geometry, image_path)
     if not 0 < size_ratio <= 1:
         raise PageEditError("size_ratio は 0 より大きく 1 以下です")
     if vertical_scale <= 0:
@@ -611,7 +655,8 @@ def letter_page(
         if record is None:
             unplaced.append(text_id)
             continue
-        rect = tuple(int(value) for value in record["rect_px"])
+        rx0, ry0, rx1, ry1 = (int(value) for value in record["rect_px"])
+        rect = (rx0, ry0, rx1, ry1)
         fitted = _fit_text(
             draw,
             content,

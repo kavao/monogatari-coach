@@ -118,6 +118,7 @@ def test_openai_image_response_saves_response_model(tmp_path: Path) -> None:
 
     metadata = json.loads(Path(saved[0]["json"]).read_text(encoding="utf-8"))
     assert metadata["response_model"] == "gpt-image-2"
+    assert metadata["source_sha256"] == hashlib.sha256(Path(saved[0]["png"]).read_bytes()).hexdigest()
     assert metadata["response_item"]["b64_json"].startswith("<redacted base64")
     assert encoded not in metadata["response_item"]["b64_json"]
     assert "response_key_outline" not in metadata

@@ -81,11 +81,18 @@ def join_tags(values: list[Any]) -> str:
 
 
 def selected_subject_variant_id(subject: dict[str, Any]) -> str | None:
-    for key in ("prompt_variant_id", "costume_variant", "variant_id"):
-        value = subject.get(key)
-        if value:
-            return str(value)
-    return None
+    declared = [
+        str(value)
+        for key in ("prompt_variant_id", "costume_variant", "variant_id")
+        if (value := subject.get(key))
+    ]
+    unique_ids = list(dict.fromkeys(declared))
+    if len(unique_ids) > 1:
+        raise ValueError(
+            "prompt_variant_id / costume_variant / variant_id が食い違っています: "
+            + ", ".join(unique_ids)
+        )
+    return unique_ids[0] if unique_ids else None
 
 
 def find_character_variant(character: dict[str, Any], variant_id: str | None) -> dict[str, Any] | None:
@@ -134,7 +141,16 @@ def subject_snapshot(page: dict[str, Any], subject: dict[str, Any]) -> dict[str,
         return None
     snapshots = page_snapshot_map(page)
     variant_id = selected_subject_variant_id(subject)
-    return snapshots.get(snapshot_key(str(cid), variant_id)) or snapshots.get(snapshot_key(str(cid), None))
+    exact = snapshots.get(snapshot_key(str(cid), variant_id))
+    visual = any(
+        isinstance(item, dict)
+        and str(item.get("character_id") or "") == str(cid)
+        and item.get("character_source_sha256")
+        for item in as_list(page.get("character_snapshots"))
+    )
+    if visual:
+        return exact
+    return exact or snapshots.get(snapshot_key(str(cid), None))
 
 
 def snapshot_tags(snapshot: dict[str, Any]) -> list[str]:
@@ -169,10 +185,14 @@ def character_variant_danbooru_line(
     - それ以外の combines_with 持ち（000番台等）: ``状況タグ, 000_base, 結合先`` のカンマ合成
     - combines_with なし: 状況タグのみ（000〜099 は生成時に 000_base が前置される）
     """
+    vid = str(variant.get("variant_id") or "")
+    if str(character.get("schema_version", "1.0")) == "1.1":
+        from manga_prompt_ir.character_visual_resolver import resolve_character_visual
+
+        return join_tags(resolve_character_visual(character, vid).danbooru_tags)
     tags = as_list(variant.get("danbooru_tags"))
     combines_raw = variant.get("combines_with")
     combines = str(combines_raw).strip() if combines_raw else ""
-    vid = str(variant.get("variant_id") or "")
     if combines:
         from image_provider_novel_tag_batch import (  # noqa: E402
             danbooru_for_combines_with,
@@ -195,6 +215,9 @@ def render_character_md(
     *,
     novelai_pipe_tags: bool = False,
 ) -> str:
+    from manga_prompt_ir.schemas.character import CharacterPrompt
+
+    character = CharacterPrompt.model_validate(character).model_dump(mode="json")
     character_id = character["character_id"]
     name = character.get("name") or character_id
     name_en = character.get("name_en") or character_id
@@ -205,10 +228,26 @@ def render_character_md(
     rules = character.get("manga_rules") or {}
     variants = as_list(character.get("prompt_variants"))
     base_tags = base_danbooru_tags(character)
+    costume_line = costume.get("main_outfit")
+    if str(character.get("schema_version", "1.0")) == "1.1":
+        from manga_prompt_ir.character_visual_resolver import resolve_character_visual
+
+        costume_variant = next(
+            (
+                item
+                for item in variants
+                if isinstance(item, dict) and item.get("variant_kind") == "costume"
+            ),
+            None,
+        )
+        if costume_variant:
+            costume_line = resolve_character_visual(
+                character, str(costume_variant.get("variant_id"))
+            ).costume_summary
     summary_parts = [
         f"役割: {role}" if role else "",
         f"外見: {appearance.get('age_range')}, {appearance.get('body_type')}, {appearance.get('hair_color')} hair, {appearance.get('eye_color')} eyes",
-        f"衣装: {costume.get('main_outfit')}",
+        f"衣装: {costume_line}",
         f"口調: {personality.get('speech_style')}",
     ]
     summary = " / ".join(part for part in summary_parts if part and "None" not in part)
@@ -479,6 +518,9 @@ def render_manga_page_section(
     apply_paraphrase: bool | None = None,
     color_mode_override: str | None = None,
 ) -> str:
+    from manga_prompt_ir.character_visual_page import validate_page_character_visual
+
+    validate_page_character_visual(page, characters)
     meta = page.get("meta") or {}
     manga = page.get("manga") or {}
     scene = page.get("scene") or {}

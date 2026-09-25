@@ -52,6 +52,7 @@
 | 背景 | **原則なし**（単色背景が要る場合は100番台へ） |
 
 - **漫画**: `subjects[].variant_id` は **000番台のみ**。構図・表情・ポーズ・場所は `panels[].prompt_tags` で上乗せする。
+- **CharacterPrompt 1.1**: 衣装スロットは `visual_spec`（outer / inner / bottom の構造）を入力正本にする。`casual_jacket` や `dark_pants` のような曖昧語はゲートで止まる。状態は `state_tags`。固定小物は `consistency_tags`、衣装付属は `visual_spec.accessories`（同じ語を両方に置かない）。1.0 の `danbooru_tags` 手書き衣装は従来どおり。
 
 ### 100番台（資料・ポーズスロット）
 

@@ -35,7 +35,7 @@ targets: ["*"]
 創作技法は `_how_to/manga.md` に置き、**コマンド・検証・バッチ・ネガ合成・export フラグ**など運用手順は `docs/` に分離している。
 
 - **`docs/image-generation/manga-prompt-ir.md`**: `novel_prompt_ir_validate.py` / `novel_prompt_ir_embed_snapshots.py` / `novel_prompt_ir_export_md.py`（`--novelai-pipe-tags` 等）、`image_provider_novel_manga_batch.py` の `--source`、コマ単位ネガの合成順。
-- **`docs/image-generation/manga-page-edit.md`**: 空吹き出しへの写植と、マスクで範囲だけ差し替えるローカル合成。
+- **`docs/image-generation/manga-page-edit.md`**: 吹き出しの native、NovelAI は T1 割り当て（`generate`）を先、標準は写植なし、空泡と local は明示／退避、マスク合成。
 - **`docs/image-generation/manga-tag-generation.md`**: 互換 `manga/manga_XX.md` の Step1/Step2 長文テンプレ・実例・レイアウト記述・生成モード別の運用メモ。
 
 ## 運用方針
@@ -94,6 +94,17 @@ targets: ["*"]
 - 作品設定が `world_wear` の想定と合わない場合は**当てはまる節だけ**読むか、**参照を省略**してよい（必要なら作品の **`_meta.md`** に「未参照・理由」を一言メモする運用可）。
 
 **備考**: `world_wear.md` はツールが自動では読み込まない創作技法ファイルである。本節は **Tag Mode の初回・キャラ初版づくり**に効き、既存IRの細かな差し替えだけのセッションでは負荷をかけないための区別を置いた。
+
+### CharacterPrompt 1.1（衣装の視覚仕様）
+
+漫画ページの schema 1.1 とは別カウンタである。キャラクター YAML だけ `schema_version: "1.1"` にできる。
+
+- 衣装の入力正本は costume variant の `visual_spec`（`outer` / `inner` / `bottom` は構造化。`outer` は type・color・hood・collar・closure）。
+- `state` / `derived` は `inherits_costume` と入力の `state_tags` を使う。`danbooru_tags` は非 base ではキャッシュであり、resolver 出力と空でない不一致なら停止する。
+- 1.1 を扱うページ compile・`character_line`・snapshot embed・Markdown export・manga batch は `manga_prompt_ir.character_visual_resolver` を通す。1.0 は従来の `resolve_variant_danbooru_tags` のまま。
+- embed した 1.1 snapshot は `character_schema_version: "1.1"` を持つ。hash / `visual_natural` が空でも、この印または漫画ページ schema 1.1 の `character_snapshots` があれば、キャラクター YAML 省略の compile は停止する。
+- 固定小物は `manga_rules.consistency_tags`、衣装付属品は `visual_spec.accessories`。同じ語を両方に置かない。
+- 例: `tools/manga_prompt_ir/examples/character_1_1.yaml`
 
 ## `background_concepts[]`（Manga Tag Mode）
 
@@ -405,7 +416,10 @@ python tools/novel_prompt_ir_export_md.py \
 
 操作のコマンドと確認先は `docs/image-generation/manga-page-edit.md`。創作上の選び方は `_how_to.example/manga.md` の「文字は描かせるか、後で載せるか」。この節は作業時の拘束だけを置く。
 
-- 写植は `tools/novel_manga_lettering.py letter`。入力の geometry は `kind: actual` かつ元画像の SHA-256 と一致すること。`design_projected` では写植しない。
+- 写植は `tools/novel_manga_lettering.py letter`。入力の geometry は `kind: actual` かつ元画像の SHA-256 と一致すること。`letter` も `bind-actual` と同じく hash を検証する。`design_projected` では写植しない。
+- 省略時の `text_id` は `p{panel_id}-{kind}-{index:02d}`。PageRenderPlan・吹き出し座標・写植で同じ規則を使う。
+- 作品が後載せ写植をするかは `_meta.md` §2.1 と `_meta.yaml` の `manga_lettering.enabled`。横断既定と未設定は **しない**。Grok / GPT Image で `しない` は元の吹き出しへ `generate`。`する` は空泡 `letter_later` のあと写植。CLI 明示は変えない。NovelAI の割り当ては `generate` のまま。§5 タグ層にフラグを置かない。
+- NovelAI ページの先は `generate` + `provider`（T1: slot の `白い吹き出し「台詞」` とページの `text, speech bubble` は NovelAI だけ。Grok / GPT の送信 prompt に入れない）。吹き出し割り当てを正とし、標準はモデル字を残す。写植する作品、または字形が崩れたときだけ `kind: actual` で載せ直す。空泡は明示の `letter_later`。`bubble_frame_mode=local` は割り当てが崩れた退避。clean PNG と `.local_frame.json` が揃ってから `render-bubbles`。Grok 等の native PNG および NovelAI の `letter_later` / `generate` PNG へローカル枠を重ねない。
 - `manga.lettering` は漫画ページの基本写植スタイルであり、既定は縦書き・基準フォントサイズ30・`uniform_then_shrink`。ページへ明示した台詞単位の `writing_direction` は基本スタイルを上書きする。
 - ローカル写植の文字ブロックは指定矩形の上下左右中央へ配置する。縦書きでは句読点・括弧・三点リーダー等を縦組み用字形へ変換するが、`？` は通常字形のままとし、IR本文は変更しない。
 - 写植はまず基準フォントサイズを全台詞へ適用し、実座標へ収まらない項目だけを縮小する。`--size-ratio` による全体縮小は通常の既定にしない。

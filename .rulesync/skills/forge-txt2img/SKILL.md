@@ -52,7 +52,7 @@ edit CLI（単画像・`--batch`）は必ず `--dry-run` で計画とredacted pa
 | `MONOCRI_ILLUSTRATION_MODEL_DEFAULT` | `image_provider_novel_illustration_batch.py` で provider に渡すモデル名または alias。空なら provider の `default_model` |
 | `MONOCRI_ILLUSTRATION_ASPECT_RATIO_DEFAULT` | `image_provider_novel_illustration_batch.py` の既定アスペクト。表紙向け既定は `book_cover`（2:3） |
 | `MONOCRI_ILLUSTRATION_RESOLUTION_DEFAULT` | `image_provider_novel_illustration_batch.py` の既定解像度。Grok 向け既定は `2k` |
-| `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先 |
+| `MONOCRI_MANGA_GROK_PRO_DEFAULT_ASPECT_RATIO` | `image_provider_novel_manga_batch.py` で **実際の provider が `grok_pro`** かつ **`--aspect-ratio` 未指定**のとき、`config` の Grok 既定アスペクト（多くは `1:1`）の代わりに使う（例: `manga_b5_portrait`, `3:4`）。CLI が最優先。NovelAI のページ生成（`step1-pages` / `step2-pages`）は本変数を見ず、未指定時はコード既定 `manga_b5_portrait`（832×1216）で `1:1` に落とさない |
 | `MONOCRI_FORGE_MODEL_FAMILY_DEFAULT` | Forge の `active_model_family` を `.env` で上書きしたいとき |
 | `MONOCRI_GROK_MODEL_TIER_DEFAULT` | `grok` provider の global モデル alias（`standard` / `quality` / 互換 `pro` / `v2`）。`grok_pro` の既定は変えない |
 
@@ -142,7 +142,20 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/workflo
 - **背景を描かせない（`--omit-panel-background`）**:
   **`--source step1-panels` のみ**。YAML から舞台・場所・浴室・湯気などのタグを外し、`simple_background` 等を付与。先に **`background-concepts`** で出した背景資料と Photoshop 等で合成する前提。CLI または `MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND=1`。
 - **ページ生成の非対応**:
-  **Forge / NovelAI** は、このスキルの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。
+  **Forge** は、このスキルの既定運用では **step1-pages / step2-pages の正式対応先に含めない**。
+  **NovelAI** も既定のページ provider ではない。ページ実験は `--page-compiler page_render_plan` の opt-in。**先は T1 と同じ `generate`（slot に台詞を割り当てる）**。標準はモデル字を残す。写植は字形が崩れたとき、または作品が `する` のときだけ。空泡は `--text-mode letter_later`。割り当てが崩れたときだけ `--bubble-frame-mode local`。人間向け手順は `docs/image-generation/manga-page-edit.md`。失敗した Grok 画像を NovelAI へ振り替えない。Grok / GPT の吹き出し指定は変えない。
+
+## ページ吹き出しの描画戦略
+
+吹き出しの意味はページ IR の `text`。描き方は解決済み model/profile の能力キー（`grok_imagine_2` / `gpt_image_2` / `nano_banana_2` / `novelai_v5`）。OpenRouter は transport。未登録 model は送信前に停止。`strong` は暫定。
+
+- 既定ページ（Grok / GPT Image / Nano Banana）は **native**。Grok / GPT の formatter・空泡英語指示は NovelAI 用に寄せない。
+- **NovelAI ページの先**: T1 と同じ `generate`（`--text-mode` 省略時も）。ページに `text, speech bubble`、話者の character slot に `白い吹き出し「台詞」`。この日本語 slot 語と当該タグは Grok / GPT の送信 prompt に入れない。吹き出しの割り当てを正とし、標準はモデル字を残す。写植する作品ではモデル字は仮。空泡にするときだけ NovelAI で `letter_later` を明示する。Grok / GPT Image の省略時は、`manga_lettering.enabled: false` と未設定は `generate`（元の吹き出しに字）、`true` なら `letter_later`。
+- `--bubble-frame-mode` は `provider` | `local`。既定 `provider`。**`auto` は未実装**（導入するときは判定条件・dry-run の選択結果・未登録停止を同時に書く。別承認）。
+- **`local` は退避**: 割り当てや空泡が崩れた NovelAI PNG の再生成だけ。provider＝NovelAI かつ compiler＝`page_render_plan` のみ。他 provider は停止。`local` は `text_mode=none`（`letter_later` / `generate` と併用しない）。V5 では `--novelai-portion-id none`（Vibe が付くと V4.5 ピンで停止）。ページソースの縦横比未指定は `manga_b5_portrait`（832×1216）。1:1 に落とさない。
+- dry-run で `capability_key` / `text_mode` / `bubble_frame_mode` / NovelAI なら `image_size` を確認してから承認を取る。
+- native 失敗 PNG へ local 枠を重ねない。NovelAI の `generate` / `letter_later` PNG へも local 枠を重ねない。Grok / GPT Image / Nano Banana は手動停止。local 再生成は NovelAI 限定。provider inpaint は未接続のまま拒否。
+- 枠・写植のコマンドと確認ファイルは **`docs/image-generation/manga-page-edit.md`**。横断既定は写植なし。作品で写植するかは `_meta.md` §2.1 / `_meta.yaml` `manga_lettering`。Grok / GPT Image の `しない` は元の吹き出しへ `generate`。画質は別計画。
 
 ## 前提（Forge）
 
@@ -190,17 +203,25 @@ xAI はプロンプトを **UTF-8 バイト数**で制限する（日本語 1 �
 
 `tools/image_provider_novel_manga_batch.py` が step1-pages / step2-pages 組み立て時にこのゲートを適用する。2.0 にも同じゲートを使う。経路は formatter で分かれる。
 
-- **legacy formatter**: 超過時は従来どおり圧縮してよい（下表の 4 フェーズ）。
-- **PageRenderPlan compiler**: 7800 bytes を超えたら黙って切らず **停止**する。
+- **Grok / Grok Pro のページ（step1-pages / step2-pages）は `--page-compiler page_render_plan` を必ず付ける。** CLI 既定は `legacy`。省略すると文字保持圧縮のあと、収まらなければ停止する。
+- **legacy / PageRenderPlan**: 超過時はタグと重複説明から圧縮する。台詞・ナレーション・モノローグ・効果音と `Text:` は落とさない。
+- **それでも収まらないとき**: 黙って切らず **停止**する。ページ生成の末尾カットはしない。
 
-legacy の圧縮は次の 4 フェーズを順番に試み、上限に収まった時点で打ち切る：
+1.1 の **Grok / Grok Pro PageRenderPlan** では、固定見た目の自然文を `Character Anchors` に一度だけ置く。batch 側の固定特徴ブロック、各コマの固定外見・衣装タグ、`visual_natural` と `variant_tags` の重複は送信 prompt に併記しない。IR・snapshot・manifest の正本情報は削らず、コマ別の action / expression / position は `Character Slots` に残す。この compact は Grok 専用で、OpenAI / OpenRouter / NovelAI / legacy formatter には適用しない。
 
-| フェーズ | 除去対象 | 節約効果の目安 |
-|----------|----------|---------------|
-| 1 | `render_instruction` ブロック行 | 中〜大（YAML IR 由来の作画依頼文） |
-| 2 | `- tag:` 行（キャラ固定タグ列） | 大（繰り返しキャラ登場で特に効く） |
-| 3 | `- 日本語訳:` 行 | 中（日本語訳付きタグ行） |
-| 4 | バイト数ベースの末尾切り捨て + `[...省略]` | 最終手段 |
+同じ経路の `reading_order` は IR と manifest に残すが、Grok向けpromptでは **非描画のレイアウト制約**へ変換する。`right-to-left` / `left-to-right` の文字列や日本語の読み順説明を可視テキストとして渡さず、コマの流れだけを指定し、「矢印・ラベル・キャプション・読み順文字を描かない」と明示する。OpenAI / OpenRouter / NovelAI / legacy formatterの読み順出力は変更しない。
+
+ページ圧縮は次のフェーズを順番に試み、上限に収まった時点で打ち切る：
+
+| フェーズ | 除去対象 | 備考 |
+|----------|----------|------|
+| 1 | `render_instruction` ブロック行 | YAML IR 由来の作画依頼文 |
+| 2 | `- tag:` 行 | コマ繰り返しのタグ列 |
+| 3 | `- 日本語訳:` 行 | summary と重複 |
+| 4 | `- 人物・対象:` / `- 構図:` | Character Anchors / Panel Outline と重複 |
+| 停止 | 文字要素だけでは収まらない | ページでは末尾を切らない |
+
+背景資料（`background-concepts`）だけ、従来の末尾切り捨て + `[...省略]` を最終手段に残す。
 
 **設定確認コマンド**:
 
@@ -213,10 +234,25 @@ python -c "import json; d=json.load(open('config/image_generation.json')); print
 
 ```bash
 python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョンβテスター \
-  --manga-stem manga_01 --source step1-pages --provider grok --dry-run
+  --manga-stem manga_01 --source step1-pages --provider grok \
+  --page-compiler page_render_plan --dry-run
 ```
 
 **注意**: `max_prompt_bytes` が未設定のまま step1-pages を Grok へ送ると **HTTP 400（プロンプト上限超過）** が返る。必ず `config/image_generation.json` の `providers.grok.max_prompt_bytes` を確認してから実行すること。
+
+## provider隔離とNovelAIページ圧縮（P4）
+
+ページIRの圧縮は、provider-neutralな共通結果とprovider adapterを分離して扱う。既定は `--prompt-compaction off` とし、Grok / OpenAI / OpenRouter / Forgeのprompt・payloadを変更しない。`safe` / `promote-fixed` は **NovelAI + YAML + `step1-pages` / `step2-pages` + `page_render_plan`** だけで受け付け、対象外の明示指定は従来経路へフォールバックせず停止する。NovelAIの `step1-panels` legacyは既存の `ベース | キャラ` 形式を維持する。
+
+NovelAI adapterの文字契約は次のとおり固定する。
+
+- slotなし: 台詞本文だけを末尾の `Text:` に置く。
+- slotなし: モノローグ、ナレーション、効果音は `Panel Text Cues:` に置き、text manifestの `text_id` / speaker / panel_id / 順序と対応させる。
+- slotあり: `Text:` は付けず、台詞はcharacter slotへ渡す。
+- 品質接尾辞は送信側で一度だけ視覚本文へ付け、`Panel Text Cues:` と `Text:` より前に置く。
+- 本文上限超過、`generate` と `no text` の競合、protected tag欠落、variant混線は停止する。本文を切らない。
+
+`off` のprovider隔離、legacy NovelAI panel形状、文字欄の送信順、品質接尾辞の一回適用は、P4の共通回帰テストで固定する。
 
 ## 前提（OpenAI Images API）
 
@@ -427,7 +463,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
 - **NovelAI が HTTP 403 で HTML（Cloudflare「Access denied」）** → 多くは **WAF がクライアントをブロック**している状態。`config/image_generation.json` の `providers.novelai.default_request_headers`（`User-Agent` / `Origin` / `Referer`）が `tools/image_provider_generate.py` で自動付与される。それでも出る場合は **VPN の出口・データセンター IP** を変える、**住宅系プロキシ**（`HTTPS_PROXY` 環境変数は urllib が参照）を試す、公式サイトが同じ回線で開けるか確認する。
 - **NovelAI が HTTP 500（`Internal Server Error` のみ）** → V4 / V4.5 / V5 は API が **`v4_prompt` / `v4_negative_prompt`** を要求する一方、**`ucPreset` に v1 用の 0〜2 を渡すとサーバ側で不正**になりうる。`tools/image_provider_generate.py` は v4 系で **0〜2 を Heavy(4) に寄せ**、上記フィールドと `noise_schedule` 等を付与する。それでも失敗する場合は **モデル名・`steps` / 解像度**を UI の推奨に合わせる。
 - **NovelAI で「Vibe Transfer は NovelAI V5 では未提供」** → 参照画像付きジョブに V5 を明示している。`model` を `v4-5-full` にするか、参照を外す。`model` 未指定なら自動で V4.5 に残る。
-- **Grok が HTTP 400（プロンプト上限超過）** → UTF-8 バイト制限。内部ゲートは `providers.grok.max_prompt_bytes`（暫定 `7800`、公式上限そのものではない）。未設定なら追加してから再実行する（「Grok プロンプト上限」節）。PageRenderPlan 経路は送信前に超過で停止する。legacy は圧縮後でも超えれば HTTP 400 になり得る。
+- **Grok が HTTP 400（プロンプト上限超過）** → UTF-8 バイト制限。内部ゲートは `providers.grok.max_prompt_bytes`（暫定 `7800`、公式上限そのものではない）。未設定なら追加してから再実行する（「Grok プロンプト上限」節）。ページは `--page-compiler page_render_plan` を付け、タグから圧縮し、文字が収まらなければ送信前に停止する。
 - **`grok_image_quality` で停止** → 2.0 以外の model、非 Grok provider、空文字は意図どおりの拒否。`--model v2` と low/medium/auto を確認する。
 - **Grok の URL 応答が期限切れ** → xAI docs でも生成 URL は一時的。`response_format: "b64_json"` を優先し、即保存する。
 - HTTP その他 4xx/5xx → レスポンス先頭を stderr に表示。

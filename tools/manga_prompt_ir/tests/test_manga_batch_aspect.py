@@ -15,6 +15,7 @@ from image_provider_novel_manga_batch import (  # noqa: E402
     MANGA_GROK_PRO_DEFAULT_ASPECT_ENV,
     main as manga_main,
     manga_grok_pro_effective_aspect_ratio,
+    manga_page_effective_aspect_ratio,
 )
 
 
@@ -28,6 +29,36 @@ def test_openai_cli_aspect_is_forwarded() -> None:
 
 def test_non_grok_pro_returns_none() -> None:
     assert manga_grok_pro_effective_aspect_ratio(None, "novelai", root=Path("/tmp")) is None
+    assert (
+        manga_page_effective_aspect_ratio(
+            None, "novelai", source="step1-panels", root=Path("/tmp")
+        )
+        is None
+    )
+
+
+def test_novelai_page_sources_do_not_fall_to_square() -> None:
+    assert (
+        manga_page_effective_aspect_ratio(
+            None, "novelai", source="step1-pages", root=Path("/tmp")
+        )
+        == MANGA_GROK_PRO_ASPECT_FALLBACK
+    )
+    assert (
+        manga_page_effective_aspect_ratio(
+            None, "novelai", source="step2-pages", root=Path("/tmp")
+        )
+        == MANGA_GROK_PRO_ASPECT_FALLBACK
+    )
+
+
+def test_novelai_page_cli_aspect_overrides_default() -> None:
+    assert (
+        manga_page_effective_aspect_ratio(
+            "story_vertical", "novelai", source="step1-pages", root=Path("/tmp")
+        )
+        == "story_vertical"
+    )
 
 
 def test_fallback_when_no_env(tmp_path: Path, monkeypatch) -> None:

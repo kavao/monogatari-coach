@@ -33,7 +33,7 @@ targets: ["*"]
 
 1. **固定特徴**は、構造化定義がある場合は `tag/characters/<character_id>.yaml` を最上位の正とする。
 2. 構造化定義がない作品では `character.md` を正とする。
-3. **英語タグへの落とし方**は `000_base.danbooru_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を参考にする。
+3. **英語タグへの落とし方**は `000_base.danbooru_tags` / `manga_rules.consistency_tags` と、既存 `tag/<romaji>.md` を参考にする。CharacterPrompt **1.1** では衣装は costume variant の `visual_spec` を正とし、`outfit_tags` や `consistency_tags` に衣装語を置かない。固定小物は `consistency_tags`、その衣装だけの付属品は `visual_spec.accessories` に分け、同じ語を二重に置かない。
 4. コマごとの状況・構図・アクションは、本文と `manga/pages/*.yaml` の内容に従う。
 5. 既存 `manga/manga_XX.md` は、YAML が無い場合の移行元または互換出力の確認先に限って参照する。
 6. 競合したときは **状況より固定特徴を優先**し、必要なら状況タグ側を調整する。

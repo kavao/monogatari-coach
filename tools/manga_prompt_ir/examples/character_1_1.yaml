@@ -1,0 +1,82 @@
+schema_version: "1.1"
+character_id: kazuki
+name: 和紀
+name_en: Kazuki
+role: 主人公
+appearance:
+  age_range: late teens
+  gender_presentation: masculine
+  body_type: slim
+  height: average height
+  eye_color: brown
+  hair_style: short messy hair
+  hair_color: black
+  skin_tone: fair skin
+  distinctive_features:
+    - tired but alert eyes
+  species_features:
+    - pointed_ears
+personality:
+  default_expression: 控えめで警戒心のある表情
+  speech_style: 短く慎重に話す
+manga_rules:
+  consistency_tags:
+    - black_hair
+    - brown_eyes
+    - fair_skin
+    - smartphone
+  do_not_change:
+    - 髪色を黒以外にしない
+prompt_variants:
+  - variant_id: "000_base"
+    variant_kind: base
+    title: 基本外見
+    description: 固定特徴。
+    danbooru_tags:
+      - 1boy
+      - young_man
+      - black_hair
+      - brown_eyes
+      - fair_skin
+  - variant_id: "001_normal"
+    variant_kind: costume
+    title: 通常時
+    description: 駅前の会話用の通常衣装。
+    visual_spec:
+      outer:
+        type: harrington_jacket
+        color: navy
+        hood: false
+        collar: fold_down
+        closure: zipper
+      inner:
+        type: crew_neck_tshirt
+        color: gray
+      bottom:
+        type: straight_pants
+        color: dark_navy
+  - variant_id: "002_jacket_open"
+    variant_kind: state
+    title: 上着を開ける
+    description: 通常衣装の前を開ける。
+    inherits_costume: "001_normal"
+    state_tags:
+      - jacket_open
+  - variant_id: "006_nude"
+    variant_kind: state
+    title: 裸
+    description: 状態合成用。
+    inherits_costume: "001_normal"
+    state_tags:
+      - nude
+  - variant_id: "007_wet"
+    variant_kind: derived
+    title: 濡れた通常衣装
+    description: 通常衣装に濡れを足す。
+    inherits_costume: "001_normal"
+    combines_with: "006_nude"
+    state_tags:
+      - wet_clothes
+negative_tags:
+  - extra_fingers
+  - bad_hands

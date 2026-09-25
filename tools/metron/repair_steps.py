@@ -16,7 +16,7 @@ from .calibrate import ModelCalibration
 from .classify import require_calibration
 from .models import BeatPlan, MetricsDocument, SpansDocument
 from .repair import (
-    _repair_scene_impl, SceneRepairResult, validate_expansion,
+    _repair_scene_impl, _retention_threshold, SceneRepairResult, validate_expansion,
     run_marked_seam_correction, strip_generation_markers, current_beat_chars,
 )
 from .markers import parse_markers
@@ -170,6 +170,9 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
     if state.pending is None or state.pending.job_id != job_id:
         raise ValueError("result requires the matching pending job")
     job = state.pending
+    beat_id = job.beat_id or ""
+    if job.operation != "seam" and not beat_id:
+        raise ValueError("pending job has no beat_id")
     rejection = None
     if review != "confirmed":
         rejection = "meaning review missing or rejected (events/viewpoint/ending/state)"
@@ -177,16 +180,16 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
     if marker_parse.errors or re.search(r"<!--/?beat", marker_parse.clean_text):
         rejection = "candidate contains malformed Beat markers"
     if job.operation != "seam" and re.search(r"<!--/?beat", candidate):
-        parsed = parse_markers(candidate, expected_beats=[job.beat_id])
-        if not parsed.coverage or [span.beat for span in parsed.spans] != [job.beat_id]:
+        parsed = parse_markers(candidate, expected_beats=[beat_id])
+        if not parsed.coverage or [span.beat for span in parsed.spans] != [beat_id]:
             rejection = "candidate changed Beat markers"
     if job.operation == "regenerate" and not parse_markers(candidate).clean_text.strip():
         rejection = "candidate is empty"
     if not rejection and not error:
         if job.operation == "deepen":
-            check = validate_expansion(state.working_texts[job.beat_id],
+            check = validate_expansion(state.working_texts[beat_id],
                 strip_generation_markers(candidate),
-                retention_threshold=state.calibration.expand_retention_threshold)
+                retention_threshold=_retention_threshold(state.calibration))
             if not check.accepted:
                 rejection = check.reason
         elif job.operation == "seam":
@@ -195,7 +198,7 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
             if not check.accepted:
                 rejection = check.reason
         else:
-            original = state.working_texts[job.beat_id]
+            original = state.working_texts[beat_id]
             clean = strip_generation_markers(candidate)
             if clean.strip() == original.strip() or current_beat_chars(clean) < current_beat_chars(original):
                 rejection = "regeneration is identical or shortened"

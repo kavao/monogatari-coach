@@ -1,8 +1,8 @@
-schema_version: "1.1"
+schema_version: '1.1'
 meta:
   intent: manga_page
   reading_order: right_to_left
-  aspect_ratio: "2:3"
+  aspect_ratio: '2:3'
   page_count: 2
 render_instruction:
   task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
@@ -13,10 +13,10 @@ render_instruction:
   output_policy: コマ境界と右から左の読み順を明確にする。
 manga:
   genre_tags:
-    - manga
-    - full_color
+  - manga
+  - full_color
   visual_tags:
-    - clean_lineart
+  - clean_lineart
   panel_layout: 上段会話・下段出発の2段
   lettering:
     direction: vertical
@@ -30,155 +30,223 @@ scene:
   weather: 晴れ
   weather_en: clear evening light
 character_ids:
-  - kazuki
-  - yui
+- kazuki
+- yui
 character_snapshots:
-  - character_id: kazuki
-    name: 和紀
-    name_en: Kazuki
-    selected_variant_id: "001_normal"
-    costume_summary: 地味なジャケット
-  - character_id: yui
-    name: 結
-    name_en: Yui
-    selected_variant_id: "001_normal"
-    costume_summary: クリームのカーディガン
+- character_id: kazuki
+  name: 和紀
+  name_en: Kazuki
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、masculine、slim、black、short messy hair、brown、fair skin、tired but alert eyes
+  costume_summary: navy harrington jacket, fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight
+    pants
+  visual_natural: 1boy, young man, black hair, brown eyes, fair skin, tired but alert eyes, smartphone; navy harrington jacket,
+    fold down collar, zip front, no hood, gray crew neck tshirt, dark navy straight pants
+  fixed_tags:
+  - 1boy
+  - young_man
+  - black_hair
+  - brown_eyes
+  - fair_skin
+  - tired but alert eyes
+  - smartphone
+  variant_tags:
+  - navy_harrington_jacket
+  - fold_down_collar
+  - zip_front
+  - no_hood
+  - gray_crew_neck_tshirt
+  - dark_navy_straight_pants
+  do_not_change:
+  - 髪色を黒以外にしない
+  - スマホを別の固定小物に置き換えない
+  character_source_sha256: 1d9a5aae70f70fc559a3c0f0d1f9e5284ad4d659a059437143b70c27ee47b922
+  character_schema_version: '1.1'
+- character_id: yui
+  name: 結
+  name_en: Yui
+  selected_variant_id: 001_normal
+  appearance_summary: late teens、feminine、slim、brown、shoulder-length straight hair、green、fair skin、small mole near the left
+    eye
+  costume_summary: cream cardigan, v neck collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  visual_natural: 1girl, young woman, brown hair, green eyes, fair skin, small mole near the left eye; cream cardigan, v neck
+    collar, button front, no hood, white blouse, brown plaid skirt, canvas tote
+  fixed_tags:
+  - 1girl
+  - young_woman
+  - brown_hair
+  - green_eyes
+  - fair_skin
+  - small mole near the left eye
+  variant_tags:
+  - cream_cardigan
+  - v_neck_collar
+  - button_front
+  - no_hood
+  - white_blouse
+  - brown_plaid_skirt
+  - canvas_tote
+  do_not_change:
+  - 髪色を茶以外にしない
+  - カーディガンを別の固定衣装に置き換えない
+  character_source_sha256: 5028141c5eccca890572b5dcb66289ba3445c63170409709ea1c2747f7c84438
+  character_schema_version: '1.1'
 dramaturgy:
   purpose: 同じ待合室・同じ衣装のまま会話を終えて立つ。
   purpose_en: Keep the same room and costumes while they finish talking and stand.
   emotional_arc: 確認から出発へ
   emotional_arc_en: From confirmation to departure.
 background_concepts:
-  - concept_id: station_waiting_room
-    title: 駅の待合室
-    description: 前ページと同じ木のベンチと窓口。
-    prompt: Japanese manga background, small railway waiting room, wooden benches, ticket window, late afternoon light, no characters
-    negative_tags:
-      - people
-    usage: ページCの場所連続性
+- concept_id: station_waiting_room
+  title: 駅の待合室
+  description: 前ページと同じ木のベンチと窓口。
+  prompt: Japanese manga background, small railway waiting room, wooden benches, ticket window, late afternoon light, no characters
+  negative_tags:
+  - people
+  usage: ページCの場所連続性
 layout_geometry:
   panels:
-    - panel_id: 10
-      rect: {x: 0.04, y: 0.03, w: 0.92, h: 0.45}
-    - panel_id: 20
-      rect: {x: 0.04, y: 0.52, w: 0.92, h: 0.45}
-continuity_tracks:
-  - entity_id: location
-    panel_id: 10
-    state: same waiting room as previous page
-  - entity_id: kazuki
-    panel_id: 10
-    state: still wearing casual jacket
-    change_note: costume unchanged from previous page
-  - entity_id: yui
-    panel_id: 20
-    state: still wearing cream cardigan and holding ticket
-asset_references:
-  - asset_id: kazuki-normal
-    role: character
-    character_id: kazuki
-    variant_id: "001_normal"
-  - asset_id: yui-normal
-    role: character
-    character_id: yui
-    variant_id: "001_normal"
-  - asset_id: station-room
-    role: location
-    concept_id: station_waiting_room
-panels:
   - panel_id: 10
-    summary: 前ページと同じベンチで、結が切符を見せながら出発時刻を確認する。
-    summary_en: On the same bench, Yui shows the ticket and confirms departure time.
-    dramaturgy:
-      role: continue
-      purpose: 人物・場所・衣装が前ページと変わっていないことを見せる。
-      purpose_en: Show that people, place, and costumes match the previous page.
-      relation_to_previous: 着席状態の続き。
-      relation_to_previous_en: Continuation of the seated state.
-    background_density: medium
-    subjects:
-      - subject_id: p10-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 同じジャケットの和紀
-        pose_action: 隣の結を見る
-        pose_action_en: looking at Yui beside him
-        position: midground
-        expression: うなずく
-        expression_en: nodding
-      - subject_id: p10-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 同じカーディガンの結
-        pose_action: 膝の切符を少し持ち上げる
-        pose_action_en: lifting the ticket from her lap
-        position: midground
-        expression: 確認
-        expression_en: confirming
-    composition:
-      framing: medium shot
-      framing_en: seated two-shot
-      layout: 上段
-      layout_en: top panel
-      focus: 2人の衣装と切符
-      focus_en: both costumes and the ticket
-    camera:
-      shot_size: medium shot
-      view_en: same seated pair
-    text:
-      dialogue:
-        - text_id: p10-dialogue-01
-          speaker: yui
-          content: もうすぐ。
-          bubble_type: speech bubble
-          placement: upper right
+    rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.45
   - panel_id: 20
-    summary: 同じ待合室で2人が立ち上がり、ホーム側の出口へ向かう。
-    summary_en: They stand in the same waiting room and head for the platform door.
-    dramaturgy:
-      role: depart
-      purpose: 場所を変えずに動きだけ進める。
-      purpose_en: Advance motion without changing the place.
-      relation_to_previous: 確認のあとに立つ。
-      relation_to_previous_en: They stand after the confirmation.
-    background_density: medium
-    subjects:
-      - subject_id: p20-s01
-        character_id: kazuki
-        variant_id: "001_normal"
-        description: 立ち上がる和紀
-        pose_action: ジャケットのまま出口へ向き直る
-        pose_action_en: turning toward the exit still in the jacket
-        position: midground
-        expression: 落ち着き
-        expression_en: calm
-      - subject_id: p20-s02
-        character_id: yui
-        variant_id: "001_normal"
-        description: 切符を持って立つ結
-        pose_action: カーディガンのまま切符を持って歩く
-        pose_action_en: walking with the ticket, still in the cardigan
-        position: midground
-        expression: 先導
-        expression_en: leading
-    composition:
-      framing: medium shot
-      framing_en: standing two-shot
-      layout: 下段
-      layout_en: bottom panel
-      focus: 出口へ向かう2人
-      focus_en: both heading to the exit
-    camera:
-      shot_size: medium shot
-      view_en: pair standing to leave
-    text:
-      dialogue:
-        - text_id: p20-dialogue-01
-          speaker: kazuki
-          content: 出よう。
-          bubble_type: small speech bubble
-          placement: upper left
+    rect:
+      x: 0.04
+      y: 0.52
+      w: 0.92
+      h: 0.45
+continuity_tracks:
+- entity_id: location
+  panel_id: 10
+  state: same waiting room as previous page
+- entity_id: kazuki
+  panel_id: 10
+  state: still wearing casual jacket
+  change_note: costume unchanged from previous page
+- entity_id: yui
+  panel_id: 20
+  state: still wearing cream cardigan and holding ticket
+asset_references:
+- asset_id: kazuki-normal
+  role: character
+  character_id: kazuki
+  variant_id: 001_normal
+- asset_id: yui-normal
+  role: character
+  character_id: yui
+  variant_id: 001_normal
+- asset_id: station-room
+  role: location
+  concept_id: station_waiting_room
+panels:
+- panel_id: 10
+  summary: 前ページと同じベンチで、結が切符を見せながら出発時刻を確認する。
+  summary_en: On the same bench, Yui shows the ticket and confirms departure time.
+  summary_en_source: 前ページと同じベンチで、結が切符を見せながら出発時刻を確認する。
+  dramaturgy:
+    role: continue
+    purpose: 人物・場所・衣装が前ページと変わっていないことを見せる。
+    purpose_en: Show that people, place, and costumes match the previous page.
+    relation_to_previous: 着席状態の続き。
+    relation_to_previous_en: Continuation of the seated state.
+  background_density: medium
+  subjects:
+  - subject_id: p10-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 同じジャケットの和紀
+    pose_action: 隣の結を見る
+    pose_action_en: looking at Yui beside him
+    position: midground
+    expression: うなずく
+    expression_en: nodding
+  - subject_id: p10-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 同じカーディガンの結
+    pose_action: 膝の切符を少し持ち上げる
+    pose_action_en: lifting the ticket from her lap
+    position: midground
+    expression: 確認
+    expression_en: confirming
+  composition:
+    framing: medium shot
+    framing_en: seated two-shot
+    layout: 上段
+    layout_en: top panel
+    focus: 2人の衣装と切符
+    focus_en: both costumes and the ticket
+  camera:
+    shot_size: medium shot
+    view_en: two faces
+  prompt_tags:
+  - seated
+  - showing_ticket
+  - departure_time
+  - two_shot
+  text:
+    dialogue:
+    - text_id: p10-dialogue-01
+      speaker: yui
+      content: もうすぐ。
+      bubble_type: speech bubble
+      placement: upper right
+- panel_id: 20
+  summary: 同じ待合室で2人が立ち上がり、ホーム側の出口へ向かう。
+  summary_en: They stand in the same waiting room and head for the platform door.
+  summary_en_source: 同じ待合室で2人が立ち上がり、ホーム側の出口へ向かう。
+  dramaturgy:
+    role: depart
+    purpose: 場所を変えずに動きだけ進める。
+    purpose_en: Advance motion without changing the place.
+    relation_to_previous: 確認のあとに立つ。
+    relation_to_previous_en: They stand after the confirmation.
+  background_density: medium
+  subjects:
+  - subject_id: p20-s01
+    character_id: kazuki
+    variant_id: 001_normal
+    description: 立ち上がる和紀
+    pose_action: ジャケットのまま出口へ向き直る
+    pose_action_en: turning toward the exit still in the jacket
+    position: midground
+    expression: 落ち着き
+    expression_en: calm
+  - subject_id: p20-s02
+    character_id: yui
+    variant_id: 001_normal
+    description: 切符を持って立つ結
+    pose_action: カーディガンのまま切符を持って歩く
+    pose_action_en: walking with the ticket, still in the cardigan
+    position: midground
+    expression: 先導
+    expression_en: leading
+  composition:
+    framing: medium shot
+    framing_en: standing two-shot
+    layout: 下段
+    layout_en: bottom panel
+    focus: 出口へ向かう2人
+    focus_en: both heading to the exit
+  camera:
+    shot_size: medium shot
+    view_en: two faces
+  prompt_tags:
+  - standing
+  - walking_toward_exit
+  - exit_door
+  - two_shot
+  text:
+    dialogue:
+    - text_id: p20-dialogue-01
+      speaker: kazuki
+      content: 出よう。
+      bubble_type: small speech bubble
+      placement: upper left
 technical:
   quality_level: high
   negative_tags:
-    - watermark
+  - watermark
