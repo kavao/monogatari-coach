@@ -110,9 +110,14 @@ def test_long_workflow_specification_is_not_sent_to_codexcli() -> None:
     assert "novels/**" in metadata
 
 
-def test_long_workflow_specification_is_not_always_loaded_by_kilo() -> None:
-    # Kilo v7 は kilo.jsonc の instructions に並んだファイルを glob に関係なく常時読み込む。
-    meta, _ = split_rule(RULES / "workflow-specification.md")
+# Kilo v7 は kilo.jsonc の instructions に並んだファイルを glob に関係なく常時読み込む。
+# 長い詳細仕様と開発者向けルールは Kilo へ送らず、AGENTS.md の参照リストから読ませる。
+KILO_EXCLUDED_RULES = ("workflow-specification.md", "docs-writing.md", "rule-authoring.md")
+
+
+@pytest.mark.parametrize("name", KILO_EXCLUDED_RULES)
+def test_heavy_or_developer_rules_are_not_always_loaded_by_kilo(name: str) -> None:
+    meta, _ = split_rule(RULES / name)
     targets = meta.get("targets") or []
     assert "*" not in targets
     assert "kilo" not in targets

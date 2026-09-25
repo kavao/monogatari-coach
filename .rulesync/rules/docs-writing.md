@@ -1,5 +1,5 @@
 ---
-targets: ["*"]
+targets: ["copilot", "cursor", "claudecode", "agentsmd"]
 description: "docs/ ドキュメントを作成・更新するときの記述ルール"
 globs: ["docs/**/*.md"]
 ---

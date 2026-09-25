@@ -41,13 +41,16 @@ Codex CLI は `AGENTS.md` を既定で 32 KiB まで読み、超えた分を警�
 
 ### Kilo で常時読み込まれるルール
 
-Kilo は、`kilo.jsonc` の `instructions` に並んだファイルを glob に関係なく毎回読み込みます。そのため、大きな `workflow-specification.md` は `targets` から `kilo` を外しています。Kilo でも `AGENTS.md` の参照リストから、必要なときだけ読めます。
+Kilo は、`kilo.jsonc` の `instructions` に並んだファイルを glob に関係なく毎回読み込みます。そのため、大きな `workflow-specification.md` と、ルールや docs を編集するときだけ使う `docs-writing.md`・`rule-authoring.md` は、`targets` から `kilo` を外しています。Kilo でも `AGENTS.md` の参照リストから、必要なときだけ読めます。
 
-Rulesync は `kilo.jsonc` の `instructions` を既存の値とマージし、通常の generate は削除も行いません。以前に生成した環境では、再生成後に次の2点を手で消してください。
+Rulesync は `kilo.jsonc` の `instructions` を既存の値とマージし、通常の generate は削除も行いません。以前に生成した環境では、再生成後に次のものを手で消してください。
 
 ```text
-kilo.jsonc の instructions にある ".kilo/rules/workflow-specification.md" の行
-.kilo/rules/workflow-specification.md
+kilo.jsonc の instructions にある次の3行
+  ".kilo/rules/workflow-specification.md"
+  ".kilo/rules/docs-writing.md"
+  ".kilo/rules/rule-authoring.md"
+.kilo/rules/ にある同名の3ファイル
 ```
 
 ## 互換コマンド
