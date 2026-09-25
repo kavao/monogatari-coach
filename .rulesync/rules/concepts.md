@@ -80,10 +80,11 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
 - Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・`_meta.md` への実施記録。
-- Gate B の創作技法契約は、索引で選んだ **葉ファイルの selected** だけを `_meta.md` に残す。索引は選定補助で再読しない。新しい how_to は、明示の Gate B 再実施があるまで既存作品の selected に入らない。葉の追加は `rule-authoring.md`「2.2」（索引と発動条件）。作業用索引があるときはそれが選定入口であり、標準だけの新葉は作業用へ追随するまで選定対象外（標準索引は発見用）。`pack_id` は任意の短縮であり、既存契約へ自動では付けない。
+- Gate B の創作技法契約は、索引で選んだ **葉ファイルの selected** だけを `_meta.md` に残す。索引は選定補助であり再読対象ではない。新しい how_to は、明示の Gate B 再実施があるまで既存作品の selected に入らない。標準カタログへ葉を足すときは索引（または該当 README / 冒頭注記）と発動条件を書き、既存 selected は触らない。作業用索引があるときはそれが選定入口であり、標準だけの新葉は作業用へ追随するまで選定対象外（標準索引は発見用に併読する）。`pack_id` は任意の短縮であり、既存契約へ自動では付けない。
 - 評価の既定は契約外。`reader.md` 等の工程正本は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ selected（パック展開後）を再読する。
 - **`working_path` に書いたパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは契約に working があればそれ、無ければ standard。合成しない。
-- **ジャンルは別軸**。該当 `genre/` 葉は必須候補。**`not_applicable` は全未選択ではない。** 必須候補の見送りと外れるグループ（ジャンルなしの `genre/*` 等）だけ理由付きで書く。
+- **ジャンルは作品プロファイルと別の分類軸である。** ジャンル軸が `genre/` の葉に該当する作品では、その葉を必須候補として selected にする（見送るなら理由付きで not_applicable）。`genre/*` をグループごと not_applicable にできるのは、ジャンル軸が「なし」のときだけ。
+- **`not_applicable` はカタログ全未選択ではない。** プロファイル・ジャンル上の必須候補の見送りと、経路・プロファイル・ジャンルから外れるグループだけを理由付きで書く。
 - `required_missing` は `_meta.md` の status ではない。selected の実在チェックから導く検査結果である。
 - 手順の正本はスキル **`novel-planning`**。横断の厚さ・命名は `workflow-specification.md` の関連仕様を参照する。
 

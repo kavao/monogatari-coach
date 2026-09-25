@@ -35,6 +35,10 @@ Monocri は `agentsmd` を `AGENTS.md` の所有 target として使います。
 
 `--simulate-skills` や `--simulate-subagents` は有効にしません。疑似定義が `AGENTS.md` を膨らませ、軽量ルーター化の目的に反するためです。これ以外の出力、未知の警告、エラー、終了コードはそのまま表示・返却されます。
 
+### 入口ファイルの大きさ
+
+Codex CLI は `AGENTS.md` を既定で 32 KiB まで読み、超えた分を警告なしで切り捨てます。`AGENTS.md` に本文が入るのは root ルール（`overview.md`）だけで、他のルールは参照リストとして載ります。`tools/tests/test_rulesync_router_contract.py` は、正本から見積もった `AGENTS.md` が 24 KiB 以内であること、`concepts.md` が UTF-8 で 24 KiB 以内であることを確認します。生成済みの `AGENTS.md` が手元にあれば、その実サイズも確認します。
+
 ## 互換コマンド
 
 以前のコマンドを使う環境では、次も同じ固定バイナリで全 target を生成します。
