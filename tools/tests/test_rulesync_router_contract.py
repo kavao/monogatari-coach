@@ -110,6 +110,15 @@ def test_long_workflow_specification_is_not_sent_to_codexcli() -> None:
     assert "novels/**" in metadata
 
 
+def test_long_workflow_specification_is_not_always_loaded_by_kilo() -> None:
+    # Kilo v7 は kilo.jsonc の instructions に並んだファイルを glob に関係なく常時読み込む。
+    meta, _ = split_rule(RULES / "workflow-specification.md")
+    targets = meta.get("targets") or []
+    assert "*" not in targets
+    assert "kilo" not in targets
+    assert "agentsmd" in targets
+
+
 def test_workflow_specification_keeps_relocated_mode_contracts() -> None:
     specification = (RULES / "workflow-specification.md").read_text(encoding="utf-8")
     required_headings = (
