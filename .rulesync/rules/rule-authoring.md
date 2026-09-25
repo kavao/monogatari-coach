@@ -1,5 +1,5 @@
 ---
-targets: ["*"]
+targets: ["copilot", "cursor", "claudecode", "agentsmd"]
 description: "ルール・スキル・ドキュメントを追加更新するときの作成規約"
 globs: [".rulesync/**/*.md", "docs/**/*.md", "_how_to.example/**/*.md", "AGENTS.md", "CLAUDE.md"]
 ---

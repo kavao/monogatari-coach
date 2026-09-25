@@ -70,3 +70,33 @@ def test_windows_store_stub_detection() -> None:
     venv = Path(r"C:\work\monogatari-coach\.venv\Scripts\python.exe")
     assert howto_init.is_windows_store_stub(stub) is True
     assert howto_init.is_windows_store_stub(venv) is False
+
+
+def test_howto_init_warns_about_stale_working_catalog(tmp_path: Path, capsys) -> None:
+    example = tmp_path / "_how_to.example"
+    _write(
+        example / "_index.md",
+        "1. novelcore.md\n7.5. [`genre/`](genre/README.md)\n"
+        "   - [`genre/dungeon.md`](genre/dungeon.md)\n   - [site](https://example.com/x.md)\n",
+    )
+    _write(example / "genre" / "README.md", "| [dungeon.md](dungeon.md) |\n")
+    _write(example / "genre" / "dungeon.md", "dungeon\n")
+    _write(tmp_path / "_how_to" / "_index.md", "1. novelcore.md\n")
+
+    assert howto_init.howto_init(tmp_path) == 0
+
+    assert (tmp_path / "_how_to" / "_index.md").read_text(encoding="utf-8") == "1. novelcore.md\n"
+    stale = howto_init.find_stale_catalog_entries(example, tmp_path / "_how_to")
+    assert stale == [(tmp_path / "_how_to" / "_index.md", ["genre/README.md", "genre/dungeon.md"])]
+    out = capsys.readouterr().out
+    assert "WARN _how_to/_index.md lacks 2 standard entries" in out
+    assert "genre/dungeon.md" in out
+
+
+def test_howto_init_reports_up_to_date_catalogs(tmp_path: Path, capsys) -> None:
+    _write(tmp_path / "_how_to.example" / "_index.md", "- [a](a.md)\n")
+    _write(tmp_path / "_how_to" / "_index.md", "- [a](a.md)\n- [mine](mine.md)\n")
+
+    assert howto_init.howto_init(tmp_path) == 0
+
+    assert "Working catalogs list every standard entry." in capsys.readouterr().out

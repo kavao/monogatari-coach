@@ -1,5 +1,5 @@
 ---
-targets: ["cursor", "claudecode", "kilo", "agentsmd"]
+targets: ["cursor", "claudecode", "agentsmd"]
 description: "作品・画像・出版ワークフローの詳細仕様（必要な作業で参照）"
 globs: ["novels/**", "_how_to/**", "_how_to.example/**"]
 ---
