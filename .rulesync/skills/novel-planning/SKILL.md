@@ -1,9 +1,11 @@
 ---
 name: novel-planning
 description: >-
-  新規作品または既存作品の企画・設計フェーズで、proposal.md、
+  「一からストーリーを出して」「〇〇ものの話を考えて」など新しい物語案を出すとき、
+  および新規作品または既存作品の企画・設計フェーズで、proposal.md、
   design_specification.md、config.md、character.md、world.md、_meta.md などを揃え、
   執筆前確認へつなげる。資料不足時の作成順と確認観点を固定する。
+  ジャンル軸を判定し、該当する genre/ の葉を案出しの前に読む。
   Plan 完了は Gate A（骨格）と Gate B（知識・厚さ）の両方を満たす。
 targets: ["*"]
 ---
@@ -19,6 +21,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 ## 使う場面
 
 - ユーザーが「企画書と設計書を作って」「新しい小説として起こして」などと指示した。
+- ユーザーが「一からストーリーを出して」「悪役令嬢ものの話を考えて」など、ファイル指定なしで新しい物語案を求めた。チャットで案だけを返す場合も、案を出す前に B1 の 1〜2 と 4（分類・ジャンル葉の選定と読込）を行う。
 - Source Material Intake 後、展開済み資料を洗練したい。
 - 既存作品の `proposal.md` / `design_specification.md` / `character.md` / `world.md` が不足または薄い。
 
@@ -43,6 +46,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 |----|--------|------|
 | **作品経路** | 新規起こし / 資料取り込み / 既存作品の洗練 | 作業の入り口。`資料取り込み` は内容タイプではなく **`source-material-intake`** へ分岐する経路 |
 | **作品プロファイル** | 一般 / `mature` / `body_therapy`（**複数可**） | `_how_to`・ユーザスキル・必須構成要素の発動判定 |
+| **ジャンル** | `genre/` の葉の relative_id（例: `genre/akuyaku_reijo.md`。**複数可**）/ なし | `genre/` の葉の発動判定。依頼文・`config.md` のジャンル・キーワードから判定し、索引の各行の説明と照合する。判断に迷うときはユーザーへ確認する |
 
 ## Gate A（骨格ゲート）
 
@@ -74,12 +78,12 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 
 索引は選定にだけ使う。契約に残すのは、ここで選んだ **葉ファイル**である（`_index.md`、`episode_.md`、`epsode_common.md`、`epsode_mature.md` などの目次は selected にしない）。索引に新しい葉が載っても、既存作品の selected には足さない。追加はユーザーが Gate B 再実施を指示したときだけ。
 
-1. **作品経路・作品プロファイル**を判定し記録する。
-2. **索引入口**: `_how_to/_index.md` があればそれを選定入口として開き、`_how_to.example/_index.md` を発見用に併読する。作業用索引（および作業用の該当 README）に入口が無い標準の新葉は **選定対象外**。作業用索引が無ければ標準 `_how_to.example/_index.md` だけを開く。プロファイルに応じた必読の葉だけを選ぶ（**全件必読にしない**）。
+1. **作品経路・作品プロファイル・ジャンル**を判定し記録する。
+2. **索引入口**: `_how_to/_index.md` があればそれを選定入口として開き、`_how_to.example/_index.md` を発見用に併読する。作業用索引（および作業用の該当 README）に入口が無い標準の新葉は **選定対象外**。作業用索引が無ければ標準 `_how_to.example/_index.md` だけを開く。プロファイルとジャンルに応じた必読の葉だけを選ぶ（**全件必読にしない**）。ジャンル軸で判定した `genre/` の葉は必須候補であり、原則 selected にする（見送るなら 6(a) に理由を書く）。作業用索引に該当ジャンルの行が無く標準索引にだけある場合は、選定補助へ列挙し、ユーザーへ作業用索引への追随を案内する。
 3. **ユーザスキル索引**: `_how_to/skills/_index.md` があればそれを選定入口とし、`_how_to.example/skills/_index.md` を発見用に併読する。作業用に無い雛形スキルは追随まで選定対象外。作業用が無ければ標準だけを開く。発動条件に当てはまるユーザスキルだけを読む（例: `body_therapy` → `character-body-pick`、mature 系フック → `episode-mature-pick`）。
 4. **葉の読込**: 各葉は `relative_id`（先頭の `_how_to/` と `_how_to.example/` を除いた相対パス）で識別する。**`working_path` に書くパスは必ず自己完結ファイル**とする。そこに書いたらその1ファイルだけを読む。調整メモは `working_path` に書かず、`standard_path` を読む。標準と作業の合成はしない。
 5. 命名・トロープ・プロフィール候補が必要なら **content-pick-registry** と `python tools/novel_pick_registry.py validate` のあと `pick <list_id>` する（path 直書きは fallback）。
-6. **not_applicable** はカタログの未選択ファイルを全部書かない。書くのは次だけ。(a) プロファイル上の必須候補で selected にしなかった葉（`relative_id` と why）(b) 経路・プロファイルから外れるグループ（例: `genre/*`）と why。索引にあるだけの任意葉は書かない。selected にした葉の実効パスが実在しないときは Gate B 未完了とする（`required_missing` は `_meta.md` へ status として書かない。実在チェックの検査結果である）。
+6. **not_applicable** はカタログの未選択ファイルを全部書かない。書くのは次だけ。(a) プロファイル・ジャンル上の必須候補で selected にしなかった葉（`relative_id` と why）(b) 経路・プロファイル・ジャンルから外れるグループと why（例: ジャンル軸が「なし」のときの `genre/*`。ジャンル軸が該当する作品では `genre/*` をグループごと not_applicable にしない）。索引にあるだけの任意葉は書かない。selected にした葉の実効パスが実在しないときは Gate B 未完了とする（`required_missing` は `_meta.md` へ status として書かない。実在チェックの検査結果である）。
 
 ### B2. タイトル命名ゲート
 
@@ -108,12 +112,12 @@ Gate A の前後どちらでもよいが、**完了報告の前にすべて満�
 
 `_meta.md` に **Gate B 記録**節を設け（雛形: `_how_to.example/meta.md`）、少なくとも次を残す。新規の Gate B 完了と、ユーザーが明示した Gate B 再実施だけ新形式で書く。既存作品の旧形式リストは一括変換しない。
 
-- 作品経路 / 作品プロファイル
+- 作品経路 / 作品プロファイル / ジャンル（なしの場合はその旨）
 - **創作技法契約**（葉の契約。索引を selected に混ぜない）:
   - **pack_id**（任意）: `_how_to.example/howto_packs/<id>.yaml`。作業用 `_how_to/howto_packs/<id>.yaml` があればそれを自己完結として使う。既存作品へ自動では付けない。葉列挙（案 A）のままでよい
   - **pack_add** / **pack_exclude**: パックとの差分
   - **selected**: 各葉の `relative_id`、role、why、`standard_path` / `working_path` / `effective_path`、`bound_at`。status は `selected` のみ。パック展開分と重複して書いてよい
-  - **not_applicable**: プロファイル上の必須候補の見送り、または `genre/*` のようなグループ。カタログ全未選択は書かない。pattern または `relative_id` と why
+  - **not_applicable**: プロファイル・ジャンル上の必須候補の見送り、または経路・プロファイル・ジャンルから外れるグループ（例: ジャンル軸が「なし」のときの `genre/*`）。カタログ全未選択は書かない。pattern または `relative_id` と why
   - **選定補助**（任意）: 開いた索引パス。作業用索引があるときは、標準だけにあって作業用に無い葉の `relative_id` を列挙してよい。後工程の再読義務は無い。selected にしない
 - 発動したユーザスキル（なければ非該当理由）
 - pick の有無（使った場合: `list_id`・seed・採用結果。使わない場合: 非該当理由）
