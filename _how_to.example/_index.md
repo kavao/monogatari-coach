@@ -76,3 +76,5 @@
    - 執筆の開始時・終了時に参照・更新することで、長期的な執筆の継続性を担保する。
 14.（カクヨム向けルビ）雛形 `skills/kakuyomu-convert/`
    - ユーザ作業用に `_how_to/skills/kakuyomu-convert/` へコピーして使う。最短手順は `USER_HINTS.md`（**コピー**／**カクヨムプラグイン**の2点）。`kakuyomu.csv.example` は同梱。実装は `_how_to/tools/kakuyomu_ruby_apply.py`
+15. physical_assessment.md
+   - フィジカルアセスメント・身体観察執筆参照資料（視診・触診・聴診・問診、ケアと観察の二重性、バイタル・スケール目安、描写チェックリスト）。医療・看護・病棟・看病場面を詳細に描く作品で選定する。既定では読まない。
