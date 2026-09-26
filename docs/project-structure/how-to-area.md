@@ -10,7 +10,7 @@
 
 | ファイル例 | 内容 |
 |-----------|------|
-| `novelcore.md` | 小説の文法・構成の一般原則 |
+| `novelcore.md` | 本文の文法（句読点・字下げ・会話）。企画・保存・挿絵の手順は各スキル |
 | `novel_structure.md` | 物語構造のパターン集 |
 | `episode/general/episode_reality.md` | リアリティの設計（説得力の配分・帰結払い・力み検出）。雛形は `_how_to.example/episode/general/episode_reality.md` |
 | `episode/general/episode_hindrance.md` | 足を引っ張るキャラクターの設計（失敗の許容・ヘイト返済）。雛形は `_how_to.example/episode/general/episode_hindrance.md` |
