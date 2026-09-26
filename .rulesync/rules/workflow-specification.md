@@ -609,7 +609,7 @@ lint / check 側では、`character_checklist.yaml` の profile に **`suggested
 
 1. `.env` と `config/image_generation.json` で provider と設定を確認する。
 2. `--dry-run` で provider、モデル、ジョブ数、保存先を確認する。
-3. dry-run 結果をユーザーに提示し、明示承認を得る。
+3. dry-run 結果をユーザーに提示し、明示承認を得る。キャラクタータグ一括（`image_provider_novel_tag_batch.py`）では、承認を求めるチャットに dry-run のプレビュー（provider、モデル、ジョブ数、保存先、ジョブ接頭辞）と、その実行に使った Python コマンドを書く。本番コマンドは同じフラグから `--dry-run` だけを外したものを同じチャットに書く。
 4. 承認後にのみ `--dry-run` なしで本番実行する。
 5. 本番後、dry-run で示した保存先に画像ファイルが存在することを確認してから完了報告する。
 

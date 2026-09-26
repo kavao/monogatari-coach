@@ -2,7 +2,7 @@
 
 本ファイルは、小説の挿絵を **Step 1: 計画 Markdown → Step 2: YAML IR** の二段パイプラインで管理するための創作技法雛形です。Step 1 は人間が読む独立 Markdown（`illustrations/plans/`）であり、章ごとに **0枚／1枚／複数枚** を選べます。Step 2 は画像生成向け YAML IR（`illustrations/pages/illustration_XX_pYY.yaml`）です。**表紙（`illustration_00`）は章挿絵とは別枠**として管理します。
 
-参照: `_how_to.example/novelcore.md` §5（候補3点）、`_how_to.example/meta.md` §3〜§3.2、スキル `illustration-prompt-ir`、`.rulesync/rules/concepts.md`「挿絵IR」。
+参照: 本ファイルの「候補場面（3点）」、`_how_to.example/meta.md` §3〜§3.2、スキル `illustration-prompt-ir`、`.rulesync/rules/concepts.md`「挿絵IR」。
 
 ---
 
@@ -81,7 +81,7 @@
 
 ### 候補場面（3点）
 
-<!-- novelcore §5 踏襲。視覚的インパクト・感情ピーク・作品の売りが伝わる場面を、具体的な描写で3点。 -->
+視覚的インパクト、感情ピーク、作品の売りが伝わる場面を3点書く。各点は、場面・画角・登場人物が分かる1文にする。本文には書かず、この計画に残す。
 
 1. 冒頭、主人公が古いノートを開き、初めて「誰かの名前」が書かれているページに指先が止まる瞬間。斜射の朝日が紙面を照らし、指と文字の距離が近い。
 2. 章中盤、狭い路地で初対面の人物とすれ違い、振り返った相手の瞳だけが画面いっぱいに入るクローズアップ。背景はボケた街灯。
