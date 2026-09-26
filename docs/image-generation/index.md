@@ -365,6 +365,8 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> \
 # dry-run 例（キャラタグ一括）
 python tools/image_provider_novel_tag_batch.py novels/<作品> --dry-run
 
+キャラタグ一括では、Monogatari Coach は本番の前に、dry-run の結果（provider、モデル、ジョブ数、保存先）と、実行した Python コマンド、および `--dry-run` を外した本番コマンドをチャットに出します。承認後に本番コマンドを実行します。
+
 # 全ジョブの positive 先頭へタグ追加（試行用。本番前に dry-run で prompt を確認）
 python tools/image_provider_novel_tag_batch.py novels/<作品> \
   --prepend-tags solo simple_background --dry-run

@@ -407,6 +407,7 @@ type params.json | python tools/image_provider_generate.py --json
 - **バリアント**: `prompt_variants[].danbooru_tags`（`variant_id` ごと）
 - **YAML 構造の検証**: スキル **`novel-tag-character-consistency`** および `python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>`
 - 実行前は必ず **`--dry-run`** でジョブ数・プロバイダ・プロンプト先頭を確認する。
+- キャラクタータグ一括の承認前チャットには、横断正本「画像生成: dry-run から本番まで」に従い、dry-run のプレビューと、dry-run に使った Python コマンド、および `--dry-run` を外した本番コマンドをコードブロックで書く。件数と保存先の要約だけでは足りない。
 
 ## ワークフロー（タグ → 画像）
 
