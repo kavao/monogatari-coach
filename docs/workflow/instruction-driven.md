@@ -164,23 +164,38 @@ python tools/novel_code_allocate.py novels/
 企画書と設計書を作ってください。
 ```
 
+企画ファイルを一つ新しく作りたいときは、次のように指定できます。
+
+```text
+proposal.md を作ってください。
+```
+
+既存作品の企画を再開するときは作品を指定します。企画の文脈なら「続きを頼む」「企画をそろえて」だけでも不足ファイルを確認します。執筆再開のカードと区別するため、「作品を再開」ではなく企画の再開と明記します。設計の洗練まで頼む場合は、そのことも明示します。
+
+```text
+novels/NNN_作品名/ の企画作業を再開してください。
+novels/NNN_作品名/ の設計を洗練してください。
+```
+
 **このように動きます:**
-1. `proposal.md`（作品名・ログライン・あらすじ・キャラ紹介）を生成する
-2. `design_specification.md`（テーマ・章構成・ストーリー相関図）を生成する
-3. 設計の不備を自己評価し、ストーリーを洗練させる
-4. 執筆前に必須ファイルの揃いを確認する
+1. 企画ファイルを一つ新しく作る場合や、指定した既存作品の企画を再開する場合も、明示的に不足確認を頼まれていなくても必須企画ファイルの不足を確認する
+2. 新規作品は資料の有無を確認して採番し、必須の企画ファイルと補助ファイルを揃える
+3. 既存作品は再採番せず、欠けているファイルだけを補って検査する。既存ファイルの内容を厚くするのは洗練を頼まれた場合に限る。欠けた `config.md` の METRON / CHRONOS は、確認があるまで OFF のままにする
+4. 新規企画は Gate A と Gate B まで進める。既存作品の企画開始・再開は、洗練または Gate B の再実施を明示されない限り Gate A で止め、「Gate A 完了・Gate B 未完了」と報告する
+5. 設計の洗練や Gate B の再実施を明示された場合は Gate B まで進める
+6. チャットの案出しだけでは作品フォルダを作らない。本文の続きや、必要ファイルが揃った作品の指定箇所だけの修正では、企画一式の補完に入らない
 
 **使われるツール:**
 
 ```bash
 # 必須ファイル・ディレクトリの揃いを確認 ※ 自動呼び出し
-python tools/novel_project_check.py novels/NNN_作品名
+uv run python tools/novel_project_check.py novels/NNN_作品名
 
 # Tag Mode 済みも必須にする場合
-python tools/novel_project_check.py novels/NNN_作品名 --require-tag
+uv run python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 
 # 漫画フォルダまで揃えたい場合
-python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
+uv run python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 ```
 
 企画・設計フェーズの詳しい確認観点は [Planning](planning.md) を参照してください。

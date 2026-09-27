@@ -8,7 +8,8 @@
 
 - 新しい小説を企画から起こしたい
 - 「一からストーリーを出して」「悪役令嬢ものの話を考えて」のように、物語案を一から出してほしい（案を出す前に、該当ジャンルの `genre/` 資料を読みます）
-- `proposal.md` や `design_specification.md` を作りたい
+- `proposal.md` など企画ファイルを一つ作りたい
+- 既存作品の企画作業を始める、または企画の文脈で「続きを頼む」「企画をそろえて」など再開したい
 - 既存の設計を読み直して、心理・章構成・人物プロフィールを厚くしたい
 - 執筆前に必要なファイルが揃っているか確認したい
 
@@ -24,6 +25,12 @@
 
 ```text
 新しい小説として起こしてください。
+```
+
+企画ファイルを一つ新しく作る依頼でも、Monogatari Coach は新規・既存の経路に応じて必須ファイルの不足を確認し、足りない兄弟と検査まで進めます。既存作品では「続きを頼む」「企画をそろえて」だけでも、企画作業の文脈なら不足確認から再開します。作品を指定して次のように頼めます。必須ファイルが揃った作品の一行修正や指定箇所だけの改稿は、この一式補完の対象になりません。
+
+```text
+novels/NNN_作品名/ の企画作業を再開してください。
 ```
 
 既存作品の設計を厚くしたい場合は、作品フォルダも添えます。
@@ -54,23 +61,25 @@ Monogatari Coach は、企画を **Gate A（骨格）** と **Gate B（知識・
 
 ```bash
 # 作品フォルダをまだ作っていない場合は、先にオンボーディングする
-python tools/novel_onboard.py novels/NNN_作品名
+uv run python tools/novel_onboard.py novels/NNN_作品名
 
 # 既に config.md がある場合の不足分補充
-python tools/novel_scaffold.py novels/NNN_作品名
+uv run python tools/novel_scaffold.py novels/NNN_作品名
 ```
 
 続いて人物構造とプロジェクト準備を確認します。
 
 ```bash
-python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
-python tools/novel_project_check.py novels/NNN_作品名
+uv run python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+uv run python tools/novel_project_check.py novels/NNN_作品名
 
 # METRON / CHRONOS が ON の作品で保存先も確認する
-python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
+uv run python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
 ```
 
-新規は採番から、既存作品の洗練では再採番しません。合否はコマンドの終了コードを正とします。
+新規は採番から、既存作品の企画再開では再採番しません。合否はコマンドの終了コードを正とし、実行した各 `novel_project_check.py` の終了コードを報告します。
+
+既存作品の企画を始める・再開する場合も、Monogatari Coach は不足ファイルだけを補い、その作品の Gate A を確認します。`config.md` が欠けていればフォルダ名の番号を `novel_ID` に使い、METRON / CHRONOS はユーザーの確認があるまで OFF のままにします。本文の続きにはこの不足確認を適用しません。
 
 `--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS / AUDIT_LOG と保存先を確認します。METRON / CHRONOS は行なしまたは `OFF` が対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。AUDIT_LOG は行なしが ON です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
 
@@ -95,17 +104,17 @@ python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-laye
 既存作品の `_meta.md` に旧形式のパス一覧がある場合、Monogatari Coach は一括では書き換えません。新しい形式は新規の企画完了と、ユーザーが Gate B の再実施を指示した作品だけに使います。旧形式（`how_to/` で始まるパス、プレフィックス無し、索引と葉の混在）は、後続の実在チェックで警告します。確認だけするときは次を使います（`_meta.md` は書き換えません。Gate A の必須ではありません）。
 
 ```bash
-python tools/novel_howto_contract_check.py novels/NNN_作品名
+uv run python tools/novel_howto_contract_check.py novels/NNN_作品名
 ```
 
-`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認します（`python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。詳細は [ユーザスキル](user-skills.md) を参照してください。
+`character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認します（`uv run python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。詳細は [ユーザスキル](user-skills.md) を参照してください。
 
 ## エピソード・トロープの抽選（一般向け）
 
 設計を厚くする際、一般向け（全年齢）のエピソードフックや進行パターンを抽選できます。
 
-1. `python tools/novel_pick_registry.py list --domain episode --visibility public` で ID を確認
-2. `python tools/novel_pick_registry.py pick <list_id>` で具体シチュエーションを抽選
+1. `uv run python tools/novel_pick_registry.py list --domain episode --visibility public` で ID を確認
+2. `uv run python tools/novel_pick_registry.py pick <list_id>` で具体シチュエーションを抽選
 3. 抽選結果を `design_specification.md` のストーリー節やシーン案へ取り込む
 
 詳細は [`_how_to.example/skills/episode-general-pick/SKILL.md`](../../_how_to.example/skills/episode-general-pick/SKILL.md) を参照してください。
@@ -117,28 +126,28 @@ python tools/novel_howto_contract_check.py novels/NNN_作品名
 執筆前には次のコマンドで不足がないか確認できます。
 
 ```bash
-python tools/novel_project_check.py novels/NNN_作品名
+uv run python tools/novel_project_check.py novels/NNN_作品名
 ```
 
 `novel_project_check.py` は既定で `character.md` の構造 lint（`plan` profile）も実行します。詳細だけ先に見る場合は次を使います。
 
 ```bash
-python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
+uv run python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan
 ```
 
 不足項目の追記案や、表形式から `- **ラベル**:` 形式への変換案も見たい場合は、次のようにします。
 
 ```bash
-python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
+uv run python tools/novel_character_md_check.py novels/NNN_作品名 --profile plan --suggest
 ```
 
 構造 lint を執筆前チェックから外す場合のみ `--no-character-structure` を付けます。
 
 ```bash
-python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
+uv run python tools/novel_project_check.py novels/NNN_作品名 --no-character-structure
 ```
 
-**Gate A が OK でも、Gate B（知識読込・厚い設計・洗練・`_meta.md` 記録）が終わるまで企画完了にはしません。** 両方そろったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
+**新規企画と、明示された既存作品の洗練は、Gate A と Gate B の両方を満たすまで企画完了にはしません。既存作品の企画開始・再開は、洗練または Gate B 再実施の明示がなければ Gate A までで止め、「Gate A 完了・Gate B 未完了」と報告します。** Gate A だけの報告は企画完了ではありません。Gate A と Gate B がそろったら、本文執筆、Tag Mode、Manga Tag Mode へ進めます。Tag Mode で服・資料ポーズなど作品固有の `variant_id` が要る場合は、執筆前に `_meta.md` の**キャラタグ方針**（カスタム要素）へ列挙しておくとよいです（**テンプレート一式**の指示文は [instruction-driven.md §G](instruction-driven.md#g-キャラクター画像タグを作るtag-mode)）。
 
 ## 関連ページ
 

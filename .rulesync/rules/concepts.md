@@ -79,6 +79,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 ## Plan Mode の完了
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
+- 既存作品の企画開始・再開は、洗練または Gate B 再実施を明示されない限り Gate A までで止め、「Gate A 完了・Gate B 未完了」と報告する。これは企画完了ではない。
 - Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・`_meta.md` への実施記録。
 - Gate B の創作技法契約は、索引で選んだ **葉ファイルの selected** だけを `_meta.md` に残す。索引は選定補助であり再読対象ではない。新しい how_to は、明示の Gate B 再実施があるまで既存作品の selected に入らない。標準カタログへ葉を足すときは索引（または該当 README / 冒頭注記）と発動条件を書き、既存 selected は触らない。作業用索引があるときはそれが選定入口であり、標準だけの新葉は作業用へ追随するまで選定対象外（標準索引は発見用に併読する）。`pack_id` は任意の短縮であり、既存契約へ自動では付けない。
 - 評価の既定は契約外。`reader.md` 等の工程正本は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ selected（パック展開後）を再読する。
