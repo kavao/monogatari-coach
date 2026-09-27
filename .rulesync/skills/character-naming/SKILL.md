@@ -1,9 +1,9 @@
 ---
 name: character-naming
 description: >-
-  人物に名前を付けるとき、_how_to/name_creature.json などの命名資料と
-  tools/json_weighted_pick.py を使って候補を組み立て、作品文脈に照らして
-  不適切な候補を除外しつつ、ユーザーの明示指示を最優先で反映する。
+  人物名を命名資料や必要に応じた抽選で考え、作品文脈に合わせる。
+  漢字の当て字・義訓・既存の読みを活かした漢字エンブレム風の命名や改修では
+  kanji-emblem-naming と連携する。「和風」「漢字の人物名」だけでは切り替えない。
 targets: ["*"]
 ---
 
@@ -12,7 +12,7 @@ targets: ["*"]
 人物名を LLM の思いつきだけで決めず、**命名資料・スキル・機械抽選**を土台にしながら、作品文脈に合う名前へ絞り込む。
 
 - **原則**: 命名時は `_how_to/name_creature.json` などの資料を参照する。
-- **抽選が必要**: 候補の選定やばらつき付けには `tools/json_weighted_pick.py` を使う。
+- **抽選**: 通常の候補選定でランダム性が必要なときは `tools/json_weighted_pick.py` を使う。漢字エンブレム命名の創作的な組合せでは抽選は必須ではない。
 - **そのまま採用しない自由**: 作品文脈に照らして不適切なら、スキル出力や抽選結果をそのまま採用しない。
 - **最優先**: ユーザーから別途指示がある場合は、それを最優先する。
 
@@ -40,6 +40,14 @@ targets: ["*"]
 - 抽選ルール: `.rulesync/skills/weighted-pick/SKILL.md`
 - 作家性や文体の補助確認: `writers/.../writer_profile.md`
 - 作品文脈の確認先: `proposal.md`, `design_specification.md`, `character.md`, `world.md`, `_meta.md`
+
+## 漢字エンブレム命名との分担
+
+- 漢字の当て字、義訓、漢字エンブレム風の表記、既存の読みを保った漢字改修を求められたら、`.rulesync/skills/kanji-emblem-naming/SKILL.md` を参照する。
+- 人物設定、文化圏、既存人物との識別は本スキルで確認し、字と読みの組合せは `kanji-emblem-naming` で扱う。
+- 「和風」「漢字の人物名」だけでは漢字エンブレム用の手順に切り替えない。
+- 漢字エンブレムとして意図した難読表記を「ルビ前提」と明示した場合、「読みにくい・誤読されやすい」ことだけを理由に除外しない。指定読者にルビが届かない、読み上げられない、ユーザー条件に反するなど、用途上の問題は別に判断する。
+- チーム名・作品名・技名など人物名以外の命名では、本スキルの人物命名資料・抽選手順を要求せず、漢字エンブレム用スキルを直接使う。
 
 ## 基本手順
 
@@ -90,6 +98,8 @@ targets: ["*"]
 
 回避するときは、**不適切な理由を短く示したうえで代替案を出す**。
 
+ただし、漢字エンブレム命名で難読を意図し「ルビ前提」と明示した候補は、読みにくさや誤読可能性だけでは除外しない。ルビのない媒体で使うなど、用途上の具体的な問題がある場合はその理由を示して判断する。
+
 ## 実行例
 
 **推奨（選定レジストリ経由）**:
@@ -110,6 +120,7 @@ python tools/json_weighted_pick.py _how_to/name_creature.json -p fantasy_male_cr
 ## エージェント向け運用
 
 - 人物命名を頼まれたら、まずこのスキルを使う。
+- 漢字の当て字・義訓・既存名の漢字エンブレム風改修では、上記の分担に従って `kanji-emblem-naming` を併用する。
 - ランダム性や候補抽出が必要なら、`weighted-pick` の定義に従って `tools/json_weighted_pick.py` を実行する。
 - 抽選結果は**候補生成の土台**であり、最終決定そのものではない。作品文脈に合わなければ除外してよい。
 - ただし、除外した場合は独断で黙って捨てず、理由を短く説明する。
@@ -121,3 +132,4 @@ python tools/json_weighted_pick.py _how_to/name_creature.json -p fantasy_male_cr
 - 命名資料: `_how_to/name_creature.json`
 - 抽選スクリプト: `tools/json_weighted_pick.py`
 - 関連スキル: `.rulesync/skills/weighted-pick/SKILL.md`
+- 漢字エンブレム命名: `.rulesync/skills/kanji-emblem-naming/SKILL.md`

@@ -7,7 +7,9 @@ globs: ["**/*"]
 
 # Monogatari Coach ルートルーター
 
-`overview.md`を読み込みました！
+各新規 Agent 会話の最初の応答には、起動確認として次の定型句を必ずそのまま含める。
+
+`overview.mdを読み込みました！`
 
 このファイルは安全規則と参照先だけを定義する。長い手順はスキル、詳細な横断仕様は `workflow-specification.md`、人間向け操作は `docs/` を参照する。
 
