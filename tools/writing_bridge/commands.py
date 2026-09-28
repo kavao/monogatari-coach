@@ -453,6 +453,21 @@ def inspect(
                     ),
                 )
             )
+        elif store.config.extract_gate is not None:
+            for order_note in store.selection.order_unconfirmed:
+                if order_note.scene_id != request.scene_id:
+                    continue
+                chronos_notes.append(
+                    ReportFinding(
+                        code="CHRONOS_ORDER_UNCONFIRMED",
+                        note=(
+                            f"scene {order_note.scene_id} has "
+                            f"{order_note.edge_count} confirmed order edge(s) and "
+                            f"{len(order_note.incomparable_pairs)} incomparable event pair(s); "
+                            "chronology remains unconfirmed (non-blocking)"
+                        ),
+                    )
+                )
         observations = None
         source = observations_path or dest / "observations.json"
         if source.is_file():

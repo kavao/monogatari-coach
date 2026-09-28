@@ -29,11 +29,13 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 1. 作品フォルダに `chronos/` を置く（`python tools/chronos_cli.py init <作品>`）。既存の `chronos/` は上書きしない。
 2. イベントは章単位 YAML に複数件収容する。必須は `id` と `title` のみ。日付は省略してよい。
-3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM は呼ばない。
+3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM / provider を呼ばず、原稿も読まない。
 4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。挿絵・タグ YAML も書き換えない。
 5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` は参考の両端だけとし、執筆接続は `writing_bridge_cli.py` が `links` で明示する。
 6. 人物状態を使う作品だけ `chronos.config.yaml` の `character_state.dimensions` を宣言する。次元名と値は作品が付ける。`init` 雛形は次元なしのままにする。
 7. 状態ありの check は CHR010（非法遷移）・CHR011（所在観測）・CHR013（未確定順序）を報告する。CHR012（挿絵 variant）は `rules.CHR012` と `illustration_bind` が揃ったときだけ走る。循環や CHR013 ではその人物の状態を捏造しない。
+
+`extract_gate` がある作品では、CLI 外で用意した候補文書を `chronos extract` で検証し、出典 span / digest を付けて `.cache/extract/` に保存できる。extract は provider を呼ばず、候補を `events/` に書かない。`approve` が通ったときだけ、場面の章番号から決めたイベント章ファイルへ保存する。承認済みイベントの更新案は `list` で識別し、`diff` の確認後に `approve --confirm-update` で再承認する。却下しても元イベントの承認状態は維持する。ロック欄は作者が `approve --lock` で指定し、承認後の順序グラフで候補が CHR001 循環に参加するときは拒否する。`include` は EventType のリストであり、profile ごとに明示する。`chapter-turn` は `night-step` から型を継承しない。ゲート未設定作品は原稿から抽出せず、従来どおり検査する。抽出・承認は執筆完了条件にしない。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
@@ -41,7 +43,7 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
 
-METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。対象場面にイベントが無いまま writing_bridge を inspect した場合は、`CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として report に残し、`chronos_registered: success` とみなさない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
+METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。`extract_gate` を設定した作品は、provider を呼ばない `chronos extract` で外部作成済み候補文書を検証・照合し、作者承認後にイベントへ反映できる。ゲート未設定作品は従来どおり原稿から抽出しない。当該章のイベント手入力も引き続き使える。対象場面に有効イベントが無いまま writing_bridge を inspect した場合は、`CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として report に残し、`chronos_registered: success` とみなさない。ゲート設定時に順序比較できないイベント対がある場合は、`CHRONOS_ORDER_UNCONFIRMED` と辺数を report に記録するが、inspect を失敗させない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
 
 ## 執筆接続の起動判定
 

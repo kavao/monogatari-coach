@@ -103,6 +103,26 @@ def find_cycles(graph: OrderGraph) -> list[list[str]]:
     return cycles
 
 
+def strongly_connected_component(graph: OrderGraph, node: str) -> set[str]:
+    """Return the nodes mutually reachable with ``node``."""
+
+    if node not in graph.successors:
+        return set()
+
+    def reachable(adjacency: dict[str, list[str]]) -> set[str]:
+        seen = {node}
+        stack = [node]
+        while stack:
+            current = stack.pop()
+            for neighbor in adjacency.get(current, []):
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    stack.append(neighbor)
+        return seen
+
+    return reachable(graph.successors) & reachable(graph.predecessors)
+
+
 def topological_order(graph: OrderGraph, preferred: list[str]) -> list[str]:
     """安定なトポロジカル順。循環があるノードは preferred の末尾に残す。"""
 
