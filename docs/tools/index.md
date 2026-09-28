@@ -519,7 +519,7 @@ python tools/novel_code_allocate.py novels/
 | `ellipsis_wrong_unicode` | 単独「…」（U+2026 × 1） | warning | default/full |
 | `dialogue_trailing_period` | 閉じカギ括弧直前の句点（`。」`） | warning | default/full |
 | `dialogue_leading_indent` | セリフ行頭の全角スペース（`　「`） | warning | grammar/full |
-| `paragraph_indent` | 地の文の行頭インデント不足 | warning | grammar/full |
+| `paragraph_indent` | 地の文の行頭インデント不足（見出し直後の第1行も含む） | warning | grammar/full |
 | `punctuation_consecutive` | `。。` `、、` など句読点の連続 | **error** | grammar/full |
 | `ascii_comma_in_prose` | 英数字以外の直後の半角 `,`（`うん,そう` 等） | warning | grammar/full |
 | `empty_dialogue` | 空のカギ括弧 `「」` | warning | grammar/full |

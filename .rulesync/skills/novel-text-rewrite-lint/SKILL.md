@@ -114,7 +114,7 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 - `dialogue_leading_indent`: セリフ行頭の全角スペース `　「`（warning）— §1: `「`/`『` 行はインデント不要
 
 ### D. 段落インデント（stateful）
-- `paragraph_indent`: 地の文行頭に全角スペースがない（warning）— §1: `「`/`『` 行・Markdown 非本文要素は除外
+- `paragraph_indent`: 地の文行頭に全角スペースがない（warning）— 見出し直後の第1行も含む。除外は `「`/`『` 行と Markdown 非本文要素のみ
 
 ### E. 文法クイックチェック
 - `punctuation_consecutive`: 句読点の連続 `。。` `、、`（error）
