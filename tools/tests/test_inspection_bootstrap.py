@@ -47,6 +47,17 @@ def test_explicit_off_is_recorded_and_does_not_prepare_layer_dirs(tmp_path: Path
     assert not (work / "chronos").exists()
 
 
+def test_unlinked_flags_are_rejected_before_writing(tmp_path: Path) -> None:
+    work = tmp_path / "005_片側"
+    work.mkdir()
+
+    with pytest.raises(InspectionBootstrapError, match="同じ値"):
+        initialize_new_layers(work, 5, "片側", metron="ON", chronos="OFF")
+
+    assert not (work / "config.md").exists()
+    assert not (work / "_metron").exists()
+
+
 def test_existing_config_is_never_overwritten(tmp_path: Path) -> None:
     work = tmp_path / "003_既存"
     work.mkdir()

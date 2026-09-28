@@ -56,13 +56,14 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は独立した ON / OFF 値として読む。
+- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
+- METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値（行なしは OFF）が食い違う config.md は、自動ワークフローでは設定エラーとする。新規作成の確認・明示 OFF・一時停止も両方同時に扱う。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
 - 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
-- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。
-- METRON ON は当該作品の writing_bridge 場面作業（修復と正本反映）を承認済みと扱う。止めの明示があるときだけ publish しない。CHRONOS ON だけでは正本反映の承認にしない。課金生成・イベント上書き・画像は対象外。
+- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で**既にある本文**の完了を取り消さない。これから書く新規場面には使わず、`prepare` 前に `_novel_text` を増やす根拠にしない。
+- ON は当該作品の writing_bridge 場面作業（修復と正本反映）を承認済みと扱う。止めの明示があるときだけ publish しない。課金生成・イベント上書き・画像は対象外。
 
 ## 執筆接続（writing_bridge）
 
@@ -70,10 +71,10 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - CHRONOS ON の対象場面に有効イベントが無いときは、writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残す。ゲート設定時に順序比較できないイベント対があれば、辺数つき `CHRONOS_ORDER_UNCONFIRMED` を非ブロッキング note として残す。イベント未登録を `chronos_registered: success` とみなさない。ゲート未設定作品からは原稿を抽出しない。
 - 同一受領候補の inspect は既存の metrics / spans を再利用する。保存用 run は `inspect --from-run` で本文 hash が一致する observations を流用する。`--from-run` は `run-\d{4,}` に限り、observations 欠落は UNKNOWN_REF、不一致は STALE とする。
 - 修復が active のあいだ、C1 未記録は report に残すが inspect を失敗にしない。完了後と保存前は従来どおり未記録で止める。CHRONOS ON の初回 inspect の前に observations を書く（現行は未記録で exit 1）。座標下書きは `locate-quote`。inspect と同じ版検証のあと、一意一致だけを出し、重複は推測しない。`publish` は C1 成功前に正本を書かない。
-- 正本反映は `permissions.publish` がある run の `publish` だけを使う。METRON ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
+- 正本反映は `permissions.publish` がある run の `publish` だけを使う。ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
 - 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。
 - `_meta.md` のストーリー反映は CLI の外で `novel-story-reflection` が行う。
-- METRON ON の新規場面は、契約と Beat を `prepare` 前に置き、初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
+- ON の新規場面（既存章への場面追記を含む）は、単一章でも複数章でも、ハッシュ一致の active run が無ければ従来経路へ落ちず、契約と Beat を置いて `prepare` する。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
 - シーン床到達かつ必須修復なしなら `repair-begin` しない（`REPAIR_NOT_NEEDED`）。必須修復が残れば `auto` でも begin する。明示 Deepen は `--intent explicit_deepen`。`--scope beats` は指定外の助言 Deepen を出さない。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。`--from-run` は CHRONOS ON かつ observations があるときだけ。`inspect` の `status` / `report.md` は required と advisory を分ける。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 
 ## Plan Mode の完了

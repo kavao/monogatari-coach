@@ -22,6 +22,17 @@ def test_dry_run_reports_default_decision_without_creating(tmp_path: Path, monke
     assert not (root / "novels" / "001_試験作品").exists()
 
 
+def test_unlinked_flags_are_rejected_before_creating(tmp_path: Path, monkeypatch, capsys) -> None:
+    root = tmp_path
+    (root / "novels").mkdir()
+    monkeypatch.setattr(novel_onboard, "repo_root", lambda: root)
+
+    assert novel_onboard.main(["片側作品", "--metron", "ON", "--chronos", "OFF"]) == 2
+
+    assert "同じ値" in capsys.readouterr().err
+    assert not (root / "novels" / "001_片側作品").exists()
+
+
 def test_new_onboard_writes_flags_and_layers(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path
     (root / "novels").mkdir()

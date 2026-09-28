@@ -121,6 +121,13 @@ def main(argv: list[str] | None = None) -> int:
         help="新規作品の CHRONOS（既定: ON。OFF は明示指定）",
     )
     args = p.parse_args(argv)
+    if args.metron != args.chronos:
+        print(
+            "error: METRON と CHRONOS は同じ値にしてください"
+            f"（METRON={args.metron}, CHRONOS={args.chronos}）",
+            file=sys.stderr,
+        )
+        return 2
 
     root = repo_root()
 

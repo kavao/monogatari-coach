@@ -154,6 +154,11 @@ def initialize_new_layers(
     # 値の検証を先に済ませてから、config.md の実値を正として扱う。
     requested_metron = _flag(metron, name="METRON")
     requested_chronos = _flag(chronos, name="CHRONOS")
+    if requested_metron is not requested_chronos:
+        raise InspectionBootstrapError(
+            "METRON と CHRONOS は同じ値にしてください: "
+            f"METRON={requested_metron.value}, CHRONOS={requested_chronos.value}"
+        )
     actions: list[tuple[str, str]] = []
 
     config, status = create_initial_config(

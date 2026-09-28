@@ -94,7 +94,7 @@ uv run python tools/env_check.py
 
 **このように動きます:**
 1. 作品名・ジャンル・ログライン・主人公について必要最低限の質問をする
-2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ）
+2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ。2つは連動し、両方 ON か両方 OFF にする）
 3. 生成した内容を評価・洗練して、執筆できる状態まで整える
 4. 次のステップ（執筆・タグ作成など）を提案する
 
@@ -222,7 +222,7 @@ uv run python tools/novel_project_check.py novels/NNN_作品名 --require-manga-
 第2章の前半を執筆してください。
 ```
 
-METRON または CHRONOS が ON の作品では、これだけで接続が起動します。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
+METRON / CHRONOS が ON の作品では、第1章の初稿や単一章の依頼でも、これだけで接続が起動します。2つのフラグは連動し、片方だけ ON の `config.md` は設定エラーとして止まります。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
 
 ```text
 この場面をDeepenしてください。
