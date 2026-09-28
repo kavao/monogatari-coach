@@ -663,8 +663,10 @@ def main(argv: list[str] | None = None) -> int:
         except (FileNotFoundError, ValueError, KeyError) as e:
             print(f"error: --workflow: {e}", file=sys.stderr)
             return 2
-        if novelai_portion_id is None and wf.get("novelai_portion_id"):
-            novelai_portion_id = str(wf["novelai_portion_id"])
+        if novelai_portion_id is None and "novelai_portion_id" in wf:
+            from novel_meta_yaml import novelai_portion_id_token  # noqa: E402
+
+            novelai_portion_id = novelai_portion_id_token(wf.get("novelai_portion_id"))
         if novelai_ref_strength is None and wf.get("strength") is not None:
             novelai_ref_strength = float(wf["strength"])
         if novelai_ref_ie is None and wf.get("information_extracted") is not None:
@@ -780,11 +782,11 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.workflow:
         print(f"workflow: {args.workflow}")
+    print(
+        f"novelai_reference: {len(novelai_ref.paths)} file(s) "
+        f"(source={novelai_ref.source})"
+    )
     if novelai_ref.paths:
-        print(
-            f"novelai_reference: {len(novelai_ref.paths)} file(s) "
-            f"(source={novelai_ref.source})"
-        )
         print(
             f"  strength_multiplier={novelai_ref.strength} "
             f"ie_multiplier={novelai_ref.information_extracted}"

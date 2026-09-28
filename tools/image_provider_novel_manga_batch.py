@@ -1065,12 +1065,13 @@ def resolve_novelai_reference(
     cli_information_extracted: float | None = None,
 ) -> NovelaiReferenceResolution:
     """NovelAI Vibe / ポーション: CLI > 作品 _meta.yaml > .env > 既定。"""
-    _disabled_portion = frozenset({"none", "off", "false", "0", "disabled"})
-    if (
-        portion_id is not None
-        and str(portion_id).strip().lower() in _disabled_portion
-        and not cli_paths
-    ):
+    from novel_meta_yaml import (  # noqa: E402
+        is_disabled_novelai_portion_id,
+        novelai_portion_id_token,
+        yaml_novelai_portion_choice,
+    )
+
+    if portion_id is not None and is_disabled_novelai_portion_id(portion_id) and not cli_paths:
         return NovelaiReferenceResolution(
             paths=[],
             strength=resolve_novelai_reference_strength(cli_strength, root),
@@ -1100,7 +1101,29 @@ def resolve_novelai_reference(
         )
 
     if novel_dir is not None:
-        from novel_meta_yaml import resolve_novelai_portion
+        from novel_meta_yaml import load_meta_yaml, resolve_novelai_portion  # noqa: E402
+
+        meta = load_meta_yaml(novel_dir)
+        yaml_default = ""
+        if isinstance(meta, dict):
+            novelai_meta = meta.get("novelai")
+            if isinstance(novelai_meta, dict):
+                yaml_default = yaml_novelai_portion_choice(
+                    novelai_meta, "portion_default"
+                )
+        if portion_id is not None and novelai_portion_id_token(portion_id) != "":
+            effective_portion = novelai_portion_id_token(portion_id)
+        else:
+            effective_portion = yaml_default
+        if is_disabled_novelai_portion_id(effective_portion) and not cli_paths:
+            return NovelaiReferenceResolution(
+                paths=[],
+                strength=resolve_novelai_reference_strength(cli_strength, root),
+                information_extracted=resolve_novelai_reference_information_extracted(
+                    cli_information_extracted, root
+                ),
+                source=f"_meta.yaml#{effective_portion or 'none'}",
+            )
 
         try:
             portion = resolve_novelai_portion(
@@ -3163,7 +3186,12 @@ def main(argv: list[str] | None = None) -> int:
             ("aspect_ratio", "aspect_ratio"),
         ):
             if getattr(args, attr) is None and wf_key in wf:
-                setattr(args, attr, wf[wf_key])
+                val = wf[wf_key]
+                if attr == "novelai_portion_id":
+                    from novel_meta_yaml import novelai_portion_id_token  # noqa: E402
+
+                    val = novelai_portion_id_token(val)
+                setattr(args, attr, val)
         print(f"workflow={args.workflow!r} を適用しました", file=sys.stderr)
 
     # source の最終デフォルト（CLI/workflow どちらも未指定なら step1-panels）
@@ -3398,11 +3426,11 @@ def main(argv: list[str] | None = None) -> int:
         print("omit_panel_background: true (step1-panels)")
     if include_panel_summary and args.source == "step1-panels":
         print("include_panel_summary: true (panels[].summary_en をベースタグに併用)")
+    print(
+        f"novelai_reference: {len(novelai_ref_paths)} file(s) "
+        f"(source={novelai_ref_source})"
+    )
     if novelai_ref_paths:
-        print(
-            f"novelai_reference: {len(novelai_ref_paths)} file(s) "
-            f"(source={novelai_ref_source})"
-        )
         for ref in novelai_ref_paths:
             print(f"  - {ref}")
         print(

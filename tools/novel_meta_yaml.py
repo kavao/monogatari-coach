@@ -21,6 +21,35 @@ META_YAML_FILENAME = "_meta.yaml"
 LEGACY_META_YML_FILENAME = "_meta.yml"
 SUPPORTED_VERSION = 1
 META_YAML_TEMPLATE = Path("_how_to.example") / "_meta.yaml.example"
+DISABLED_NOVELAI_PORTION_IDS = frozenset({"none", "off", "false", "0", "disabled"})
+
+
+def novelai_portion_id_token(value: Any) -> str:
+    """CLI / YAML のポーション ID を比較用トークンに正規化する。
+
+    PyYAML は ``off`` / ``false`` を bool False、``Null`` / ``~`` を None にする。
+    未引用の ``none`` は文字列のまま残る。V5（Vibe なし）ではこれらを
+    ``DISABLED_NOVELAI_PORTION_IDS`` と同一視し、先頭ポーションへ落とさない。
+    """
+    if value is None:
+        return "none"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value == 0:
+        return "0"
+    return str(value).strip()
+
+
+def yaml_novelai_portion_choice(novelai: dict[str, Any], key: str) -> str:
+    """``novelai[key]`` が無いときは空文字。在るときは正規化トークン。"""
+    if key not in novelai:
+        return ""
+    return novelai_portion_id_token(novelai.get(key))
+
+
+def is_disabled_novelai_portion_id(value: Any) -> bool:
+    token = novelai_portion_id_token(value)
+    return bool(token) and token.lower() in DISABLED_NOVELAI_PORTION_IDS
 
 
 @dataclass(frozen=True)
@@ -252,16 +281,30 @@ def resolve_novelai_portion(
     if not isinstance(portions, dict) or not portions:
         return None
 
-    default_id = str(novelai.get("portion_default", "") or "").strip()
-    fallback_id = str(novelai.get("portion_fallback", "") or "").strip()
-    chosen = (portion_id or default_id or "").strip()
+    default_id = yaml_novelai_portion_choice(novelai, "portion_default")
+    fallback_id = yaml_novelai_portion_choice(novelai, "portion_fallback")
+    if portion_id is not None and novelai_portion_id_token(portion_id) != "":
+        chosen = novelai_portion_id_token(portion_id)
+    else:
+        chosen = default_id
+    if is_disabled_novelai_portion_id(chosen):
+        # V5 など Vibe 非対応モデル向け。fallback の cross_flat へ落とさない。
+        return None
     if not chosen:
         chosen = next(iter(portions.keys()))
 
     try_ids: list[str] = [chosen]
-    if fallback_id and fallback_id not in try_ids:
+    if (
+        fallback_id
+        and fallback_id not in try_ids
+        and not is_disabled_novelai_portion_id(fallback_id)
+    ):
         try_ids.append(fallback_id)
-    if default_id and default_id not in try_ids:
+    if (
+        default_id
+        and default_id not in try_ids
+        and not is_disabled_novelai_portion_id(default_id)
+    ):
         try_ids.append(default_id)
 
     last_err: FileNotFoundError | None = None
