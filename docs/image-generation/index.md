@@ -498,7 +498,7 @@ python tools/image_provider_novel_manga_batch.py novels/051_神のダンジョ�
   --aspect-ratio manga_b5_portrait --resolution 2k
 ```
 
-実行後、`manga/_assets/manga_01/comic/` に画像とメタ JSON が保存されます。2.0 本番では JSON の `response_model` が `grok-imagine-image-2.0` になります。
+実行後、`manga/_assets/manga_01/pages/` に画像とメタ JSON が保存されます。2.0 本番では JSON の `response_model` が `grok-imagine-image-2.0` になります。
 
 ### 漫画ページ生成（step2-pages / grok_pro）
 
@@ -608,12 +608,13 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 `
 
 | 種別 | 保存先 |
 |------|--------|
-| 漫画ページ / コマ | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（**`comic/` 直下が標準。ページ別サブフォルダは推奨しない**） |
+| 漫画コマ（`step1-panels`） | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（**`comic/` 直下が標準。ページ別サブフォルダは推奨しない**） |
+| 漫画ページ（`step1-pages` / `step2-pages`） | `novels/<作品>/manga/_assets/<manga_XX>/pages/`（**`pages/` 直下のみ**。生成 JSON・写植などの派生ファイルも同じ場所） |
 | 漫画・背景資料 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 | 挿絵 / 表紙 | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 | キャラクター立ち絵 | `novels/<作品>/tag/<romaji>/` |
 
-コマ画像は同一フォルダ内で `file_prefix`（例: `manga_01_p02_k03`）により区別する。`image_provider_novel_manga_batch --subdir-by-page` は例外的な用途のみ。
+コマ画像は同一フォルダ内で `file_prefix`（例: `manga_01_p02_k03`）により区別する。`image_provider_novel_manga_batch --subdir-by-page` は例外的な用途のみ。ページ画像（`step1-pages` / `step2-pages`）と一緒に指定するとエラーで止まる。
 
 フォルダ一括作成は `python tools/novel_image_layout.py scaffold <作品> --panels N`。挿絵は `illustrations/pages/illustration_XX_pYY.yaml` から `illustrations/_assets/illustration_XX/` を作成する。
 

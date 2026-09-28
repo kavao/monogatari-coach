@@ -360,7 +360,7 @@ NovelAIで本番生成して
 
 #### 漫画タグ画像
 
-漫画コマ画像では、漫画ページの正本である`manga/pages/*.yaml`を使用します。互換Markdownを使う場合も、Markdownを正本にせず、YAMLから出力されたものを参照します。画像は`manga/_assets/<manga_XX>/comic/`へ保存します。
+漫画コマ画像では、漫画ページの正本である`manga/pages/*.yaml`を使用します。互換Markdownを使う場合も、Markdownを正本にせず、YAMLから出力されたものを参照します。画像はコマなら`manga/_assets/<manga_XX>/comic/`、ページなら`manga/_assets/<manga_XX>/pages/`へ保存します。
 
 次の入力を順に行います。
 
@@ -375,7 +375,7 @@ OK
 本番生成して
 ```
 
-生成後、対象コマ数分のPNGと付随JSONが保存され、`project check --check-image-layout`などで保存先を確認できれば合格です。ページ全体を1枚で生成する場合は、コマ生成とは別のモードとして、dry-runで対象モードと保存先を確認します。
+生成後、対象コマ数分のPNGと付随JSONが保存され、`project check --check-image-layout`などで保存先を確認できれば合格です。ページ全体を1枚で生成する場合は、コマ生成とは別のモードとして、dry-runで対象モードと保存先（`manga/_assets/<manga_XX>/pages/`）を確認します。なお、`--check-image-layout`は確認のときに、足りない`comic/`・`pages/`・`backgrounds/`フォルダを作成します。
 
 #### 挿絵・表紙画像
 

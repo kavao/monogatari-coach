@@ -300,15 +300,16 @@ def test_local_generation_writes_local_frame_json(tmp_path: Path, monkeypatch) -
         ]
     )
     assert rc == 0
-    comic = novel / "manga" / "_assets" / "manga_01" / "comic"
-    sidecars = list(comic.glob("*.local_frame.json"))
+    pages = novel / "manga" / "_assets" / "manga_01" / "pages"
+    assert not (novel / "manga" / "_assets" / "manga_01" / "comic").exists()
+    sidecars = list(pages.glob("*.local_frame.json"))
     assert len(sidecars) == 1
     record = json.loads(sidecars[0].read_text(encoding="utf-8"))
     assert record["bubble_frame_mode"] == "local"
     assert record["text_mode"] == "none"
     assert record["bubbles_suppressed"] is True
     assert len(record["source_sha256"]) == 64
-    gen_json = next(comic.glob("*_fake.json"))
+    gen_json = next(pages.glob("*_fake.json"))
     merged = json.loads(gen_json.read_text(encoding="utf-8"))
     assert merged["bubbles_suppressed"] is True
     assert merged["source_sha256"] == record["source_sha256"]
@@ -366,10 +367,10 @@ def test_local_generation_resolves_mojibake_saved_paths(
         ]
     )
     assert rc == 0
-    comic = novel / "manga" / "_assets" / "manga_01" / "comic"
-    sidecar = next(comic.glob("*.local_frame.json"))
+    pages = novel / "manga" / "_assets" / "manga_01" / "pages"
+    sidecar = next(pages.glob("*.local_frame.json"))
     record = json.loads(sidecar.read_text(encoding="utf-8"))
-    png = next(comic.glob("*_fake.png"))
+    png = next(pages.glob("*_fake.png"))
     assert Path(record["saved_png"]).resolve() == png.resolve()
-    gen = json.loads(next(comic.glob("*_fake.json")).read_text(encoding="utf-8"))
+    gen = json.loads(next(pages.glob("*_fake.json")).read_text(encoding="utf-8"))
     assert gen["source_sha256"] == record["source_sha256"]

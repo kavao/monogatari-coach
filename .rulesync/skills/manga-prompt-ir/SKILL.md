@@ -71,7 +71,7 @@ targets: ["*"]
   `--negative-prompt` と `technical.negative_tags` を prompt 内の **`Do not include`** へ移し、API に渡す
   `negative_prompt` は空にする。旧来形式との比較は `--prompt-formatter tag_csv` で行える。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
-- コマ・ページ画像（`step1-panels` / `step1-pages` / `step2-pages`）の保存先は `manga/_assets/<manga_XX>/comic/`。
+- コマ画像（`step1-panels`）の保存先は `manga/_assets/<manga_XX>/comic/`、ページ画像（`step1-pages` / `step2-pages`）は `manga/_assets/<manga_XX>/pages/`（ページ IR の `manga/pages/*.yaml` とは別の場所）。
 - 背景・空間・反復オブジェクトの参照資料は **`background_concepts[]`** に書く（詳細は下記「`background_concepts[]`（Manga Tag Mode）」）。`--source background-concepts` で人物なしの背景資料画像を生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。

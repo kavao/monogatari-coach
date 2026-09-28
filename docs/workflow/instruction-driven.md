@@ -656,7 +656,7 @@ python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 1. `.env` のプロバイダ設定を確認する
 2. `--dry-run` でプロバイダ名・ジョブ数・保存先をチャットに提示する
 3. ユーザーの「OK」を受けてから本番実行する（承認なしには実行しない）
-4. `novels/<作品>/manga/_assets/<manga_XX>/comic/` に画像が保存されたことを確認して報告する
+4. コマは `novels/<作品>/manga/_assets/<manga_XX>/comic/`、ページは同じ章の `pages/` に画像が保存されたことを確認して報告する
 
 **使われるツール:**
 
@@ -921,7 +921,8 @@ Monogatari Coach は、チャット欄への書き込みだけでは作業を完
 | 漫画ページ（互換） | `novels/<作品>/manga/manga_XX.md`（**`novel_prompt_ir_export_md.py` で生成**。手書き・チャットのみは正本扱いにしない） |
 | 挿絵・表紙（正本） | `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` |
 | 生成画像（キャラ） | `novels/<作品>/tag/<romaji>/` |
-| 生成画像（漫画） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |
+| 生成画像（漫画コマ） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |
+| 生成画像（漫画ページ） | `novels/<作品>/manga/_assets/<manga_XX>/pages/` |
 | 背景資料画像 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 | 生成画像（挿絵・表紙） | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 

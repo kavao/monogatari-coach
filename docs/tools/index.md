@@ -916,7 +916,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
 生成画像の保存先:
-- コマ・ページ: `novels/<作品>/manga/_assets/<manga_XX>/comic/`
+- コマ（`step1-panels`）: `novels/<作品>/manga/_assets/<manga_XX>/comic/`
+- ページ（`step1-pages` / `step2-pages`）: `novels/<作品>/manga/_assets/<manga_XX>/pages/`
 - 背景資料: `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/`
 
 ---

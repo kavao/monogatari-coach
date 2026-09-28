@@ -46,7 +46,8 @@ novels/NNN_作品名/_novel_text/novel_text01.md を参照して、第1章の漫
 | 作成された YAML（正本） | `novels/<作品>/manga/pages/manga_XX_pYY.yaml` |
 | 検証結果（型・品質の警告） | コンソール出力 |
 | 互換 Markdown（可読副本） | `novels/<作品>/manga/manga_XX.md`（出力した場合のみ） |
-| 画像の保存先（コマ・ページ） | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（画像生成後） |
+| 画像の保存先（コマ） | `novels/<作品>/manga/_assets/<manga_XX>/comic/`（画像生成後） |
+| 画像の保存先（ページ） | `novels/<作品>/manga/_assets/<manga_XX>/pages/`（画像生成後。`manga/pages/*.yaml` とは別の場所） |
 | 背景資料 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 
 画像生成を実行するときは [Image Generation](index.md) の手順に従い、`--dry-run` で確認してから本番実行します。

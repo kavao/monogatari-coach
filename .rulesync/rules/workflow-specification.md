@@ -499,11 +499,14 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 必須:
 
 - キャラクター画像は `novels/<作品>/tag/<romaji>/` に保存する。
-- 漫画ページ・コマ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
+- 漫画のコマ画像（`step1-panels`）は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
+- 漫画のページ画像（`step1-pages` / `step2-pages`）は `novels/<作品>/manga/_assets/<manga_XX>/pages/` に保存する。生成 JSON・`*.local_frame.json`・`*_page_render_plan.json`・写植などの派生ファイルも PNG と同じ `pages/` に置く。
 - 漫画の背景資料画像は `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` に保存する。
+- 画像の `manga/_assets/<manga_XX>/pages/` と、ページ IR 正本の `manga/pages/*.yaml` は別物である。混ぜない。
 - 挿絵・表紙画像は `novels/<作品>/illustrations/_assets/<illustration_XX>/` に保存する。
-- コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。
-- ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。必要な場合だけ任意で使う。
+- コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。ページ画像は `manga_01_p02_step1page`（step1）/ `manga_01_p02`（step2）。
+- restyle 候補は元画像の置き場の下の `_restyle/` に置く（コマは `comic/_restyle/`、ページは `pages/_restyle/`）。
+- ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。コマだけ任意で使える。ページ画像には使わない（バッチはエラーにする）。
 
 参照:
 
@@ -1109,7 +1112,7 @@ Plan Mode では **Gate A（骨格）のあと Gate B（知識・厚さ・洗練
    - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
    - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/image_provider_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
-   - コマ画像は **`manga/_assets/<manga_XX>/comic/`** に展開する。背景資料は **`manga/_assets/<manga_XX>/backgrounds/`**（詳細は §2.2.2・スキル **novel-image-layout**）
+   - コマ画像は **`manga/_assets/<manga_XX>/comic/`**、ページ画像は **`manga/_assets/<manga_XX>/pages/`** に展開する。背景資料は **`manga/_assets/<manga_XX>/backgrounds/`**（詳細は §2.2.2・スキル **novel-image-layout**）
 10. illustrations/pages/illustration_XX_pYY.yaml（挿絵・表紙タグ正本・YAML IR）
    - 小説本文の場面・章扉・表紙向けの一枚絵（または明示した複合レイアウト）を YAML IR で管理する（スキル **illustration-prompt-ir**）。型は漫画ページと同じ `MangaPagePrompt` で、`meta.intent: illustration` とする。
    - YAML 上の **`panels[]` は漫画のコマではなく構成セル**（構図・配置の単位）。単体挿絵はセル1件を推奨。群像・複合構図が要る作品だけセルを複数にできる（§2.2.3）。
@@ -1316,7 +1319,7 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 詳細な手順は **`.rulesync/skills/manga-prompt-ir/SKILL.md`**、品質点検は **`.rulesync/skills/manga-tag-quality-gate/SKILL.md`**、操作コマンドは `docs/image-generation/manga-prompt-ir.md` を参照する。入口ルールとしては、本文正本とキャラクター正本を確認し、`manga/pages/*.yaml` を更新し、検証してから互換 Markdown や画像生成へ進むことだけを固定する。
 
 #### 画像ストック（漫画・コマ単位・推奨）
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「画像保存先」。漫画のコマ・ページ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/`、背景資料は `.../backgrounds/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「画像保存先」。漫画のコマ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/`、ページ画像は `.../pages/`、背景資料は `.../backgrounds/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
 
 #### 生成モードの用語統一（必須）
 横断正本は **`.rulesync/rules/workflow-specification.md`** の「生成モード用語」。操作説明と provider 対応は **`docs/image-generation/index.md`** の「生成モードとプロバイダの対応」を参照する。

@@ -5,10 +5,12 @@
 画像生成プロバイダへ連続実行する。
 
 保存先:
-  - コマ・ページ（step1-panels / step1-pages / step2-pages）: manga/_assets/<manga_stem>/comic/
+  - コマ（step1-panels）: manga/_assets/<manga_stem>/comic/
+  - ページ（step1-pages / step2-pages）: manga/_assets/<manga_stem>/pages/
   - 背景資料（background-concepts）: manga/_assets/<manga_stem>/backgrounds/
   file_prefix は <stem>_p<page>_k<koma> 等。
-  --subdir-by-page 指定時は comic/p<page>/ に保存（任意。推奨運用は comic/ 直下のみ）。
+  --subdir-by-page 指定時はコマを comic/p<page>/ に保存（任意。推奨運用は comic/ 直下のみ）。
+  ページ（step1-pages / step2-pages）とは併用できない。
   novel_image_layout の k01.. は「1ページ内のコマ用スロット」用の任意フォルダで、本スクリプト既定では未使用。
 前提: config/image_generation.json・各 provider の準備完了（tools/image_provider_generate.py と同じ）
 
@@ -119,6 +121,7 @@ PAGE_COMPILER_CHOICES = ("legacy", PAGE_COMPILER)
 TEXT_MODE_CHOICES = ("generate", "letter_later", "none")
 MANGA_ASSET_SUBDIR_BACKGROUND = "backgrounds"
 MANGA_ASSET_SUBDIR_COMIC = "comic"
+MANGA_ASSET_SUBDIR_PAGES = "pages"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV = "MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND"
 MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV = "MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY"
@@ -262,6 +265,10 @@ def resolve_manga_assets_stem_dir(manga_dir: Path, stem: str) -> Path:
 
 def resolve_manga_comic_output_dir(manga_dir: Path, stem: str) -> Path:
     return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_COMIC
+
+
+def resolve_manga_pages_output_dir(manga_dir: Path, stem: str) -> Path:
+    return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_PAGES
 
 
 PAGE_PANEL_QUALITY_TAGS = ("best_quality", "very_aesthetic", "ultra-detailed")
@@ -2258,7 +2265,11 @@ def iter_manga_jobs(
             )
     for md_path in paths:
         stem = md_path.stem
-        comic_dir = resolve_manga_comic_output_dir(manga_dir, stem)
+        out_dir = (
+            resolve_manga_pages_output_dir(manga_dir, stem)
+            if source in MANGA_PAGE_ASPECT_SOURCES
+            else resolve_manga_comic_output_dir(manga_dir, stem)
+        )
         if source == "step2-pages":
             extracted = extract_step2_page_jobs_for_file(
                 md_path,
@@ -2279,7 +2290,7 @@ def iter_manga_jobs(
                 character_anchors=character_anchors,
             )
         for j in extracted:
-            j["output_dir"] = comic_dir.as_posix()
+            j["output_dir"] = out_dir.as_posix()
             all_jobs.append(j)
     return all_jobs
 
@@ -2384,6 +2395,7 @@ def iter_yaml_manga_jobs(
         page_num = yaml_page_number(path, index)
         stem_assets = resolve_manga_assets_stem_dir(manga_dir, stem)
         comic_dir = stem_assets / MANGA_ASSET_SUBDIR_COMIC
+        pages_dir = stem_assets / MANGA_ASSET_SUBDIR_PAGES
         color_label = page_color_mode_label(page, override=color_mode_override)
         grok_page_text_mode: str | None = None
         include_grok_text_elements = False
@@ -2515,7 +2527,7 @@ def iter_yaml_manga_jobs(
                 "negative_prompt": bundle_negative,
                 "prompt_formatter": bundle_formatter,
                 "negative_mode": bundle_negative_mode,
-                "output_dir": comic_dir.as_posix(),
+                "output_dir": pages_dir.as_posix(),
             }
             if plan is not None:
                 if plan.ordered_image_inputs:
@@ -2641,7 +2653,7 @@ def iter_yaml_manga_jobs(
                 "negative_prompt": bundle_negative,
                 "prompt_formatter": bundle_formatter,
                 "negative_mode": bundle_negative_mode,
-                "output_dir": comic_dir.as_posix(),
+                "output_dir": pages_dir.as_posix(),
             }
             if plan is not None:
                 if plan.ordered_image_inputs:
@@ -2933,7 +2945,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--subdir-by-page",
         action="store_true",
-        help="保存先を manga/_assets/<stem>/comic/p01, p02, ...（Page 番号）の下に分ける",
+        help=(
+            "保存先を manga/_assets/<stem>/comic/p01, p02, ...（Page 番号）の下に分ける。"
+            "step1-pages / step2-pages とは併用できない（ページは pages/ 直下のみ）"
+        ),
     )
     p.add_argument(
         "--no-character-anchors",
@@ -3197,6 +3212,14 @@ def main(argv: list[str] | None = None) -> int:
     # source の最終デフォルト（CLI/workflow どちらも未指定なら step1-panels）
     if args.source is None:
         args.source = "step1-panels"
+
+    if args.subdir_by_page and args.source in MANGA_PAGE_ASPECT_SOURCES:
+        print(
+            "error: --subdir-by-page は step1-pages / step2-pages と併用できません"
+            "（ページは manga/_assets/<stem>/pages/ 直下に保存します）",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.page_compiler == PAGE_COMPILER:
         if args.input != "yaml" or args.source not in {"step1-pages", "step2-pages"}:
