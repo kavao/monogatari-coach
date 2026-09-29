@@ -497,3 +497,59 @@ def test_beat_type_vocab_matches_size_class_literal() -> None:
     for item in vocab.values():
         assert 1 <= int(item["default_weight"]) <= 5
         assert item["size_class"] in allowed_sizes
+
+
+def test_unknown_layout_template_id_is_quality_warning() -> None:
+    page = _page_with_layout_weights()
+    page["manga"]["layout_template_id"] = "no_such_template"
+    assert any("型ライブラリにありません" in w for w in _quality_warnings(page))
+
+
+def _page_with_applied_template(template_id: str) -> dict:
+    from manga_prompt_ir.layout_templates import (
+        LayoutChoice,
+        apply_layout_choice,
+        load_layout_templates,
+    )
+
+    page = _page_with_layout_weights()
+    template = load_layout_templates()[template_id]
+    choice = LayoutChoice(
+        template=template, fit=1.0, panel_weights=(), candidates=(), inversions=0, mismatch=False
+    )
+    return apply_layout_choice(page, choice)
+
+
+def test_applied_layout_template_has_no_warning() -> None:
+    page = _page_with_applied_template("p4_top_wide_mid_pair_bottom_wide")
+    warnings = _quality_warnings(page)
+    assert not any("layout_template_id" in w or "型の" in w or "型 '" in w for w in warnings)
+
+
+def test_layout_text_differing_from_template_is_quality_warning() -> None:
+    page = _page_with_applied_template("p4_top_wide_mid_pair_bottom_wide")
+    page["manga"]["panel_layout"] = "上段大ゴマ・下段2コマ"
+    page["panels"][1]["composition"]["layout"] = "下段右の小コマ"
+    warnings = _quality_warnings(page)
+    assert any("manga.panel_layout が型" in w for w in warnings)
+    assert any("panel 2: composition.layout が型" in w for w in warnings)
+
+
+def test_layout_template_id_panel_count_mismatch_is_quality_warning() -> None:
+    page = _page_with_layout_weights()
+    page["manga"]["layout_template_id"] = "p3_top_large_bottom_pair"
+    assert any("3コマの型" in w for w in _quality_warnings(page))
+
+
+def test_layout_en_differing_from_template_is_quality_warning() -> None:
+    page = _page_with_applied_template("p4_top_wide_mid_pair_bottom_wide")
+    page["panels"][1]["composition"]["layout_en"] = "full-width bottom large panel"
+    warnings = _quality_warnings(page)
+    assert any("panel 2: composition.layout_en が型" in w for w in warnings)
+
+
+def test_empty_layout_en_is_not_a_template_mismatch() -> None:
+    page = _page_with_applied_template("p4_top_wide_mid_pair_bottom_wide")
+    page["panels"][1]["composition"].pop("layout_en")
+    warnings = _quality_warnings(page)
+    assert not any("layout_en" in w for w in warnings)

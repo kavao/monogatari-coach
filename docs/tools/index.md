@@ -820,6 +820,23 @@ python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 --apply --no
 
 ---
 
+### `novel_manga_layout_apply.py` — コマ割りの型から矩形を起こす
+
+漫画ページ YAML の各コマの `weight` / `beat_type` から、最も重いコマが最大の枠になるコマ割りの型（`tools/manga_prompt_ir/data/panel_layout_templates.yaml`、1〜5コマ・20型）を選び、`layout_geometry`・`manga.layout_template_id`・コマ割りの文章（`manga.panel_layout` と各コマの `composition.layout` / `layout_en`）を書き込みます。同じ章の直前のページと同じ型は避けます。既定は提案の表示だけです。そういう型が無いページは書き込みません（`--allow-mismatch` で当てる）。
+
+```bash
+# 提案を表示する（YAML は書き換えない）。--name-dir で番号付きネーム画像も出す
+python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 \
+  --name-dir tools_temp/name_check
+
+# 問題なければ書き込む（既に layout_geometry があるページは --overwrite なしでは触らない）
+python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 --apply
+```
+
+schema 1.0 のページと 6コマ以上のページは対象外です。選び方と注意点は [漫画ページ IR の「コマ割りの型から矩形を起こす」](../image-generation/manga-prompt-ir.md#コマ割りの型から矩形を起こすnovel_manga_layout_applypy) を参照してください。
+
+---
+
 ## 画像生成関連
 
 画像生成の設定・プロバイダ選択・dry-run の詳細は [Image Generation](../image-generation/index.md) を参照してください。

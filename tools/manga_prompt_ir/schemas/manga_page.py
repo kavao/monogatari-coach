@@ -48,7 +48,7 @@ class MangaStyle(BaseModel):
     line_art: str | None = None
     screentone: str | None = None
     panel_layout: str | None = None
-    # schema 1.1。コマ割りの型ライブラリ（予定: data/panel_layout_templates.yaml）の ID。
+    # schema 1.1。コマ割りの型ライブラリ（data/panel_layout_templates.yaml）の ID。
     # 使うときは layout_geometry も必須（型から座標を起こした記録として持つ）。
     layout_template_id: str | None = None
     text_policy: str = "Japanese text must be legible"

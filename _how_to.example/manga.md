@@ -276,6 +276,7 @@ python tools/novel_prompt_ir_embed_snapshots.py novels/<作品>
 - 矩形は重ねず、コマの間に隙間を残します。見せゴマの矩形が一番大きくなっているかを確かめます。
 - `manga.panel_layout` と各コマの `composition.layout` には、同じ割りを日本語で書きます（例: 「上段の大ゴマ1・下段2コマ」）。
 - 決めた拍子と重みは、各コマの `beat_type`（上の表の拍子。`establishing` 導入 / `dialogue` 会話 / `reaction` 反応 / `action` 動作 / `showcase` 見せ / `climax` 山場 / `transition` 転換）と `weight`（1〜5。5 がそのページで最も見せたいコマ）に残せます。重いコマほど矩形を大きくします。
+- 矩形は、コマ割りの型（1〜5コマ・20型）から `tools/novel_manga_layout_apply.py` で起こせます。各コマに `weight` か `beat_type` を付けておくと、最も重いコマが一番大きい枠になる型が選ばれ、直前のページと同じ型は避けられます。`manga.panel_layout` と各コマの `composition.layout` も型に合わせて書き換わります。そういう型が無いページは書き換わらないので、重みを見直すか手で書きます。起こしたあとで手で直してもかまいません。
 - 既存の schema 1.0 ページは、`tools/novel_manga_ir_migrate.py` で 1.1 に移行してから矩形を書きます。移行ツールは矩形を書きません。
 - 手本: `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ・上段見せゴマ）、`tools/manga_prompt_ir/examples/manga_page_5panel.yaml`（5コマ・中段見せゴマ・左下で引き）。
 

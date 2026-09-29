@@ -379,7 +379,7 @@ python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル --apply
 | `layout_geometry.panels[]` | コマの矩形（`x` / `y` / `w` / `h` を 0〜1 で、左上原点）。`panels[]` と同じ順・同じ `panel_id` で書く。重なりとページ外は検証で落ちる。コマ数と大小の決め方は創作技法 [`_how_to.example/manga.md`](../../_how_to.example/manga.md) の「コマ割り・ページ割り」 |
 | `render_instruction.text_mode` | `generate`（絵と一緒に字を描く）/ `letter_later`（空の吹き出しにして後で載せる）/ `none`（文字を描かない）。`text_policy` の文言は同じ方針にそろえる。`text_policy` は「legible」「正確な文言で描く」なら generate、「後載せ」「空吹き出し」なら letter_later、「文字を描かない」「no text」なら none と読まれます。「文字が崩れる場合は余白を残す」のような保険の一文や、「日本語」だけの記述は方針として数えません |
 | `panels[].weight` / `size_class` / `beat_type`（任意・1.1） | コマの重み（1〜5。5 がそのページで最も見せたいコマ）、大きさの区分（`splash` / `large` / `medium` / `small` / `inset`）、拍子の種類（`establishing` 導入 / `dialogue` 会話 / `reaction` 反応 / `action` 動作 / `showcase` 見せ / `climax` 山場 / `transition` 転換）。語彙外の `beat_type` は検証で警告になります。重いコマほど `layout_geometry` の矩形を大きくします |
-| `manga.layout_template_id`（任意・1.1） | コマ割りの型の ID（型ライブラリは準備中）。書くときは `layout_geometry` も必須 |
+| `manga.layout_template_id`（任意・1.1） | コマ割りの型の ID（型は `tools/manga_prompt_ir/data/panel_layout_templates.yaml`。後述の `novel_manga_layout_apply.py` が書き込みます）。書くときは `layout_geometry` も必須。型ライブラリに無い ID、コマ数の食い違い、コマ割りの文章が型と違う場合は検証が警告します |
 | ファイル名 / `meta` | ファイル名（`manga_01_p01.yaml` 等）で章・ページを表現。`meta.intent: manga_page`、`reading_order: right_to_left`（または `left_to_right`）。ほかに `aspect_ratio`・`page_count` |
 | `manga.genre_tags[]` / `manga.visual_tags[]` / `manga.panel_layout` | 画風・モノクロ／カラーはここと `color_palette` で設定 |
 | `scene.time_of_day` | 任意。画像用英語は `time_of_day_en` |
@@ -492,19 +492,70 @@ character_snapshots: []
 
 ```bash
 # 移行計画を作る（正本は書き換えない）
-uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名   --dry-run --output tools_temp/migrate_plan.json   # 計画 JSON の保存先
+uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
+  --dry-run --output tools_temp/migrate_plan.json   # 計画 JSON の保存先
 ```
 
 計画 JSON の各ページの `unresolved` に `/render_instruction/text_mode` が出ていれば想定どおりです。内容を確認してから適用します。複数ページは `--only-page` を1ページずつ並べます（作品全体の一括適用はツールが拒否します）。
 
 ```bash
 # 計画を適用する（計画作成後にページが変わっていたら止まる）
-uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名   --apply-plan tools_temp/migrate_plan.json   --only-page manga/pages/manga_01_p01.yaml   --only-page manga/pages/manga_01_p02.yaml   --output tools_temp/migrate_apply.json         # 適用結果と復元用 manifest の場所
+uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
+  --apply-plan tools_temp/migrate_plan.json \
+  --only-page manga/pages/manga_01_p01.yaml \
+  --only-page manga/pages/manga_01_p02.yaml \
+  --output tools_temp/migrate_apply.json         # 適用結果と復元用 manifest の場所
 ```
 
 適用すると、ページの `schema_version` が `'1.1'` になり、作品フォルダの `_manga_ir_backup/` に元のファイルと復元用の manifest が残ります。元に戻したいときは、その manifest を `--restore-manifest` に渡します。
 
-そのあと各ページに `layout_geometry` と `render_instruction.text_mode` を書き（コマの重み `weight`・拍子 `beat_type` などの任意欄を付けるのもこの後です）、`novel_prompt_ir_validate.py --strict-quality` で検証してから、互換 Markdown を出し直します。
+そのあと各ページに `layout_geometry`（次節の CLI で起こせます）と `render_instruction.text_mode` を書き（コマの重み `weight`・拍子 `beat_type` などの任意欄を付けるのもこの後です）、`novel_prompt_ir_validate.py --strict-quality` で検証してから、互換 Markdown を出し直します。
+
+
+### コマ割りの型から矩形を起こす（`novel_manga_layout_apply.py`）
+
+このガイドを読むと、ページ YAML の `layout_geometry`（コマの矩形）を、手で数値を書かずにコマ割りの型から起こせます。
+
+型は `tools/manga_prompt_ir/data/panel_layout_templates.yaml` にある 1〜5コマ・20型です。Monogatari Coach はページごとに次の順で型を1つ選びます。
+
+1. 各コマの重み（`weight`。無ければ `beat_type` の既定の重み、それも無ければ 2）を見て、最も重いコマの枠が、ほかのどのコマの枠より小さくならない型だけを残します。読み順は入れ替えないので、「3コマ目が一番重いなら3コマ目の枠が一番大きい型」を選ぶ形になります。
+2. そのうえで、重いコマの枠が軽いコマの枠より小さくなる組（重みと面積の逆転）が最も少ない型に絞ります。
+3. 同じ章の直前のページと同じ型は外します。2ページ前と同じ型は選ばれにくくします。
+4. 残った型を、型の重みと、ページの拍子（`beat_type`）に向くかどうかで重み付けして、シード固定で抽選します。同じシード・同じ入力なら毎回同じ型になります。
+
+まず提案だけを表示します。YAML は書き換えません。`--name-dir` を付けると、番号付きのネーム画像（コマ枠だけの PNG）を書き出すので、大小を目で確かめられます。
+
+```bash
+# 提案を表示し、番号付きネーム画像を書き出す（YAML は書き換えない）
+uv run python tools/novel_manga_layout_apply.py novels/NNN_作品名 \
+  --manga-stem manga_01 \
+  --name-dir tools_temp/name_check          # ネーム画像の出力先
+```
+
+提案に問題がなければ書き込みます。
+
+```bash
+# layout_geometry・型 ID・コマ割りの文章を書き込む
+uv run python tools/novel_manga_layout_apply.py novels/NNN_作品名 \
+  --manga-stem manga_01 --apply
+```
+
+書き込むと、各ページで次がそろって書き換わります。画像生成には矩形と文章の両方が渡るため、食い違いを残さないようにしています。
+
+- `layout_geometry`（コマの矩形）
+- `manga.layout_template_id`（選んだ型の ID）
+- `manga.panel_layout`（ページのコマ割りの説明）
+- 各コマの `composition.layout` / `composition.layout_en`（そのコマの位置と大きさの説明。例: 「下段左の小コマ」）
+
+そのあと `novel_prompt_ir_validate.py --strict-quality` で検証してください。
+
+- 最も重いコマを最大の枠に置ける型が無いページ（例: 5コマで2コマ目だけが重い）は `[不一致]` と表示し、書き込みません。重みを見直すか、手で矩形を書きます。それでも当てるときだけ `--allow-mismatch` を付けます。
+- 既に `layout_geometry` があるページ（手で書いたページを含む）は触りません。置き換えるときだけ `--overwrite` を付けます。
+- `--page manga/pages/manga_01_p02.yaml` のようにページを絞っても、章の全ページをページ番号順にたどり、直前のページ（この例では p01）の型を避けます。指定しなかったページは書き換えません。
+- `--apply` と `--name-dir` を一緒に使うと、ネーム画像の書き出しに成功したページだけ YAML を書き込みます。
+- schema 1.0 のページと 6コマ以上のページは対象外です。1.0 は先に上の手順で移行し、6コマ以上は手で書きます。
+- 起こした矩形は手で直してかまいません。ただし `layout_template_id` があるページで `manga.panel_layout`・`composition.layout`・`composition.layout_en`（生成プロンプトはこちらを優先します）を型と違う文章にすると、検証が警告します。型を使わなくなったときは `layout_template_id` を外してください。
+- 別の型を試したいときは `--seed` を変えます。
 
 ---
 

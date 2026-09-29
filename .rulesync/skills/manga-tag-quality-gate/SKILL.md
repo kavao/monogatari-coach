@@ -212,7 +212,7 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 
 **型の偏り**
 
-- 「上1・中2・下1」や均等な縦N段を既定の型にしない。使うときは意図を `render_instruction.user_directives.page_notes` に1行残す。手書きの矩形は、前のページや既存作品の数値を写さず、そのページの見せゴマから決める。
+- 「上1・中2・下1」や均等な縦N段を既定の型にしない。使うときは意図を `render_instruction.user_directives.page_notes` に1行残す。矩形は `novel_manga_layout_apply.py` で型から起こすのを標準にする（`weight` / `beat_type` から最も重いコマが最大の枠になる型を選び、直前のページと同じ型を避け、`manga.panel_layout` と各コマの `composition.layout` / `layout_en` も型にそろえる）。`layout_template_id` があるのに文章が型と違うと検証が警告する。手で書く・直すときは、前のページや既存作品の数値を写さず、そのページの見せゴマから決める。
 
 **YAML で追加確認**
 

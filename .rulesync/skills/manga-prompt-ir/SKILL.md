@@ -112,14 +112,18 @@ targets: ["*"]
 
 - 手本は `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ・`text_mode: generate`）と `manga_page_5panel.yaml`（5コマ・`letter_later`）。`manga_page_v1_0.yaml` は 1.0 の読み取り互換例で、新規の手本にしない。
 - コマ数・大小・めくりは `_how_to/manga.md` の「コマ割り・ページ割り」で決めてから矩形を書く。前のページや既存作品の矩形を写さない。
+- 矩形は型ライブラリから CLI で起こすのを標準にし、必要なら手で直す。各コマに `weight`（または `beat_type`）を付けてから次を実行する。既定は提案の表示だけで、`--apply` で `layout_geometry`・`manga.layout_template_id` と、コマ割りの文章（`manga.panel_layout`・各コマの `composition.layout` / `layout_en`）を型にそろえて書く。既に `layout_geometry` があるページは `--overwrite` なしでは触らない。`--name-dir` で番号付きネーム画像を出して大小を目で確かめる（画像の書き出しに失敗したページは YAML を書かない）。`[不一致]`（最も重いコマを最大の枠に置ける型が無い）は書き込まれないので、重みを見直すか手で書く。`--page` で絞っても章の直前のページの型は避ける。
+  - `uv run python tools/novel_manga_layout_apply.py novels/<作品> --manga-stem manga_XX [--apply] [--name-dir <dir>]`
+  - 型は `tools/manga_prompt_ir/data/panel_layout_templates.yaml`（1〜5コマ・20型）。読み順は入れ替えないので、重いコマを大きい枠に置く調整は型の選び方で行う（最も重いコマの枠が最大の型だけを残し、重みと面積の逆転が最少の型に絞る）。直前のページと同じ型は避ける。6コマ以上のページは対象外（手で書く）
+  - `layout_template_id` があるページで `manga.panel_layout` / `composition.layout` / `composition.layout_en`（生成プロンプトは英語欄を優先）を型と違う文章にすると検証が警告する。型を使わなくなったら `layout_template_id` を外す
 - `text_policy` は `text_mode` と同じ方針の文言にする。`none` なら `no text` または「文字を描かない／入れない」のような否定形で書き、`legible` など描画を求める語を混ぜない。食い違うと schema が弾く。
   - 判定はスキーマとページ生成（`page_render_plan`）で共通（`schemas/manga_page.py` の `classify_text_policy`）。「文字が崩れる場合は…別処理／後入れできる余白を残す」のような保険の一文は方針として数えない。「日本語」「読める」だけでは方針と判定しない。方針を示したいときは `legible` / 「正確な文言で描く」（generate）、「後載せ」「空吹き出し」（letter_later）、「文字を描かない」（none）のように書く。
 - `novel_prompt_ir_validate.py` は、schema 1.1 の漫画ページで `layout_geometry` か `text_mode` が欠けていると品質警告を出す（`--strict-quality` で失敗）。1.0 ページと挿絵ページには出さない。
 - 既存 1.0 ページに 1.1 の欄を足すときは、先に `tools/novel_manga_ir_migrate.py` で移行する。1.0 のままで 1.1 の欄を書くと検証で落ちる。
   1. `--dry-run --output <plan.json>` で計画を作り、`unresolved` に `/render_instruction/text_mode` が出ることを確認する。
   2. `--apply-plan <plan.json> --only-page manga/pages/manga_XX_pYY.yaml …` で適用する。複数ページは `--only-page` を列挙する（作品一括の apply は拒否される）。戻すときは出力された manifest を `--restore-manifest` に渡す。
-  3. 移行ツールは版・`subject_id`・`text_id` だけを足す。`layout_geometry` と `text_mode` は移行後に手で書く（ツールに推測させない）。
-- 任意欄（1.1 のみ）: `panels[].weight`（1〜5）・`size_class`（`splash` / `large` / `medium` / `small` / `inset`）・`beat_type`（語彙は `tools/manga_prompt_ir/data/beat_type_vocab.yaml`。語彙外は検証で警告）、`manga.layout_template_id`（書くなら `layout_geometry` も必須）。付けるときは、重いコマほど矩形を大きくする。1.0 ページには移行してから付ける。
+  3. 移行ツールは版・`subject_id`・`text_id` だけを足す。`text_mode` は移行後に手で書く（ツールに推測させない）。`layout_geometry` は移行後に `novel_manga_layout_apply.py` で起こすか手で書く。
+- 任意欄（1.1 のみ）: `panels[].weight`（1〜5）・`size_class`（`splash` / `large` / `medium` / `small` / `inset`）・`beat_type`（語彙は `tools/manga_prompt_ir/data/beat_type_vocab.yaml`。語彙外は検証で警告）、`manga.layout_template_id`（書くなら `layout_geometry` も必須。型ライブラリに無い ID とコマ数の食い違いは検証で警告）。付けるときは、重いコマほど矩形を大きくする。1.0 ページには移行してから付ける。
 - 1.1 ページに `character_snapshots` があると、互換 Markdown の export には `--character tag/characters/<id>.yaml` が必須になる（スキル `novel-manga-md-output`）。
 
 ## `background_concepts[]`（Manga Tag Mode）
