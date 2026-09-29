@@ -240,6 +240,7 @@ python tools/novel_prompt_ir_validate.py novels/NNN_作品名 --strict-quality
 python tools/novel_prompt_ir_embed_snapshots.py novels/NNN_作品名
 
 # 互換 Markdown 出力（例: 第1章6ページ）
+# schema 1.1 のページでは、登場人物の --character を並べないと止まる
 python tools/novel_prompt_ir_export_md.py \
   --character novels/NNN_作品名/tag/characters/foo.yaml \
   --manga-page novels/NNN_作品名/manga/pages/manga_01_p01.yaml \
@@ -368,12 +369,17 @@ python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル --apply
 
 ---
 
-以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
+以下は **`MangaPagePrompt` に沿った**最小例です（フィールド名・入れ子はスキーマが正本）。新しく作るページは **schema 1.1** で書き、`layout_geometry`（コマの矩形）と `render_instruction.text_mode`（文字をどう扱うか）を省略しません。複数コマの手本は `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ）と `manga_page_5panel.yaml`（5コマ）です。**実作品の具体例**としては同フォルダの `*.yaml` が最も手堅いです。
 
 ### スキーマ主要フィールドの説明
 
 | フィールド | 説明 |
 |-----------|------|
+| `schema_version` | 新規ページは `'1.1'`。`'1.0'` は既存ページの読み取り互換として残っているだけで、1.0 のままでは `layout_geometry` などを書けない |
+| `layout_geometry.panels[]` | コマの矩形（`x` / `y` / `w` / `h` を 0〜1 で、左上原点）。`panels[]` と同じ順・同じ `panel_id` で書く。重なりとページ外は検証で落ちる。コマ数と大小の決め方は創作技法 [`_how_to.example/manga.md`](../../_how_to.example/manga.md) の「コマ割り・ページ割り」 |
+| `render_instruction.text_mode` | `generate`（絵と一緒に字を描く）/ `letter_later`（空の吹き出しにして後で載せる）/ `none`（文字を描かない）。`text_policy` の文言は同じ方針にそろえる。`text_policy` は「legible」「正確な文言で描く」なら generate、「後載せ」「空吹き出し」なら letter_later、「文字を描かない」「no text」なら none と読まれます。「文字が崩れる場合は余白を残す」のような保険の一文や、「日本語」だけの記述は方針として数えません |
+| `panels[].weight` / `size_class` / `beat_type`（任意・1.1） | コマの重み（1〜5。5 がそのページで最も見せたいコマ）、大きさの区分（`splash` / `large` / `medium` / `small` / `inset`）、拍子の種類（`establishing` 導入 / `dialogue` 会話 / `reaction` 反応 / `action` 動作 / `showcase` 見せ / `climax` 山場 / `transition` 転換）。語彙外の `beat_type` は検証で警告になります。重いコマほど `layout_geometry` の矩形を大きくします |
+| `manga.layout_template_id`（任意・1.1） | コマ割りの型の ID（型ライブラリは準備中）。書くときは `layout_geometry` も必須 |
 | ファイル名 / `meta` | ファイル名（`manga_01_p01.yaml` 等）で章・ページを表現。`meta.intent: manga_page`、`reading_order: right_to_left`（または `left_to_right`）。ほかに `aspect_ratio`・`page_count` |
 | `manga.genre_tags[]` / `manga.visual_tags[]` / `manga.panel_layout` | 画風・モノクロ／カラーはここと `color_palette` で設定 |
 | `scene.time_of_day` | 任意。画像用英語は `time_of_day_en` |
@@ -402,7 +408,7 @@ python tools/novel_manga_apply_tag_defaults.py novels/001_タイトル --apply
 優先順位は、CLI `--color-mode`（その実行だけ） > YAML の `color_palette.mode` > `.env` の `MONOCRI_MANGA_COLOR_MODE_DEFAULT` > スキーマ既定 `monochrome`。`novel_prompt_ir_validate.py` はモードとタグ・`render_instruction` の矛盾を WARNING として出しますが、センターカラーや扉絵だけカラーなどの意図的例外を想定し、通常運用では YAML の自動修正や通常エラー化はしません。
 
 ```yaml
-schema_version: '1.0'
+schema_version: '1.1'
 meta:
   intent: manga_page
   reading_order: right_to_left
@@ -413,6 +419,7 @@ render_instruction:
   prompt_header: 廃工場夜戦の1ページ。少年向けアクションのリズムで描く。
   panel_policy: panels[] の panel_id 順に作画する。
   character_policy: character_snapshots と登場キャラの外見を一致させる。
+  text_mode: generate   # generate / letter_later / none のどれかを必ず書く
 manga:
   genre_tags:
     - manga
@@ -420,7 +427,7 @@ manga:
   visual_tags:
     - clean_lineart
     - speed_lines
-  panel_layout: 上段=コマ1（ワイド）｜中段=コマ2・3横並び｜下段=コマ4（大ゴマ）
+  panel_layout: 1ページ1コマの見せページ。零と敵の群れを1枚で見せる
 scene:
   location: 廃工場の内部
   location_en: abandoned_factory_interior
@@ -432,28 +439,34 @@ character_ids:
   - rei
 panels:
   - panel_id: 1
-    summary: 零が敵の群れを睨む。上段・横幅ほぼ全体の大ゴマ
+    summary: 零が敵の群れを睨む。ページ全体を使う見せゴマ
     subjects:
-      - character_id: rei
+      - subject_id: p1-s01
+        character_id: rei
         variant_id: battle
         description: 剣を構えて敵の群れを正面から睨む零
         pose_action: gripping sword, facing enemy crowd
         expression: 鋭い目つき、傷だらけ
     composition:
-      layout: 上段・横幅全体
+      layout: ページ全体の1コマ
       framing: wide shot
     camera:
       angle: low angle
       shot_size: wide
     text:
       dialogue:
-        - speaker: 零
+        - text_id: p1-dialogue-01
+          speaker: 零
           content: 来い……全部まとめて斬ってやる
     prompt_tags:
       - dynamic_wide_angle
       - shonen_jump_style
       - dramatic_low_angle
       - blazing_fire_background
+layout_geometry:   # コマの矩形（0〜1、左上原点）。panels[] と同じ順・同じ panel_id
+  panels:
+    - panel_id: 1
+      rect: {x: 0.04, y: 0.03, w: 0.92, h: 0.94}
 color_palette:
   mode: full_color
 technical:
@@ -468,6 +481,30 @@ character_snapshots: []
 ※ 上記は型の見本です。**`character_snapshots: []` は空のままでは検証や生成で警告になりうる**ため、実作品では `tools/novel_prompt_ir_embed_snapshots.py` で埋めるか、`tag/characters/*.yaml` と整合したスナップショットを手で書いてください。コマ単位のネガ（`panels[].negative_tags` / `omit_negative_tags`）は**任意**で、不要なら省略する。使う場合は [`_how_to.example/manga_tag.md`](../../_how_to.example/manga_tag.md)「コマ別ネガ」と、**後述の「コマ生成（`step1-panels`）のネガティブプロンプト合成順」**を参照。
 
 互換 Markdown の Step1 の**長文テンプレ・書き方の叱り方**は [manga-tag-generation.md の「互換出力: step1」](manga-tag-generation.md#互換出力-step1) を参照してください（本節は **IR の形**の説明です）。
+
+### 既存の 1.0 ページを 1.1 に移行する
+
+このガイドを読むと、schema 1.0 で作ったページを 1.1 に上げ、コマの矩形や文字方針を書ける状態にできます。
+
+1.0 のページに `layout_geometry` や `text_mode` を直接書くと、検証で落ちます。先に移行ツール `tools/novel_manga_ir_migrate.py` で版を上げてから書き足します。移行ツールが足すのは、版番号と、人物・台詞を区別する ID（`subject_id` / `text_id`）だけです。**コマの矩形と `text_mode` は移行ツールが推測して書くことはない**ので、移行のあとに人（または Monogatari Coach）が書きます。
+
+まず dry-run で移行計画を作ります。ページ YAML は書き換えません。
+
+```bash
+# 移行計画を作る（正本は書き換えない）
+uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名   --dry-run --output tools_temp/migrate_plan.json   # 計画 JSON の保存先
+```
+
+計画 JSON の各ページの `unresolved` に `/render_instruction/text_mode` が出ていれば想定どおりです。内容を確認してから適用します。複数ページは `--only-page` を1ページずつ並べます（作品全体の一括適用はツールが拒否します）。
+
+```bash
+# 計画を適用する（計画作成後にページが変わっていたら止まる）
+uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名   --apply-plan tools_temp/migrate_plan.json   --only-page manga/pages/manga_01_p01.yaml   --only-page manga/pages/manga_01_p02.yaml   --output tools_temp/migrate_apply.json         # 適用結果と復元用 manifest の場所
+```
+
+適用すると、ページの `schema_version` が `'1.1'` になり、作品フォルダの `_manga_ir_backup/` に元のファイルと復元用の manifest が残ります。元に戻したいときは、その manifest を `--restore-manifest` に渡します。
+
+そのあと各ページに `layout_geometry` と `render_instruction.text_mode` を書き（コマの重み `weight`・拍子 `beat_type` などの任意欄を付けるのもこの後です）、`novel_prompt_ir_validate.py --strict-quality` で検証してから、互換 Markdown を出し直します。
 
 ---
 

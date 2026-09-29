@@ -48,6 +48,9 @@ class MangaStyle(BaseModel):
     line_art: str | None = None
     screentone: str | None = None
     panel_layout: str | None = None
+    # schema 1.1。コマ割りの型ライブラリ（予定: data/panel_layout_templates.yaml）の ID。
+    # 使うときは layout_geometry も必須（型から座標を起こした記録として持つ）。
+    layout_template_id: str | None = None
     text_policy: str = "Japanese text must be legible"
     lettering: LetteringStyle = Field(default_factory=LetteringStyle)
 
@@ -206,32 +209,68 @@ def _requires_english(value: str | None) -> bool:
     return bool(value and _CJK_RE.search(value))
 
 
-def _raw_text_policy_mode(value: Any) -> str | None:
-    text = str(value or "").strip().lower()
+# text_policy（自然文）から文字方針を判定する唯一の実装。スキーマ検証と page_render_plan が共有する。
+#
+# 判定の順:
+# 1. 否定形（「文字を描かない」「no text」等）は none。否定形の中の「日本語」「文字を描」は数えない。
+# 2. 「文字が崩れる場合は…余白を残す／別処理」のような保険の一文は方針ではないので取り除く。
+# 3. 後載せ（「後載せ」「空吹き出し」「別処理」「letter later」等）は letter_later。
+# 4. 描画を求める語（「legible」「正確な文言」「日本語を可読に」等）は generate。
+#    「日本語」「読める」だけでは方針とみなさない（台詞の言語や UI の説明にも使われ、衝突を生むため）。
+NO_TEXT_POLICY_RE = re.compile(
+    r"\bno\s+text\b|\bwithout\s+text\b|文字なし"
+    r"|(?:日本語の?)?文字(?:要素)?(?:を|は)?(?:描か|入れ|載せ)(?:ない|ず)"
+    r"|(?:日本語の?)?文字(?:要素)?(?:を|は)?描画し(?:ない|ず)"
+    r"|画像内?(?:に|へ)[^。．.]*?(?:入れ|描か|載せ)(?:ない|ず)",
+    re.IGNORECASE,
+)
+# 保険の句だけを取り除く。句点または節の区切り（「が、」「、」「けど」）で止め、後ろに続く明示指示は残す。
+# 「場合は、」のように保険の句の頭に付く読点は区切りに数えない。
+_TEXT_FALLBACK_CLAUSE_RE = re.compile(
+    r"(?:日本語)?文字(?:要素)?(?:が|は)?崩れ(?:る|た)?(?:場合|時|とき)(?:は|には|に)?[、,]?"
+    r"[^。．.、,]*?(?=[。．.、,]|が[、,]|けど|$)"
+)
+_LETTER_LATER_POLICY_RE = re.compile(
+    r"letter\s*later|lettering\s*later|empty\s+(?:speech\s+)?balloons?"
+    r"|後載せ|後入れ|後で(?:文字|写植)|別(?:処理|工程)|空吹き出し",
+    re.IGNORECASE,
+)
+_GENERATE_STRONG_RE = re.compile(
+    r"legible|readable|render(?:ed|ing)?\s+(?:the\s+)?text|正確な文言"
+    r"|文字を(?:入れ|描)|台詞を描|日本語(?:文字)?(?:を|は)?(?:描画|可読)",
+    re.IGNORECASE,
+)
+
+
+def strip_no_text_phrases(text: str) -> tuple[str, bool]:
+    """Return (text without no-text phrases, whether any were found)."""
+    stripped, count = NO_TEXT_POLICY_RE.subn(" ", text)
+    return stripped, count > 0
+
+
+def classify_text_policy(value: Any) -> str | None:
+    """text_policy を none / letter_later / generate / conflict / None（判定不能）に分類する。"""
+    text = str(value or "").strip()
     if not text:
         return None
-    modes: set[str] = set()
-    if any(token in text for token in ("no text", "without text", "文字なし", "文字を描かない")):
-        modes.add("none")
-    if any(token in text for token in ("letter later", "lettering later", "後載せ", "空吹き出し")):
-        modes.add("letter_later")
-    if any(
-        token in text
-        for token in (
-            "legible",
-            "readable",
-            "render text",
-            "日本語",
-            "可読",
-            "正確な文言",
-            "文字を入れ",
-            "文字を描",
-        )
-    ):
-        modes.add("generate")
-    if len(modes) > 1:
+    text, has_none = strip_no_text_phrases(text)
+    text = _TEXT_FALLBACK_CLAUSE_RE.sub(" ", text)
+    has_letter = bool(_LETTER_LATER_POLICY_RE.search(text))
+    has_strong = bool(_GENERATE_STRONG_RE.search(text))
+    if has_none:
+        return "conflict" if (has_letter or has_strong) else "none"
+    if has_letter:
+        return "conflict" if has_strong else "letter_later"
+    if has_strong:
+        return "generate"
+    return None
+
+
+def _raw_text_policy_mode(value: Any) -> str | None:
+    mode = classify_text_policy(value)
+    if mode == "conflict":
         raise ValueError("text_policyが複数の文字方針に衝突しています")
-    return next(iter(modes), None)
+    return mode
 
 
 class Dramaturgy(BaseModel):
@@ -383,6 +422,11 @@ class Panel(BaseModel):
     subjects: list[Subject]
     dramaturgy: Dramaturgy | None = None
     background_density: str | None = None
+    # schema 1.1。コマの重み（1〜5。5 がそのページで最も見せたいコマ）、大きさの区分、拍子の種類。
+    # beat_type の語彙は data/beat_type_vocab.yaml（検査は novel_prompt_ir_validate.py）。
+    weight: int | None = Field(default=None, ge=1, le=5)
+    size_class: Literal["splash", "large", "medium", "small", "inset"] | None = None
+    beat_type: str | None = None
     composition: Composition = Field(default_factory=Composition)
     camera: Camera = Field(default_factory=Camera)
     lighting: Lighting = Field(default_factory=Lighting)
@@ -572,6 +616,10 @@ class MangaPagePrompt(BaseModel):
             "background_density",
             "text_id",
             "lettering",
+            "weight",
+            "size_class",
+            "beat_type",
+            "layout_template_id",
         }
 
         def find_key(node: Any, path: str = "") -> str | None:
@@ -621,6 +669,11 @@ class MangaPagePrompt(BaseModel):
         if len(text_ids) != len(set(text_ids)):
             raise ValueError("schema 1.1ではtext_idはページ内で一意でなければなりません")
 
+        if self.manga.layout_template_id and self.layout_geometry is None:
+            raise ValueError(
+                "manga.layout_template_idを使うときはlayout_geometryも書いてください"
+                "（型のIDだけでは枠数とコマ数の一致を確かめられません）"
+            )
         if self.layout_geometry is not None:
             geometry_ids = [item.panel_id for item in self.layout_geometry.panels]
             unknown = sorted(set(geometry_ids) - set(panel_ids))

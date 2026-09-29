@@ -39,6 +39,7 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 python tools/novel_prompt_ir_export_md.py \
   --manga-page novels/<作品>/manga/pages/manga_01_p01.yaml \
   --manga-page novels/<作品>/manga/pages/manga_01_p02.yaml \
+  --character novels/<作品>/tag/characters/<character_id>.yaml \
   --output-dir novels/<作品> \
   --manga-stem manga_01 \
   --novelai-pipe-tags \
@@ -46,7 +47,8 @@ python tools/novel_prompt_ir_export_md.py \
 ```
 
 - `--output-dir` は **`novels/<作品>/`**（`novels/<作品>/manga` ではない）。
-- キャラ互換 `tag/<romaji>.md` も同時に要るときは `--no-character-output` を外し、`--character` を追加する。
+- `--character` は、ページに登場する人物の `tag/characters/*.yaml` を人数分並べる。schema 1.1 のページに `character_snapshots` があると、`--character` なしでは `CharacterPrompt 1.1 のページにキャラクター YAML がありません` で止まる。1.0 ページでも付けておくと Step2 の【固定見た目】と人物名が揃う。
+- `--no-character-output` を付けている間は、`--character` は参照だけに使い、`tag/<romaji>.md` を上書きしない。キャラ互換 `tag/<romaji>.md` も同時に要るときだけ `--no-character-output` を外す。
 - Step2 自動言い換えが要るときだけ `--step2-paraphrase`（既定はオフ）。
 
 ## ツール予告と応答の継続

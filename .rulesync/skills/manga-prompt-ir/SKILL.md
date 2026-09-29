@@ -43,7 +43,7 @@ targets: ["*"]
 - このIRは、生成途中で壊れたら作り直せる **再生成可能な中間データ**として扱う。正本性の中心は、YAML形式そのものではなく、そこに入っている **日本語の意味・人物関係・場面意図・セリフ帰属**に置く。
 - 小説本文からの変換を主体にする場合、最初のIRは荒くてもよい。品質ゲートで意味を補い、必要ならIR全体を再出力する。
 - 新規のキャラクタータグは、まず `character.yaml` 相当の構造へ落とす。
-- 新規の漫画タグは、まず `manga_page.yaml` 相当の構造へ落とす。
+- 新規の漫画タグは、まず `manga_page.yaml` 相当の構造（schema 1.1。下記「漫画ページ schema 1.1（新規の既定）」）へ落とす。
 
 ## Manga Tag の入口（variant・タグ層は YAML より先に `_meta` で固定）
 
@@ -105,6 +105,22 @@ targets: ["*"]
 - embed した 1.1 snapshot は `character_schema_version: "1.1"` を持つ。hash / `visual_natural` が空でも、この印または漫画ページ schema 1.1 の `character_snapshots` があれば、キャラクター YAML 省略の compile は停止する。
 - 固定小物は `manga_rules.consistency_tags`、衣装付属品は `visual_spec.accessories`。同じ語を両方に置かない。
 - 例: `tools/manga_prompt_ir/examples/character_1_1.yaml`
+
+### 漫画ページ schema 1.1（新規の既定）
+
+横断正本は `concepts.md` の完了扱い条件。新規の `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry` と `render_instruction.text_mode` を省略しない。キャラクター YAML の 1.1 とは別の版である。
+
+- 手本は `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ・`text_mode: generate`）と `manga_page_5panel.yaml`（5コマ・`letter_later`）。`manga_page_v1_0.yaml` は 1.0 の読み取り互換例で、新規の手本にしない。
+- コマ数・大小・めくりは `_how_to/manga.md` の「コマ割り・ページ割り」で決めてから矩形を書く。前のページや既存作品の矩形を写さない。
+- `text_policy` は `text_mode` と同じ方針の文言にする。`none` なら `no text` または「文字を描かない／入れない」のような否定形で書き、`legible` など描画を求める語を混ぜない。食い違うと schema が弾く。
+  - 判定はスキーマとページ生成（`page_render_plan`）で共通（`schemas/manga_page.py` の `classify_text_policy`）。「文字が崩れる場合は…別処理／後入れできる余白を残す」のような保険の一文は方針として数えない。「日本語」「読める」だけでは方針と判定しない。方針を示したいときは `legible` / 「正確な文言で描く」（generate）、「後載せ」「空吹き出し」（letter_later）、「文字を描かない」（none）のように書く。
+- `novel_prompt_ir_validate.py` は、schema 1.1 の漫画ページで `layout_geometry` か `text_mode` が欠けていると品質警告を出す（`--strict-quality` で失敗）。1.0 ページと挿絵ページには出さない。
+- 既存 1.0 ページに 1.1 の欄を足すときは、先に `tools/novel_manga_ir_migrate.py` で移行する。1.0 のままで 1.1 の欄を書くと検証で落ちる。
+  1. `--dry-run --output <plan.json>` で計画を作り、`unresolved` に `/render_instruction/text_mode` が出ることを確認する。
+  2. `--apply-plan <plan.json> --only-page manga/pages/manga_XX_pYY.yaml …` で適用する。複数ページは `--only-page` を列挙する（作品一括の apply は拒否される）。戻すときは出力された manifest を `--restore-manifest` に渡す。
+  3. 移行ツールは版・`subject_id`・`text_id` だけを足す。`layout_geometry` と `text_mode` は移行後に手で書く（ツールに推測させない）。
+- 任意欄（1.1 のみ）: `panels[].weight`（1〜5）・`size_class`（`splash` / `large` / `medium` / `small` / `inset`）・`beat_type`（語彙は `tools/manga_prompt_ir/data/beat_type_vocab.yaml`。語彙外は検証で警告）、`manga.layout_template_id`（書くなら `layout_geometry` も必須）。付けるときは、重いコマほど矩形を大きくする。1.0 ページには移行してから付ける。
+- 1.1 ページに `character_snapshots` があると、互換 Markdown の export には `--character tag/characters/<id>.yaml` が必須になる（スキル `novel-manga-md-output`）。
 
 ## `background_concepts[]`（Manga Tag Mode）
 
@@ -358,6 +374,7 @@ Level 1 禁止事項（着衣漏洩防止）: 主経路の character_ir_tags() �
 - `render_instruction.prompt_header` / `panel_policy` / `character_policy` が入り、YAML単体で作画依頼として成立する。
 - キャラクター固定特徴が、登場するすべてのコマへ引き継がれる。
 - ページ単位で、コマ数、読み順、段・大小・視線誘導のいずれかが読める。
+- 新規ページは schema 1.1 で、`layout_geometry`（コマ数・`panel_id` 順が `panels[]` と一致）と `render_instruction.text_mode` がある。
 - **`background_concepts[]`**: Manga Tag Mode では上記「`background_concepts[]`（Manga Tag Mode）」に従い、**1ページ最低1件**（シーン最初のページは establishing 系を含む）を原則とする。各件に `concept_id` / `title` / `description` / `prompt` があり、人物なしの背景資料として読める。空間に加え **UI・小道具・反復オブジェクト** も載せてよい。
 
 ## 参考コマンド

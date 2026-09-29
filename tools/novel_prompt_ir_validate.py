@@ -183,7 +183,8 @@ def _schema_1_1_advisories(label: str, page) -> list[str]:
     advisories: list[str] = []
     if page.dramaturgy is None:
         advisories.append(f"{label}: schema 1.1のdramaturgyが未記載です（演出意図はadvisory）")
-    if page.render_instruction.text_mode is None:
+    # 漫画ページの text_mode 欠落は quality_warnings_for_page が警告にする（二重に出さない）。
+    if page.render_instruction.text_mode is None and getattr(page.meta, "intent", None) != "manga_page":
         advisories.append(
             f"{label}: render_instruction.text_modeが未記載です（移行時にgenerate/letter_later/noneを選択）"
         )
@@ -264,6 +265,22 @@ def quality_warnings_for_page(
             warnings.append(f"{label}: manga.panel_layout が空です（一枚絵としての空間配置・枠線有無が弱くなります）")
         else:
             warnings.append(f"{label}: manga.panel_layout が空です（ページ内の段・大小・読み順が弱くなります）")
+    if is_manga and getattr(page, "schema_version", "1.0") == "1.1":
+        # 新規ページの完了条件（concepts.md）。矩形が無いと NovelAI の人物 slot が全員中央に戻る。
+        if page.layout_geometry is None:
+            warnings.append(
+                f"{label}: schema 1.1 の漫画ページに layout_geometry がありません"
+                "（コマの矩形を panels[] と同じ順で書いてください。移行ツールは書きません）"
+            )
+        if page.render_instruction.text_mode is None:
+            warnings.append(
+                f"{label}: schema 1.1 の漫画ページに render_instruction.text_mode がありません"
+                "（generate / letter_later / none を明示してください）"
+            )
+    if getattr(page, "schema_version", "1.0") == "1.1":
+        from manga_prompt_ir.beat_type import beat_type_warnings_for_page
+
+        warnings.extend(beat_type_warnings_for_page(label, page))
     if is_illustration and len(page.panels) > 1:
         warnings.append(
             f"{label}: illustration の panels[] が複数あります。群像・複合構図なら問題ありませんが、単体挿絵は1セルを推奨します"

@@ -325,7 +325,7 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 1. 本文正本とキャラクター正本を確認する。
 2. 作品 `_meta.md` の §4（TPO → variant 対応表）と §5（漫画タグ層）を区間ごとに合意する（書き方は `_how_to.example/meta.md` を正とする）。
-3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。`panels[].summary` があるコマは **「Manga `summary_en` の翻訳経路」** に従い `summary_en` + `summary_en_source` を揃える。
+3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。新規ページの版・`layout_geometry`・`text_mode` は `concepts.md` の完了扱い条件に従う。`panels[].summary` があるコマは **「Manga `summary_en` の翻訳経路」** に従い `summary_en` + `summary_en_source` を揃える。
 4. 品質ゲートで確認し、`tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality`）で検証する。
 5. 互換 Markdown が必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
 6. 画像生成は「画像生成: dry-run から本番まで」に従う。
@@ -334,6 +334,7 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 - 互換 Markdown だけを新規作成・修正して Manga Tag Mode 完了扱いにしない。
 - 生成前検証を YAML IR ではなく、互換 Markdown だけで済ませない。
+- 新規ページを schema 1.0 の例に倣って作らない。
 
 参照:
 

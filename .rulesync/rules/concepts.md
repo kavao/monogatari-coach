@@ -31,6 +31,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 小説本文の執筆・清書完了は、対象章を一意に解決したうえで `design_specification.md` の確定出来事を突き合わせ、`_meta.md` に `更新` / `差分なし` / `未完了` の証跡を残してから報告する。解決不能と書込失敗は完了としない。手順はスキル `novel-story-reflection`。
 - ユーザーが第X章だけを指定したときは1章で停止する。第X〜Y章の明示範囲または複数章の列挙は各章を1章ずつ直列に完了させ、指定終端で停止する。失敗・stale・escalated・ユーザー停止では後続章へ進まない。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。対象作品の config.md に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
+- 新規の漫画ページ `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry`（コマ数と一致する矩形）と `render_instruction.text_mode`（`generate` / `letter_later` / `none`）を省略しない。欠けていれば作成完了としない。既存 1.0 は読み取り互換で残し、1.1 の欄を足すときは `tools/novel_manga_ir_migrate.py` で先に移行する（移行は矩形と `text_mode` を書かない）。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
 
 ## METRON V1 修復不変条件

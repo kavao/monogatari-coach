@@ -30,6 +30,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import fallback
         validate_ordered_image_inputs,
     )
 
+from .schemas.manga_page import NO_TEXT_POLICY_RE, classify_text_policy
 from .prompt_formatters import (
     INLINE_DO_NOT_INCLUDE,
     MANGA_PAGE_INSTRUCTION,
@@ -88,18 +89,8 @@ _TEXT_LINE_LABELS = (
     "- narration:",
     "- sfx:",
 )
-_NO_TEXT_RE = re.compile(
-    r"(?:no\s+text|without\s+text|文字(?:を|は)?(?:描か|入れ|なし)|文字なし|文字を描画しない)",
-    re.IGNORECASE,
-)
-_LETTER_LATER_RE = re.compile(
-    r"(?:letter\s*later|lettering\s*later|後載せ|後で(?:文字|写植)|別(?:処理|工程)|空吹き出し|empty\s+(?:speech\s+)?balloon)",
-    re.IGNORECASE,
-)
-_GENERATE_RE = re.compile(
-    r"(?:legible|readable|render(?:ed|ing)?\s+(?:the\s+)?text|正確な文言|日本語(?:文字)?(?:を|は)?(?:描画|可読)|文字を入れ|台詞を描)",
-    re.IGNORECASE,
-)
+# positive / negative タグ側の no text 検出。text_policy の判定は classify_text_policy に一本化した。
+_NO_TEXT_RE = NO_TEXT_POLICY_RE
 
 
 class PageRenderPlanError(ValueError):
@@ -177,23 +168,8 @@ def canonical_page_hash(page: dict[str, Any]) -> str:
 
 
 def _policy_class(value: Any) -> str | None:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    has_none = bool(_NO_TEXT_RE.search(text))
-    has_letter = bool(_LETTER_LATER_RE.search(text))
-    has_generate = bool(_GENERATE_RE.search(text))
-    if has_none and (has_letter or has_generate):
-        return "conflict"
-    if has_letter and has_generate:
-        return "conflict"
-    if has_none:
-        return "none"
-    if has_letter:
-        return "letter_later"
-    if has_generate:
-        return "generate"
-    return None
+    # 判定はスキーマと共有する（schemas.manga_page.classify_text_policy）。
+    return classify_text_policy(value)
 
 
 def explicit_text_policies(page: dict[str, Any]) -> list[tuple[str, str]]:

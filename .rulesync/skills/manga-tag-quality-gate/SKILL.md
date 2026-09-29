@@ -43,7 +43,8 @@ targets: ["*"]
 | `novels/<作品>/tag/characters/<character_id>.yaml` | 外見・状況タグの構造化正本 |
 | `novels/<作品>/tag/<romaji>.md` | 外見・状況タグの互換出力・英語タグ参考 |
 | `novels/<作品>/manga/manga_XX.md` | 既存バッチ互換出力。移行元・生成直前の確認先であり、正本ではない。 |
-| `_how_to/manga.md` | Step1 / Step2 の出力基準 |
+| `_how_to/manga.md` | Step1 / Step2 の出力基準。コマ数・大小・めくりの決め方は「コマ割り・ページ割り」節 |
+| `docs/image-generation/manga-tag-generation.md` | 互換 Step1 / Step2 の書式。「コマのページ内位置（レイアウト）を明記する」節 |
 | `_how_to/manga_tag.md` | コマの英語タグ・置き換え・NSFW 慣例。`prompt_tags` を埋める前に必ず開く。詳細はスキル **`manga-prompt-ir`** の「`_how_to/manga_tag.md` との役割分担」 |
 | `.rulesync/rules/workflow-specification.md` | YAML IR と互換 Markdown の正本・副本関係 |
 
@@ -136,7 +137,7 @@ targets: ["*"]
 
 - **1コマ1意味**: 各コマが単独画像になっても通じるよう、同節の箇条書き（誰が・誰に・どこで・何をしている瞬間か・セリフの話者・見せたい情報・向き・アングル・服装・小道具・部分アップの補足・曖昧語禁止）を満たすか。
 - **コマと英語タグの対応**: **1コマにつき1つの `tag:` ブロック**（複数コマを1タグにまとめない）。英語タグの語彙は **`manga_tag.md`**。
-- **レイアウト**: 同ファイル内 **「コマのページ内位置（レイアウト）を明記する」** に従い、**(A) `### Step1` 直後のページ配置1行** または **(B) 各 `コマN:` 先頭の段・大致** のどちらかを満たす。コマ単体生成だけでも入れておくと、後から精密ページ化したときにブレにくい。
+- **レイアウト**: `docs/image-generation/manga-tag-generation.md` の **「コマのページ内位置（レイアウト）を明記する」** に従い、**(A) `### Step1` 直後のページ配置1行** または **(B) 各 `コマN:` 先頭の段・大致** のどちらかを満たす。コマ単体生成だけでも入れておくと、後から精密ページ化したときにブレにくい。
 - **日本の漫画のコマ割り**をページ方針として一度は明示する。**不要なら** 英語タグに `vertical` / `horizontal` 等を機械的に足さない（`manga.md` と同じ）。
 
 **YAML 原盤で見る場所**（上記と齟齬がないか）
@@ -193,14 +194,25 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 
 **この節で足りること（スキル側の要約）**
 
-- **ページ内位置**: 各コマについて **上段／中段／下段・左右・大ゴマ／小コマ・横並び** が読めるか。均等な縦Nコマだけなら **`均等Nコマ・上から読む` の一行**でよい（`manga.md` と同じ）。
+- **ページ内位置**: 各コマについて **上段／中段／下段・左右・大ゴマ／小コマ・横並び** が読めるか。**`均等Nコマ・上から読む` の一行で済ませてよいのは、意図した均等割りのときだけ**（意図が `render_instruction.user_directives.page_notes` にある）。
 - **抽象化の下限**: **誰が主役か・誰と誰の関係か・コマの役割・セリフがあるなら誰の発話か**が消えないこと。部分アップは **部位と意味**を短く添える。
 - **抽象名詞で終わらない** / **行為を消すのではなく構図に言い換える** / **モデレーション配慮の言い換え**は、**悪い例・良い例・言い換え目安**まで **`manga.md` の step2 節に従う**（本スキル §1〜§5 と重なる主語・帰属はそちらも併用）。
 - **互換 Markdown の形**: エクスポートは `novel_prompt_ir_export_md.py` が **`manga.panel_layout`・`meta.reading_order`・`panels[].composition.layout`・`step2_summary`（無ければ `summary`）** から組み立てる。Step2 だけ弱めたいときは IR に **`panels[].step2_summary`** を置き、**`summary` は Step1（コマ生成）向けに具体のまま**残せる（`manga.md` の「互換 Markdown の Step2」節と同じ）。
 
 ### 9. レイアウト・読み順（Step1 / Step2 横断の確認）
 
-**目的**: ページ丸ごと生成（`step2-pages`）や精密ページ生成（`step1-pages`）では、**コマ境界と読み順**が無いと「ただのカット列」になりやすい。細部の書き方の正本は引き続き **`manga.md` の「コマのページ内位置（レイアウト）を明記する」** および **step1 / step2 の出力例**。
+**目的**: ページ丸ごと生成（`step2-pages`）や精密ページ生成（`step1-pages`）では、**コマ境界と読み順**が無いと「ただのカット列」になりやすい。コマ数・大小・めくりの決め方は **`manga.md` の「コマ割り・ページ割り」**、互換 Step1 / Step2 での書き方は **`docs/image-generation/manga-tag-generation.md` の「コマのページ内位置（レイアウト）を明記する」** を正とする。
+
+**schema 1.1 と座標（新規ページは必須。横断正本は `concepts.md` の完了扱い条件）**
+
+- `schema_version: "1.1"` か。1.0 のページに 1.1 の欄を足すときは、先に `novel_manga_ir_migrate.py` で移行したか。
+- `layout_geometry.panels` の数が `panels[]` のコマ数と一致し、`panel_id` の順が `panels[]` と同じか。矩形が重なっていないか（重なりとページ外は schema が弾く）。
+- 見せたいコマの矩形が一番大きいか。同じ段の2コマは、右から左に読むなら右（`x` が大きい方）が先の `panel_id` か。
+- `render_instruction.text_mode`（`generate` / `letter_later` / `none`）が明示され、`text_policy` の文言と食い違っていないか。
+
+**型の偏り**
+
+- 「上1・中2・下1」や均等な縦N段を既定の型にしない。使うときは意図を `render_instruction.user_directives.page_notes` に1行残す。手書きの矩形は、前のページや既存作品の数値を写さず、そのページの見せゴマから決める。
 
 **YAML で追加確認**
 
@@ -233,7 +245,7 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 5. §6b で `summary_en` / `summary_en_source` を確認し、`novel_prompt_ir_validate.py --strict-quality` を実行する。
 6. §7（背景概念）を確認する。
 7. §8（step2 準拠）で抽象化の下限・段・大小・`step2_summary` の有無を確認する。
-8. §9 で `panel_layout` / `reading_order` / `composition.layout` を確認する。
+8. §9 で schema 1.1・`layout_geometry`・`text_mode` と、`panel_layout` / `reading_order` / `composition.layout` を確認する。
 9. §10 で色モードとタグ・作画指示の矛盾 WARNING を確認する。
 10. 欠けた要素を、冗長にしすぎない範囲で YAML 正本に補う（互換 Markdown は再エクスポート）。
 11. YAML の `panels[].text.dialogue[]` / `narration` / `monologue` / `sfx` が混線していないか最終確認する。
@@ -263,7 +275,8 @@ python tools/novel_prompt_ir_validate.py novels/<作品> --strict-quality
 **レイアウト（ページ単位で追加）**
 
 - このページは **何コマ構成か**（Step1 先頭の宣言またはコマ番号の最大で確定できるか）
-- Step2 だけを読んだとき、**どのコマが大きく／どの段に置かれるか** が想像できるか（均等割なら「上から順に4コマ」など一言でよい）
+- Step2 だけを読んだとき、**どのコマが大きく／どの段に置かれるか** が想像できるか（意図した均等割なら「上から順に4コマ」など一言でよい）
+- このページの見せゴマはどれか。`layout_geometry` でそのコマが一番大きいか
 - 読み順（上→下、左→右）は迷わないか
 - 隣接コマと角度・距離が両方同じになっていないか（画角の advisory 点検）
 
