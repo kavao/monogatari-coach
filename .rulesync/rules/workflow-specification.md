@@ -503,6 +503,9 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 - 漫画のコマ画像（`step1-panels`）は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
 - 漫画のページ画像（`step1-pages` / `step2-pages`）は `novels/<作品>/manga/_assets/<manga_XX>/pages/` に保存する。生成 JSON・`*.local_frame.json`・`*_page_render_plan.json`・写植などの派生ファイルも PNG と同じ `pages/` に置く。
 - 漫画の背景資料画像は `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` に保存する。
+- 番号付きネーム画像（`novel_manga_layout_apply.py --name-dir`）は `novels/<作品>/manga/_assets/<manga_XX>/names/` を推奨の出力先とする。
+- コマ画像をネームの枠へ組んだ PSD（`novel_manga_assemble_psd.py`）は `novels/<作品>/manga/_assets/<manga_XX>/assembled/` に置く。同じ場所に PNG・採用画像の記録 `*_assembly.json`・台詞の一覧 `*_lettering.txt` を置き、`--overwrite` 時の前の版は `assembled/old/<実行日時>/` へ退避する。写植は画像の目安で、縦書きの打ち直しはクリップスタジオ / Photoshop で行う。
+- フキダシの設計位置の下書き `*.bubbles.yaml`（`novel_manga_bubbles_draft.py`）はページ IR と同じ `manga/pages/` に置く（前の版は `manga/pages/_old/<実行日時>/`）。
 - 画像の `manga/_assets/<manga_XX>/pages/` と、ページ IR 正本の `manga/pages/*.yaml` は別物である。混ぜない。
 - 挿絵・表紙画像は `novels/<作品>/illustrations/_assets/<illustration_XX>/` に保存する。
 - コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。ページ画像は `manga_01_p02_step1page`（step1）/ `manga_01_p02`（step2）。

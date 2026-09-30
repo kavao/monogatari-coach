@@ -427,3 +427,52 @@ def test_lettering_rejects_stale_image_hash(tmp_path: Path) -> None:
             font_path=_test_font(),
             geometry=geometry,
         )
+
+
+# ── 禁則（縦書きの列の区切り） ───────────────────────────
+
+
+def _columns(text: str, target: int, capacity: int) -> list[str]:
+    from manga_prompt_ir.page_edit import _kinsoku_columns
+
+    return _kinsoku_columns(list(_verticalize_text(text)), target, capacity)
+
+
+def _assert_kinsoku(columns: list[str]) -> None:
+    from manga_prompt_ir.page_edit import _HEAD_NG, _TAIL_NG
+
+    assert all(column[0] not in _HEAD_NG for column in columns[1:])
+    assert all(column[-1] not in _TAIL_NG for column in columns[:-1])
+
+
+def test_kinsoku_hangs_punctuation_on_previous_column() -> None:
+    columns = _columns("姉さん、ダメ", 3, 4)
+    assert columns[0] == _verticalize_text("姉さん、")
+    _assert_kinsoku(columns)
+
+
+def test_kinsoku_pushes_out_when_hanging_is_full() -> None:
+    # 「なんでもない」の後に「よ！」。ぶら下げの余地が無ければ前の列の末尾ごと次の列へ送る
+    columns = _columns("あいうえおかっ！", 4, 5)
+    _assert_kinsoku(columns)
+    assert "".join(columns) == _verticalize_text("あいうえおかっ！")
+    assert all(len(column) <= 5 for column in columns)
+
+
+def test_kinsoku_moves_opening_bracket_to_next_column() -> None:
+    columns = _columns("あいう「えお」", 4, 5)
+    _assert_kinsoku(columns)
+
+
+def test_kinsoku_overflows_when_no_break_is_possible() -> None:
+    # 禁則の文字だけが続き区切れないときは、1文字の列を作らず列をはみ出させる（呼び出し側が文字を小さくする）
+    columns = _columns("ちっゃっ……！？", 2, 3)
+    assert all(len(column) > 1 for column in columns)
+    _assert_kinsoku(columns)
+
+
+def test_lettering_font_px_follows_mm_and_dpi() -> None:
+    from novel_manga_assemble_psd import lettering_font_px
+
+    assert lettering_font_px(200, 3.5) == 28
+    assert lettering_font_px(400, 3.5) == 55

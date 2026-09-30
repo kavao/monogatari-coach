@@ -151,5 +151,5 @@ def test_scaffold_creates_comic_pages_backgrounds(tmp_path: Path) -> None:
     novel = _markdown_novel(tmp_path)
     created = nil.scaffold_manga_dirs(novel, None)
     base = novel / "manga" / "_assets" / "manga_01"
-    assert created == [base / "comic", base / "pages", base / "backgrounds"]
+    assert created == [base / "comic", base / "pages", base / "backgrounds", base / "names", base / "assembled"]
     assert all(path.is_dir() for path in created)
