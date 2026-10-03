@@ -257,7 +257,7 @@ def render_png(
     """PSD と同じ見た目の PNG を直接描く（非表示のレイヤーは含めない）。"""
     flat = Image.new("RGB", canvas_size, (255, 255, 255))
     for panel, place in zip(panels, placements):
-        image = _load_rgb(panel.image_path).resize((place.width, place.height), Image.LANCZOS)
+        image = _load_rgb(panel.image_path).resize((place.width, place.height), Image.Resampling.LANCZOS)
         left, top, right, bottom = panel.frame
         crop = image.crop((left - place.left, top - place.top, right - place.left, bottom - place.top))
         flat.paste(crop, (left, top))
@@ -368,7 +368,7 @@ def write_assembly(
         left, top, right, bottom = panel.frame
         base = Image.new("RGB", (right - left, bottom - top), (255, 255, 255))
         locked(named(PixelLayer.frompil(base, group, name="base", top=top, left=left), f"{panel.label}の枠（土台）"))
-        image = _load_rgb(panel.image_path).resize((place.width, place.height), Image.LANCZOS)
+        image = _load_rgb(panel.image_path).resize((place.width, place.height), Image.Resampling.LANCZOS)
         layer = named(
             PixelLayer.frompil(image, group, name="img", top=place.top, left=place.left),
             f"{panel.label}の画像",

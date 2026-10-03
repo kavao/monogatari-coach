@@ -117,7 +117,8 @@ def _existing_template_id(path: Path) -> str:
         data = load_yaml(path)
     except Exception:  # noqa: BLE001 - 履歴に読めないページは型なし扱い
         return ""
-    manga = data.get("manga") if isinstance(data.get("manga"), dict) else {}
+    raw_manga = data.get("manga")
+    manga: dict[str, Any] = raw_manga if isinstance(raw_manga, dict) else {}
     return str(manga.get("layout_template_id") or "")
 
 
@@ -149,7 +150,8 @@ def run(args: argparse.Namespace) -> int:
             errors += 1
             continue
 
-        manga = data.get("manga") if isinstance(data.get("manga"), dict) else {}
+        raw_manga = data.get("manga")
+        manga: dict[str, Any] = raw_manga if isinstance(raw_manga, dict) else {}
         existing_template = str(manga.get("layout_template_id") or "")
         intent = (data.get("meta") or {}).get("intent")
         if intent != "manga_page":
