@@ -795,7 +795,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 | First Reader（足切り） | `_how_to/reader.md` | `_reader/YYYYMMDD_HHMM.md` | 6項目100点（足切り用） | G1冒頭/G2章完/G3全文 |
 | Interest Check | `_how_to/standard_reader.md` | `_reader/interest_YYYYMMDD.md` | なし（合格/不合格） | 企画・第1章・投稿前 |
 | Editor Score | `_how_to/editor_score.md`（予定） | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（深掘り用） | 足切り通過後・推敲後 |
-| Consistency Audit | `_how_to/consistency_audit.md`（予定） | `_reader/consistency_YYYYMMDD.md` | なし（表形式） | 複数章完成後 |
+| Consistency Audit | `_how_to/consistency_audit.md` | `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`。旧 `consistency_YYYYMMDD.md` は読取互換） | なし（表形式） | design: 企画 Gate B の B4.5・評価前の鮮度チェック・ユーザー明示 / text: 本文保存後の次手・ユーザー明示 |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
 | Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/<session_id>/journal.md`（状態は同じセッションディレクトリの `state.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
 
@@ -810,7 +810,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 
 - 保存手順: `.rulesync/skills/novel-reader-output/SKILL.md`
 - 読み進み手順: `.rulesync/skills/novel-reader-walk/SKILL.md`
-- 深掘り評価手順（予定）: `.rulesync/skills/novel-evaluation-output/SKILL.md`
+- 深掘り評価・一貫性監査の手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`
 - 操作説明: `docs/workflow/reader-output.md`
 
 ## 足切りと深掘り評価の住み分け
@@ -1599,9 +1599,28 @@ flowchart TD
 **足切り（reader.md 6項目）と Editor Score（editor_score.md 5項目）は配点・目的が異なる別モード**。足切り未実施の作品に Editor Score を使わない。評価観点は `_how_to/editor_score.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
 
 ### 2.9 Consistency Audit Mode（設定・口調の一貫性監査）
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。複数章が完成した作品について、**設定・口調・時系列・固有名詞の表記揺れ**を章横断で監査する。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。**設定・口調・時系列・固有名詞の表記揺れ**を監査する。点数は付けず、足切り（First Reader）の結果を前提にしない。モードは一つで、スコープを二つ持つ。
 
-評価前に `character.md` / `world.md` / `design_specification.md` を参照する。監査結果は **`novels/<作品>/_reader/consistency_YYYYMMDD.md`** に保存し、チャットには矛盾件数の内訳と保存先パスだけを返す。評価観点は `_how_to/consistency_audit.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
+| scope | 読むもの | 見るもの |
+|-------|----------|----------|
+| `design`（設定監査） | `character.md` / `world.md` / `design_specification.md`（本文・CHRONOS・METRON は読まない） | 人物どうし、人物と世界、設計書の章出来事と人物・世界の食い違い、資料間の固有名詞の揺れ |
+| `text`（本文監査） | 指定範囲の `_novel_text/`（省略時は全章）と設定3点 | 本文と設定の照合（第1章から）、章をまたぐ口調・事実・伏線・時系列・表記（第2章以降） |
+
+**判定の境界**: 二つの記述が両立しない事実をどちらも明示していれば **矛盾**、片方が書いていない・読み方で結論が変わるなら **要確認**、事実は一致し表記だけが揺れるなら **軽微**。矛盾を要確認へ下げるのは、読み替えの余地を具体的に示せるときだけとし、その余地を指摘の行に書く。件数が0件でも、確認した組み合わせの一覧を残す。
+
+**起動**:
+
+- `design` は、企画の Gate B の **B4.5** で必ず実行する（新規企画と、明示された Gate B 再実施。手順はスキル **`novel-planning`**）。Gate B の外では、Editor Score と `text` 監査の開始時の **設定鮮度チェック**（`tools/novel_audit_freshness.py check`）で未監査なら、評価の前に1回自動で実行して評価へ戻る（`起動: pre_review`）。First Reader / Interest Check / Reader Walk では鮮度チェックをしない。ユーザーが設定3点の改稿を指示した作業の完了報告では、行末に `設定資料の一貫性を監査して` を示す。
+- `text` は自動実行しない。本文保存の完了報告の次手に指示文を出し、ユーザーが依頼したときだけ実行する。
+- 「一貫性を監査して」だけなら、本文が1章以上あれば `text`、なければ `design`。
+
+**修正**: 本文が無い作品の B4.5 だけは、矛盾・軽微を Gate B の中で直し、再監査は1回までとする。それ以外（本文がある作品の B4.5、pre_review、ユーザー明示）は資料も本文も直さず、指摘をユーザーへ返す。要確認はどの場合も直さない。
+
+**CHRONOS**: `text` の時系列の節で、`CHRONOS | ON` かつ有効イベントがあるときだけ `chronos check` の結果を添付する。イベント未登録は「未確認」であり矛盾にしない。イベント YAML は書かず、`writing_bridge` / METRON の計測を重ねない。
+
+**記録**: 監査結果は **`novels/<作品>/_reader/consistency_<scope>_YYYYMMDD_HHMM.md`** に保存し、冒頭に scope・起動・対象・件数を書く（design は設定3点のハッシュも書く）。件数は指摘表の判定列と一致させ、`tools/novel_consistency_audit_lint.py` で確かめる。作品 `_meta.md` の評価履歴表に `Consistency Audit (design|text)` 行を追記する。完了印の語は「監査済み」とし、「検査済み」「計測済み」は使わない。「足切りステータス」には混ぜない。執筆完了・publish・未計測解消の条件にしない。
+
+チャットには scope・矛盾件数の内訳・保存先パスと要確認の一覧を返す。評価観点は `_how_to/consistency_audit.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
 
 ### 2.10 Reader Walk Mode（読み進み感想）
 横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。指定ペルソナ（指定が無い場合は `readers/000_default/reader_preferences.md`）の一般読者として、本文を場面単位で読み、その時点の感想と突っ込みだけを残す。**既定は対象ペルソナにとって未読の残り全部**。章やプロローグなど範囲の指定があればその領域だけ進める。採点・足切り・設定資料による訂正はしない。指定範囲の外は読まない。

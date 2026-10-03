@@ -10,7 +10,7 @@
 - 冒頭やタイトルで一般読者が読み続けるかを確認したい
 - 一般読者として場面ごとに感想を残しながら通読したい（Reader Walk）
 - 完稿・推敲後に「どこを直すと何点上がるか」を把握したい（Editor Score）
-- 複数章の設定矛盾・口調のブレを洗い出したい（Consistency Audit）
+- 設定資料どうしの食い違いや、本文と設定・章どうしの矛盾を洗い出したい（Consistency Audit）
 - 長文評価の前に客観的なあらすじを作りたい（Synopsis）
 
 ---
@@ -22,7 +22,7 @@
 | First Reader（足切り） | `第1章を足切り判定してください。` | `_reader/YYYYMMDD_HHMM.md` | 6項目100点（足切り用） |
 | Interest Check | `一般読者視点で興味判定してください。` | `_reader/interest_YYYYMMDD.md` | なし（継続読了 / 離脱） |
 | Editor Score | `Editor Scoreで採点してください。` | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（改善優先度用） |
-| Consistency Audit | `第1〜3章の一貫性を監査してください。` | `_reader/consistency_YYYYMMDD.md` | なし（表形式） |
+| Consistency Audit | `設定資料の一貫性を監査して` / `本文の一貫性を監査して` | `_reader/consistency_design_YYYYMMDD_HHMM.md` / `_reader/consistency_text_YYYYMMDD_HHMM.md` | なし（表形式） |
 | Synopsis（前処理） | `あらすじを作成してください。` | `_reader/synopsis_YYYYMMDD.md` | なし |
 | Reader Walk（読み進み） | `第1章から読み進めて` | `_reader/walk/<session_id>/journal.md` | なし（感想＋任意の反応メタデータ） |
 
@@ -209,27 +209,57 @@ python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<sessi
 
 ## Consistency Audit（一貫性監査）
 
-複数章が完成した段階で、設定・口調・時系列の矛盾を章横断で洗い出します。点数ではなく表形式で出力します。
+設定・口調・時系列・固有名詞の食い違いを洗い出します。点数は付けず、表形式で出力します。足切り（First Reader）をしていない作品でも使えます。
+
+監査には二つの範囲（scope）があります。
+
+| scope | 見るもの | 使う場面 |
+|-------|----------|----------|
+| design（設定監査） | `character.md`・`world.md`・`design_specification.md` どうしの食い違い | 企画を固めたあと、設定を改稿したあと |
+| text（本文監査） | 本文と設定の食い違い（第1章から）、章をまたぐ口調・事実・伏線・時系列（第2章以降） | 本文を書いたあと |
 
 ### チャットへの指示文
 
+最小のトリガー文1行で動きます。
+
 ```text
-第1〜3章の設定・口調の一貫性を監査してください。
+設定資料の一貫性を監査して
 ```
+
+```text
+本文の一貫性を監査して
+```
+
+範囲を絞るときは `第1〜3章の本文一貫性を監査して` のように章を書きます。`一貫性を監査して` だけのときは、Monogatari Coach は本文が1章以上あれば本文監査、なければ設定監査を選び、どちらにしたかを報告の先頭に書きます。
+
+### 自動で監査が入る場面
+
+Monogatari Coach は、次の場面では指示がなくても設定監査を行います。本文監査は自動では行いません。
+
+- **企画の Gate B**: 設計を厚くした直後に設定監査を行います。詳しくは [Planning](planning.md) を参照してください。
+- **Editor Score と本文監査の前**: Monogatari Coach は `tools/novel_audit_freshness.py` で、前回の設定監査のあとに設定3点が変わったかを確かめます。変わっていれば（または設定監査がまだなければ）、先に設定監査を1回行ってから、依頼された評価に戻ります。設定は書き換わらず、結果は評価の報告の先頭に別の節として出ます。First Reader と Reader Walk の前では確かめません。
+
+本文を保存したときと、設定を改稿したときは、報告の末尾に監査の指示文が1行出ます。必要なときにそのまま入力してください。
 
 ### Monogatari Coach が行うこと
 
-`_how_to/consistency_audit.md` を参照し、以下の4観点で全章を横断します。
+1. `_how_to/consistency_audit.md` の観点で、指定された範囲を読み直す
+2. 食い違いを「矛盾」「要確認」「軽微」に分ける
+   - 矛盾: 二つの記述が、両立しない事実をどちらもはっきり書いている
+   - 要確認: 片方が書いていない、または読み方で結論が変わる（作者が決める）
+   - 軽微: 事実は合っていて、表記だけが揺れている
+3. 確かめた組み合わせ（人物×世界、本文×人物など）と件数を一覧にする。指摘が0件でも一覧は残る
+4. 結果を保存し、`_meta.md` の評価履歴に1行足す
 
-1. キャラクター一貫性（口調・行動原理・外見）
-2. 世界観・設定の一貫性（用語・能力・地理）
-3. プロット・時系列の整合（伏線の回収・経過時間）
-4. 語句・表記の統一（固有名詞の揺れ・数字表記）
+監査の結果をもとに、設定や本文が書き換わることはありません（企画の Gate B で、本文がまだない作品の矛盾を直す場合だけ例外です）。CHRONOS が ON の作品では、本文監査の時系列の節に `chronos check` の結果が添付されます。
 
 ### ユーザーが確認できるもの
 
-- 保存先: `novels/<作品>/_reader/consistency_YYYYMMDD.md`
-- チャットには「矛盾/要確認/軽微の件数内訳・保存先パス」のみ返ります。
+- 保存先: `novels/<作品>/_reader/consistency_design_YYYYMMDD_HHMM.md`（設定監査）、`novels/<作品>/_reader/consistency_text_YYYYMMDD_HHMM.md`（本文監査）
+- `_meta.md` の評価履歴に `Consistency Audit (design)` / `Consistency Audit (text)` の行が増えます。
+- チャットには scope・件数の内訳（矛盾/要確認/軽微）・保存先パスと、要確認の一覧が返ります。
+- 以前の `consistency_YYYYMMDD.md` はそのまま残り、上書きされません。
+- 監査ファイルの冒頭の件数は、`tools/novel_consistency_audit_lint.py` で中の表と照らし合わせてから報告されます。手元で確かめるときは `uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名` を実行します。
 
 ---
 
@@ -330,6 +360,18 @@ python tools/novel_slush_gate_lint.py novels/NNN_作品名
 ```
 
 終了コード 0（全通過）/ 1（ERROR あり）/ 2（WARNING あり）で結果を返します。
+
+---
+
+## 設定監査が最新かを確かめる
+
+前回の設定監査のあとに `character.md`・`world.md`・`design_specification.md` が変わったかを確かめます。Monogatari Coach は Editor Score と本文監査の前にこれを自動で行いますが、手元でも確認できます。
+
+```powershell
+uv run python tools/novel_audit_freshness.py check novels/NNN_作品名
+```
+
+「監査済み」と出れば最新です。「未監査」と出たら、`設定資料の一貫性を監査して` と依頼すると最新になります。
 
 ---
 

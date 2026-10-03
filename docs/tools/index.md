@@ -653,7 +653,51 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 python tools/novel_evaluation_diff.py novels/NNN_作品名 --all
 ```
 
-フロントマターをスキップして本文スコアを正確に抽出します。旧形式（5段階・`4.5 / 5.0`）のファイルは「旧形式」として識別します。
+フロントマターをスキップして本文スコアを正確に抽出します。旧形式（5段階・`4.5 / 5.0`）のファイルは「旧形式」として識別します。一貫性監査は `Consistency Audit (design)` / `(text)` として並び、日付だけの旧 `consistency_YYYYMMDD.md` は「旧形式」と表示されます。
+
+---
+
+### `novel_audit_freshness.py` — 設定監査の鮮度チェック
+
+設定3点（`character.md`・`world.md`・`design_specification.md`）が、最新の設定監査（`_reader/consistency_design_YYYYMMDD_HHMM.md`）のあとに変わったかを確かめます。Monogatari Coach は Editor Score と本文監査の前にこのツールを使い、変わっていれば先に設定監査を行います。LLM は呼ばず、作品ファイルも書き換えません。
+
+設定監査ファイルの冒頭に貼るハッシュ行を出します。
+
+```powershell
+uv run python tools/novel_audit_freshness.py hash novels/NNN_作品名
+```
+
+最新の設定監査と、いまの設定3点を比べます。
+
+```powershell
+# 結果を文章で表示する
+uv run python tools/novel_audit_freshness.py check novels/NNN_作品名
+
+# 結果を JSON で表示する
+uv run python tools/novel_audit_freshness.py check novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら監査済み、1 なら未監査（設定監査がない、または設定が変わった）、2 なら作品フォルダや設定3点が見つかりません。改行コードの違い（CRLF / LF）だけでは変更とみなしません。
+
+---
+
+### `novel_consistency_audit_lint.py` — 一貫性監査ファイルの体裁チェック
+
+一貫性監査ファイル（`_reader/consistency_<design|text>_YYYYMMDD_HHMM.md`）の冒頭に書いた件数が、中の指摘表の行数と合っているかを確かめます。Monogatari Coach は監査ファイルを保存するたびにこのツールを使い、合格するまで完了を報告しません。LLM は呼ばず、ファイルも書き換えません。
+
+作品フォルダを指定すると、新しい形式の監査ファイルをすべて検査します。
+
+```powershell
+uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名
+```
+
+ファイルを1つだけ指定することもできます。
+
+```powershell
+uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名/_reader/consistency_text_20261004_0153.md
+```
+
+確かめる内容は、ファイル名と冒頭の scope の一致、冒頭の件数と指摘表の行数の一致、「確認した組み合わせ」の指摘数の合計、設定監査の設定ハッシュの有無です。終了コードは 0 が合格、1 が不一致あり、2 がファイルを読めないときです。
 
 ---
 

@@ -35,6 +35,13 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 新規の漫画ページ `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry`（コマ数と一致する矩形）と `render_instruction.text_mode`（`generate` / `letter_later` / `none`）を省略しない。欠けていれば作成完了としない。既存 1.0 は読み取り互換で残し、1.1 の欄を足すときは `tools/novel_manga_ir_migrate.py` で先に移行する（移行は矩形と `text_mode` を書かない）。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
 
+## Consistency Audit
+
+- モードは一つ、スコープは `design`（設定3点どうし）と `text`（本文と設定・章横断）の二つ。点数は付けず、足切りを前提にしない。
+- `design` は企画 Gate B の B4.5 で必ず実行する。Gate B の外では、Editor Score と `text` 監査の開始時に `tools/novel_audit_freshness.py check` が未監査を返したときだけ、評価の前に自動で1回実行して評価へ戻る。`text` は自動実行しない。
+- 本文が無い作品の B4.5 を除き、監査の指摘で資料や本文を直さない。要確認は常に直さずユーザーへ返す。
+- 保存は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。`tools/novel_consistency_audit_lint.py` が終了コード 0（冒頭の件数と指摘表が一致）を返し、`_meta.md` 評価履歴へ `Consistency Audit (design|text)` 行を追記してから完了とする。完了印は「監査済み」とし、「検査済み」「計測済み」を使わない。執筆完了・publish の条件にしない。詳細は `workflow-specification.md`「Consistency Audit Mode」とスキル `novel-evaluation-output`。
+
 ## METRON V1 修復不変条件
 
 - METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`（文字数比の極端な短さ）、`BeatThin` は別統計の `beat_thin_ratio`（段落・会話の充足率）と構造予算で判定する。両方の閾値を同じ値にしない。`BeatThin` の自動修復は計画の段落下限または会話下限の未達に限る。校正典型値だけの未達は指摘を残し、自動修復しない。
@@ -49,6 +56,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 検査は決定的コード（P0 は CHR001、人物状態は CHR010〜013）で行い、LLM に判定を委ねない。
 - `chronos check` は LLM / provider を呼ばず、`_novel_text` を読まず、`world.md` や原稿を書き換えない。`extract_gate` がある作品だけ、provider を呼ばない `extract` CLI が候補文書を検証して出典照合する。ゲート未設定作品は抽出せず、従来の検査を保つ。候補は承認まで `events/` に入れず、承認済み内容の更新は差分提案と作者承認を要する。更新候補の却下は元イベントの承認状態を変えず、ロック欄は作者が承認時に `--lock` で指定する。承認後の順序グラフで候補自身が CHR001 の循環に参加する場合は拒否する。
 - 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。執筆工程への接続は `writing_bridge` が行う。
+- Consistency Audit（`text`）は `chronos check` の結果を読んで時系列の節に添付するだけで、ゲートにしない。イベント未登録を矛盾にせず、イベントを書かない。
 
 ## CHRONOS 人物状態（P0.5）
 
@@ -84,7 +92,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
 - 既存作品の企画開始・再開は、洗練または Gate B 再実施を明示されない限り Gate A までで止め、「Gate A 完了・Gate B 未完了」と報告する。これは企画完了ではない。
-- Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・`_meta.md` への実施記録。
+- Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・設定監査（B4.5）・`_meta.md` への実施記録。B4.5 は本文が無い作品では矛盾0件を Gate B 完了の条件とし、本文がある作品では資料を直さず指摘をユーザーへ返す。
 - Gate B の創作技法契約は、索引で選んだ **葉ファイルの selected** だけを `_meta.md` に残す。索引は選定補助であり再読対象ではない。新しい how_to は、明示の Gate B 再実施があるまで既存作品の selected に入らない。標準カタログへ葉を足すときは索引（または該当 README / 冒頭注記）と発動条件を書き、既存 selected は触らない。作業用索引があるときはそれが選定入口であり、標準だけの新葉は作業用へ追随するまで選定対象外（標準索引は発見用に併読する）。`pack_id` は任意の短縮であり、既存契約へ自動では付けない。
 - 評価の既定は契約外。`reader.md` 等の工程正本は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ selected（パック展開後）を再読する。
 - **`working_path` に書いたパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは契約に working があればそれ、無ければ standard。合成しない。

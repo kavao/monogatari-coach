@@ -407,19 +407,23 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 ### D3. 設定・口調の一貫性を監査する（Consistency Audit）
 
-複数章完成後に、設定矛盾・口調のブレ・未回収伏線を洗い出します。
+設定資料どうしの食い違い（設定監査）や、本文と設定・章どうしの矛盾（本文監査）を洗い出します。足切りをしていない作品でも使えます。
 
 ```text
-第1〜3章の設定・口調の一貫性を監査してください。
+設定資料の一貫性を監査して
+```
+
+```text
+第1〜3章の本文一貫性を監査して
 ```
 
 **このように動きます:**
-1. `_novel_text/*.md`・`character.md`・`world.md`・`design_specification.md` を参照する
-2. `_how_to/consistency_audit.md` の観点で章横断の矛盾・揺れを洗い出す
-3. 結果を `novels/<作品>/_reader/consistency_YYYYMMDD.md` に表形式で保存する
-4. チャットには矛盾件数の内訳（矛盾/要確認/軽微）と保存先パスだけを返す
+1. 設定監査は `character.md`・`world.md`・`design_specification.md` だけを、本文監査は指定範囲の本文と設定3点を読み直す
+2. `_how_to/consistency_audit.md` の観点で、食い違いを矛盾／要確認／軽微に分ける
+3. 結果を `novels/<作品>/_reader/consistency_design_YYYYMMDD_HHMM.md`（設定監査）または `consistency_text_YYYYMMDD_HHMM.md`（本文監査）に保存し、`_meta.md` の評価履歴に1行足す
+4. チャットには件数の内訳と保存先パス、要確認の一覧だけを返す。設定や本文は書き換えない
 
-詳しい手順は [Reader Output](reader-output.md) を参照してください。
+企画の Gate B と、Editor Score・本文監査の前（設定が前回の監査のあとに変わっていたとき）には、Monogatari Coach が設定監査を自動で行います。詳しい手順は [Reader Output](reader-output.md) を参照してください。
 
 ---
 
