@@ -2,7 +2,8 @@
 name: novel-image-layout
 description: >-
   作品フォルダ内で tag/<romaji>/（キャラ画像）、manga/_assets/<manga_XX>/comic/（漫画・コマ画像）、
-  manga/_assets/<manga_XX>/pages/（漫画・ページ画像）、manga/_assets/<manga_XX>/backgrounds/（背景資料）、illustrations/_assets/<illustration_XX>/（挿絵・表紙）のディレクトリを
+  manga/_assets/<manga_XX>/pages/（漫画・ページ画像）、manga/_assets/<manga_XX>/backgrounds/（背景資料）、
+  manga/_assets/<manga_XX>/names/（ネーム画像）、manga/_assets/<manga_XX>/assembled/（組んだ PSD）、illustrations/_assets/<illustration_XX>/（挿絵・表紙）のディレクトリを
   tools/novel_image_layout.py で一括作成・パス列挙する。
   Forge txt2img の output_dir と組み合わせる。
 targets: ["*"]
@@ -16,6 +17,8 @@ targets: ["*"]
 - **漫画（コマ）**: `manga/manga_01.md` に対応する **`manga/_assets/manga_01/comic/`** に保存する（`--source step1-panels`）。**既定運用では `comic/` 直下**を使う。ストックの分類は**章（`manga_XX`）まで**で足りる。
 - **漫画（ページ）**: 同じ章の **`manga/_assets/manga_01/pages/`** 直下（`--source step1-pages` / `step2-pages`）。sidecar・写植などの派生ファイルも同じ `pages/` に置く。ページ IR 正本の `manga/pages/*.yaml` とは別の場所である。
 - **漫画（背景資料）**: 同じ章の **`manga/_assets/manga_01/backgrounds/`**（`--source background-concepts`）。
+- **漫画（ネーム画像）**: 同じ章の **`manga/_assets/manga_01/names/`**（`novel_manga_layout_apply.py --name-dir` の推奨の出力先）。
+- **漫画（組んだ PSD）**: 同じ章の **`manga/_assets/manga_01/assembled/`**（`novel_manga_assemble_psd.py` が PSD・PNG・記録・台詞の一覧を書く。前の版は `assembled/old/`）。
 - **挿絵・表紙**: `illustrations/pages/illustration_01_p01.yaml` に対応する **`illustrations/_assets/illustration_01/`** に保存する。`_pNN` はページ番号なので、保存先 stem からは外す。
 - **`image_provider_novel_manga_batch --subdir-by-page` による `p01/`, `p02/` 等のページ単位サブフォルダ**は、本リポジトリの**推奨・ルールの対象外**（手順で既定にしない）。通常はファイル名接頭辞でページ・コマを区別する。ページ画像（`step1-pages` / `step2-pages`）と併用するとバッチはエラーで止まる。
 - **`k01`, `k02`, …** は、コマ別に手で整理したい場合だけ作る**任意**の補助フォルダ。通常運用では不要。
@@ -26,7 +29,7 @@ Markdown の中身の解析や画像のコピーは**行わない**（ディレ�
 
 リポジトリルート（`monocri/`）で、**作品フォルダ**を引数に取る。
 
-**フォルダ作成**（`tag/*.md` があれば `tag/<stem>/`、`manga/manga_*.md` があれば `manga/_assets/<stem>/comic/`・`pages/`・`backgrounds/`、`illustrations/pages/illustration_XX_pYY.yaml` があれば `illustrations/_assets/illustration_XX/`）:
+**フォルダ作成**（`tag/*.md` があれば `tag/<stem>/`、`manga/manga_*.md` があれば `manga/_assets/<stem>/comic/`・`pages/`・`backgrounds/`・`names/`・`assembled/`、`illustrations/pages/illustration_XX_pYY.yaml` があれば `illustrations/_assets/illustration_XX/`）:
 
 ```bash
 python tools/novel_image_layout.py scaffold novels/051_神のダンジョンβテスター

@@ -100,6 +100,15 @@
       "max_count": 4,
       "min_png_bytes": 512,
       "auth_env": "NOVELAI_ACCESS_TOKEN",
+      "panel_frame_sizes": {
+        "_comment": "--panel-aspect frame（コマ単位生成を枠の比率に寄せる）で使うサイズ。mode=pixel_budget（既定）は max_pixels 以内・multiple の倍数・min_side〜max_side で比率に合わせて計算する（2026-10-01、NovelAI の画面で 576x1728 が Anlas 0 と確認）。mode=presets は presets から比率が最も近いものを選ぶ",
+        "mode": "pixel_budget",
+        "presets": [[1024, 1024], [832, 1216], [1216, 832]],
+        "max_pixels": 1048576,
+        "multiple": 64,
+        "min_side": 512,
+        "max_side": 1728
+      },
       "default_model": "nai-diffusion-5-full",
       "vibe_model": "nai-diffusion-4-5-full",
       "model_aliases": {
@@ -220,6 +229,8 @@
         "portrait_1_2": "1:2",
         "wide_2_1": "2:1",
         "wide_20_9": "20:9",
+        "wide_21_9": "21:9",
+        "wide_5_2": "5:2",
         "tall_9_20": "9:20",
         "landscape": "16:9",
         "wide": "16:9",
@@ -275,6 +286,8 @@
         "portrait_1_2": "1:2",
         "wide_2_1": "2:1",
         "wide_20_9": "20:9",
+        "wide_21_9": "21:9",
+        "wide_5_2": "5:2",
         "tall_9_20": "9:20",
         "landscape": "16:9",
         "wide": "16:9",

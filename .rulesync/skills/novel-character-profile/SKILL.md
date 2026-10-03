@@ -101,5 +101,6 @@ python tools/novel_character_md_check.py novels/<作品> --profile plan
 
 - 選定レジストリ: `.rulesync/skills/content-pick-registry/SKILL.md`
 - Plan Mode: `.rulesync/skills/novel-planning/SKILL.md`
+- 改稿後の次手: Gate B の外でユーザー指示により `character.md` を改稿したときの完了報告は、`novel-planning` の「Gate B の外での設定改稿」に従い、行末に設定監査の指示文を出す
 - 執筆前確認: `.rulesync/skills/novel-project-readiness/SKILL.md`
 - Tag Mode の機械正本: `.rulesync/skills/manga-prompt-ir/SKILL.md`

@@ -14,6 +14,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 - 環境変数テンプレート: [`/.env.example`](../../.env.example)
 - 詳細スキル: [`image-provider`（旧 `forge-txt2img`）](../../.rulesync/skills/forge-txt2img/SKILL.md)
 - 漫画ページ IR・検証・パイプライン: [manga-prompt-ir.md](manga-prompt-ir.md)
+- コマ画像をネームの枠へ組んだ PSD と PNG（フキダシの下書き・枠の比率でのコマ生成・クリップスタジオでの仕上げ）: [manga-assemble-psd.md](manga-assemble-psd.md)
 - 写植と領域合成（ローカル）。吹き出しの native / NovelAI 空泡（先）/ local 退避: [manga-page-edit.md](manga-page-edit.md)
 - 互換 Step1/Step2・タグ生成テンプレ: [manga-tag-generation.md](manga-tag-generation.md)
 - 挿絵・表紙 IR・バッチ生成: [illustration-prompt-ir.md](illustration-prompt-ir.md)

@@ -38,6 +38,8 @@ from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
 
+from PIL import Image
+
 import yaml
 
 _TOOLS_DIR = Path(__file__).resolve().parent
@@ -110,6 +112,11 @@ from manga_prompt_ir.renderer_capabilities import (
     resolve_renderer_capability_key,
 )
 from manga_prompt_ir.local_frame_source import build_local_frame_source_record
+from manga_prompt_ir.frame_aspect import (
+    FrameAspectError,
+    NovelAISizePolicy,
+    frame_sizes_for_page,
+)
 from manga_prompt_ir.page_edit import write_json as write_page_json
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 from novel_meta_yaml import suggest_text_mode_for_lettering
@@ -2316,6 +2323,7 @@ def iter_yaml_manga_jobs(
     prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
+    panel_frame_policy: NovelAISizePolicy | None = None,
 ) -> list[dict[str, Any]]:
     if prompt_compaction != "off" and not (
         provider == "novelai"
@@ -2684,6 +2692,24 @@ def iter_yaml_manga_jobs(
         else:
             technical = page.get("technical") or {}
             tech_neg = as_list(technical.get("negative_tags"))
+            panel_frames: list[dict[str, Any]] | None = None
+            if panel_frame_policy is not None:
+                # --panel-aspect frame: 枠の比率（B5 基準）でコマごとのサイズを決める。
+                # layout_geometry が無いページは黙って既定の比率に戻さず止める。
+                geometry = (page.get("layout_geometry") or {}).get("panels") or []
+                if not geometry:
+                    raise ValueError(
+                        f"{path.name}: --panel-aspect frame には layout_geometry が要ります"
+                        "（novel_manga_layout_apply.py で起こしてください）"
+                    )
+                try:
+                    panel_frames = frame_sizes_for_page(
+                        geometry,
+                        [int(panel.get("panel_id")) for panel in panels],
+                        panel_frame_policy,
+                    )
+                except (FrameAspectError, TypeError, ValueError) as exc:
+                    raise ValueError(f"{path.name}: {exc}") from exc
             for panel_index, panel in enumerate(panels, start=1):
                 mask_result = MaskApplyResult(tags=[])
                 if use_novelai_pipe_split:
@@ -2764,6 +2790,10 @@ def iter_yaml_manga_jobs(
                 }
                 if mask_result.replaced or mask_result.omitted:
                     job_entry["mask_result"] = mask_result
+                if panel_frames is not None:
+                    frame_info = panel_frames[panel_index - 1]
+                    job_entry["width"], job_entry["height"] = frame_info["requested_size"]
+                    job_meta["panel_frame"] = dict(frame_info)
                 all_jobs.append(job_entry)
     return all_jobs
 
@@ -2791,6 +2821,7 @@ def iter_jobs_by_input(
     prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
+    panel_frame_policy: NovelAISizePolicy | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2813,6 +2844,7 @@ def iter_jobs_by_input(
             prompt_compaction=prompt_compaction,
             novelai_model=novelai_model,
             requested_model=requested_model,
+            panel_frame_policy=panel_frame_policy,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -2913,6 +2945,19 @@ def main(argv: list[str] | None = None) -> int:
         "--size",
         default=None,
         help="OpenAI Images の明示サイズ（例: 1024x1536）。--aspect-ratio より優先",
+    )
+    p.add_argument(
+        "--panel-aspect",
+        choices=("frame",),
+        default=None,
+        help=(
+            "frame: コマ単位生成（step1-panels）で、各コマをページ YAML の layout_geometry の枠の比率"
+            "（B5 基準）に近いサイズで生成する。NovelAI・YAML 入力専用。--aspect-ratio / --size とは併用不可。"
+            "サイズの選び方は config/image_generation.json の novelai.panel_frame_sizes の mode で決まる。"
+            "同梱の設定は pixel_budget（面積 max_pixels 以内・multiple の倍数・辺 min_side〜max_side で比率に最も近いサイズ。"
+            "既定値 1048576・64・512〜1728）。mode=presets は presets（1024x1024 / 832x1216 / 1216x832 など）から比率の最も近いもの"
+            "（mode を書かない設定では presets）"
+        ),
     )
     p.add_argument(
         "--resolution",
@@ -3265,7 +3310,29 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.panel_aspect is not None:
+        problems = []
+        if args.source != "step1-panels":
+            problems.append(f"--source step1-panels 専用です（source={args.source}）")
+        if provider != "novelai":
+            problems.append(f"provider=novelai 専用です（provider={provider}）")
+        if args.input != "yaml":
+            problems.append("--input yaml 専用です")
+        if args.aspect_ratio is not None:
+            problems.append("--aspect-ratio とは併用できません")
+        if args.size is not None:
+            problems.append("--size とは併用できません")
+        if problems:
+            print("error: --panel-aspect frame: " + " / ".join(problems), file=sys.stderr)
+            return 2
     provider_cfg = provider_config_from_root(root, provider)
+    panel_frame_policy: NovelAISizePolicy | None = None
+    if args.panel_aspect == "frame":
+        try:
+            panel_frame_policy = NovelAISizePolicy.from_config(provider_cfg.get("panel_frame_sizes"))
+        except FrameAspectError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
     try:
         prompt_formatter = resolve_prompt_formatter(
             provider,
@@ -3391,6 +3458,7 @@ def main(argv: list[str] | None = None) -> int:
             prompt_compaction=args.prompt_compaction,
             novelai_model=(provider_cfg.get("default_model") if provider == "novelai" else None),
             requested_model=args.model,
+            panel_frame_policy=panel_frame_policy,
         )
     except (FileNotFoundError, ValueError, PageRenderPlanError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -3520,6 +3588,10 @@ def main(argv: list[str] | None = None) -> int:
                 plan_metadata["manifest_path"] = page_manifest_path.as_posix()
         if aspect_effective is not None:
             payload["aspect_ratio_preset"] = aspect_effective
+        if job.get("width") and job.get("height"):
+            # --panel-aspect frame: コマごとのサイズ（NovelAI は width / height を preset より優先する）
+            payload["width"] = int(job["width"])
+            payload["height"] = int(job["height"])
         if args.size is not None:
             payload["size"] = args.size
         if args.resolution is not None:
@@ -3569,6 +3641,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    aspect_ratio: {merged['aspect_ratio']}")
             if provider == "novelai" and merged.get("width") and merged.get("height"):
                 print(f"    image_size: {merged['width']}x{merged['height']}")
+            panel_frame = (job.get("metadata") or {}).get("panel_frame")
+            if isinstance(panel_frame, dict):
+                req_w, req_h = panel_frame["requested_size"]
+                print(
+                    f"    panel_frame: 枠の比 {panel_frame['frame_ratio']:.2f} → "
+                    f"{req_w}x{req_h}（比 {panel_frame['requested_ratio']:.2f}、{panel_frame['mode']}）"
+                )
             if merged.get("model"):
                 print(f"    resolved_model: {merged['model']}")
             if merged.get("grok_image_quality"):
@@ -3720,6 +3799,34 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"error: image provider の実行に失敗しました ({job['prefix']})", file=sys.stderr)
                 return 1
         _safe_print_stdout(r.stdout.strip())
+        panel_frame = (job.get("metadata") or {}).get("panel_frame")
+        if isinstance(panel_frame, dict):
+            # 要求したサイズと、保存した画像を開いて測った実寸を分けて記録する（計画 C9）
+            try:
+                saved_payload = json.loads(r.stdout)
+            except json.JSONDecodeError:
+                saved_payload = {}
+                print("warning: 生成結果 JSON を読めず、コマの実寸を記録できません", file=sys.stderr)
+            job_out = Path(payload["output_dir"])
+            for item in saved_payload.get("saved") or []:
+                if not item.get("png") or not item.get("json"):
+                    continue
+                try:
+                    png_path = resolve_saved_artifact(item["png"], job_out)
+                    gen_json = resolve_saved_artifact(item["json"], job_out)
+                except FileNotFoundError as exc:
+                    print(f"warning: {exc}", file=sys.stderr)
+                    continue
+                with Image.open(png_path) as saved_image:
+                    actual = list(saved_image.size)
+                existing = json.loads(gen_json.read_text(encoding="utf-8"))
+                existing["panel_frame"] = {**panel_frame, "actual_size": actual}
+                write_page_json(gen_json, existing)
+                if actual != list(panel_frame["requested_size"]):
+                    print(
+                        f"warning: {job['prefix']}: 要求 {panel_frame['requested_size']} と実寸 {actual} が違います",
+                        file=sys.stderr,
+                    )
         if isinstance(page_plan, PageRenderPlan) and page_plan.bubble_frame_mode == "local":
             try:
                 saved_payload = json.loads(r.stdout)

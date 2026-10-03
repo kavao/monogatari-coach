@@ -113,7 +113,9 @@ targets: ["*"]
 - 手本は `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ・`text_mode: generate`）と `manga_page_5panel.yaml`（5コマ・`letter_later`）。`manga_page_v1_0.yaml` は 1.0 の読み取り互換例で、新規の手本にしない。
 - コマ数・大小・めくりは `_how_to/manga.md` の「コマ割り・ページ割り」で決めてから矩形を書く。前のページや既存作品の矩形を写さない。
 - 矩形は型ライブラリから CLI で起こすのを標準にし、必要なら手で直す。各コマに `weight`（または `beat_type`）を付けてから次を実行する。既定は提案の表示だけで、`--apply` で `layout_geometry`・`manga.layout_template_id` と、コマ割りの文章（`manga.panel_layout`・各コマの `composition.layout` / `layout_en`）を型にそろえて書く。既に `layout_geometry` があるページは `--overwrite` なしでは触らない。`--name-dir` で番号付きネーム画像を出して大小を目で確かめる（画像の書き出しに失敗したページは YAML を書かない）。`[不一致]`（最も重いコマを最大の枠に置ける型が無い）は書き込まれないので、重みを見直すか手で書く。`--page` で絞っても章の直前のページの型は避ける。
-  - `uv run python tools/novel_manga_layout_apply.py novels/<作品> --manga-stem manga_XX [--apply] [--name-dir <dir>]`
+  - `uv run python tools/novel_manga_layout_apply.py novels/<作品> --manga-stem manga_XX [--apply] [--name-dir <dir>]`（`<dir>` は `manga/_assets/manga_XX/names` を推奨）
+  - 矩形を決めたあとにコマ画像を作るときは、NovelAI の `step1-panels` に `--panel-aspect frame` を付けると枠の縦横比で作る（`--aspect-ratio` / `--size` とは併用不可。大きさは `config/image_generation.json` の `novelai.panel_frame_sizes`）
+  - コマ画像を枠へ組むときは `novel_manga_bubbles_draft.py`（フキダシの下書き `manga/pages/<page>.bubbles.yaml`）→ `novel_manga_assemble_psd.py`（`manga/_assets/manga_XX/assembled/` に PSD と PNG）。どちらも既定は計画の表示で、`--apply` で書く。既存は `--overwrite` なしでは触らず、置き換えるときは前の版を自動で退避する。操作は `docs/image-generation/manga-assemble-psd.md`
   - 型は `tools/manga_prompt_ir/data/panel_layout_templates.yaml`（1〜5コマ・20型）。読み順は入れ替えないので、重いコマを大きい枠に置く調整は型の選び方で行う（最も重いコマの枠が最大の型だけを残し、重みと面積の逆転が最少の型に絞る）。直前のページと同じ型は避ける。6コマ以上のページは対象外（手で書く）
   - `layout_template_id` があるページで `manga.panel_layout` / `composition.layout` / `composition.layout_en`（生成プロンプトは英語欄を優先）を型と違う文章にすると検証が警告する。型を使わなくなったら `layout_template_id` を外す
 - `text_policy` は `text_mode` と同じ方針の文言にする。`none` なら `no text` または「文字を描かない／入れない」のような否定形で書き、`legible` など描画を求める語を混ぜない。食い違うと schema が弾く。
