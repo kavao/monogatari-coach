@@ -1,0 +1,274 @@
+# 新規ページの手本（schema 1.1・5コマ・非均等割り・文字は後載せ）。
+# 上段は小さい導入2コマ、中段を見せゴマ、下段は大小をつけた2コマで、引きを左下に置く。
+# 3コマの例は manga_page.yaml、1.0 の読み取り互換例は manga_page_v1_0.yaml。
+schema_version: "1.1"
+meta:
+  intent: manga_page
+  reading_order: right_to_left
+  aspect_ratio: "2:3"
+  page_count: 1
+render_instruction:
+  task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
+  prompt_header: 以下のYAMLは漫画1ページ分の作画指示です。panelsを読み順に従って配置し、manga.panel_layoutとlayout_geometryに沿って1ページの漫画として描いてください。
+  panel_policy: panels[]の順番とpanel_idを守り、各コマのsummary、subjects、composition、camera、prompt_tagsを統合して作画する。
+  character_policy: character_snapshotsまたはcharacter_idに紐づく固定外見・服装・禁止事項を、該当人物が出るすべてのコマへ反映する。
+  # 文字は後載せ。text_policy も同じ方針（lettering later）の文言にそろえる。
+  # NovelAI でページ生成するときは、CLI でも --text-mode letter_later を明示する（省略時は generate 扱い）。
+  text_mode: letter_later
+  text_policy: Lettering later. Draw empty speech balloons at the planned positions; the dialogue is added in post-processing.
+  output_policy: 1枚の完成漫画ページとして出力する。コマ境界、読み順、ページ内の大小関係を明確にする。
+  user_directives:
+    page_notes:
+      - 中段を見せゴマにし、止まった街の中で和紀だけが動いていることを大きく見せる
+      - 上段の2コマは短い導入なので小さく、左下の小ゴマで次のページへ引く
+    defaults:
+      required_prompt_tags:
+        - morning_light
+      omit_prompt_tags:
+        - night
+manga:
+  genre_tags:
+    - manga
+  visual_tags:
+    - clean_lineart
+    - anime_coloring
+    - dramatic_paneling
+  line_art: crisp ink line
+  panel_layout: 日本の漫画のコマ割り、上段に小さい2コマ・中段に横長の大ゴマ・下段に大小2コマ。右から左。
+  text_policy: Lettering later. Keep empty speech balloons for post-processing.
+scene:
+  location: 朝の通学路の交差点
+  location_en: residential crossroads on the way to school, early morning
+  time_of_day: morning
+  time_of_day_en: early morning
+  weather: 晴れ
+  weather_en: clear sky, low sun
+  era: modern fantasy
+  background_notes: 信号待ちの人々と自転車、電線の多い住宅街
+  background_notes_en: pedestrians waiting at the signal, bicycles, dense overhead power lines
+character_ids:
+  - kazuki
+background_concepts:
+  - concept_id: morning_crossroads
+    title: 朝の交差点
+    description: 住宅街の小さな交差点。朝の低い光と長い影。中段の「止まった街」の舞台になる。
+    prompt: Japanese manga background concept art, small residential crossroads at early morning, low sun, long shadows, overhead power lines, bicycles, clean commercial manga style, no characters
+    negative_tags:
+      - people
+      - character close-up
+    provider_hint: grok
+    usage: 上段の導入コマと中段の大ゴマの背景検討に使う。
+panels:
+  - panel_id: 1
+    summary: 上段右の小コマ。朝の住宅街の交差点を遠景で見せる導入。
+    summary_en: A distant view of a quiet residential crossroads in the morning.
+    summary_en_source: 上段右の小コマ。朝の住宅街の交差点を遠景で見せる導入。
+    prompt_tags:
+      - crossroads
+      - power_lines
+      - morning
+      - extreme_long_shot
+    weight: 1
+    size_class: small
+    beat_type: establishing
+    subjects:
+      - subject_id: p1-s01
+        description: 朝の交差点
+        type: object
+        pose_action: 信号待ちの人々が並んでいる
+        position: background
+    composition:
+      framing: extreme long shot
+      layout: 上段右の小コマ
+      focus: 交差点と電線
+    camera:
+      angle: high angle
+      shot_size: extreme long shot
+    text:
+      narration:
+        - text_id: p1-narration-01
+          content: 翌朝。通知のことは、夢だと思うことにした。
+    mood_atmosphere:
+      - calm morning
+    translation: 朝の交差点の遠景。
+  - panel_id: 2
+    summary: 上段左コマ。和紀がスマホを見ながら信号待ちの列に並ぶ。
+    summary_en: Kazuki waits at the signal while looking at his phone.
+    summary_en_source: 上段左コマ。和紀がスマホを見ながら信号待ちの列に並ぶ。
+    prompt_tags:
+      - walking
+      - looking_at_phone
+      - school_uniform
+    weight: 2
+    size_class: medium
+    beat_type: action
+    subjects:
+      - subject_id: p2-s01
+        character_id: kazuki
+        description: 通学中の和紀
+        pose_action: 歩きながらスマホを見る
+        position: midground
+        expression: 眠たげ
+    composition:
+      framing: medium shot
+      layout: 上段左の横長コマ
+      focus: スマホを見る和紀
+    text:
+      monologue:
+        - text_id: p2-monologue-01
+          content: アプリは消えてる。やっぱり寝ぼけてたんだ。
+    mood_atmosphere:
+      - relief
+  - panel_id: 3
+    summary: 中段の見せゴマ。信号が変わった瞬間、周りの人も自転車も鳥も空中で止まり、和紀だけが振り返る。
+    summary_en: As the signal changes, people, bicycles and birds freeze in midair while only Kazuki turns around.
+    summary_en_source: 中段の見せゴマ。信号が変わった瞬間、周りの人も自転車も鳥も空中で止まり、和紀だけが振り返る。
+    prompt_tags:
+      - frozen_time
+      - wide_shot
+      - long_shadows
+      - crowd
+    weight: 5
+    size_class: large
+    beat_type: showcase
+    subjects:
+      - subject_id: p3-s01
+        character_id: kazuki
+        description: 止まった街で振り返る和紀
+        pose_action: 立ち止まって周囲を見回す
+        position: midground
+        expression: 驚き
+      - subject_id: p3-s02
+        description: 止まった通行人と自転車、空中で静止した鳥
+        type: object
+        pose_action: 動作の途中で静止している
+        position: background
+    composition:
+      framing: wide shot
+      layout: 中段いっぱいの大ゴマ
+      focus: 静止した街と、動いている和紀だけ
+      perspective: eye level
+    camera:
+      angle: eye level
+      shot_size: wide shot
+    lighting:
+      direction: low morning sun from the right
+      quality: crisp morning light with long shadows
+      mood_effect: 日常が止まる異様さ
+    text:
+      sfx:
+        - text_id: p3-sfx-01
+          content: ……シン
+          placement: 画面上部
+          style: 細く小さい
+          meaning: 音が消えた静けさ
+    mood_atmosphere:
+      - frozen time
+      - supernatural intrusion
+    translation: 時間が止まった交差点で和紀だけが動く見せゴマ。
+  - panel_id: 4
+    summary: 下段右コマ。和紀が思わず声を上げる顔のアップ。
+    summary_en: Kazuki shouts at the frozen people around him.
+    summary_en_source: 下段右コマ。和紀が思わず声を上げる顔のアップ。
+    prompt_tags:
+      - shouting
+      - close-up
+      - panicking
+    weight: 3
+    size_class: medium
+    beat_type: reaction
+    subjects:
+      - subject_id: p4-s01
+        character_id: kazuki
+        description: 声を上げる和紀
+        pose_action: 周りへ呼びかける
+        position: foreground
+        expression: 焦り
+    composition:
+      framing: close-up
+      layout: 下段右の横長コマ
+      focus: 和紀の表情
+    text:
+      dialogue:
+        - text_id: p4-dialogue-01
+          speaker: 和紀
+          content: おい……みんな、どうしたんだよ！
+          bubble_type: shout bubble
+          placement: 顔の上
+    mood_atmosphere:
+      - panic
+  - panel_id: 5
+    summary: 下段左の小コマ。手の中のスマホに、消えたはずのアプリの通知が再び表示される。ページの引き。
+    summary_en: The vanished app notification appears again on the phone in his hand.
+    summary_en_source: 下段左の小コマ。手の中のスマホに、消えたはずのアプリの通知が再び表示される。ページの引き。
+    prompt_tags:
+      - phone_screen
+      - notification
+      - close-up
+    weight: 2
+    size_class: small
+    beat_type: transition
+    subjects:
+      - subject_id: p5-s01
+        description: 和紀のスマホ画面
+        type: object
+        pose_action: DivineQA β の通知「質問を一つどうぞ」を表示している
+        position: foreground
+    composition:
+      framing: close-up
+      layout: 下段左の小コマ
+      focus: 通知の文字
+    text:
+      dialogue:
+        - text_id: p5-dialogue-01
+          speaker: DivineQA β
+          content: 質問を一つどうぞ。
+          bubble_type: phone notification
+          placement: 画面の中
+    mood_atmosphere:
+      - cliffhanger
+# 正規化 0〜1、左上原点。panels[] と同じ順・同じ panel_id。同じ段は右のコマが先。
+# 大ゴマ（panel 3）を最も大きくし、上段は小さく、下段は右を広く左を小さくして大小をつける。
+layout_geometry:
+  panels:
+    - panel_id: 1
+      rect:
+        x: 0.62
+        y: 0.03
+        w: 0.34
+        h: 0.22
+    - panel_id: 2
+      rect:
+        x: 0.04
+        y: 0.03
+        w: 0.55
+        h: 0.22
+    - panel_id: 3
+      rect:
+        x: 0.04
+        y: 0.28
+        w: 0.92
+        h: 0.38
+    - panel_id: 4
+      rect:
+        x: 0.40
+        y: 0.69
+        w: 0.56
+        h: 0.28
+    - panel_id: 5
+      rect:
+        x: 0.04
+        y: 0.69
+        w: 0.33
+        h: 0.28
+color_palette:
+  mode: full_color
+  colors:
+    - pale morning blue
+    - warm sunlight yellow
+technical:
+  resolution: 2k
+  quality_level: high
+  negative_tags:
+    - bad anatomy
+    - text

@@ -1,0 +1,42 @@
+schema_version: "1.0"
+description: >-
+  Manga Prompt IR の panels[].beat_type（拍子の種類）に使う許容語彙。
+  人間向けの説明は _how_to.example/manga.md の「コマ割り・ページ割り」、機械検査の集合はこのファイルを正とする。
+  default_weight と size_class はコマの重み・大きさの既定の目安（自動配置が使う予定）。コマ側に weight / size_class があればそちらを優先する。
+
+vocabulary:
+  - id: establishing
+    label_ja: 導入
+    default_weight: 3
+    size_class: medium
+    usage: 場所・時間を示す。最初のページや場面転換の頭。引きの画角で見せる。
+  - id: dialogue
+    label_ja: 会話
+    default_weight: 2
+    size_class: small
+    usage: 1往復を1〜2コマ。話者の顔が読める距離。
+  - id: reaction
+    label_ja: 反応
+    default_weight: 1
+    size_class: small
+    usage: 見せゴマの直後に小さく置く。
+  - id: action
+    label_ja: 動作
+    default_weight: 2
+    size_class: small
+    usage: 連続動作は小ゴマを並べてテンポを出す。
+  - id: showcase
+    label_ja: 見せ
+    default_weight: 4
+    size_class: large
+    usage: そのページで一番見せたい絵。ページの半分前後を使う。
+  - id: climax
+    label_ja: 山場
+    default_weight: 5
+    size_class: splash
+    usage: 章で一度か二度。1〜2コマのページにする。
+  - id: transition
+    label_ja: 転換
+    default_weight: 3
+    size_class: medium
+    usage: 次の場面へ渡すコマ。ページ末（左下）に置くと引きになる。

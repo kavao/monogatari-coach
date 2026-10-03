@@ -94,7 +94,7 @@ uv run python tools/env_check.py
 
 **このように動きます:**
 1. 作品名・ジャンル・ログライン・主人公について必要最低限の質問をする
-2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ）
+2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ。2つは連動し、両方 ON か両方 OFF にする）
 3. 生成した内容を評価・洗練して、執筆できる状態まで整える
 4. 次のステップ（執筆・タグ作成など）を提案する
 
@@ -164,23 +164,38 @@ python tools/novel_code_allocate.py novels/
 企画書と設計書を作ってください。
 ```
 
+企画ファイルを一つ新しく作りたいときは、次のように指定できます。
+
+```text
+proposal.md を作ってください。
+```
+
+既存作品の企画を再開するときは作品を指定します。企画の文脈なら「続きを頼む」「企画をそろえて」だけでも不足ファイルを確認します。執筆再開のカードと区別するため、「作品を再開」ではなく企画の再開と明記します。設計の洗練まで頼む場合は、そのことも明示します。
+
+```text
+novels/NNN_作品名/ の企画作業を再開してください。
+novels/NNN_作品名/ の設計を洗練してください。
+```
+
 **このように動きます:**
-1. `proposal.md`（作品名・ログライン・あらすじ・キャラ紹介）を生成する
-2. `design_specification.md`（テーマ・章構成・ストーリー相関図）を生成する
-3. 設計の不備を自己評価し、ストーリーを洗練させる
-4. 執筆前に必須ファイルの揃いを確認する
+1. 企画ファイルを一つ新しく作る場合や、指定した既存作品の企画を再開する場合も、明示的に不足確認を頼まれていなくても必須企画ファイルの不足を確認する
+2. 新規作品は資料の有無を確認して採番し、必須の企画ファイルと補助ファイルを揃える
+3. 既存作品は再採番せず、欠けているファイルだけを補って検査する。既存ファイルの内容を厚くするのは洗練を頼まれた場合に限る。欠けた `config.md` の METRON / CHRONOS は、確認があるまで OFF のままにする
+4. 新規企画は Gate A と Gate B まで進める。既存作品の企画開始・再開は、洗練または Gate B の再実施を明示されない限り Gate A で止め、「Gate A 完了・Gate B 未完了」と報告する
+5. 設計の洗練や Gate B の再実施を明示された場合は Gate B まで進める
+6. チャットの案出しだけでは作品フォルダを作らない。本文の続きや、必要ファイルが揃った作品の指定箇所だけの修正では、企画一式の補完に入らない
 
 **使われるツール:**
 
 ```bash
 # 必須ファイル・ディレクトリの揃いを確認 ※ 自動呼び出し
-python tools/novel_project_check.py novels/NNN_作品名
+uv run python tools/novel_project_check.py novels/NNN_作品名
 
 # Tag Mode 済みも必須にする場合
-python tools/novel_project_check.py novels/NNN_作品名 --require-tag
+uv run python tools/novel_project_check.py novels/NNN_作品名 --require-tag
 
 # 漫画フォルダまで揃えたい場合
-python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
+uv run python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 ```
 
 企画・設計フェーズの詳しい確認観点は [Planning](planning.md) を参照してください。
@@ -207,7 +222,7 @@ python tools/novel_project_check.py novels/NNN_作品名 --require-manga-dir
 第2章の前半を執筆してください。
 ```
 
-METRON または CHRONOS が ON の作品では、これだけで接続が起動します。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
+METRON / CHRONOS が ON の作品では、第1章の初稿や単一章の依頼でも、これだけで接続が起動します。2つのフラグは連動し、片方だけ ON の `config.md` は設定エラーとして止まります。Monogatari Coach は `_writing/` の run を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
 
 ```text
 この場面をDeepenしてください。
@@ -392,19 +407,23 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 
 ### D3. 設定・口調の一貫性を監査する（Consistency Audit）
 
-複数章完成後に、設定矛盾・口調のブレ・未回収伏線を洗い出します。
+設定資料どうしの食い違い（設定監査）や、本文と設定・章どうしの矛盾（本文監査）を洗い出します。足切りをしていない作品でも使えます。
 
 ```text
-第1〜3章の設定・口調の一貫性を監査してください。
+設定資料の一貫性を監査して
+```
+
+```text
+第1〜3章の本文一貫性を監査して
 ```
 
 **このように動きます:**
-1. `_novel_text/*.md`・`character.md`・`world.md`・`design_specification.md` を参照する
-2. `_how_to/consistency_audit.md` の観点で章横断の矛盾・揺れを洗い出す
-3. 結果を `novels/<作品>/_reader/consistency_YYYYMMDD.md` に表形式で保存する
-4. チャットには矛盾件数の内訳（矛盾/要確認/軽微）と保存先パスだけを返す
+1. 設定監査は `character.md`・`world.md`・`design_specification.md` だけを、本文監査は指定範囲の本文と設定3点を読み直す
+2. `_how_to/consistency_audit.md` の観点で、食い違いを矛盾／要確認／軽微に分ける
+3. 結果を `novels/<作品>/_reader/consistency_design_YYYYMMDD_HHMM.md`（設定監査）または `consistency_text_YYYYMMDD_HHMM.md`（本文監査）に保存し、`_meta.md` の評価履歴に1行足す
+4. チャットには件数の内訳と保存先パス、要確認の一覧だけを返す。設定や本文は書き換えない
 
-詳しい手順は [Reader Output](reader-output.md) を参照してください。
+企画の Gate B と、Editor Score・本文監査の前（設定が前回の監査のあとに変わっていたとき）には、Monogatari Coach が設定監査を自動で行います。詳しい手順は [Reader Output](reader-output.md) を参照してください。
 
 ---
 
@@ -641,7 +660,7 @@ python tools/novel_image_layout.py scaffold novels/NNN_作品名 --panels 4
 1. `.env` のプロバイダ設定を確認する
 2. `--dry-run` でプロバイダ名・ジョブ数・保存先をチャットに提示する
 3. ユーザーの「OK」を受けてから本番実行する（承認なしには実行しない）
-4. `novels/<作品>/manga/_assets/<manga_XX>/comic/` に画像が保存されたことを確認して報告する
+4. コマは `novels/<作品>/manga/_assets/<manga_XX>/comic/`、ページは同じ章の `pages/` に画像が保存されたことを確認して報告する
 
 **使われるツール:**
 
@@ -906,7 +925,8 @@ Monogatari Coach は、チャット欄への書き込みだけでは作業を完
 | 漫画ページ（互換） | `novels/<作品>/manga/manga_XX.md`（**`novel_prompt_ir_export_md.py` で生成**。手書き・チャットのみは正本扱いにしない） |
 | 挿絵・表紙（正本） | `novels/<作品>/illustrations/pages/illustration_XX_pYY.yaml` |
 | 生成画像（キャラ） | `novels/<作品>/tag/<romaji>/` |
-| 生成画像（漫画） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |
+| 生成画像（漫画コマ） | `novels/<作品>/manga/_assets/<manga_XX>/comic/` |
+| 生成画像（漫画ページ） | `novels/<作品>/manga/_assets/<manga_XX>/pages/` |
 | 背景資料画像 | `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` |
 | 生成画像（挿絵・表紙） | `novels/<作品>/illustrations/_assets/<illustration_XX>/` |
 

@@ -1,0 +1,788 @@
+schema_version: "1.0"
+description: >-
+  漫画ページのコマ割りの型。manga.layout_template_id から参照し、tools/novel_manga_layout_apply.py が
+  layout_geometry を起こすときに使う。slots は読み順（右上から左下。同じ段は右が先）に並ぶ。
+  panels[] の k 番目のコマは slots の k 番目に入る（読み順は入れ替えない）。
+  座標は正規化 0〜1・左上原点。余白 0.04（左右）/ 0.03（上下）、コマ間 0.03。
+  weight は抽選の重み（均等割りに近い型は低め）。suits は向く拍子（beat_type_vocab.yaml の id）。
+  panel_layout_ja / layout_ja / layout_en は、型を当てたときに manga.panel_layout と各コマの composition.layout / layout_en へ書く文章（座標から機械生成。大ゴマ／中ゴマ／小コマは型の中で最大の枠に対する面積比 0.75 / 0.45 で決める）。
+  size_class は面積から機械的に付けた目安（0.70 以上 splash / 0.30 large / 0.16 medium / 0.07 small / それ未満 inset）。
+  座標は自前設計（行・列の再帰分割から生成）。外部データセットの座標は写していない。
+
+templates:
+- template_id: p1_full
+  label_ja: 1コマ・ページ全面（余白あり）
+  panel_layout_ja: 日本の漫画のコマ割り、1コマ・ページ全面（余白あり）（1コマ）。右から左。
+  panel_count: 1
+  weight: 1.0
+  suits:
+  - climax
+  - showcase
+  - establishing
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.94
+    size_class: splash
+    layout_ja: ページ全面の1コマ
+    layout_en: full-page panel
+- template_id: p1_bleed
+  label_ja: 1コマ・裁ち切り
+  panel_layout_ja: 日本の漫画のコマ割り、1コマ・裁ち切り（1コマ）。右から左。
+  panel_count: 1
+  weight: 0.6
+  suits:
+  - climax
+  gutter: 0.0
+  bleed: true
+  slots:
+  - rect:
+      x: 0.0
+      y: 0.0
+      w: 1.0
+      h: 1.0
+    size_class: splash
+    layout_ja: ページ全面の1コマ
+    layout_en: full-page panel
+- template_id: p2_top_large
+  label_ja: 上に大ゴマ・下に横長
+  panel_layout_ja: 日本の漫画のコマ割り、上に大ゴマ・下に横長（2コマ）。右から左。
+  panel_count: 2
+  weight: 1.0
+  suits:
+  - showcase
+  - reaction
+  - establishing
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.582
+    size_class: large
+    layout_ja: 上段いっぱいの大ゴマ
+    layout_en: full-width top large panel
+  - rect:
+      x: 0.04
+      y: 0.642
+      w: 0.92
+      h: 0.328
+    size_class: large
+    layout_ja: 下段いっぱいの中ゴマ
+    layout_en: full-width bottom medium panel
+- template_id: p2_bottom_large
+  label_ja: 上に横長・下に大ゴマ
+  panel_layout_ja: 日本の漫画のコマ割り、上に横長・下に大ゴマ（2コマ）。右から左。
+  panel_count: 2
+  weight: 1.0
+  suits:
+  - transition
+  - showcase
+  - climax
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.328
+    size_class: large
+    layout_ja: 上段いっぱいの中ゴマ
+    layout_en: full-width top medium panel
+  - rect:
+      x: 0.04
+      y: 0.388
+      w: 0.92
+      h: 0.582
+    size_class: large
+    layout_ja: 下段いっぱいの大ゴマ
+    layout_en: full-width bottom large panel
+- template_id: p2_tall_pair
+  label_ja: 縦長2コマ横並び
+  panel_layout_ja: 日本の漫画のコマ割り、縦長2コマ横並び（2コマ）。右から左。
+  panel_count: 2
+  weight: 0.7
+  suits:
+  - dialogue
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.515
+      y: 0.03
+      w: 0.445
+      h: 0.94
+    size_class: large
+    layout_ja: 右の縦長の大ゴマ
+    layout_en: tall right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.445
+      h: 0.94
+    size_class: large
+    layout_ja: 左の縦長の大ゴマ
+    layout_en: tall left large panel
+- template_id: p2_right_wide
+  label_ja: 右に広い縦長・左に細い縦長
+  panel_layout_ja: 日本の漫画のコマ割り、右に広い縦長・左に細い縦長（2コマ）。右から左。
+  panel_count: 2
+  weight: 0.7
+  suits:
+  - showcase
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.408
+      y: 0.03
+      w: 0.552
+      h: 0.94
+    size_class: large
+    layout_ja: 右の縦長の大ゴマ
+    layout_en: tall right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.338
+      h: 0.94
+    size_class: large
+    layout_ja: 左の縦長の中ゴマ
+    layout_en: tall left medium panel
+- template_id: p3_top_large_bottom_pair
+  label_ja: 上段大ゴマ・下段2コマ
+  panel_layout_ja: 日本の漫画のコマ割り、上段大ゴマ・下段2コマ（3コマ）。右から左。
+  panel_count: 3
+  weight: 1.0
+  suits:
+  - showcase
+  - establishing
+  - reaction
+  - dialogue
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.528
+    size_class: large
+    layout_ja: 上段いっぱいの大ゴマ
+    layout_en: full-width top large panel
+  - rect:
+      x: 0.515
+      y: 0.588
+      w: 0.445
+      h: 0.382
+    size_class: medium
+    layout_ja: 下段右の小コマ
+    layout_en: bottom right small panel
+  - rect:
+      x: 0.04
+      y: 0.588
+      w: 0.445
+      h: 0.382
+    size_class: medium
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p3_top_pair_bottom_large
+  label_ja: 上段2コマ・下段大ゴマ
+  panel_layout_ja: 日本の漫画のコマ割り、上段2コマ・下段大ゴマ（3コマ）。右から左。
+  panel_count: 3
+  weight: 1.0
+  suits:
+  - dialogue
+  - action
+  - showcase
+  - climax
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.515
+      y: 0.03
+      w: 0.445
+      h: 0.364
+    size_class: medium
+    layout_ja: 上段右の小コマ
+    layout_en: top right small panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.445
+      h: 0.364
+    size_class: medium
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.424
+      w: 0.92
+      h: 0.546
+    size_class: large
+    layout_ja: 下段いっぱいの大ゴマ
+    layout_en: full-width bottom large panel
+- template_id: p3_mid_large
+  label_ja: 上下は細い横長・中段大ゴマ
+  panel_layout_ja: 日本の漫画のコマ割り、上下は細い横長・中段大ゴマ（3コマ）。右から左。
+  panel_count: 3
+  weight: 0.9
+  suits:
+  - establishing
+  - showcase
+  - transition
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.211
+    size_class: medium
+    layout_ja: 上段いっぱいの中ゴマ
+    layout_en: full-width top medium panel
+  - rect:
+      x: 0.04
+      y: 0.271
+      w: 0.92
+      h: 0.458
+    size_class: large
+    layout_ja: 中段いっぱいの大ゴマ
+    layout_en: full-width middle large panel
+  - rect:
+      x: 0.04
+      y: 0.759
+      w: 0.92
+      h: 0.211
+    size_class: medium
+    layout_ja: 下段いっぱいの中ゴマ
+    layout_en: full-width bottom medium panel
+- template_id: p3_right_tall_left_stack
+  label_ja: 右に縦長大ゴマ・左に2段
+  panel_layout_ja: 日本の漫画のコマ割り、右に縦長大ゴマ・左に2段（3コマ）。右から左。
+  panel_count: 3
+  weight: 0.8
+  suits:
+  - showcase
+  - dialogue
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.462
+      y: 0.03
+      w: 0.498
+      h: 0.94
+    size_class: large
+    layout_ja: 右の縦長の大ゴマ
+    layout_en: tall right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.392
+      h: 0.455
+    size_class: medium
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.515
+      w: 0.392
+      h: 0.455
+    size_class: medium
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p4_top_wide_mid_pair_bottom_wide
+  label_ja: 上段横長・中段2・下段横長
+  panel_layout_ja: 日本の漫画のコマ割り、上段横長・中段2・下段横長（4コマ）。右から左。
+  panel_count: 4
+  weight: 0.5
+  suits:
+  - dialogue
+  - establishing
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.255
+    size_class: medium
+    layout_ja: 上段いっぱいの大ゴマ
+    layout_en: full-width top large panel
+  - rect:
+      x: 0.515
+      y: 0.315
+      w: 0.445
+      h: 0.299
+    size_class: small
+    layout_ja: 中段右の小コマ
+    layout_en: middle right small panel
+  - rect:
+      x: 0.04
+      y: 0.315
+      w: 0.445
+      h: 0.299
+    size_class: small
+    layout_ja: 中段左の小コマ
+    layout_en: middle left small panel
+  - rect:
+      x: 0.04
+      y: 0.644
+      w: 0.92
+      h: 0.326
+    size_class: medium
+    layout_ja: 下段いっぱいの大ゴマ
+    layout_en: full-width bottom large panel
+- template_id: p4_top_large_bottom_triple
+  label_ja: 上段大ゴマ・下段3コマ
+  panel_layout_ja: 日本の漫画のコマ割り、上段大ゴマ・下段3コマ（4コマ）。右から左。
+  panel_count: 4
+  weight: 0.9
+  suits:
+  - showcase
+  - reaction
+  - action
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.51
+    size_class: large
+    layout_ja: 上段いっぱいの大ゴマ
+    layout_en: full-width top large panel
+  - rect:
+      x: 0.673
+      y: 0.57
+      w: 0.287
+      h: 0.4
+    size_class: small
+    layout_ja: 下段右の小コマ
+    layout_en: bottom right small panel
+  - rect:
+      x: 0.357
+      y: 0.57
+      w: 0.287
+      h: 0.4
+    size_class: small
+    layout_ja: 下段中央の小コマ
+    layout_en: bottom center small panel
+  - rect:
+      x: 0.04
+      y: 0.57
+      w: 0.287
+      h: 0.4
+    size_class: small
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p4_top_pair_mid_large_bottom_wide
+  label_ja: 上段2・中段大ゴマ・下段横長
+  panel_layout_ja: 日本の漫画のコマ割り、上段2・中段大ゴマ・下段横長（4コマ）。右から左。
+  panel_count: 4
+  weight: 0.9
+  suits:
+  - dialogue
+  - showcase
+  - transition
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.515
+      y: 0.03
+      w: 0.445
+      h: 0.211
+    size_class: small
+    layout_ja: 上段右の小コマ
+    layout_en: top right small panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.445
+      h: 0.211
+    size_class: small
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.271
+      w: 0.92
+      h: 0.405
+    size_class: large
+    layout_ja: 中段いっぱいの大ゴマ
+    layout_en: full-width middle large panel
+  - rect:
+      x: 0.04
+      y: 0.706
+      w: 0.92
+      h: 0.264
+    size_class: medium
+    layout_ja: 下段いっぱいの中ゴマ
+    layout_en: full-width bottom medium panel
+- template_id: p4_staggered
+  label_ja: 2段の互い違い（大小）
+  panel_layout_ja: 日本の漫画のコマ割り、2段の互い違い（大小）（4コマ）。右から左。
+  panel_count: 4
+  weight: 0.9
+  suits:
+  - dialogue
+  - action
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.408
+      y: 0.03
+      w: 0.552
+      h: 0.455
+    size_class: medium
+    layout_ja: 上段右の大ゴマ
+    layout_en: top right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.338
+      h: 0.455
+    size_class: small
+    layout_ja: 上段左の中ゴマ
+    layout_en: top left medium panel
+  - rect:
+      x: 0.622
+      y: 0.515
+      w: 0.338
+      h: 0.455
+    size_class: small
+    layout_ja: 下段右の中ゴマ
+    layout_en: bottom right medium panel
+  - rect:
+      x: 0.04
+      y: 0.515
+      w: 0.552
+      h: 0.455
+    size_class: medium
+    layout_ja: 下段左の大ゴマ
+    layout_en: bottom left large panel
+- template_id: p4_right_tall_left_triple
+  label_ja: 右に縦長大ゴマ・左に3段
+  panel_layout_ja: 日本の漫画のコマ割り、右に縦長大ゴマ・左に3段（4コマ）。右から左。
+  panel_count: 4
+  weight: 0.7
+  suits:
+  - showcase
+  - action
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.515
+      y: 0.03
+      w: 0.445
+      h: 0.94
+    size_class: large
+    layout_ja: 右の縦長の大ゴマ
+    layout_en: tall right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.445
+      h: 0.293
+    size_class: small
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.353
+      w: 0.445
+      h: 0.293
+    size_class: small
+    layout_ja: 中段左の小コマ
+    layout_en: middle left small panel
+  - rect:
+      x: 0.04
+      y: 0.677
+      w: 0.445
+      h: 0.293
+    size_class: small
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p5_top_pair_mid_wide_bottom_pair
+  label_ja: 上段小2・中段大ゴマ・下段大小2
+  panel_layout_ja: 日本の漫画のコマ割り、上段小2・中段大ゴマ・下段大小2（5コマ）。右から左。
+  panel_count: 5
+  weight: 1.0
+  suits:
+  - establishing
+  - action
+  - showcase
+  - reaction
+  - transition
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.604
+      y: 0.03
+      w: 0.356
+      h: 0.211
+    size_class: small
+    layout_ja: 上段右の小コマ
+    layout_en: top right small panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.534
+      h: 0.211
+    size_class: small
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.271
+      w: 0.92
+      h: 0.37
+    size_class: large
+    layout_ja: 中段いっぱいの大ゴマ
+    layout_en: full-width middle large panel
+  - rect:
+      x: 0.426
+      y: 0.671
+      w: 0.534
+      h: 0.299
+    size_class: small
+    layout_ja: 下段右の中ゴマ
+    layout_en: bottom right medium panel
+  - rect:
+      x: 0.04
+      y: 0.671
+      w: 0.356
+      h: 0.299
+    size_class: small
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p5_top_large_bottom_quad
+  label_ja: 上段大ゴマ・下に2段×2
+  panel_layout_ja: 日本の漫画のコマ割り、上段大ゴマ・下に2段×2（5コマ）。右から左。
+  panel_count: 5
+  weight: 0.9
+  suits:
+  - showcase
+  - dialogue
+  - reaction
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.92
+      h: 0.405
+    size_class: large
+    layout_ja: 上段いっぱいの大ゴマ
+    layout_en: full-width top large panel
+  - rect:
+      x: 0.515
+      y: 0.465
+      w: 0.445
+      h: 0.229
+    size_class: small
+    layout_ja: 中段右の小コマ
+    layout_en: middle right small panel
+  - rect:
+      x: 0.04
+      y: 0.465
+      w: 0.445
+      h: 0.229
+    size_class: small
+    layout_ja: 中段左の小コマ
+    layout_en: middle left small panel
+  - rect:
+      x: 0.515
+      y: 0.724
+      w: 0.445
+      h: 0.246
+    size_class: small
+    layout_ja: 下段右の小コマ
+    layout_en: bottom right small panel
+  - rect:
+      x: 0.04
+      y: 0.724
+      w: 0.445
+      h: 0.246
+    size_class: small
+    layout_ja: 下段左の小コマ
+    layout_en: bottom left small panel
+- template_id: p5_top_triple_mid_large_bottom_wide
+  label_ja: 上段小3・中段大ゴマ・下段横長
+  panel_layout_ja: 日本の漫画のコマ割り、上段小3・中段大ゴマ・下段横長（5コマ）。右から左。
+  panel_count: 5
+  weight: 0.8
+  suits:
+  - action
+  - showcase
+  - transition
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.673
+      y: 0.03
+      w: 0.287
+      h: 0.176
+    size_class: inset
+    layout_ja: 上段右の小コマ
+    layout_en: top right small panel
+  - rect:
+      x: 0.357
+      y: 0.03
+      w: 0.287
+      h: 0.176
+    size_class: inset
+    layout_ja: 上段中央の小コマ
+    layout_en: top center small panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.287
+      h: 0.176
+    size_class: inset
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.04
+      y: 0.236
+      w: 0.92
+      h: 0.44
+    size_class: large
+    layout_ja: 中段いっぱいの大ゴマ
+    layout_en: full-width middle large panel
+  - rect:
+      x: 0.04
+      y: 0.706
+      w: 0.92
+      h: 0.264
+    size_class: medium
+    layout_ja: 下段いっぱいの中ゴマ
+    layout_en: full-width bottom medium panel
+- template_id: p5_right_tall_left_quad
+  label_ja: 右に縦長大ゴマ・左に4段
+  panel_layout_ja: 日本の漫画のコマ割り、右に縦長大ゴマ・左に4段（5コマ）。右から左。
+  panel_count: 5
+  weight: 0.6
+  suits:
+  - showcase
+  - dialogue
+  - action
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.586
+      y: 0.03
+      w: 0.374
+      h: 0.94
+    size_class: large
+    layout_ja: 右の縦長の大ゴマ
+    layout_en: tall right large panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.516
+      h: 0.212
+    size_class: small
+    layout_ja: 上から1段目左の小コマ
+    layout_en: row 1 left small panel
+  - rect:
+      x: 0.04
+      y: 0.272
+      w: 0.516
+      h: 0.212
+    size_class: small
+    layout_ja: 上から2段目左の小コマ
+    layout_en: row 2 left small panel
+  - rect:
+      x: 0.04
+      y: 0.515
+      w: 0.516
+      h: 0.212
+    size_class: small
+    layout_ja: 上から3段目左の小コマ
+    layout_en: row 3 left small panel
+  - rect:
+      x: 0.04
+      y: 0.757
+      w: 0.516
+      h: 0.212
+    size_class: small
+    layout_ja: 上から4段目左の小コマ
+    layout_en: row 4 left small panel
+- template_id: p5_bottom_large
+  label_ja: 上に2段×2・下段大ゴマ
+  panel_layout_ja: 日本の漫画のコマ割り、上に2段×2・下段大ゴマ（5コマ）。右から左。
+  panel_count: 5
+  weight: 0.9
+  suits:
+  - dialogue
+  - action
+  - climax
+  - showcase
+  gutter: 0.03
+  bleed: false
+  slots:
+  - rect:
+      x: 0.515
+      y: 0.03
+      w: 0.445
+      h: 0.194
+    size_class: small
+    layout_ja: 上段右の小コマ
+    layout_en: top right small panel
+  - rect:
+      x: 0.04
+      y: 0.03
+      w: 0.445
+      h: 0.194
+    size_class: small
+    layout_ja: 上段左の小コマ
+    layout_en: top left small panel
+  - rect:
+      x: 0.515
+      y: 0.254
+      w: 0.445
+      h: 0.194
+    size_class: small
+    layout_ja: 中段右の小コマ
+    layout_en: middle right small panel
+  - rect:
+      x: 0.04
+      y: 0.254
+      w: 0.445
+      h: 0.194
+    size_class: small
+    layout_ja: 中段左の小コマ
+    layout_en: middle left small panel
+  - rect:
+      x: 0.04
+      y: 0.477
+      w: 0.92
+      h: 0.493
+    size_class: large
+    layout_ja: 下段いっぱいの大ゴマ
+    layout_en: full-width bottom large panel

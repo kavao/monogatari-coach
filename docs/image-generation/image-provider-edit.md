@@ -25,7 +25,7 @@ flowchart TD
     C -->|修正| B
     D --> E[restyle専用ディレクトリへ候補保存]
     E --> F[目視評価]
-    F -->|採用する場合だけ| G[別の明示操作で正規comicへコピー]
+    F -->|採用する場合だけ| G[別の明示操作で正規の保存先へコピー]
 ```
 
 `--dry-run` を先に行うのは、画像APIへの送信と課金が発生する前に、入力・プロンプト・モデル・寸法・保存先を確認するためです。
@@ -55,6 +55,8 @@ flowchart TD
 ## 1枚だけ試す
 
 元画像1枚を、標準ポーション付きで計画します。`--output-dir` に `_restyle` がない場合は自動的に付加されます。
+
+以下の例はコマ画像（`comic/`）です。ページ画像を再描画するときは、`--input` と `--output-dir` を `manga/_assets/manga_01/pages/` に置き換えます。候補は `pages/_restyle/` に保存されます。
 
 ```powershell
 # --input: 元画像。--model: restyle先のV4.5モデル
@@ -96,7 +98,7 @@ python tools/image_provider_edit.py `
   --plan novels/NNN_作品名/manga/_assets/manga_01/comic/_restyle/<run_id>/restyle_plan.json
 ```
 
-候補と `restyle_run.json` は同じrunディレクトリに保存され、採用状態は `unadopted` です。正規の `comic/` へコピーする処理は別途明示します。
+候補と `restyle_run.json` は同じrunディレクトリに保存され、採用状態は `unadopted` です。正規の `comic/`（ページなら `pages/`）へコピーする処理は別途明示します。
 
 ## 複数画像を1回のbatchにまとめる
 
@@ -160,7 +162,7 @@ python tools/image_provider_edit.py `
 - V5＋Vibeへの自動切替、失敗時のprovider切替、タイムアウト後の無条件再送を行いません。
 - 同名JSONからmodel、seed、旧画像、旧Vibe、寸法を一括流用しません。
 - 再描画結果を次の入力へ自動連鎖しません。
-- 候補を正規 `comic/`、IR、`cover.yaml` へ自動採用しません。
+- 候補を正規 `comic/` / `pages/`、IR、`cover.yaml` へ自動採用しません。
 
 ## 困ったとき
 

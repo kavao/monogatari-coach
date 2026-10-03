@@ -981,7 +981,7 @@ def test_cli_writes_page_manifest_separately_from_provider_payload(
         / "manga"
         / "_assets"
         / "manga_01"
-        / "comic"
+        / "pages"
         / "manga_01_p01_page_render_plan.json"
     )
     assert rc == 0

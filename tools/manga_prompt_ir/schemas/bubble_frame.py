@@ -84,11 +84,21 @@ class DesignBubble(BaseModel):
         return self
 
 
+class BubbleDesignSource(BaseModel):
+    """下書きを作ったときのページの状態（台詞と枠の digest）。手書きの設計では省略できる。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    page: str = Field(min_length=1)
+    page_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class BubbleDesignDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["design_projected"]
     coordinate_space: Literal["normalized"]
+    source: BubbleDesignSource | None = None
     bubbles: list[DesignBubble]
 
     @model_validator(mode="after")

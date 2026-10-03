@@ -25,6 +25,8 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
+- **漢字エンブレム命名**: [漢字の当て字・既存名の改修](kanji-emblem-naming.md)
+- **ヤンキー美学**: [人物・集団・装飾を設計する](yankee-aesthetics.md)
 - **出版準備（Phase 1）**: [Publishing Package](publishing-package.md) — 本文・付属原稿・挿絵・権利・奥付を点検し、入稿入力を lockfile で凍結する
 - **表紙合成・題字（Phase 1.5）**: [表紙合成・題字ロゴ](cover-composition.md) — 題字方針（組版／logo_asset）→ `cover.yaml` → review → proof へ
 - **紙書籍 proof（Phase 2A）**: [紙書籍 proof PDF](paper-proof-export.md) — lock済み入力から縦書き本文PDF（`bunko` / `jis_b5`）を生成・検査する
@@ -51,7 +53,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - 清書（文章校正）: `_novel_text_backup/` に旧版を退避してから `_novel_text/` を更新して、と指示する
    - 足切り（First Reader）: G1→G2→G3 の順で「第○章を足切り判定してください」と指示する
    - 完稿後の深掘り（Editor Score）: 足切り通過後に「Editor Score で採点してください」と指示する
-   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint） — 詳細は [Reader Output](reader-output.md)
+   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint）・`novel_audit_freshness.py`（設定監査の鮮度）・`novel_consistency_audit_lint.py`（監査ファイルの件数チェック） — 詳細は [Reader Output](reader-output.md)
 
 ## Monogatari Coach の約束（ユーザー視点）
 

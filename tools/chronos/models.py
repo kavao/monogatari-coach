@@ -16,12 +16,16 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, 
 
 
 _EVENT_ID_PATTERN = r"^EVT-\d{4,}$"
+_CANDIDATE_ID_PATTERN = r"^CEX-\d{4,}$"
 _CHARACTER_ID_PATTERN = r"^CHR-[A-Za-z0-9_-]+$"
 _LOCATION_ID_PATTERN = r"^LOC-[A-Za-z0-9_-]+$"
 # METRON の scene.id（chNN-MMM）と計画書の SCN-XXXX の両方を受け付ける。
 _SCENE_ID_PATTERN = r"^(SCN-\d{4,}|ch\d{2,}-\d{3,})$"
 _RULE_ID_PATTERN = r"^CHR\d{3}$"
 _DIMENSION_NAME_PATTERN = r"^[A-Za-z][A-Za-z0-9_]*$"
+_LOCKABLE_EVENT_FIELDS = {
+    "title", "type", "actors", "location", "time", "causes", "effects", "effects_on",
+}
 
 SCHEMA_VERSION = 1
 
@@ -56,6 +60,11 @@ class ReviewStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class ExtractOrderMode(str, Enum):
+    PROVISIONAL = "provisional"
+    REQUIRED = "required"
 
 
 class SceneMode(str, Enum):
@@ -96,6 +105,10 @@ RULE_SEVERITY_DEFAULTS: dict[str, Severity] = {
     "CHR011": Severity.WARNING,
     "CHR012": Severity.OFF,
     "CHR013": Severity.ERROR,
+    "CHR020": Severity.WARNING,
+    "CHR021": Severity.WARNING,
+    "CHR022": Severity.WARNING,
+    "CHR023": Severity.WARNING,
 }
 
 
@@ -173,12 +186,13 @@ class EventSource(StrictModel):
     @model_validator(mode="after")
     def _span_order(self) -> EventSource:
         if self.span is not None and self.span[1] < self.span[0]:
-            raise ValueError("source.span must be a half-open interval [start, end)")
+            raise ValueError("source.span end must be >= start")
         return self
 
 
 class Event(StrictModel):
     id: str = Field(pattern=_EVENT_ID_PATTERN)
+    candidate_id: str | None = Field(default=None, pattern=_CANDIDATE_ID_PATTERN)
     title: str = Field(min_length=1)
     type: EventType | None = None
     actors: list[str] = Field(default_factory=list)
@@ -235,6 +249,217 @@ class Event(StrictModel):
 
 class EventFile(StrictModel):
     events: list[Event] = Field(default_factory=list)
+
+
+class PerChapterCount(StrictModel):
+    min: int = Field(ge=0)
+    max: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _bounds(self) -> PerChapterCount:
+        if self.max < self.min:
+            raise ValueError("per_chapter.max must be >= min")
+        return self
+
+
+class ExtractGate(StrictModel):
+    profile: str = Field(min_length=1)
+    unit: str = Field(min_length=1)
+    include: list[EventType] = Field(min_length=1)
+    exclude: str = Field(min_length=1)
+    required_fields: list[str] = Field(
+        default_factory=lambda: ["scene", "actors", "location", "title", "type"]
+    )
+    order: ExtractOrderMode = ExtractOrderMode.PROVISIONAL
+    per_chapter: PerChapterCount | None = None
+
+    @field_validator("include")
+    @classmethod
+    def _include_unique(cls, value: list[EventType]) -> list[EventType]:
+        if len(value) != len(set(value)):
+            raise ValueError("extract_gate.include must not contain duplicates")
+        return value
+
+    @field_validator("required_fields")
+    @classmethod
+    def _required_fields(cls, value: list[str]) -> list[str]:
+        allowed = {
+            "scene", "actors", "location", "title", "type", "time",
+            "effects_on", "causes", "effects",
+        }
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise ValueError(f"unknown extract_gate.required_fields: {unknown}")
+        if len(value) != len(set(value)):
+            raise ValueError("extract_gate.required_fields must not contain duplicates")
+        return value
+
+
+class CandidateProposal(StrictModel):
+    """候補作者が用意する本文と結び付くイベント案。"""
+
+    candidate_id: str | None = Field(default=None, pattern=_CANDIDATE_ID_PATTERN)
+    title: str = Field(min_length=1)
+    type: EventType | None = None
+    actors: list[str] = Field(default_factory=list)
+    unresolved_actor_mentions: list[str] = Field(default_factory=list)
+    location: str | None = Field(default=None, pattern=_LOCATION_ID_PATTERN)
+    source_quote: str = Field(min_length=1)
+    time: EventTime | None = None
+    causes: list[str] = Field(default_factory=list)
+    effects: list[str] = Field(default_factory=list)
+    effects_on: dict[str, dict[str, Any]] | None = None
+
+    @field_validator("actors")
+    @classmethod
+    def _actor_ids(cls, value: list[str]) -> list[str]:
+        for item in value:
+            if not _matches(_CHARACTER_ID_PATTERN, item):
+                raise ValueError(f"invalid character id: {item}")
+        return value
+
+    @field_validator("causes", "effects")
+    @classmethod
+    def _related_event_ids(cls, value: list[str]) -> list[str]:
+        for item in value:
+            if not _matches(_EVENT_ID_PATTERN, item):
+                raise ValueError(f"invalid event id: {item}")
+        return value
+
+    @model_validator(mode="after")
+    def _proposal_contract(self) -> CandidateProposal:
+        # Validate nested Event-compatible shapes at staging time, without assigning a real EVT id.
+        payload = self.model_dump(
+            mode="python",
+            exclude={"candidate_id", "source_quote", "unresolved_actor_mentions"},
+        )
+        payload.update({"id": "EVT-0000"})
+        Event.model_validate(payload)
+        return self
+
+
+class CandidateRecord(StrictModel):
+    candidate_id: str = Field(pattern=_CANDIDATE_ID_PATTERN)
+    scene_id: str | None = Field(default=None, pattern=_SCENE_ID_PATTERN)
+    source_file: str = Field(min_length=1)
+    source_file_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_quote: str = Field(min_length=1)
+    source_match_count: int = Field(ge=0)
+    source: EventSource
+    proposal: CandidateProposal
+    review: ReviewStatus = ReviewStatus.PENDING
+    event_id: str | None = Field(default=None, pattern=_EVENT_ID_PATTERN)
+    kind: str = Field(default="new", pattern=r"^(new|update)$")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_legacy_candidate_locks(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        proposal = value.get("proposal")
+        if not isinstance(proposal, dict) or "locked_fields" not in proposal:
+            return value
+        normalized = dict(value)
+        normalized_proposal = dict(proposal)
+        normalized_proposal.pop("locked_fields")
+        normalized["proposal"] = normalized_proposal
+        return normalized
+
+    @model_validator(mode="after")
+    def _source_and_identity(self) -> CandidateRecord:
+        if self.proposal.candidate_id not in (None, self.candidate_id):
+            raise ValueError("proposal.candidate_id must match candidate record")
+        if self.source.span is not None and self.source_match_count != 1:
+            raise ValueError("a linked source span requires source_match_count=1")
+        if self.source.span is not None and self.source.digest is None:
+            raise ValueError("a linked source span requires a source interval digest")
+        if self.source.digest is not None and not fullmatch(r"[0-9a-f]{64}", self.source.digest):
+            raise ValueError("candidate source digest must be a 64-character lowercase SHA-256")
+        if self.source.span is not None and (self.source.span[0] < 0 or self.source.span[1] <= self.source.span[0]):
+            raise ValueError("candidate source span must be a non-empty half-open interval")
+        return self
+
+
+class CandidateProposalBatch(StrictModel):
+    schema_version: int = Field(default=SCHEMA_VERSION, alias="schema")
+    scene_id: str | None = Field(default=None, pattern=_SCENE_ID_PATTERN)
+    source_file: str = Field(min_length=1)
+    candidates: list[CandidateProposal] = Field(min_length=1)
+
+    @field_validator("schema_version")
+    @classmethod
+    def _schema_version(cls, value: int) -> int:
+        if value != SCHEMA_VERSION:
+            raise ValueError(f"unsupported candidate schema version: {value}")
+        return value
+
+
+class CandidateCache(StrictModel):
+    schema_version: int = Field(default=SCHEMA_VERSION, alias="schema")
+    candidates: list[CandidateRecord] = Field(default_factory=list)
+
+    @field_validator("schema_version")
+    @classmethod
+    def _schema_version(cls, value: int) -> int:
+        if value != SCHEMA_VERSION:
+            raise ValueError(f"unsupported candidate cache schema version: {value}")
+        return value
+
+    @field_validator("candidates")
+    @classmethod
+    def _unique_candidates(cls, value: list[CandidateRecord]) -> list[CandidateRecord]:
+        ids = [item.candidate_id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("candidate cache contains duplicate candidate_id")
+        return value
+
+
+class ExtractReviewRecord(StrictModel):
+    candidate_id: str = Field(pattern=_CANDIDATE_ID_PATTERN)
+    scene_id: str | None = Field(default=None, pattern=_SCENE_ID_PATTERN)
+    source_file: str = Field(min_length=1)
+    source_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    occurrence: int | None = Field(default=None, ge=1)
+    span: tuple[int, int] | None = None
+    source_file_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    review: ReviewStatus = ReviewStatus.PENDING
+    event_id: str | None = Field(default=None, pattern=_EVENT_ID_PATTERN)
+    update_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    update_review: ReviewStatus | None = None
+
+    @model_validator(mode="after")
+    def _span_occurrence(self) -> ExtractReviewRecord:
+        if self.span is not None and (self.span[0] < 0 or self.span[1] <= self.span[0]):
+            raise ValueError("review span must be a non-empty half-open interval")
+        if self.span is not None and (self.source_digest is None or self.occurrence is None):
+            raise ValueError("linked review span requires source_digest and occurrence")
+        if self.review is ReviewStatus.APPROVED and self.event_id is None:
+            raise ValueError("approved review record requires event_id")
+        if self.update_review is not None and (self.review is not ReviewStatus.APPROVED or self.event_id is None):
+            raise ValueError("update review status requires an approved event record")
+        if self.update_review is not None and self.update_digest is None:
+            raise ValueError("update review status requires update_digest")
+        return self
+
+
+class ExtractReviewDocument(StrictModel):
+    schema_version: int = Field(default=SCHEMA_VERSION, alias="schema")
+    records: list[ExtractReviewRecord] = Field(default_factory=list)
+
+    @field_validator("schema_version")
+    @classmethod
+    def _schema_version(cls, value: int) -> int:
+        if value != SCHEMA_VERSION:
+            raise ValueError(f"unsupported extract review schema version: {value}")
+        return value
+
+    @field_validator("records")
+    @classmethod
+    def _unique_records(cls, value: list[ExtractReviewRecord]) -> list[ExtractReviewRecord]:
+        ids = [item.candidate_id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("extract review document contains duplicate candidate_id")
+        return value
 
 
 class Character(StrictModel):
@@ -392,6 +617,7 @@ class ChronosConfig(StrictModel):
     travel: list[TravelRule] = Field(default_factory=list)
     disclosure_distance_threshold: int = Field(default=40000, ge=1)
     character_state: CharacterStateConfig | None = None
+    extract_gate: ExtractGate | None = None
 
     @field_validator("rules")
     @classmethod

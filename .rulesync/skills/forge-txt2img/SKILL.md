@@ -309,6 +309,7 @@ python tools/codex_builtin_image_archive.py \
 | 種別 | 推奨パス（`output_dir`） | メモ |
 |------|-------------------------|------|
 | 漫画コマ用 | `novels/<...>/manga/_assets/<manga_XX>/comic/` またはコマ別なら `.../comic/k03` など | 一括作成は `python tools/novel_image_layout.py scaffold <作品> --panels N` |
+| 漫画ページ用 | `novels/<...>/manga/_assets/<manga_XX>/pages/` | `step1-pages` / `step2-pages` の保存先。sidecar も同じ場所 |
 | キャラ立ち絵・表情 | `novels/<...>/tag/<romaji>/` | `tag/<romaji>.md` と**同名フォルダ**に画像を集約。作成は `novel_image_layout.py scaffold` |
 
 従来の `outputs/` や `assets/characters/` への退避も可だが、**作品フォルダ内でタグ MD・漫画 MD と並べて追跡**するなら上表を優先する。
@@ -431,14 +432,14 @@ python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョン�
 python tools/image_provider_novel_tag_batch.py novels/051_神のダンジョンβテスター --variant-id normal
 ```
 
-**一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → `manga/_assets/<manga_XX>/comic/`）** は `tools/image_provider_novel_manga_batch.py` を使う。
+**一括（`manga/manga_*.md` の各 Page・## step1 内 `tag:`〜`和訳:` → コマは `manga/_assets/<manga_XX>/comic/`、ページは `.../pages/`）** は `tools/image_provider_novel_manga_batch.py` を使う。
 
 - `--source step1-panels`（既定）: Step1 の `tag:` を**コマ単位**で抽出して生成する。背景資料と合成する場合は **`--omit-panel-background`**（`step1-panels` のみ）。
 - `--source step1-pages`: 各 Page の **Step1 全体を1ジョブ**として扱い、**各コマの詳細情報を保ったままページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**精密ページ生成向けの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 - `--source step2-pages`: 各 Page の **Step2 全体を1ジョブ**として扱い、**ページ丸ごとの漫画画像**を出したいときに使う。**既定の正式対応先は Grok**。`--style-helper` 未指定時は、**商業カラーマンガ寄りの画風補助文**を自動付与する。**Nanobanana は導入後に同系統へ加える想定**。
 
-- **既定の保存先**は `manga/_assets/<manga_XX>/comic/` **直下**。背景資料は同章の `backgrounds/`。分類は**章（`manga_XX`）まで**で十分とし、`file_prefix` に `manga_01_p02_k03` のように **ページ番号・コマ番号**を含めて同一フォルダ内で区別する。
-- **`--subdir-by-page`**（`.../manga_01/p01/`, `p02/` …）は **任意**。本リポジトリでは**推奨運用・ルールに含めない**（手順でページ単位フォルダ分けを既定にしない）。特別な理由があるときだけ使う。
+- **既定の保存先**はコマ（`step1-panels`）が `manga/_assets/<manga_XX>/comic/` **直下**、ページ（`step1-pages` / `step2-pages`）が同章の `pages/` **直下**。背景資料は同章の `backgrounds/`。分類は**章（`manga_XX`）まで**で十分とし、`file_prefix` に `manga_01_p02_k03` のように **ページ番号・コマ番号**を含めて同一フォルダ内で区別する。
+- **`--subdir-by-page`**（`.../comic/p01/`, `p02/` …）は **任意**。ページ source（`step1-pages` / `step2-pages`）と併用するとエラーで止まる。本リポジトリでは**推奨運用・ルールに含めない**（手順でページ単位フォルダ分けを既定にしない）。特別な理由があるときだけ使う。
 - **`novel_image_layout.py scaffold --panels N` が作る `k01`〜`kNN`** は **「1ページ内のコマ用スロット」**の任意フォルダ。多ページの MD では **ページ番号 `p##` と混同しないこと**（本一括スクリプトの既定では **k## へは保存しない**）。
 
 ```bash

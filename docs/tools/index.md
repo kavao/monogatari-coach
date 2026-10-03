@@ -519,7 +519,7 @@ python tools/novel_code_allocate.py novels/
 | `ellipsis_wrong_unicode` | 単独「…」（U+2026 × 1） | warning | default/full |
 | `dialogue_trailing_period` | 閉じカギ括弧直前の句点（`。」`） | warning | default/full |
 | `dialogue_leading_indent` | セリフ行頭の全角スペース（`　「`） | warning | grammar/full |
-| `paragraph_indent` | 地の文の行頭インデント不足 | warning | grammar/full |
+| `paragraph_indent` | 地の文の行頭インデント不足（見出し直後の第1行も含む） | warning | grammar/full |
 | `punctuation_consecutive` | `。。` `、、` など句読点の連続 | **error** | grammar/full |
 | `ascii_comma_in_prose` | 英数字以外の直後の半角 `,`（`うん,そう` 等） | warning | grammar/full |
 | `empty_dialogue` | 空のカギ括弧 `「」` | warning | grammar/full |
@@ -653,7 +653,51 @@ python tools/novel_evaluation_diff.py novels/NNN_作品名
 python tools/novel_evaluation_diff.py novels/NNN_作品名 --all
 ```
 
-フロントマターをスキップして本文スコアを正確に抽出します。旧形式（5段階・`4.5 / 5.0`）のファイルは「旧形式」として識別します。
+フロントマターをスキップして本文スコアを正確に抽出します。旧形式（5段階・`4.5 / 5.0`）のファイルは「旧形式」として識別します。一貫性監査は `Consistency Audit (design)` / `(text)` として並び、日付だけの旧 `consistency_YYYYMMDD.md` は「旧形式」と表示されます。
+
+---
+
+### `novel_audit_freshness.py` — 設定監査の鮮度チェック
+
+設定3点（`character.md`・`world.md`・`design_specification.md`）が、最新の設定監査（`_reader/consistency_design_YYYYMMDD_HHMM.md`）のあとに変わったかを確かめます。Monogatari Coach は Editor Score と本文監査の前にこのツールを使い、変わっていれば先に設定監査を行います。LLM は呼ばず、作品ファイルも書き換えません。
+
+設定監査ファイルの冒頭に貼るハッシュ行を出します。
+
+```powershell
+uv run python tools/novel_audit_freshness.py hash novels/NNN_作品名
+```
+
+最新の設定監査と、いまの設定3点を比べます。
+
+```powershell
+# 結果を文章で表示する
+uv run python tools/novel_audit_freshness.py check novels/NNN_作品名
+
+# 結果を JSON で表示する
+uv run python tools/novel_audit_freshness.py check novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら監査済み、1 なら未監査（設定監査がない、または設定が変わった）、2 なら作品フォルダや設定3点が見つかりません。改行コードの違い（CRLF / LF）だけでは変更とみなしません。
+
+---
+
+### `novel_consistency_audit_lint.py` — 一貫性監査ファイルの体裁チェック
+
+一貫性監査ファイル（`_reader/consistency_<design|text>_YYYYMMDD_HHMM.md`）の冒頭に書いた件数が、中の指摘表の行数と合っているかを確かめます。Monogatari Coach は監査ファイルを保存するたびにこのツールを使い、合格するまで完了を報告しません。LLM は呼ばず、ファイルも書き換えません。
+
+作品フォルダを指定すると、新しい形式の監査ファイルをすべて検査します。
+
+```powershell
+uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名
+```
+
+ファイルを1つだけ指定することもできます。
+
+```powershell
+uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名/_reader/consistency_text_20261004_0153.md
+```
+
+確かめる内容は、ファイル名と冒頭の scope の一致、冒頭の件数と指摘表の行数の一致、「確認した組み合わせ」の指摘数の合計、設定監査の設定ハッシュの有無です。終了コードは 0 が合格、1 が不一致あり、2 がファイルを読めないときです。
 
 ---
 
@@ -820,6 +864,23 @@ python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 --apply --no
 
 ---
 
+### `novel_manga_layout_apply.py` — コマ割りの型から矩形を起こす
+
+漫画ページ YAML の各コマの `weight` / `beat_type` から、最も重いコマが最大の枠になるコマ割りの型（`tools/manga_prompt_ir/data/panel_layout_templates.yaml`、1〜5コマ・20型）を選び、`layout_geometry`・`manga.layout_template_id`・コマ割りの文章（`manga.panel_layout` と各コマの `composition.layout` / `layout_en`）を書き込みます。同じ章の直前のページと同じ型は避けます。既定は提案の表示だけです。そういう型が無いページは書き込みません（`--allow-mismatch` で当てる）。
+
+```bash
+# 提案を表示する（YAML は書き換えない）。--name-dir で番号付きネーム画像も出す
+python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 \
+  --name-dir tools_temp/name_check
+
+# 問題なければ書き込む（既に layout_geometry があるページは --overwrite なしでは触らない）
+python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 --apply
+```
+
+schema 1.0 のページと 6コマ以上のページは対象外です。選び方と注意点は [漫画ページ IR の「コマ割りの型から矩形を起こす」](../image-generation/manga-prompt-ir.md#コマ割りの型から矩形を起こすnovel_manga_layout_applypy) を参照してください。
+
+---
+
 ## 画像生成関連
 
 画像生成の設定・プロバイダ選択・dry-run の詳細は [Image Generation](../image-generation/index.md) を参照してください。
@@ -916,7 +977,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
 生成画像の保存先:
-- コマ・ページ: `novels/<作品>/manga/_assets/<manga_XX>/comic/`
+- コマ（`step1-panels`）: `novels/<作品>/manga/_assets/<manga_XX>/comic/`
+- ページ（`step1-pages` / `step2-pages`）: `novels/<作品>/manga/_assets/<manga_XX>/pages/`
 - 背景資料: `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/`
 
 ---

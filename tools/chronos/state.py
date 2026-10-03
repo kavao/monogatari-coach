@@ -88,7 +88,7 @@ def resolve_states(store: ChronosStore) -> StateResolution:
     dimensions = store.config.character_state.dimensions
     dimension_order = list(dimensions)
     loc_dim = store.loc_ref_dimension
-    graph = build_order_graph(store.events)
+    graph = build_order_graph(store.selection.events)
     resolution = StateResolution(
         enabled=True,
         skipped_all=False,

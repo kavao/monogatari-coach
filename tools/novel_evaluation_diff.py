@@ -20,7 +20,9 @@ from pathlib import Path
 _FILE_TYPES: list[tuple[re.Pattern, str, int]] = [
     (re.compile(r"^score_(\d{8})_(\d{4})\.md$"), "Editor Score", 1),
     (re.compile(r"^interest_(\d{8})\.md$"), "Interest Check", 0),
-    (re.compile(r"^consistency_(\d{8})\.md$"), "Consistency Audit", 0),
+    (re.compile(r"^consistency_design_(\d{8})_(\d{4})\.md$"), "Consistency Audit (design)", 0),
+    (re.compile(r"^consistency_text_(\d{8})_(\d{4})\.md$"), "Consistency Audit (text)", 0),
+    (re.compile(r"^consistency_(\d{8})\.md$"), "Consistency Audit（旧形式）", 0),
     (re.compile(r"^synopsis_(\d{8})\.md$"), "Synopsis", 0),
     (re.compile(r"^(\d{8})_(\d{4})\.md$"), "First Reader", 1),
     (re.compile(r"^reader_(\d{8})_(\d{4})\.md$"), "First Reader（旧形式）", 1),

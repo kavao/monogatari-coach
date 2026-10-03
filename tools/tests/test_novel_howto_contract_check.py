@@ -31,6 +31,25 @@ def test_normalize_prefixes() -> None:
     rel, warns = normalize_recorded_path("episode/general/episode_hooks.md")
     assert rel == "episode/general/episode_hooks.md"
     assert any("プレフィックス" in w for w in warns)
+    rel, warns = normalize_recorded_path("genre/isekai_craft.md", is_relative_id=True)
+    assert rel == "genre/isekai_craft.md"
+    assert warns == []
+
+
+def test_new_format_relative_id_with_slash_has_no_prefix_warning(tmp_path: Path) -> None:
+    leaf = tmp_path / "_how_to.example" / "genre" / "isekai_craft.md"
+    leaf.parent.mkdir(parents=True)
+    leaf.write_text("# craft\n", encoding="utf-8")
+    meta = """## 3.5 Plan Mode Gate B 記録
+- **創作技法契約**:
+  - **selected**:
+    - relative_id: genre/isekai_craft.md
+      - standard_path: _how_to.example/genre/isekai_craft.md
+      - working_path: なし
+"""
+    result = check_meta(meta, tmp_path)
+    assert result.present == ["genre/isekai_craft.md"]
+    assert not any("プレフィックス" in w for leaf in result.selected for w in leaf.warnings)
 
 
 def _write_catalog(root: Path) -> None:

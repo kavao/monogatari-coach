@@ -1,0 +1,16 @@
+profile: night-step
+unit: その夜に閉じた範囲、または昼の残数がプロット上変わる事実を1件とする。
+include:
+  - decision
+  - state_change
+exclude: 同じ深度の反復、食事の品目、心情だけの段落、METRONのビート、設計書の予定ビート。
+required_fields:
+  - scene
+  - actors
+  - location
+  - title
+  - type
+order: provisional
+per_chapter:
+  min: 2
+  max: 4

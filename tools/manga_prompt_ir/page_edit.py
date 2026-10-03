@@ -459,6 +459,48 @@ def _block_metrics(
     return width_used, total_h
 
 
+# 行頭禁則（列・行の頭に置かない文字）と行末禁則（列・行の末尾に置かない文字）。縦組み用の字形も含める
+_HEAD_NG_BASE = "、。，．,.）)」』】〕〉》］]｝}！？!?…‥ー々ゝゞっゃゅょぁぃぅぇぉゎッャュョァィゥェォヮヵヶ〜～・：；"
+_TAIL_NG_BASE = "（(「『【〔〈《［[｛{"
+_HEAD_NG = set(_HEAD_NG_BASE) | set(_HEAD_NG_BASE.translate(_VERTICAL_PRESENTATION_TRANSLATION))
+_TAIL_NG = set(_TAIL_NG_BASE) | set(_TAIL_NG_BASE.translate(_VERTICAL_PRESENTATION_TRANSLATION))
+
+
+def _kinsoku_columns(chars: list[str], target: int, capacity: int) -> list[str]:
+    """1文字ずつ列に詰め、禁則を守って列を区切る。
+
+    列の目安の長さは target。次の列の頭に行頭禁則の文字が来るときは、capacity まで前の列にぶら下げる。
+    ぶら下げられないときは、前の列の末尾を次の列へ追い出す（追い出した文字も禁則なら続けて追い出す）。
+    行末禁則の文字（開きかっこ等）が列の末尾に来たら、次の列へ送る。
+    """
+    columns: list[list[str]] = []
+    current: list[str] = []
+    for char in chars:
+        if len(current) >= target:
+            if char in _HEAD_NG and len(current) < capacity:
+                current.append(char)
+                continue
+            carry: list[str] = []
+            if char in _HEAD_NG:
+                while len(current) > 1:
+                    carry.insert(0, current.pop())
+                    if carry[0] not in _HEAD_NG:
+                        break
+                if not carry or carry[0] in _HEAD_NG:
+                    # 禁則の文字が続いて区切れない（「っ……！？」など）。列をはみ出させ、呼び出し側で文字を小さくする
+                    current.extend(carry)
+                    current.append(char)
+                    continue
+            while len(current) > 1 and current[-1] in _TAIL_NG:
+                carry.insert(0, current.pop())
+            columns.append(current)
+            current = carry
+        current.append(char)
+    if current:
+        columns.append(current)
+    return ["".join(column) for column in columns]
+
+
 def _vertical_layout(
     draw: ImageDraw.ImageDraw,
     content: str,
@@ -480,13 +522,17 @@ def _vertical_layout(
         glyph_sizes.append((max(1, x1 - x0), max(1, y1 - y0)))
     cell_width = max(width for width, _height in glyph_sizes)
     cell_height = max(height for _width, height in glyph_sizes)
-    rows = max(1, (max_height + _LINE_GAP) // (cell_height + _LINE_GAP))
-    columns = (len(chars) + rows - 1) // rows
+    capacity = max(1, (max_height + _LINE_GAP) // (cell_height + _LINE_GAP))
+    # ぶら下げの1文字分を空けて区切り、禁則を当てる（収まらなければ呼び出し側が文字を小さくする）
+    rows = max(1, capacity - 1) if len(chars) > capacity else capacity
+    columns_text = _kinsoku_columns(chars, rows, capacity)
+    columns = len(columns_text)
+    longest = max(len(column) for column in columns_text)
     used_width = columns * cell_width + max(0, columns - 1) * _LINE_GAP
-    used_height = min(rows, len(chars)) * cell_height + max(0, min(rows, len(chars)) - 1) * _LINE_GAP
+    used_height = longest * cell_height + max(0, longest - 1) * _LINE_GAP
     if used_width > max_width or used_height > max_height:
         return None
-    return ["".join(chars[index : index + rows]) for index in range(0, len(chars), rows)], used_width, used_height
+    return columns_text, used_width, used_height
 
 
 def _layout_metrics(
@@ -559,9 +605,14 @@ def _wrap_lines(
     for char in text:
         trial = current + char
         box = draw.textbbox((0, 0), trial, font=font)
-        if current and (box[2] - box[0]) > max_width:
-            lines.append(current)
-            current = char
+        if current and (box[2] - box[0]) > max_width and char not in _HEAD_NG:
+            # 行頭禁則の文字は前の行にぶら下げる（幅を超える分は呼び出し側の寸法確認で文字を小さくする）
+            if current[-1] in _TAIL_NG and len(current) > 1:
+                lines.append(current[:-1])
+                current = current[-1] + char
+            else:
+                lines.append(current)
+                current = char
         else:
             current = trial
     if current:

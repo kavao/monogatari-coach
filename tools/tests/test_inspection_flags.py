@@ -13,6 +13,7 @@ from inspection_flags import (  # noqa: E402
     InspectionFlag,
     load_inspection_flags,
     parse_inspection_flags,
+    require_linked_inspection_flags,
     should_append_audit_log,
 )
 
@@ -102,6 +103,41 @@ def test_separator_variants_are_supported() -> None:
 
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.OFF
+
+
+def test_parser_keeps_flags_independent_for_explicit_cli() -> None:
+    # 明示 CLI 向けに、パーサ自体は食い違いを受け入れる。
+    flags = parse_inspection_flags(_config("| METRON | ON |\n| CHRONOS | OFF |"))
+
+    assert flags.metron is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.OFF
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        "| METRON | ON |\n| CHRONOS | ON |",
+        "| METRON | OFF |\n| CHRONOS | OFF |",
+        "| novel_ID | 001 |",
+        "| METRON | OFF |",
+    ],
+)
+def test_require_linked_accepts_matching_effective_values(rows: str) -> None:
+    require_linked_inspection_flags(parse_inspection_flags(_config(rows)))
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        "| METRON | ON |\n| CHRONOS | OFF |",
+        "| METRON | OFF |\n| CHRONOS | ON |",
+        "| METRON | ON |",
+        "| CHRONOS | ON |",
+    ],
+)
+def test_require_linked_rejects_mismatched_effective_values(rows: str) -> None:
+    with pytest.raises(InspectionConfigError, match="both ON or both OFF"):
+        require_linked_inspection_flags(parse_inspection_flags(_config(rows)))
 
 
 def test_missing_config_file_is_implicit_off(tmp_path: Path) -> None:

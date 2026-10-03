@@ -29,28 +29,31 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 1. 作品フォルダに `chronos/` を置く（`python tools/chronos_cli.py init <作品>`）。既存の `chronos/` は上書きしない。
 2. イベントは章単位 YAML に複数件収容する。必須は `id` と `title` のみ。日付は省略してよい。
-3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM は呼ばない。
+3. `python tools/chronos_cli.py check <作品>` は循環制約を CHR001 として報告する。LLM / provider を呼ばず、原稿も読まない。
 4. 検査の副作用で `world.md` や `_novel_text` を書き換えない。挿絵・タグ YAML も書き換えない。
 5. 執筆完了ゲートにはしない。P1 の STN・キャッシュ・watch、P2 の知識レイヤは未実装である。METRON の `chronos_span` は参考の両端だけとし、執筆接続は `writing_bridge_cli.py` が `links` で明示する。
 6. 人物状態を使う作品だけ `chronos.config.yaml` の `character_state.dimensions` を宣言する。次元名と値は作品が付ける。`init` 雛形は次元なしのままにする。
 7. 状態ありの check は CHR010（非法遷移）・CHR011（所在観測）・CHR013（未確定順序）を報告する。CHR012（挿絵 variant）は `rules.CHR012` と `illustration_bind` が揃ったときだけ走る。循環や CHR013 ではその人物の状態を捏造しない。
 
+`extract_gate` がある作品では、CLI 外で用意した候補文書を `chronos extract` で検証し、出典 span / digest を付けて `.cache/extract/` に保存できる。extract は provider を呼ばず、候補を `events/` に書かない。`approve` が通ったときだけ、場面の章番号から決めたイベント章ファイルへ保存する。承認済みイベントの更新案は `list` で識別し、`diff` の確認後に `approve --confirm-update` で再承認する。却下しても元イベントの承認状態は維持する。ロック欄は作者が `approve --lock` で指定し、承認後の順序グラフで候補が CHR001 循環に参加するときは拒否する。`include` は EventType のリストであり、profile ごとに明示する。`chapter-turn` は `night-step` から型を継承しない。ゲート未設定作品は原稿から抽出せず、従来どおり検査する。抽出・承認は執筆完了条件にしない。
+
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。新規起こしで行を書くときの既定は ON。作成時に確認し、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示または清書中の一時停止などに限る。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値が食い違う config.md は自動ワークフローでは設定エラーとし（`novel_project_check --check-inspection-layers` が検出）、片方に合わせて進めない。新規起こしで行を書くときの既定は両方 ON。作成時に1回確認して両方に同じ値を書き、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示または清書中の一時停止などに限り、両方同時に切り替える。
 
-フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に本文完了を取り消さない。
+フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に既にある本文の完了を取り消さない（適用範囲は `concepts.md` のフラグ節）。
 
-METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、新規章は可能な範囲で契約・Beat・マーカー付き draft を用意して analyze する。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。当該章のイベント手入力は推奨であり、P3の原稿自動抽出は行わない。対象場面にイベントが無いまま writing_bridge を inspect した場合は、`CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として report に残し、`chronos_registered: success` とみなさない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
+ON の新規場面は「執筆接続の起動判定」に従い `prepare` から始める。以下の METRON / CHRONOS 手順は、既稿の欠落表示と後追い計測に使う。METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、後追いは契約・Beat を補ってから `prepare` → `receive` → `inspect` で計測する。マーカーを `_novel_text` に後付けしない。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。`extract_gate` を設定した作品は、provider を呼ばない `chronos extract` で外部作成済み候補文書を検証・照合し、作者承認後にイベントへ反映できる。ゲート未設定作品は従来どおり原稿から抽出しない。当該章のイベント手入力も引き続き使える。対象場面に有効イベントが無いまま writing_bridge を inspect した場合は、`CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として report に残し、`chronos_registered: success` とみなさない。ゲート設定時に順序比較できないイベント対がある場合は、`CHRONOS_ORDER_UNCONFIRMED` と辺数を report に記録するが、inspect を失敗させない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
 
 ## 執筆接続の起動判定
 
 通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。複数章依頼の章境界は `concepts.md` の「完了扱い条件」と本文スキル（清書は `novel-refinement-output` の参照）に従い、経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」に従う。
 
 - 両方 OFF: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
-- METRON または CHRONOS が ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- 片方だけ ON（実効値の食い違い）: 設定エラーとして報告し、本文作業を始めない。
+- 両方 ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。単一章・複数章・場面追記のどれでも同じで、active run が無いことを理由に従来経路へ落ちない。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
 - Deepen / 局所修復: METRON ON かつ校正済みモデル。シーン床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` → `repair-next` → 候補作成 → `repair-submit`。床到達かつ必須なしの `auto` は `REPAIR_NOT_NEEDED`。`--scope beats` は指定 Beat だけを Deepen する（`BeatMissing` は範囲外でも必須）。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。この間は正本を触らない。修復が active のあいだ C1 未記録は報告して続け、完了後は未記録で止める。速度運用の詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
-- 正本反映: `--allow-publish` の run だけ `publish --dry-run` のあと `publish`。起草用 run へ後付けしない。METRON ON の場面作業では追加の保存依頼を待たず、修復が terminal になったあと保存用の新 run へ進める。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は新 run で receive する。未作成または空の正本は selector なし。既存の非空本文だけ heading / scene アンカー / `append`。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けず C1 は skipped。CHRONOS ON は初回 inspect の前に observations を書き、C1 成功前に正本を書かない。引用座標の下書きは `locate-quote`。inspect と同じ版検証のあと一意一致だけを出し、重複は推測しない。ずれは `STALE_EVIDENCE`。手編集で置換しない。正本ではマーカー除去後の連続空行を段落1つ分に畳む。完了後は `novel-story-reflection`。`publish --dry-run` の句読点 fail は正本を書かない。dry-run の測定対象は `compose_published()` の保存予定全文。本番の句読点は結合後全文を `report.json` に記録し、失敗でも本文は戻さない。未達なら完了報告しない。`inspect` の required と advisory は分けて読む。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。
+- 正本反映: `--allow-publish` の run だけ `publish --dry-run` のあと `publish`。起草用 run へ後付けしない。ON の場面作業では追加の保存依頼を待たず、修復が terminal になったあと保存用の新 run へ進める。止めの明示があるときだけ止める。保存用は新 run で receive する。未作成または空の正本は selector なし。既存の非空本文だけ heading / scene アンカー / `append`。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けず C1 は skipped。CHRONOS ON は初回 inspect の前に observations を書き、C1 成功前に正本を書かない。引用座標の下書きは `locate-quote`。inspect と同じ版検証のあと一意一致だけを出し、重複は推測しない。ずれは `STALE_EVIDENCE`。手編集で置換しない。正本ではマーカー除去後の連続空行を段落1つ分に畳む。完了後は `novel-story-reflection`。`publish --dry-run` の句読点 fail は正本を書かない。dry-run の測定対象は `compose_published()` の保存予定全文。本番の句読点は結合後全文を `report.json` に記録し、失敗でも本文は戻さない。未達なら完了報告しない。`inspect` の required と advisory は分けて読む。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。
 - 清書: `novel-refinement-output`。`publish` と重ねない。自動の再計測・イベント更新はしない。
 
 ## 自己発展型ルールガバナンス
@@ -90,9 +93,9 @@ METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測�
 
 必須:
 
-- 新規起こし、またはタイトル変更時は、タイトル候補を **最低 5 件**生成し、比較観点（内容想起・ジャンル伝達・固有性/検索性・読後の意味）で採否理由を付けて 1 件採用する。
+- 新規起こし、またはタイトル変更時は、ユーザーが候補数を指定した場合はその件数、指定がない場合は **最低 5 件**を生成し、比較観点（内容想起・ジャンル伝達・固有性/検索性・読後の意味）で採否理由を付けて 1 件採用する。件数指定があるときは候補を追加しない。候補が複数なら候補間を比較し、1 件なら比較観点に沿って適合理由を示す。
 - 採用タイトルは `proposal.md` と `config.md` の **作品名**に反映する。
-- 不採用候補（2〜5件）と簡単な却下理由は、`config.md` の **「資料上の別名」**へ残す（作品名揺れのメモを兼ねる）。
+- 不採用候補がある場合は、候補と簡単な却下理由を `config.md` の **「資料上の別名」**へ残す（作品名揺れのメモを兼ねる）。
 - 既存作品で命名記録がすでにある場合は再抽選せず、記録の存在を確認して Gate B 記録に残す。
 
 参照:
@@ -322,7 +325,7 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 1. 本文正本とキャラクター正本を確認する。
 2. 作品 `_meta.md` の §4（TPO → variant 対応表）と §5（漫画タグ層）を区間ごとに合意する（書き方は `_how_to.example/meta.md` を正とする）。
-3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。`panels[].summary` があるコマは **「Manga `summary_en` の翻訳経路」** に従い `summary_en` + `summary_en_source` を揃える。
+3. `manga/pages/*.yaml` を作成・更新する（§5 常時タグの転記漏れには `tools/novel_manga_apply_tag_defaults.py --apply` を使う）。新規ページの版・`layout_geometry`・`text_mode` は `concepts.md` の完了扱い条件に従う。`panels[].summary` があるコマは **「Manga `summary_en` の翻訳経路」** に従い `summary_en` + `summary_en_source` を揃える。
 4. 品質ゲートで確認し、`tools/novel_prompt_ir_validate.py`（本番前は `--strict-quality`）で検証する。
 5. 互換 Markdown が必要なときだけ `tools/novel_prompt_ir_export_md.py` で再エクスポートする。
 6. 画像生成は「画像生成: dry-run から本番まで」に従う。
@@ -331,6 +334,7 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 
 - 互換 Markdown だけを新規作成・修正して Manga Tag Mode 完了扱いにしない。
 - 生成前検証を YAML IR ではなく、互換 Markdown だけで済ませない。
+- 新規ページを schema 1.0 の例に倣って作らない。
 
 参照:
 
@@ -496,11 +500,17 @@ Manga Tag Mode は、小説本文とキャラクター正本から漫画ペー�
 必須:
 
 - キャラクター画像は `novels/<作品>/tag/<romaji>/` に保存する。
-- 漫画ページ・コマ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
+- 漫画のコマ画像（`step1-panels`）は `novels/<作品>/manga/_assets/<manga_XX>/comic/` に保存する。
+- 漫画のページ画像（`step1-pages` / `step2-pages`）は `novels/<作品>/manga/_assets/<manga_XX>/pages/` に保存する。生成 JSON・`*.local_frame.json`・`*_page_render_plan.json`・写植などの派生ファイルも PNG と同じ `pages/` に置く。
 - 漫画の背景資料画像は `novels/<作品>/manga/_assets/<manga_XX>/backgrounds/` に保存する。
+- 番号付きネーム画像（`novel_manga_layout_apply.py --name-dir`）は `novels/<作品>/manga/_assets/<manga_XX>/names/` を推奨の出力先とする。
+- コマ画像をネームの枠へ組んだ PSD（`novel_manga_assemble_psd.py`）は `novels/<作品>/manga/_assets/<manga_XX>/assembled/` に置く。同じ場所に PNG・採用画像の記録 `*_assembly.json`・台詞の一覧 `*_lettering.txt` を置き、`--overwrite` 時の前の版は `assembled/old/<実行日時>/` へ退避する。写植は画像の目安で、縦書きの打ち直しはクリップスタジオ / Photoshop で行う。
+- フキダシの設計位置の下書き `*.bubbles.yaml`（`novel_manga_bubbles_draft.py`）はページ IR と同じ `manga/pages/` に置く（前の版は `manga/pages/_old/<実行日時>/`）。
+- 画像の `manga/_assets/<manga_XX>/pages/` と、ページ IR 正本の `manga/pages/*.yaml` は別物である。混ぜない。
 - 挿絵・表紙画像は `novels/<作品>/illustrations/_assets/<illustration_XX>/` に保存する。
-- コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。
-- ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。必要な場合だけ任意で使う。
+- コマ画像はファイル名接頭辞でページ・コマを区別する。例: `manga_01_p02_k03`。ページ画像は `manga_01_p02_step1page`（step1）/ `manga_01_p02`（step2）。
+- restyle 候補は元画像の置き場の下の `_restyle/` に置く（コマは `comic/_restyle/`、ページは `pages/_restyle/`）。
+- ページ単位サブフォルダ（`p01/`, `p02/` など）は既定・推奨にしない。コマだけ任意で使える。ページ画像には使わない（バッチはエラーにする）。
 
 参照:
 
@@ -785,7 +795,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 | First Reader（足切り） | `_how_to/reader.md` | `_reader/YYYYMMDD_HHMM.md` | 6項目100点（足切り用） | G1冒頭/G2章完/G3全文 |
 | Interest Check | `_how_to/standard_reader.md` | `_reader/interest_YYYYMMDD.md` | なし（合格/不合格） | 企画・第1章・投稿前 |
 | Editor Score | `_how_to/editor_score.md`（予定） | `_reader/score_YYYYMMDD_HHMM.md` | 5項目100点（深掘り用） | 足切り通過後・推敲後 |
-| Consistency Audit | `_how_to/consistency_audit.md`（予定） | `_reader/consistency_YYYYMMDD.md` | なし（表形式） | 複数章完成後 |
+| Consistency Audit | `_how_to/consistency_audit.md` | `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`。旧 `consistency_YYYYMMDD.md` は読取互換） | なし（表形式） | design: 企画 Gate B の B4.5・評価前の鮮度チェック・ユーザー明示 / text: 本文保存後の次手・ユーザー明示 |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
 | Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/<session_id>/journal.md`（状態は同じセッションディレクトリの `state.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
 
@@ -800,7 +810,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 
 - 保存手順: `.rulesync/skills/novel-reader-output/SKILL.md`
 - 読み進み手順: `.rulesync/skills/novel-reader-walk/SKILL.md`
-- 深掘り評価手順（予定）: `.rulesync/skills/novel-evaluation-output/SKILL.md`
+- 深掘り評価・一貫性監査の手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`
 - 操作説明: `docs/workflow/reader-output.md`
 
 ## 足切りと深掘り評価の住み分け
@@ -1106,7 +1116,7 @@ Plan Mode では **Gate A（骨格）のあと Gate B（知識・厚さ・洗練
    - YAML単体で作画依頼書として完結するよう、`render_instruction` にページ生成の依頼文・コマ割り方針・キャラクター継承方針・テキスト扱いを入れる。
    - 命名規則: 第1章は `manga_01_pYY.yaml`、第1章1項は `manga_01_1_pYY.yaml`（`YY` はページ連番）
    - **互換出力（人間向けの副本・バッチ互換）**: `manga/manga_XX.md`（`tools/image_provider_novel_manga_batch.py` 向け Step1 / Step2。可読なページ単位の参照・推敲にも用いる）
-   - コマ画像は **`manga/_assets/<manga_XX>/comic/`** に展開する。背景資料は **`manga/_assets/<manga_XX>/backgrounds/`**（詳細は §2.2.2・スキル **novel-image-layout**）
+   - コマ画像は **`manga/_assets/<manga_XX>/comic/`**、ページ画像は **`manga/_assets/<manga_XX>/pages/`** に展開する。背景資料は **`manga/_assets/<manga_XX>/backgrounds/`**（詳細は §2.2.2・スキル **novel-image-layout**）
 10. illustrations/pages/illustration_XX_pYY.yaml（挿絵・表紙タグ正本・YAML IR）
    - 小説本文の場面・章扉・表紙向けの一枚絵（または明示した複合レイアウト）を YAML IR で管理する（スキル **illustration-prompt-ir**）。型は漫画ページと同じ `MangaPagePrompt` で、`meta.intent: illustration` とする。
    - YAML 上の **`panels[]` は漫画のコマではなく構成セル**（構図・配置の単位）。単体挿絵はセル1件を推奨。群像・複合構図が要る作品だけセルを複数にできる（§2.2.3）。
@@ -1313,7 +1323,7 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 詳細な手順は **`.rulesync/skills/manga-prompt-ir/SKILL.md`**、品質点検は **`.rulesync/skills/manga-tag-quality-gate/SKILL.md`**、操作コマンドは `docs/image-generation/manga-prompt-ir.md` を参照する。入口ルールとしては、本文正本とキャラクター正本を確認し、`manga/pages/*.yaml` を更新し、検証してから互換 Markdown や画像生成へ進むことだけを固定する。
 
 #### 画像ストック（漫画・コマ単位・推奨）
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「画像保存先」。漫画のコマ・ページ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/`、背景資料は `.../backgrounds/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「画像保存先」。漫画のコマ画像は `novels/<作品>/manga/_assets/<manga_XX>/comic/`、ページ画像は `.../pages/`、背景資料は `.../backgrounds/` に保存し、ページ単位サブフォルダは既定・推奨にしない。詳細はスキル **`novel-image-layout`** と `docs/image-generation/index.md` を参照する。
 
 #### 生成モードの用語統一（必須）
 横断正本は **`.rulesync/rules/workflow-specification.md`** の「生成モード用語」。操作説明と provider 対応は **`docs/image-generation/index.md`** の「生成モードとプロバイダの対応」を参照する。
@@ -1589,9 +1599,28 @@ flowchart TD
 **足切り（reader.md 6項目）と Editor Score（editor_score.md 5項目）は配点・目的が異なる別モード**。足切り未実施の作品に Editor Score を使わない。評価観点は `_how_to/editor_score.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
 
 ### 2.9 Consistency Audit Mode（設定・口調の一貫性監査）
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。複数章が完成した作品について、**設定・口調・時系列・固有名詞の表記揺れ**を章横断で監査する。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。**設定・口調・時系列・固有名詞の表記揺れ**を監査する。点数は付けず、足切り（First Reader）の結果を前提にしない。モードは一つで、スコープを二つ持つ。
 
-評価前に `character.md` / `world.md` / `design_specification.md` を参照する。監査結果は **`novels/<作品>/_reader/consistency_YYYYMMDD.md`** に保存し、チャットには矛盾件数の内訳と保存先パスだけを返す。評価観点は `_how_to/consistency_audit.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
+| scope | 読むもの | 見るもの |
+|-------|----------|----------|
+| `design`（設定監査） | `character.md` / `world.md` / `design_specification.md`（本文・CHRONOS・METRON は読まない） | 人物どうし、人物と世界、設計書の章出来事と人物・世界の食い違い、資料間の固有名詞の揺れ |
+| `text`（本文監査） | 指定範囲の `_novel_text/`（省略時は全章）と設定3点 | 本文と設定の照合（第1章から）、章をまたぐ口調・事実・伏線・時系列・表記（第2章以降） |
+
+**判定の境界**: 二つの記述が両立しない事実をどちらも明示していれば **矛盾**、片方が書いていない・読み方で結論が変わるなら **要確認**、事実は一致し表記だけが揺れるなら **軽微**。矛盾を要確認へ下げるのは、読み替えの余地を具体的に示せるときだけとし、その余地を指摘の行に書く。件数が0件でも、確認した組み合わせの一覧を残す。
+
+**起動**:
+
+- `design` は、企画の Gate B の **B4.5** で必ず実行する（新規企画と、明示された Gate B 再実施。手順はスキル **`novel-planning`**）。Gate B の外では、Editor Score と `text` 監査の開始時の **設定鮮度チェック**（`tools/novel_audit_freshness.py check`）で未監査なら、評価の前に1回自動で実行して評価へ戻る（`起動: pre_review`）。First Reader / Interest Check / Reader Walk では鮮度チェックをしない。ユーザーが設定3点の改稿を指示した作業の完了報告では、行末に `設定資料の一貫性を監査して` を示す。
+- `text` は自動実行しない。本文保存の完了報告の次手に指示文を出し、ユーザーが依頼したときだけ実行する。
+- 「一貫性を監査して」だけなら、本文が1章以上あれば `text`、なければ `design`。
+
+**修正**: 本文が無い作品の B4.5 だけは、矛盾・軽微を Gate B の中で直し、再監査は1回までとする。それ以外（本文がある作品の B4.5、pre_review、ユーザー明示）は資料も本文も直さず、指摘をユーザーへ返す。要確認はどの場合も直さない。
+
+**CHRONOS**: `text` の時系列の節で、`CHRONOS | ON` かつ有効イベントがあるときだけ `chronos check` の結果を添付する。イベント未登録は「未確認」であり矛盾にしない。イベント YAML は書かず、`writing_bridge` / METRON の計測を重ねない。
+
+**記録**: 監査結果は **`novels/<作品>/_reader/consistency_<scope>_YYYYMMDD_HHMM.md`** に保存し、冒頭に scope・起動・対象・件数を書く（design は設定3点のハッシュも書く）。件数は指摘表の判定列と一致させ、`tools/novel_consistency_audit_lint.py` で確かめる。作品 `_meta.md` の評価履歴表に `Consistency Audit (design|text)` 行を追記する。完了印の語は「監査済み」とし、「検査済み」「計測済み」は使わない。「足切りステータス」には混ぜない。執筆完了・publish・未計測解消の条件にしない。
+
+チャットには scope・矛盾件数の内訳・保存先パスと要確認の一覧を返す。評価観点は `_how_to/consistency_audit.md`、保存手順はスキル **`novel-evaluation-output`** を参照する。
 
 ### 2.10 Reader Walk Mode（読み進み感想）
 横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価ファイル命名と役割」。指定ペルソナ（指定が無い場合は `readers/000_default/reader_preferences.md`）の一般読者として、本文を場面単位で読み、その時点の感想と突っ込みだけを残す。**既定は対象ペルソナにとって未読の残り全部**。章やプロローグなど範囲の指定があればその領域だけ進める。採点・足切り・設定資料による訂正はしない。指定範囲の外は読まない。

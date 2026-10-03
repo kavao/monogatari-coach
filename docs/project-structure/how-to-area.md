@@ -22,7 +22,7 @@
 | `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |
 | `editor_score.md` | 足切り通過後の深掘り採点（5項目×20点・致命的弱点の優先順位付け。スキル: `novel-evaluation-output`） |
 | `novel_synopsis_for_review.md` | 長文評価前処理用の客観的あらすじ（400字・ネタバレ可。30,000字超作品で推奨） |
-| `consistency_audit.md` | 複数章の設定・口調・時系列の一貫性監査（表形式。スキル: `novel-evaluation-output`） |
+| `consistency_audit.md` | 設定・口調・時系列の一貫性監査（表形式）。設定資料どうしを見る design と、本文と設定・章横断を見る text の2スコープ（スキル: `novel-evaluation-output`） |
 | `standard_reader.md` | 一般読者視点の興味判定軸 |
 | `reader_walk.md` | 読み進み感想の書き方（一人称・既読のみ・作品評価点なし。任意のペルソナ反応メタデータを含む。スキル: `novel-reader-walk`） |
 | `meta.md` | メタデータ管理のフォーマット（§II 評価・足切り履歴を含む） |

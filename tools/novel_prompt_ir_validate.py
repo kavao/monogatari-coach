@@ -183,7 +183,8 @@ def _schema_1_1_advisories(label: str, page) -> list[str]:
     advisories: list[str] = []
     if page.dramaturgy is None:
         advisories.append(f"{label}: schema 1.1のdramaturgyが未記載です（演出意図はadvisory）")
-    if page.render_instruction.text_mode is None:
+    # 漫画ページの text_mode 欠落は quality_warnings_for_page が警告にする（二重に出さない）。
+    if page.render_instruction.text_mode is None and getattr(page.meta, "intent", None) != "manga_page":
         advisories.append(
             f"{label}: render_instruction.text_modeが未記載です（移行時にgenerate/letter_later/noneを選択）"
         )
@@ -264,6 +265,58 @@ def quality_warnings_for_page(
             warnings.append(f"{label}: manga.panel_layout が空です（一枚絵としての空間配置・枠線有無が弱くなります）")
         else:
             warnings.append(f"{label}: manga.panel_layout が空です（ページ内の段・大小・読み順が弱くなります）")
+    if is_manga and getattr(page, "schema_version", "1.0") == "1.1":
+        # 新規ページの完了条件（concepts.md）。矩形が無いと NovelAI の人物 slot が全員中央に戻る。
+        if page.layout_geometry is None:
+            warnings.append(
+                f"{label}: schema 1.1 の漫画ページに layout_geometry がありません"
+                "（コマの矩形を panels[] と同じ順で書いてください。移行ツールは書きません）"
+            )
+        if page.render_instruction.text_mode is None:
+            warnings.append(
+                f"{label}: schema 1.1 の漫画ページに render_instruction.text_mode がありません"
+                "（generate / letter_later / none を明示してください）"
+            )
+    if getattr(page, "schema_version", "1.0") == "1.1":
+        from manga_prompt_ir.beat_type import beat_type_warnings_for_page
+        from manga_prompt_ir.layout_templates import load_layout_templates
+
+        warnings.extend(beat_type_warnings_for_page(label, page))
+        template_id = page.manga.layout_template_id
+        if template_id:
+            # 座標は型から起こしたあと手で直してよいので、ID の実在とコマ数だけを見る。
+            template = load_layout_templates().get(template_id)
+            if template is None:
+                warnings.append(
+                    f"{label}: manga.layout_template_id '{template_id}' は型ライブラリにありません"
+                    "（tools/manga_prompt_ir/data/panel_layout_templates.yaml）"
+                )
+            elif template.panel_count != len(page.panels):
+                warnings.append(
+                    f"{label}: manga.layout_template_id '{template_id}' は{template.panel_count}コマの型ですが、"
+                    f"ページは{len(page.panels)}コマです"
+                )
+            else:
+                # 画像生成には矩形と文章の両方が渡るので、型を名乗るページは文章も型にそろえる。
+                if (page.manga.panel_layout or "").strip() != template.panel_layout_ja:
+                    warnings.append(
+                        f"{label}: manga.panel_layout が型 '{template_id}' の文章と違います"
+                        f"（型: {template.panel_layout_ja}。novel_manga_layout_apply.py --overwrite で同期するか、"
+                        "型を使わないなら layout_template_id を外してください）"
+                    )
+                for panel, slot in zip(page.panels, template.slots):
+                    if (panel.composition.layout or "").strip() != slot.layout_ja:
+                        warnings.append(
+                            f"{label}: panel {panel.panel_id}: composition.layout が型の枠の説明と違います"
+                            f"（型: {slot.layout_ja}）"
+                        )
+                    # 生成プロンプトは layout_en を優先するので英語欄も照合する（空なら食い違う情報は無い）。
+                    layout_en = (panel.composition.layout_en or "").strip()
+                    if layout_en and layout_en != slot.layout_en:
+                        warnings.append(
+                            f"{label}: panel {panel.panel_id}: composition.layout_en が型の枠の説明と違います"
+                            f"（型: {slot.layout_en}）"
+                        )
     if is_illustration and len(page.panels) > 1:
         warnings.append(
             f"{label}: illustration の panels[] が複数あります。群像・複合構図なら問題ありませんが、単体挿絵は1セルを推奨します"

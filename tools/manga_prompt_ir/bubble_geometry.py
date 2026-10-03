@@ -7,6 +7,8 @@ bubble source.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +75,63 @@ def local_frame_targets(page: dict[str, Any] | MangaPagePrompt) -> list[dict[str
     ]
 
 
+def bubble_source_digest(page: dict[str, Any] | MangaPagePrompt) -> str:
+    """フキダシの設計が依存するページの部分（台詞と layout_geometry）の digest。
+
+    台詞の中身・種類・コマ、または枠の矩形が変わると値が変わる。プロンプトなど他の欄の変更では変わらない。
+    """
+    model = page if isinstance(page, MangaPagePrompt) else MangaPagePrompt.model_validate(page)
+    data = _as_dict(page)
+    texts = []
+    for panel in model.panels:
+        for kind in LOCAL_FRAME_KINDS:
+            for index, item in enumerate(getattr(panel.text, kind), start=1):
+                content = str(getattr(item, "content", item) or "").strip()
+                if not content:
+                    continue
+                text_id = assigned_text_id(item, panel_id=panel.panel_id, kind=kind, index=index)
+                texts.append([text_id, int(panel.panel_id), kind, content])
+    geometry = [
+        [int(item["panel_id"]), {key: item["rect"].get(key) for key in ("x", "y", "w", "h")}]
+        for item in (data.get("layout_geometry") or {}).get("panels") or []
+    ]
+    payload = json.dumps({"texts": texts, "geometry": geometry}, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def check_bubbles_match_page(page: dict[str, Any] | MangaPagePrompt, document: BubbleDesignDocument) -> None:
+    """フキダシの設計がページの台詞と1対1で対応するか（text_id・コマ・種類）。食い違えば止める。"""
+    targets = local_frame_targets(page)
+    by_id = {item["text_id"]: item for item in targets}
+    bubble_ids = [bubble.text_id for bubble in document.bubbles]
+    missing = [item["text_id"] for item in targets if item["text_id"] not in set(bubble_ids)]
+    extra = [text_id for text_id in bubble_ids if text_id not in by_id]
+    if extra:
+        raise BubbleGeometryError("未知の text_id です: " + ", ".join(extra))
+    if missing:
+        raise BubbleGeometryError("manifest に対して bubbles が不足しています: " + ", ".join(missing))
+    if len(bubble_ids) != len(targets):
+        raise BubbleGeometryError(
+            f"local frame の件数と bubbles 件数が一致しません: {len(targets)}/{len(bubble_ids)}"
+        )
+    known_panels = {int(panel.panel_id) for panel in MangaPagePrompt.model_validate(_as_dict(page)).panels}
+    for bubble in document.bubbles:
+        target = by_id[bubble.text_id]
+        if int(bubble.panel_id) != int(target["panel_id"]):
+            raise BubbleGeometryError(
+                f"panel_id が一致しません: {bubble.text_id} "
+                f"geometry={bubble.panel_id} manifest={target['panel_id']}"
+            )
+        if int(bubble.panel_id) not in known_panels:
+            raise BubbleGeometryError(f"未知の panel_id です: {bubble.panel_id}")
+        expected_type = TEXT_BUBBLE_TYPES[target["type"]]
+        if bubble.bubble_type != expected_type:
+            raise BubbleGeometryError(
+                f"bubble_type が text 種別と一致しません: {bubble.text_id} "
+                f"{bubble.bubble_type}/{expected_type}"
+            )
+
+
 def load_bubble_design(data: dict[str, Any]) -> BubbleDesignDocument:
     try:
         return BubbleDesignDocument.model_validate(data)
@@ -130,35 +189,7 @@ def validate_bubble_design(
 ) -> BubbleDesignDocument:
     require_clean_source(source_generation, image_path=image_path)
     document = load_bubble_design(data)
-    targets = local_frame_targets(page)
-    by_id = {item["text_id"]: item for item in targets}
-    bubble_ids = [bubble.text_id for bubble in document.bubbles]
-    missing = [item["text_id"] for item in targets if item["text_id"] not in set(bubble_ids)]
-    extra = [text_id for text_id in bubble_ids if text_id not in by_id]
-    if extra:
-        raise BubbleGeometryError("未知の text_id です: " + ", ".join(extra))
-    if missing:
-        raise BubbleGeometryError("manifest に対して bubbles が不足しています: " + ", ".join(missing))
-    if len(bubble_ids) != len(targets):
-        raise BubbleGeometryError(
-            f"local frame の件数と bubbles 件数が一致しません: {len(targets)}/{len(bubble_ids)}"
-        )
-    known_panels = {int(panel.panel_id) for panel in MangaPagePrompt.model_validate(_as_dict(page)).panels}
-    for bubble in document.bubbles:
-        target = by_id[bubble.text_id]
-        if int(bubble.panel_id) != int(target["panel_id"]):
-            raise BubbleGeometryError(
-                f"panel_id が一致しません: {bubble.text_id} "
-                f"geometry={bubble.panel_id} manifest={target['panel_id']}"
-            )
-        if int(bubble.panel_id) not in known_panels:
-            raise BubbleGeometryError(f"未知の panel_id です: {bubble.panel_id}")
-        expected_type = TEXT_BUBBLE_TYPES[target["type"]]
-        if bubble.bubble_type != expected_type:
-            raise BubbleGeometryError(
-                f"bubble_type が text 種別と一致しません: {bubble.text_id} "
-                f"{bubble.bubble_type}/{expected_type}"
-            )
+    check_bubbles_match_page(page, document)
     return document
 
 

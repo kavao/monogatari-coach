@@ -8,6 +8,7 @@ dependencies = [
   "pypdf>=6,<7",
   "reportlab>=4.4,<5",
   "types-PyYAML>=6.0,<7",
+  "psd-tools>=1.22,<2",
 ]
 
 [dependency-groups]

@@ -43,7 +43,7 @@ targets: ["*"]
 - このIRは、生成途中で壊れたら作り直せる **再生成可能な中間データ**として扱う。正本性の中心は、YAML形式そのものではなく、そこに入っている **日本語の意味・人物関係・場面意図・セリフ帰属**に置く。
 - 小説本文からの変換を主体にする場合、最初のIRは荒くてもよい。品質ゲートで意味を補い、必要ならIR全体を再出力する。
 - 新規のキャラクタータグは、まず `character.yaml` 相当の構造へ落とす。
-- 新規の漫画タグは、まず `manga_page.yaml` 相当の構造へ落とす。
+- 新規の漫画タグは、まず `manga_page.yaml` 相当の構造（schema 1.1。下記「漫画ページ schema 1.1（新規の既定）」）へ落とす。
 
 ## Manga Tag の入口（variant・タグ層は YAML より先に `_meta` で固定）
 
@@ -71,7 +71,7 @@ targets: ["*"]
   `--negative-prompt` と `technical.negative_tags` を prompt 内の **`Do not include`** へ移し、API に渡す
   `negative_prompt` は空にする。旧来形式との比較は `--prompt-formatter tag_csv` で行える。
 - 漫画固有タグ（画風・レイアウト・トーン）とキャラクター固有タグ（髪・目・衣装・種族・固定小物）は分けて保持する。
-- コマ・ページ画像（`step1-panels` / `step1-pages` / `step2-pages`）の保存先は `manga/_assets/<manga_XX>/comic/`。
+- コマ画像（`step1-panels`）の保存先は `manga/_assets/<manga_XX>/comic/`、ページ画像（`step1-pages` / `step2-pages`）は `manga/_assets/<manga_XX>/pages/`（ページ IR の `manga/pages/*.yaml` とは別の場所）。
 - 背景・空間・反復オブジェクトの参照資料は **`background_concepts[]`** に書く（詳細は下記「`background_concepts[]`（Manga Tag Mode）」）。`--source background-concepts` で人物なしの背景資料画像を生成する。標準 provider は `grok`。保存先は `manga/_assets/<manga_XX>/backgrounds/`。
 - **`scene` の日本語と英語**: `location` / `time_of_day` / `weather` / `background_notes` は人間向けに日本語でもよい。**タグ行・バッチは `location_en` / `time_of_day_en` / `weather_en` / `background_notes_en` のみ**を `tools/manga_prompt_ir/scene_prompt.py` が参照し、日本語キーには**フォールバックしない**。**`location_en` は必須（非空）**。`background_notes`・`time_of_day`・`weather` を書いたときは対応する `*_en` も必須（欠けると `MangaPagePrompt`／`Scene` の検証エラー）。LLM 側で英語行を埋めてから保存する運用を正とする。
 - **`subjects[]` の背景・オブジェクト（`character_id` なし）**: `description` は日本語のままでよい。タグ行は **`description_en`** または **`tag_token`** があればそれを使う。**どちらも無く**、`description` が日本語（CJK を含む）のみのときはタグ上は **`subject`** プレースホルダとなり、日本語をタグ列に載せない（`subject_tag_line_token()`）。英語のみの `description` は後方互換でタグに載りうる。
@@ -105,6 +105,28 @@ targets: ["*"]
 - embed した 1.1 snapshot は `character_schema_version: "1.1"` を持つ。hash / `visual_natural` が空でも、この印または漫画ページ schema 1.1 の `character_snapshots` があれば、キャラクター YAML 省略の compile は停止する。
 - 固定小物は `manga_rules.consistency_tags`、衣装付属品は `visual_spec.accessories`。同じ語を両方に置かない。
 - 例: `tools/manga_prompt_ir/examples/character_1_1.yaml`
+
+### 漫画ページ schema 1.1（新規の既定）
+
+横断正本は `concepts.md` の完了扱い条件。新規の `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry` と `render_instruction.text_mode` を省略しない。キャラクター YAML の 1.1 とは別の版である。
+
+- 手本は `tools/manga_prompt_ir/examples/manga_page.yaml`（3コマ・`text_mode: generate`）と `manga_page_5panel.yaml`（5コマ・`letter_later`）。`manga_page_v1_0.yaml` は 1.0 の読み取り互換例で、新規の手本にしない。
+- コマ数・大小・めくりは `_how_to/manga.md` の「コマ割り・ページ割り」で決めてから矩形を書く。前のページや既存作品の矩形を写さない。
+- 矩形は型ライブラリから CLI で起こすのを標準にし、必要なら手で直す。各コマに `weight`（または `beat_type`）を付けてから次を実行する。既定は提案の表示だけで、`--apply` で `layout_geometry`・`manga.layout_template_id` と、コマ割りの文章（`manga.panel_layout`・各コマの `composition.layout` / `layout_en`）を型にそろえて書く。既に `layout_geometry` があるページは `--overwrite` なしでは触らない。`--name-dir` で番号付きネーム画像を出して大小を目で確かめる（画像の書き出しに失敗したページは YAML を書かない）。`[不一致]`（最も重いコマを最大の枠に置ける型が無い）は書き込まれないので、重みを見直すか手で書く。`--page` で絞っても章の直前のページの型は避ける。
+  - `uv run python tools/novel_manga_layout_apply.py novels/<作品> --manga-stem manga_XX [--apply] [--name-dir <dir>]`（`<dir>` は `manga/_assets/manga_XX/names` を推奨）
+  - 矩形を決めたあとにコマ画像を作るときは、NovelAI の `step1-panels` に `--panel-aspect frame` を付けると枠の縦横比で作る（`--aspect-ratio` / `--size` とは併用不可。大きさは `config/image_generation.json` の `novelai.panel_frame_sizes`）
+  - コマ画像を枠へ組むときは `novel_manga_bubbles_draft.py`（フキダシの下書き `manga/pages/<page>.bubbles.yaml`）→ `novel_manga_assemble_psd.py`（`manga/_assets/manga_XX/assembled/` に PSD と PNG）。どちらも既定は計画の表示で、`--apply` で書く。既存は `--overwrite` なしでは触らず、置き換えるときは前の版を自動で退避する。操作は `docs/image-generation/manga-assemble-psd.md`
+  - 型は `tools/manga_prompt_ir/data/panel_layout_templates.yaml`（1〜5コマ・20型）。読み順は入れ替えないので、重いコマを大きい枠に置く調整は型の選び方で行う（最も重いコマの枠が最大の型だけを残し、重みと面積の逆転が最少の型に絞る）。直前のページと同じ型は避ける。6コマ以上のページは対象外（手で書く）
+  - `layout_template_id` があるページで `manga.panel_layout` / `composition.layout` / `composition.layout_en`（生成プロンプトは英語欄を優先）を型と違う文章にすると検証が警告する。型を使わなくなったら `layout_template_id` を外す
+- `text_policy` は `text_mode` と同じ方針の文言にする。`none` なら `no text` または「文字を描かない／入れない」のような否定形で書き、`legible` など描画を求める語を混ぜない。食い違うと schema が弾く。
+  - 判定はスキーマとページ生成（`page_render_plan`）で共通（`schemas/manga_page.py` の `classify_text_policy`）。「文字が崩れる場合は…別処理／後入れできる余白を残す」のような保険の一文は方針として数えない。「日本語」「読める」だけでは方針と判定しない。方針を示したいときは `legible` / 「正確な文言で描く」（generate）、「後載せ」「空吹き出し」（letter_later）、「文字を描かない」（none）のように書く。
+- `novel_prompt_ir_validate.py` は、schema 1.1 の漫画ページで `layout_geometry` か `text_mode` が欠けていると品質警告を出す（`--strict-quality` で失敗）。1.0 ページと挿絵ページには出さない。
+- 既存 1.0 ページに 1.1 の欄を足すときは、先に `tools/novel_manga_ir_migrate.py` で移行する。1.0 のままで 1.1 の欄を書くと検証で落ちる。
+  1. `--dry-run --output <plan.json>` で計画を作り、`unresolved` に `/render_instruction/text_mode` が出ることを確認する。
+  2. `--apply-plan <plan.json> --only-page manga/pages/manga_XX_pYY.yaml …` で適用する。複数ページは `--only-page` を列挙する（作品一括の apply は拒否される）。戻すときは出力された manifest を `--restore-manifest` に渡す。
+  3. 移行ツールは版・`subject_id`・`text_id` だけを足す。`text_mode` は移行後に手で書く（ツールに推測させない）。`layout_geometry` は移行後に `novel_manga_layout_apply.py` で起こすか手で書く。
+- 任意欄（1.1 のみ）: `panels[].weight`（1〜5）・`size_class`（`splash` / `large` / `medium` / `small` / `inset`）・`beat_type`（語彙は `tools/manga_prompt_ir/data/beat_type_vocab.yaml`。語彙外は検証で警告）、`manga.layout_template_id`（書くなら `layout_geometry` も必須。型ライブラリに無い ID とコマ数の食い違いは検証で警告）。付けるときは、重いコマほど矩形を大きくする。1.0 ページには移行してから付ける。
+- 1.1 ページに `character_snapshots` があると、互換 Markdown の export には `--character tag/characters/<id>.yaml` が必須になる（スキル `novel-manga-md-output`）。
 
 ## `background_concepts[]`（Manga Tag Mode）
 
@@ -358,6 +380,7 @@ Level 1 禁止事項（着衣漏洩防止）: 主経路の character_ir_tags() �
 - `render_instruction.prompt_header` / `panel_policy` / `character_policy` が入り、YAML単体で作画依頼として成立する。
 - キャラクター固定特徴が、登場するすべてのコマへ引き継がれる。
 - ページ単位で、コマ数、読み順、段・大小・視線誘導のいずれかが読める。
+- 新規ページは schema 1.1 で、`layout_geometry`（コマ数・`panel_id` 順が `panels[]` と一致）と `render_instruction.text_mode` がある。
 - **`background_concepts[]`**: Manga Tag Mode では上記「`background_concepts[]`（Manga Tag Mode）」に従い、**1ページ最低1件**（シーン最初のページは establishing 系を含む）を原則とする。各件に `concept_id` / `title` / `description` / `prompt` があり、人物なしの背景資料として読める。空間に加え **UI・小道具・反復オブジェクト** も載せてよい。
 
 ## 参考コマンド

@@ -1,0 +1,17 @@
+profile: chapter-turn
+unit: 章末まで残る状態変化を1件とする。
+include:
+  # 明示リスト。night-step から型制限を継承しない。
+  - decision
+  - state_change
+exclude: 段落単位の記述、反復、METRONのビート、設計書の予定ビート。
+required_fields:
+  - scene
+  - actors
+  - location
+  - title
+  - type
+order: provisional
+per_chapter:
+  min: 1
+  max: 2
