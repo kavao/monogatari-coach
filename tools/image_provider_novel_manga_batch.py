@@ -2705,7 +2705,7 @@ def iter_yaml_manga_jobs(
                 try:
                     panel_frames = frame_sizes_for_page(
                         geometry,
-                        [int(panel.get("panel_id")) for panel in panels],
+                        [int(panel.get("panel_id") or 0) for panel in panels],
                         panel_frame_policy,
                     )
                 except (FrameAspectError, TypeError, ValueError) as exc:
