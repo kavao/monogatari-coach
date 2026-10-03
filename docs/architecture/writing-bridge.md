@@ -4,12 +4,12 @@
 
 ## このドキュメントを使う場面
 
-1. **どんな場面で使うか** — 作品の `config.md` で METRON または CHRONOS が ON のとき、続きの執筆・場面の Deepen・当該場面の正本保存をチャットで依頼する。両方 OFF の作品では接続 run を作りません。
+1. **どんな場面で使うか** — 作品の `config.md` で METRON と CHRONOS が ON のとき、続きの執筆・場面の Deepen・当該場面の正本保存をチャットで依頼する。2つのフラグは連動し、両方 ON か両方 OFF にします。両方 OFF の作品では接続 run を作りません。
 2. **チャットへの指示文** — これだけで動きます。
    - `第1章を執筆してください。`
    - `この場面をDeepenしてください。`
    - `当該場面を保存してください。`（METRON ON では省略できます）
-3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら契約と Beat を先に置き、`prepare` → 候補の `receive` / `inspect`。CHRONOS ON では inspect の前に observations を書きます。初稿は指示目標以上を1回で狙います（助言。未達でも床到達なら保存を止めません）。シーン床に届いていれば修復を始めず、`--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。未作成または空の正本には selector を付けません。床未達のとき、または「この場面をDeepen」と明示したときだけ `repair-*` します。修復を始めたら、今の CLI ではジョブを完走してから保存します。止めたいときはその旨を書いてください。CHRONOS ON だけでは正本へ書きません。その後 `_meta.md` のストーリー反映は別スキルです。
+3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら、第1章の初稿や単一章の依頼でも、契約と Beat を先に置いて `prepare` → 候補の `receive` / `inspect` に進みます。`_novel_text` へ直接書いてから測る流れにはしません。CHRONOS ON では inspect の前に observations を書きます。初稿は指示目標以上を1回で狙います（助言。未達でも床到達なら保存を止めません）。シーン床に届いていれば修復を始めず、`--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。未作成または空の正本には selector を付けません。床未達のとき、または「この場面をDeepen」と明示したときだけ `repair-*` します。修復を始めたら、今の CLI ではジョブを完走してから保存します。止めたいときはその旨を書いてください。保存のあと `_meta.md` のストーリー反映は別スキルです。場面に CHRONOS イベントが無い場合は、反映のあとに「未登録」と報告し、次回タスクへ登録を追記します（章の次回タスクは消しません）。
 4. **ユーザーが確認できるもの** — `_writing/<scene>/<run>/` の `report.json`、`jobs/` のプロンプト、`_metron/<scene>/` の計測、反映後の `_novel_text` と `_novel_text_backup`。
 
 清書（rewrite.md）は従来どおり別手順です。明示した `metron_cli.py` / `chronos_cli.py` はフラグ OFF でも拒否しません。

@@ -24,6 +24,7 @@ from .models import (
     TransitionRule,
     is_location_id,
 )
+from .selection import EventSelection, select_effective_events
 from .storage import atomic_write_model, load_yaml
 
 
@@ -40,7 +41,9 @@ class ChronosStore:
     scenes: list[Scene] = field(default_factory=list)
     config: ChronosConfig = field(default_factory=ChronosConfig)
     event_files: dict[str, Path] = field(default_factory=dict)
+    selection: EventSelection = field(default_factory=EventSelection)
     by_id: dict[str, Event] = field(default_factory=dict)
+    all_by_id: dict[str, Event] = field(default_factory=dict)
     by_actor: dict[str, list[str]] = field(default_factory=dict)
     by_location: dict[str, list[str]] = field(default_factory=dict)
     by_scene: dict[str, list[str]] = field(default_factory=dict)
@@ -100,6 +103,15 @@ def load_store(path: str | Path) -> ChronosStore:
             store.events.extend(_load_event_file(yaml_path, store.event_files))
 
     _validate_uniqueness(store)
+    if (
+        store.config.extract_gate is not None
+        and store.config.extract_gate.profile == "relation-state"
+        and not store.config.state_enabled()
+    ):
+        raise ChronosLoadError(
+            "extract_gate profile relation-state requires character_state.dimensions"
+        )
+    store.selection = select_effective_events(store)
     _validate_event_refs(store)
     _validate_character_state(store)
     _build_indexes(store)
@@ -166,13 +178,14 @@ def _validate_uniqueness(store: ChronosStore) -> None:
 
 def _validate_event_refs(store: ChronosStore) -> None:
     event_ids = {event.id for event in store.events}
+    active_ids = {event.id for event in store.selection.events}
     scene_ids = {scene.id for scene in store.scenes}
 
     def require_event(ref: str, context: str) -> None:
         if ref not in event_ids:
             raise ChronosLoadError(f"unknown event {ref} referenced from {context}")
 
-    for event in store.events:
+    for event in store.selection.events:
         context = event.id
         time = event.time
         if time is not None:
@@ -204,7 +217,7 @@ def _state_payloads_present(store: ChronosStore) -> bool:
     for character in store.characters:
         if character.initial_state:
             return True
-    for event in store.events:
+    for event in store.selection.events:
         if event.effects_on:
             return True
     return False
@@ -254,7 +267,7 @@ def _validate_character_state(store: ChronosStore) -> None:
     _validate_bind_conflicts(config.illustration_bind, dimensions)
     _validate_transitions(store, config.transitions, dimensions)
 
-    for event in store.events:
+    for event in store.selection.events:
         for actor in event.actors:
             if actor not in registered:
                 raise ChronosLoadError(f"unregistered actor {actor} in {event.id}")
@@ -401,13 +414,14 @@ def _require_location(store: ChronosStore, location_id: str, context: str) -> No
 
 
 def _build_indexes(store: ChronosStore) -> None:
-    store.by_id = {event.id: event for event in store.events}
+    store.all_by_id = {event.id: event for event in store.events}
+    store.by_id = {event.id: event for event in store.selection.events}
     by_actor: dict[str, list[str]] = defaultdict(list)
     by_location: dict[str, list[str]] = defaultdict(list)
     by_scene: dict[str, list[str]] = defaultdict(list)
     causal_out: dict[str, list[str]] = defaultdict(list)
     causal_in: dict[str, list[str]] = defaultdict(list)
-    for event in store.events:
+    for event in store.selection.events:
         for actor in event.actors:
             by_actor[actor].append(event.id)
         if event.location is not None:
@@ -415,14 +429,16 @@ def _build_indexes(store: ChronosStore) -> None:
         if event.source is not None and event.source.scene is not None:
             by_scene[event.source.scene].append(event.id)
         for effect in event.effects:
-            causal_out[event.id].append(effect)
-            causal_in[effect].append(event.id)
+            if effect in store.by_id:
+                causal_out[event.id].append(effect)
+                causal_in[effect].append(event.id)
         for cause in event.causes:
-            causal_out[cause].append(event.id)
-            causal_in[event.id].append(cause)
+            if cause in store.by_id:
+                causal_out[cause].append(event.id)
+                causal_in[event.id].append(cause)
     for scene in store.scenes:
         for ref in scene.refs:
-            if ref not in by_scene[scene.id]:
+            if ref in store.by_id and ref not in by_scene[scene.id]:
                 by_scene[scene.id].append(ref)
     store.by_actor = dict(by_actor)
     store.by_location = dict(by_location)

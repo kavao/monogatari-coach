@@ -30,7 +30,7 @@ def check_chr012(store: ChronosStore, resolution: StateResolution) -> list[Findi
     novel_root = novel_root_for(store)
     pages_root = (novel_root / "illustrations" / "pages").resolve()
 
-    for event in store.events:
+    for event in store.selection.events:
         if event.source is None or not event.source.illustrations:
             continue
         for link in event.source.illustrations:

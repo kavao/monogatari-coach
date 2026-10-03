@@ -5,10 +5,12 @@
 画像生成プロバイダへ連続実行する。
 
 保存先:
-  - コマ・ページ（step1-panels / step1-pages / step2-pages）: manga/_assets/<manga_stem>/comic/
+  - コマ（step1-panels）: manga/_assets/<manga_stem>/comic/
+  - ページ（step1-pages / step2-pages）: manga/_assets/<manga_stem>/pages/
   - 背景資料（background-concepts）: manga/_assets/<manga_stem>/backgrounds/
   file_prefix は <stem>_p<page>_k<koma> 等。
-  --subdir-by-page 指定時は comic/p<page>/ に保存（任意。推奨運用は comic/ 直下のみ）。
+  --subdir-by-page 指定時はコマを comic/p<page>/ に保存（任意。推奨運用は comic/ 直下のみ）。
+  ページ（step1-pages / step2-pages）とは併用できない。
   novel_image_layout の k01.. は「1ページ内のコマ用スロット」用の任意フォルダで、本スクリプト既定では未使用。
 前提: config/image_generation.json・各 provider の準備完了（tools/image_provider_generate.py と同じ）
 
@@ -35,6 +37,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
+
+from PIL import Image
 
 import yaml
 
@@ -108,6 +112,11 @@ from manga_prompt_ir.renderer_capabilities import (
     resolve_renderer_capability_key,
 )
 from manga_prompt_ir.local_frame_source import build_local_frame_source_record
+from manga_prompt_ir.frame_aspect import (
+    FrameAspectError,
+    NovelAISizePolicy,
+    frame_sizes_for_page,
+)
 from manga_prompt_ir.page_edit import write_json as write_page_json
 from manga_prompt_ir.schemas.manga_page import MangaPagePrompt
 from novel_meta_yaml import suggest_text_mode_for_lettering
@@ -119,6 +128,7 @@ PAGE_COMPILER_CHOICES = ("legacy", PAGE_COMPILER)
 TEXT_MODE_CHOICES = ("generate", "letter_later", "none")
 MANGA_ASSET_SUBDIR_BACKGROUND = "backgrounds"
 MANGA_ASSET_SUBDIR_COMIC = "comic"
+MANGA_ASSET_SUBDIR_PAGES = "pages"
 MANGA_STEP1_PROVIDER_ENV = "MONOCRI_MANGA_STEP1_PROVIDER_DEFAULT"
 MANGA_STEP1_OMIT_PANEL_BACKGROUND_ENV = "MONOCRI_MANGA_STEP1_OMIT_PANEL_BACKGROUND"
 MANGA_STEP1_INCLUDE_PANEL_SUMMARY_ENV = "MONOCRI_MANGA_STEP1_INCLUDE_PANEL_SUMMARY"
@@ -262,6 +272,10 @@ def resolve_manga_assets_stem_dir(manga_dir: Path, stem: str) -> Path:
 
 def resolve_manga_comic_output_dir(manga_dir: Path, stem: str) -> Path:
     return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_COMIC
+
+
+def resolve_manga_pages_output_dir(manga_dir: Path, stem: str) -> Path:
+    return resolve_manga_assets_stem_dir(manga_dir, stem) / MANGA_ASSET_SUBDIR_PAGES
 
 
 PAGE_PANEL_QUALITY_TAGS = ("best_quality", "very_aesthetic", "ultra-detailed")
@@ -1065,12 +1079,13 @@ def resolve_novelai_reference(
     cli_information_extracted: float | None = None,
 ) -> NovelaiReferenceResolution:
     """NovelAI Vibe / ポーション: CLI > 作品 _meta.yaml > .env > 既定。"""
-    _disabled_portion = frozenset({"none", "off", "false", "0", "disabled"})
-    if (
-        portion_id is not None
-        and str(portion_id).strip().lower() in _disabled_portion
-        and not cli_paths
-    ):
+    from novel_meta_yaml import (  # noqa: E402
+        is_disabled_novelai_portion_id,
+        novelai_portion_id_token,
+        yaml_novelai_portion_choice,
+    )
+
+    if portion_id is not None and is_disabled_novelai_portion_id(portion_id) and not cli_paths:
         return NovelaiReferenceResolution(
             paths=[],
             strength=resolve_novelai_reference_strength(cli_strength, root),
@@ -1100,7 +1115,29 @@ def resolve_novelai_reference(
         )
 
     if novel_dir is not None:
-        from novel_meta_yaml import resolve_novelai_portion
+        from novel_meta_yaml import load_meta_yaml, resolve_novelai_portion  # noqa: E402
+
+        meta = load_meta_yaml(novel_dir)
+        yaml_default = ""
+        if isinstance(meta, dict):
+            novelai_meta = meta.get("novelai")
+            if isinstance(novelai_meta, dict):
+                yaml_default = yaml_novelai_portion_choice(
+                    novelai_meta, "portion_default"
+                )
+        if portion_id is not None and novelai_portion_id_token(portion_id) != "":
+            effective_portion = novelai_portion_id_token(portion_id)
+        else:
+            effective_portion = yaml_default
+        if is_disabled_novelai_portion_id(effective_portion) and not cli_paths:
+            return NovelaiReferenceResolution(
+                paths=[],
+                strength=resolve_novelai_reference_strength(cli_strength, root),
+                information_extracted=resolve_novelai_reference_information_extracted(
+                    cli_information_extracted, root
+                ),
+                source=f"_meta.yaml#{effective_portion or 'none'}",
+            )
 
         try:
             portion = resolve_novelai_portion(
@@ -2235,7 +2272,11 @@ def iter_manga_jobs(
             )
     for md_path in paths:
         stem = md_path.stem
-        comic_dir = resolve_manga_comic_output_dir(manga_dir, stem)
+        out_dir = (
+            resolve_manga_pages_output_dir(manga_dir, stem)
+            if source in MANGA_PAGE_ASPECT_SOURCES
+            else resolve_manga_comic_output_dir(manga_dir, stem)
+        )
         if source == "step2-pages":
             extracted = extract_step2_page_jobs_for_file(
                 md_path,
@@ -2256,7 +2297,7 @@ def iter_manga_jobs(
                 character_anchors=character_anchors,
             )
         for j in extracted:
-            j["output_dir"] = comic_dir.as_posix()
+            j["output_dir"] = out_dir.as_posix()
             all_jobs.append(j)
     return all_jobs
 
@@ -2282,6 +2323,7 @@ def iter_yaml_manga_jobs(
     prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
+    panel_frame_policy: NovelAISizePolicy | None = None,
 ) -> list[dict[str, Any]]:
     if prompt_compaction != "off" and not (
         provider == "novelai"
@@ -2361,6 +2403,7 @@ def iter_yaml_manga_jobs(
         page_num = yaml_page_number(path, index)
         stem_assets = resolve_manga_assets_stem_dir(manga_dir, stem)
         comic_dir = stem_assets / MANGA_ASSET_SUBDIR_COMIC
+        pages_dir = stem_assets / MANGA_ASSET_SUBDIR_PAGES
         color_label = page_color_mode_label(page, override=color_mode_override)
         grok_page_text_mode: str | None = None
         include_grok_text_elements = False
@@ -2492,7 +2535,7 @@ def iter_yaml_manga_jobs(
                 "negative_prompt": bundle_negative,
                 "prompt_formatter": bundle_formatter,
                 "negative_mode": bundle_negative_mode,
-                "output_dir": comic_dir.as_posix(),
+                "output_dir": pages_dir.as_posix(),
             }
             if plan is not None:
                 if plan.ordered_image_inputs:
@@ -2618,7 +2661,7 @@ def iter_yaml_manga_jobs(
                 "negative_prompt": bundle_negative,
                 "prompt_formatter": bundle_formatter,
                 "negative_mode": bundle_negative_mode,
-                "output_dir": comic_dir.as_posix(),
+                "output_dir": pages_dir.as_posix(),
             }
             if plan is not None:
                 if plan.ordered_image_inputs:
@@ -2649,6 +2692,24 @@ def iter_yaml_manga_jobs(
         else:
             technical = page.get("technical") or {}
             tech_neg = as_list(technical.get("negative_tags"))
+            panel_frames: list[dict[str, Any]] | None = None
+            if panel_frame_policy is not None:
+                # --panel-aspect frame: 枠の比率（B5 基準）でコマごとのサイズを決める。
+                # layout_geometry が無いページは黙って既定の比率に戻さず止める。
+                geometry = (page.get("layout_geometry") or {}).get("panels") or []
+                if not geometry:
+                    raise ValueError(
+                        f"{path.name}: --panel-aspect frame には layout_geometry が要ります"
+                        "（novel_manga_layout_apply.py で起こしてください）"
+                    )
+                try:
+                    panel_frames = frame_sizes_for_page(
+                        geometry,
+                        [int(panel.get("panel_id")) for panel in panels],
+                        panel_frame_policy,
+                    )
+                except (FrameAspectError, TypeError, ValueError) as exc:
+                    raise ValueError(f"{path.name}: {exc}") from exc
             for panel_index, panel in enumerate(panels, start=1):
                 mask_result = MaskApplyResult(tags=[])
                 if use_novelai_pipe_split:
@@ -2729,6 +2790,10 @@ def iter_yaml_manga_jobs(
                 }
                 if mask_result.replaced or mask_result.omitted:
                     job_entry["mask_result"] = mask_result
+                if panel_frames is not None:
+                    frame_info = panel_frames[panel_index - 1]
+                    job_entry["width"], job_entry["height"] = frame_info["requested_size"]
+                    job_meta["panel_frame"] = dict(frame_info)
                 all_jobs.append(job_entry)
     return all_jobs
 
@@ -2756,6 +2821,7 @@ def iter_jobs_by_input(
     prompt_compaction: str = "off",
     novelai_model: str | None = None,
     requested_model: str | None = None,
+    panel_frame_policy: NovelAISizePolicy | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if input_kind == "yaml":
         return "yaml", iter_yaml_manga_jobs(
@@ -2778,6 +2844,7 @@ def iter_jobs_by_input(
             prompt_compaction=prompt_compaction,
             novelai_model=novelai_model,
             requested_model=requested_model,
+            panel_frame_policy=panel_frame_policy,
         )
     if input_kind == "markdown":
         if source == "background-concepts":
@@ -2880,6 +2947,19 @@ def main(argv: list[str] | None = None) -> int:
         help="OpenAI Images の明示サイズ（例: 1024x1536）。--aspect-ratio より優先",
     )
     p.add_argument(
+        "--panel-aspect",
+        choices=("frame",),
+        default=None,
+        help=(
+            "frame: コマ単位生成（step1-panels）で、各コマをページ YAML の layout_geometry の枠の比率"
+            "（B5 基準）に近いサイズで生成する。NovelAI・YAML 入力専用。--aspect-ratio / --size とは併用不可。"
+            "サイズの選び方は config/image_generation.json の novelai.panel_frame_sizes の mode で決まる。"
+            "同梱の設定は pixel_budget（面積 max_pixels 以内・multiple の倍数・辺 min_side〜max_side で比率に最も近いサイズ。"
+            "既定値 1048576・64・512〜1728）。mode=presets は presets（1024x1024 / 832x1216 / 1216x832 など）から比率の最も近いもの"
+            "（mode を書かない設定では presets）"
+        ),
+    )
+    p.add_argument(
         "--resolution",
         default=None,
         help="Grok または OpenRouter Image API（resolution profile）の解像度（例: 1k, 2k）",
@@ -2910,7 +2990,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--subdir-by-page",
         action="store_true",
-        help="保存先を manga/_assets/<stem>/comic/p01, p02, ...（Page 番号）の下に分ける",
+        help=(
+            "保存先を manga/_assets/<stem>/comic/p01, p02, ...（Page 番号）の下に分ける。"
+            "step1-pages / step2-pages とは併用できない（ページは pages/ 直下のみ）"
+        ),
     )
     p.add_argument(
         "--no-character-anchors",
@@ -3163,12 +3246,25 @@ def main(argv: list[str] | None = None) -> int:
             ("aspect_ratio", "aspect_ratio"),
         ):
             if getattr(args, attr) is None and wf_key in wf:
-                setattr(args, attr, wf[wf_key])
+                val = wf[wf_key]
+                if attr == "novelai_portion_id":
+                    from novel_meta_yaml import novelai_portion_id_token  # noqa: E402
+
+                    val = novelai_portion_id_token(val)
+                setattr(args, attr, val)
         print(f"workflow={args.workflow!r} を適用しました", file=sys.stderr)
 
     # source の最終デフォルト（CLI/workflow どちらも未指定なら step1-panels）
     if args.source is None:
         args.source = "step1-panels"
+
+    if args.subdir_by_page and args.source in MANGA_PAGE_ASPECT_SOURCES:
+        print(
+            "error: --subdir-by-page は step1-pages / step2-pages と併用できません"
+            "（ページは manga/_assets/<stem>/pages/ 直下に保存します）",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.page_compiler == PAGE_COMPILER:
         if args.input != "yaml" or args.source not in {"step1-pages", "step2-pages"}:
@@ -3214,7 +3310,29 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.panel_aspect is not None:
+        problems = []
+        if args.source != "step1-panels":
+            problems.append(f"--source step1-panels 専用です（source={args.source}）")
+        if provider != "novelai":
+            problems.append(f"provider=novelai 専用です（provider={provider}）")
+        if args.input != "yaml":
+            problems.append("--input yaml 専用です")
+        if args.aspect_ratio is not None:
+            problems.append("--aspect-ratio とは併用できません")
+        if args.size is not None:
+            problems.append("--size とは併用できません")
+        if problems:
+            print("error: --panel-aspect frame: " + " / ".join(problems), file=sys.stderr)
+            return 2
     provider_cfg = provider_config_from_root(root, provider)
+    panel_frame_policy: NovelAISizePolicy | None = None
+    if args.panel_aspect == "frame":
+        try:
+            panel_frame_policy = NovelAISizePolicy.from_config(provider_cfg.get("panel_frame_sizes"))
+        except FrameAspectError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
     try:
         prompt_formatter = resolve_prompt_formatter(
             provider,
@@ -3340,6 +3458,7 @@ def main(argv: list[str] | None = None) -> int:
             prompt_compaction=args.prompt_compaction,
             novelai_model=(provider_cfg.get("default_model") if provider == "novelai" else None),
             requested_model=args.model,
+            panel_frame_policy=panel_frame_policy,
         )
     except (FileNotFoundError, ValueError, PageRenderPlanError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -3398,11 +3517,11 @@ def main(argv: list[str] | None = None) -> int:
         print("omit_panel_background: true (step1-panels)")
     if include_panel_summary and args.source == "step1-panels":
         print("include_panel_summary: true (panels[].summary_en をベースタグに併用)")
+    print(
+        f"novelai_reference: {len(novelai_ref_paths)} file(s) "
+        f"(source={novelai_ref_source})"
+    )
     if novelai_ref_paths:
-        print(
-            f"novelai_reference: {len(novelai_ref_paths)} file(s) "
-            f"(source={novelai_ref_source})"
-        )
         for ref in novelai_ref_paths:
             print(f"  - {ref}")
         print(
@@ -3469,6 +3588,10 @@ def main(argv: list[str] | None = None) -> int:
                 plan_metadata["manifest_path"] = page_manifest_path.as_posix()
         if aspect_effective is not None:
             payload["aspect_ratio_preset"] = aspect_effective
+        if job.get("width") and job.get("height"):
+            # --panel-aspect frame: コマごとのサイズ（NovelAI は width / height を preset より優先する）
+            payload["width"] = int(job["width"])
+            payload["height"] = int(job["height"])
         if args.size is not None:
             payload["size"] = args.size
         if args.resolution is not None:
@@ -3518,6 +3641,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    aspect_ratio: {merged['aspect_ratio']}")
             if provider == "novelai" and merged.get("width") and merged.get("height"):
                 print(f"    image_size: {merged['width']}x{merged['height']}")
+            panel_frame = (job.get("metadata") or {}).get("panel_frame")
+            if isinstance(panel_frame, dict):
+                req_w, req_h = panel_frame["requested_size"]
+                print(
+                    f"    panel_frame: 枠の比 {panel_frame['frame_ratio']:.2f} → "
+                    f"{req_w}x{req_h}（比 {panel_frame['requested_ratio']:.2f}、{panel_frame['mode']}）"
+                )
             if merged.get("model"):
                 print(f"    resolved_model: {merged['model']}")
             if merged.get("grok_image_quality"):
@@ -3669,6 +3799,34 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"error: image provider の実行に失敗しました ({job['prefix']})", file=sys.stderr)
                 return 1
         _safe_print_stdout(r.stdout.strip())
+        panel_frame = (job.get("metadata") or {}).get("panel_frame")
+        if isinstance(panel_frame, dict):
+            # 要求したサイズと、保存した画像を開いて測った実寸を分けて記録する（計画 C9）
+            try:
+                saved_payload = json.loads(r.stdout)
+            except json.JSONDecodeError:
+                saved_payload = {}
+                print("warning: 生成結果 JSON を読めず、コマの実寸を記録できません", file=sys.stderr)
+            job_out = Path(payload["output_dir"])
+            for item in saved_payload.get("saved") or []:
+                if not item.get("png") or not item.get("json"):
+                    continue
+                try:
+                    png_path = resolve_saved_artifact(item["png"], job_out)
+                    gen_json = resolve_saved_artifact(item["json"], job_out)
+                except FileNotFoundError as exc:
+                    print(f"warning: {exc}", file=sys.stderr)
+                    continue
+                with Image.open(png_path) as saved_image:
+                    actual = list(saved_image.size)
+                existing = json.loads(gen_json.read_text(encoding="utf-8"))
+                existing["panel_frame"] = {**panel_frame, "actual_size": actual}
+                write_page_json(gen_json, existing)
+                if actual != list(panel_frame["requested_size"]):
+                    print(
+                        f"warning: {job['prefix']}: 要求 {panel_frame['requested_size']} と実寸 {actual} が違います",
+                        file=sys.stderr,
+                    )
         if isinstance(page_plan, PageRenderPlan) and page_plan.bubble_frame_mode == "local":
             try:
                 saved_payload = json.loads(r.stdout)

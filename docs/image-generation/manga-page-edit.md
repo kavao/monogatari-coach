@@ -67,13 +67,13 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> `
   --min-page 1 --max-page 1
 ```
 
-写植する作品だけ、`--text-mode letter_later` に変えます。実行後、`manga/_assets/<manga_XX>/comic/` の画像と JSON を確認します。後載せが必要なときだけ下の「写植」節です。
+写植する作品だけ、`--text-mode letter_later` に変えます。実行後、`manga/_assets/<manga_XX>/pages/` の画像と JSON を確認します。後載せが必要なときだけ下の「写植」節です。
 
 ## NovelAI の割り当て（先に使う）
 
 既定のページ provider は Grok のままです。NovelAI でページを出すときは `--page-compiler page_render_plan` の opt-in です。Grok 経路へ切り替えて再送しません。
 
-手本は `outputs/novelai_manga_tests` の T1 です。受入例は `tools/manga_prompt_ir/examples/p4_compare/manga/_assets/manga_01/comic/manga_01_p01_step1page_20260923_014501_1819231479.png` です。ユーザーが NovelAI ページを指示する（`--text-mode` 省略も同じ） → Monogatari Coach はページへ `text, speech bubble` を足し、話者の character slot へ `白い吹き出し「台詞」` を載せます → 吹き出し付き PNG を保存します。吹き出しの位置と話者への割り当てを正とします。標準はモデル字を残します。字形が崩れたときだけ下の「写植」節で載せ直します。このタグと日本語 slot 語は Grok / GPT へ送りません。
+手本は `outputs/novelai_manga_tests` の T1 です。受入例は `tools/manga_prompt_ir/examples/p4_compare/manga/_assets/manga_01/comic/manga_01_p01_step1page_20260923_014501_1819231479.png` です（ページ画像の保存先を `pages/` に分ける前に作った例のため、`comic/` にあります）。ユーザーが NovelAI ページを指示する（`--text-mode` 省略も同じ） → Monogatari Coach はページへ `text, speech bubble` を足し、話者の character slot へ `白い吹き出し「台詞」` を載せます → 吹き出し付き PNG を保存します。吹き出しの位置と話者への割り当てを正とします。標準はモデル字を残します。字形が崩れたときだけ下の「写植」節で載せ直します。このタグと日本語 slot 語は Grok / GPT へ送りません。
 
 `--bubble-frame-mode` は既定の `provider` のままです。`local` は付けません。V5 では `--novelai-portion-id none` が必要です。`.env` の Vibe 参照が付くと V4.5 になり、`novelai_v5` 未登録で止まります。
 

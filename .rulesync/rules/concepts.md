@@ -25,13 +25,22 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 ## 完了扱い条件
 
 - ファイル成果物は、正しい正本パスへの書込み後に再読込または対応する検証で確認してから完了と報告する。
-- 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。キャラクタータグ一括は、承認前のチャットに dry-run のプレビューと Python コマンドを書く。手順は `workflow-specification.md`「画像生成: dry-run から本番まで」。
+- 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。キャラクタータグ一括は、承認前のチャットに dry-run のプレビューと Python コマンドを書く。詳細手順は `workflow-specification.md` を正とする。
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
 - 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。`writing_bridge` の `publish --dry-run` が句読点 fail なら正本を書かない。本番 `publish` 後は `report.json` の句読点記録を正とし、失敗でも本文は戻さない。未達なら完了報告しない。
 - 小説本文の執筆・清書完了は、対象章を一意に解決したうえで `design_specification.md` の確定出来事を突き合わせ、`_meta.md` に `更新` / `差分なし` / `未完了` の証跡を残してから報告する。解決不能と書込失敗は完了としない。手順はスキル `novel-story-reflection`。
+- METRON / CHRONOS ON の本文を保存したときは、完了報告に **`計測済み` / `未計測`** を必ず明記する。`_writing/` に run 証跡が無い本文は未計測として扱い、未計測のまま完了報告した章では後続章へ進まない。未計測の保存と完了は両立しない。
 - ユーザーが第X章だけを指定したときは1章で停止する。第X〜Y章の明示範囲または複数章の列挙は各章を1章ずつ直列に完了させ、指定終端で停止する。失敗・stale・escalated・ユーザー停止では後続章へ進まない。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。対象作品の config.md に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
+- 新規の漫画ページ `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry`（コマ数と一致する矩形）と `render_instruction.text_mode`（`generate` / `letter_later` / `none`）を省略しない。欠けていれば作成完了としない。既存 1.0 は読み取り互換で残し、1.1 の欄を足すときは `tools/novel_manga_ir_migrate.py` で先に移行する（移行は矩形と `text_mode` を書かない）。
 - 読み進み（Reader Walk）は作品評価を採点せず、既読範囲の感想を `_reader/walk/<session_id>/journal.md` へ追記し、同じセッションディレクトリの `state.md` を更新してから完了とする。定量化を有効にした場合だけ、評価点ではないペルソナ反応メタデータを同じ `journal.md` に残し、完了前に `tools/novel_reader_walk_check.py` で検証する。未読を先読みしない。`walk/` 直下の旧形式は移行時だけ扱う。
+
+## Consistency Audit
+
+- モードは一つ、スコープは `design`（設定3点どうし）と `text`（本文と設定・章横断）の二つ。点数は付けず、足切りを前提にしない。
+- `design` は企画 Gate B の B4.5 で必ず実行する。Gate B の外では、Editor Score と `text` 監査の開始時に `tools/novel_audit_freshness.py check` が未監査を返したときだけ、評価の前に自動で1回実行して評価へ戻る。`text` は自動実行しない。
+- 本文が無い作品の B4.5 を除き、監査の指摘で資料や本文を直さない。要確認は常に直さずユーザーへ返す。
+- 保存は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。`tools/novel_consistency_audit_lint.py` が終了コード 0（冒頭の件数と指摘表が一致）を返し、`_meta.md` 評価履歴へ `Consistency Audit (design|text)` 行を追記してから完了とする。完了印は「監査済み」とし、「検査済み」「計測済み」を使わない。執筆完了・publish の条件にしない。詳細は `workflow-specification.md`「Consistency Audit Mode」とスキル `novel-evaluation-output`。
 
 ## METRON V1 修復不変条件
 
@@ -45,8 +54,9 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 - 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
 - 検査は決定的コード（P0 は CHR001、人物状態は CHR010〜013）で行い、LLM に判定を委ねない。
-- `chronos check` は `world.md` や `_novel_text` を副作用で書き換えない。抽出の上書きは差分提案と作者承認が揃うまで行わない。
+- `chronos check` は LLM / provider を呼ばず、`_novel_text` を読まず、`world.md` や原稿を書き換えない。`extract_gate` がある作品だけ、provider を呼ばない `extract` CLI が候補文書を検証して出典照合する。ゲート未設定作品は抽出せず、従来の検査を保つ。候補は承認まで `events/` に入れず、承認済み内容の更新は差分提案と作者承認を要する。更新候補の却下は元イベントの承認状態を変えず、ロック欄は作者が承認時に `--lock` で指定する。承認後の順序グラフで候補自身が CHR001 の循環に参加する場合は拒否する。
 - 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。執筆工程への接続は `writing_bridge` が行う。
+- Consistency Audit（`text`）は `chronos check` の結果を読んで時系列の節に添付するだけで、ゲートにしない。イベント未登録を矛盾にせず、イベントを書かない。
 
 ## CHRONOS 人物状態（P0.5）
 
@@ -56,30 +66,33 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は独立した ON / OFF 値として読む。
+- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
+- METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値（行なしは OFF）が食い違う config.md は、自動ワークフローでは設定エラーとする。新規作成の確認・明示 OFF・一時停止も両方同時に扱う。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
 - 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
-- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で本文完了を取り消さない。
-- METRON ON は当該作品の writing_bridge 場面作業（修復と正本反映）を承認済みと扱う。止めの明示があるときだけ publish しない。CHRONOS ON だけでは正本反映の承認にしない。課金生成・イベント上書き・画像は対象外。
+- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で**既にある本文**の完了を取り消さない。これから書く新規場面には使わず、`prepare` 前に `_novel_text` を増やす根拠にしない。
+- ON は当該作品の writing_bridge 場面作業（修復と正本反映）を承認済みと扱う。止めの明示があるときだけ publish しない。課金生成・イベント上書き・画像は対象外。
 
 ## 執筆接続（writing_bridge）
 
 - METRON / CHRONOS が ON で、対象場面にハッシュ一致の active run があるときは `writing_bridge_cli.py` が検査責任を持つ。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
-- CHRONOS ON の対象場面に登録イベントが無いときは、writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残す。イベント未登録を `chronos_registered: success` とみなさず、原稿からの自動抽出もしない。
+- CHRONOS ON の対象場面に有効イベントが無いときは、writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残す。ゲート設定時に順序比較できないイベント対があれば、辺数つき `CHRONOS_ORDER_UNCONFIRMED` を非ブロッキング note として残す。イベント未登録を `chronos_registered: success` とみなさない。ゲート未設定作品からは原稿を抽出しない。
 - 同一受領候補の inspect は既存の metrics / spans を再利用する。保存用 run は `inspect --from-run` で本文 hash が一致する observations を流用する。`--from-run` は `run-\d{4,}` に限り、observations 欠落は UNKNOWN_REF、不一致は STALE とする。
 - 修復が active のあいだ、C1 未記録は report に残すが inspect を失敗にしない。完了後と保存前は従来どおり未記録で止める。CHRONOS ON の初回 inspect の前に observations を書く（現行は未記録で exit 1）。座標下書きは `locate-quote`。inspect と同じ版検証のあと、一意一致だけを出し、重複は推測しない。`publish` は C1 成功前に正本を書かない。
-- 正本反映は `permissions.publish` がある run の `publish` だけを使う。METRON ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
+- 正本反映は `permissions.publish` がある run の `publish` だけを使う。ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
 - 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。
 - `_meta.md` のストーリー反映は CLI の外で `novel-story-reflection` が行う。
-- METRON ON の新規場面は、契約と Beat を `prepare` 前に置き、初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
+- ON の新規場面（既存章への場面追記を含む）は、単一章でも複数章でも、ハッシュ一致の active run が無ければ従来経路へ落ちず、契約と Beat を置いて `prepare` する。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
+- **セッション開始ゲート**: 本文作業のターンで作品フラグが ON のときは、そのターンの本文書込み前に `novel_project_check <作品> --check-inspection-layers` を実行する。`未計測章` 警告が出ている作品では新規章の起草を始めず、最初の未計測章の後追い計測（契約・Beat 補完 → `prepare` → `receive` → `inspect`）と CHRONOS イベント登録を先に完了する。警告なしの exit 0 は未計測の免除にならない（`_metron/` が空の作品では本文を書かない）。
 - シーン床到達かつ必須修復なしなら `repair-begin` しない（`REPAIR_NOT_NEEDED`）。必須修復が残れば `auto` でも begin する。明示 Deepen は `--intent explicit_deepen`。`--scope beats` は指定外の助言 Deepen を出さない。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。`--from-run` は CHRONOS ON かつ observations があるときだけ。`inspect` の `status` / `report.md` は required と advisory を分ける。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 
 ## Plan Mode の完了
 
 - **企画完了 = Gate A ∧ Gate B**。`novel_project_check` の OK（骨格）だけでは完了としない。
-- Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・`_meta.md` への実施記録。
+- 既存作品の企画開始・再開は、洗練または Gate B 再実施を明示されない限り Gate A までで止め、「Gate A 完了・Gate B 未完了」と報告する。これは企画完了ではない。
+- Gate A は必須ファイル・scaffold・character lint・project check。Gate B は作品タイプに応じた知識読込・設計の厚さ・洗練・設定監査（B4.5）・`_meta.md` への実施記録。B4.5 は本文が無い作品では矛盾0件を Gate B 完了の条件とし、本文がある作品では資料を直さず指摘をユーザーへ返す。
 - Gate B の創作技法契約は、索引で選んだ **葉ファイルの selected** だけを `_meta.md` に残す。索引は選定補助であり再読対象ではない。新しい how_to は、明示の Gate B 再実施があるまで既存作品の selected に入らない。標準カタログへ葉を足すときは索引（または該当 README / 冒頭注記）と発動条件を書き、既存 selected は触らない。作業用索引があるときはそれが選定入口であり、標準だけの新葉は作業用へ追随するまで選定対象外（標準索引は発見用に併読する）。`pack_id` は任意の短縮であり、既存契約へ自動では付けない。
 - 評価の既定は契約外。`reader.md` 等の工程正本は selected に無くても読む。ユーザーが契約に照らすと明示したときだけ selected（パック展開後）を再読する。
 - **`working_path` に書いたパスは必ず自己完結ファイル**である。調整メモは `working_path` に書かない。実効パスは契約に working があればそれ、無ければ standard。合成しない。

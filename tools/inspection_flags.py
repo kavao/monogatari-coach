@@ -57,6 +57,20 @@ class InspectionFlags:
         }
 
 
+def require_linked_inspection_flags(flags: InspectionFlags) -> None:
+    """自動ワークフロー用に METRON と CHRONOS の実効値が一致することを要求する。
+
+    パーサ自体は各値を独立に読む（明示 CLI は片方だけ ON でも動く）。
+    食い違いは作品の起動判定でだけ設定エラーにする。
+    """
+
+    if flags.metron is not flags.chronos:
+        raise InspectionConfigError(
+            "METRON and CHRONOS must be both ON or both OFF: "
+            f"METRON={flags.metron.value}, CHRONOS={flags.chronos.value}"
+        )
+
+
 def should_append_audit_log(config_path: str | Path) -> bool:
     """対象作品の査証ログを自動追記してよいか。行なしは ON。"""
 

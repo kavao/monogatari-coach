@@ -10,11 +10,16 @@ from .models import LinksDocument, LinksStatus, SCHEMA, Severity
 
 
 def scene_event_sets(store: ChronosStore, scene_id: str) -> tuple[set[str], set[str]]:
+    effective_ids = set(store.by_id)
     refs: set[str] = set()
     for scene in store.scenes:
         if scene.id == scene_id:
-            refs.update(scene.refs)
-    sourced = {event.id for event in store.events if event.source and event.source.scene == scene_id}
+            refs.update(ref for ref in scene.refs if ref in effective_ids)
+    sourced = {
+        event.id
+        for event in store.selection.events
+        if event.source and event.source.scene == scene_id
+    }
     return refs, sourced
 
 
@@ -38,6 +43,8 @@ def chronos_scene_conflicts(store: ChronosStore, scene_id: str) -> list[ErrorIte
     claimed: dict[str, list[str]] = {}
     for scene in store.scenes:
         for event_id in scene.refs:
+            if event_id not in store.by_id:
+                continue
             claimed.setdefault(event_id, []).append(scene.id)
     for event_id, scene_ids in claimed.items():
         if len(set(scene_ids)) > 1:
@@ -80,6 +87,17 @@ def validate_links(
     for item in links.items:
         event = store.by_id.get(item.event_id)
         if event is None:
+            if item.event_id in store.all_by_id:
+                errors.append(
+                    ErrorItem(
+                        schema=SCHEMA,
+                        code="LINK_CONFLICT",
+                        severity=Severity.ERROR,
+                        message=f"{item.event_id} is excluded from effective CHRONOS events",
+                        refs={"event_id": item.event_id},
+                    )
+                )
+                continue
             errors.append(
                 ErrorItem(
                     schema=SCHEMA,

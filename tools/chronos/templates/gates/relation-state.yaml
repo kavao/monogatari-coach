@@ -1,0 +1,13 @@
+profile: relation-state
+unit: 宣言した人物状態の次元が変わる事実を1件とする。
+include:
+  - state_change
+exclude: 次元の値が変わらない反復、METRONのビート、設計書の予定ビート。
+required_fields:
+  - scene
+  - actors
+  - location
+  - title
+  - type
+  - effects_on
+order: provisional

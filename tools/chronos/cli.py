@@ -9,6 +9,14 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from .check import check_store
+from .extraction import (
+    approve_candidate,
+    diff_candidate,
+    link_source,
+    list_pending_candidates,
+    reject_candidate,
+    stage_candidates,
+)
 from .graph import build_order_graph, events_for_actor, events_for_location, find_cycles, topological_order
 from .models import Finding, Severity
 from .scaffold import ChronosInitError, init_chronos, planned_paths
@@ -27,6 +35,58 @@ def _handle_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_extract(args: argparse.Namespace) -> int:
+    code, message = stage_candidates(args.root, args.proposals)
+    print(message)
+    return code
+
+
+def _handle_list_candidates(args: argparse.Namespace) -> int:
+    code, message = list_pending_candidates(args.root)
+    print(message)
+    return code
+
+
+def _handle_link_source(args: argparse.Namespace) -> int:
+    code, message = link_source(
+        args.root,
+        args.candidate_id,
+        start=args.start,
+        end=args.end,
+    )
+    print(message)
+    return code
+
+
+def _handle_approve(args: argparse.Namespace) -> int:
+    lock_fields = tuple(
+        field.strip()
+        for value in args.lock
+        for field in value.split(",")
+        if field.strip()
+    )
+    code, message = approve_candidate(
+        args.root,
+        args.candidate_id,
+        confirm_update=args.confirm_update,
+        lock_fields=lock_fields,
+    )
+    print(message)
+    return code
+
+
+def _handle_diff(args: argparse.Namespace) -> int:
+    code, message = diff_candidate(args.root, args.candidate_id)
+    print(message)
+    return code
+
+
+def _handle_reject(args: argparse.Namespace) -> int:
+    code, message = reject_candidate(args.root, args.candidate_id)
+    print(message)
+    return code
+
+
 def _handle_check(args: argparse.Namespace) -> int:
     store = load_store(args.root)
     findings = check_store(store)
@@ -34,8 +94,18 @@ def _handle_check(args: argparse.Namespace) -> int:
         payload = [item.model_dump(mode="json") for item in findings]
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        if not findings:
-            print(f"ok: {len(store.events)} events, 0 findings")
+        if store.config.extract_gate is None:
+            if not findings:
+                print(f"ok: {len(store.events)} events, 0 findings")
+        else:
+            has_errors = any(item.severity is Severity.ERROR for item in findings)
+            label = "summary" if has_errors else "ok"
+            print(
+                f"{label}: {len(store.selection.events)} effective events, "
+                f"{len(store.selection.excluded)} excluded events, "
+                f"{store.selection.order_edge_count} confirmed order edges, "
+                f"{len(findings)} findings"
+            )
         for finding in findings:
             print(_format_finding(finding))
     if any(item.severity is Severity.ERROR for item in findings):
@@ -46,18 +116,19 @@ def _handle_check(args: argparse.Namespace) -> int:
 def _handle_view(args: argparse.Namespace) -> int:
     store = load_store(args.root)
     findings = check_store(store)
-    graph = build_order_graph(store.events)
+    events = store.selection.events
+    graph = build_order_graph(events)
     has_cycle = bool(find_cycles(graph))
-    preferred = [event.id for event in store.events]
+    preferred = [event.id for event in events]
     order = {event_id: index for index, event_id in enumerate(topological_order(graph, preferred))}
     if args.actor:
-        selected = events_for_actor(store.events, args.actor)
+        selected = events_for_actor(events, args.actor)
         label = args.actor
     elif args.location:
-        selected = events_for_location(store.events, args.location)
+        selected = events_for_location(events, args.location)
         label = args.location
     else:
-        selected = list(store.events)
+        selected = list(events)
         label = "events"
     resolution = resolve_states(store) if store.config.state_enabled() else None
     actor_skip = None
@@ -156,6 +227,49 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("root", type=Path)
     init.add_argument("--dry-run", action="store_true")
     init.set_defaults(handler=_handle_init)
+
+    extract = subparsers.add_parser("extract", help="validate and cache an external candidate document (no provider)")
+    extract.add_argument("root", type=Path)
+    extract.add_argument("proposals", type=Path)
+    extract.set_defaults(handler=_handle_extract)
+
+    candidate_list = subparsers.add_parser("list", help="list pending candidates in scene order")
+    candidate_list.add_argument("root", type=Path)
+    candidate_list.set_defaults(handler=_handle_list_candidates)
+
+    link = subparsers.add_parser("link-source", help="manually link an ambiguous candidate to a source interval")
+    link.add_argument("root", type=Path)
+    link.add_argument("candidate_id")
+    link.add_argument("--start", type=int, required=True)
+    link.add_argument("--end", type=int, required=True)
+    link.set_defaults(handler=_handle_link_source)
+
+    approve = subparsers.add_parser("approve", help="approve and publish one pending candidate")
+    approve.add_argument("root", type=Path)
+    approve.add_argument("candidate_id")
+    approve.add_argument(
+        "--confirm-update",
+        action="store_true",
+        help="confirm applying an update after reviewing its diff",
+    )
+    approve.add_argument(
+        "--lock",
+        action="append",
+        default=[],
+        metavar="FIELD[,FIELD...]",
+        help="lock approved event fields against later updates (repeatable)",
+    )
+    approve.set_defaults(handler=_handle_approve)
+
+    diff = subparsers.add_parser("diff", help="show a pending candidate update diff")
+    diff.add_argument("root", type=Path)
+    diff.add_argument("candidate_id")
+    diff.set_defaults(handler=_handle_diff)
+
+    reject = subparsers.add_parser("reject", help="reject one pending candidate")
+    reject.add_argument("root", type=Path)
+    reject.add_argument("candidate_id")
+    reject.set_defaults(handler=_handle_reject)
 
     check = subparsers.add_parser("check", help="run deterministic lint (CHR001, CHR010-013)")
     check.add_argument("root", type=Path)

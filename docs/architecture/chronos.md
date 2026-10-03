@@ -25,7 +25,9 @@ novels/<作品>/chronos/
     locations.yaml
   scenes.yaml
   chronos.config.yaml
-  .cache/              # P1 以降の導出物。削除可
+  extract_reviews.yaml # 抽出候補の承認・却下記録（ゲート設定時）
+  .cache/
+    extract/           # 候補キャッシュ（ゲート設定時。削除・再生成可）
 ```
 
 イベントは 1 件 1 ファイルにせず、章ファイルへまとめます。ID（`EVT-0001` など）はファイル位置と独立です。シーン ID は METRON と同じ `chNN-MMM` か、計画書形式の `SCN-0302` のどちらかを使えます。
@@ -44,7 +46,7 @@ novels/<作品>/chronos/
 
 行なしまたは `OFF` なら、自動ワークフローは CHRONOS の `init` / `check` を行いません。`ON` で `chronos/` が無い場合は `未登録` として本文保存と分けて報告します。当該章のイベント手入力は推奨ですが、本文や執筆完了の必須条件ではありません。イベントが無い場面を writing_bridge で検査した場合は `report.json` に `CHRONOS_NO_SCENE_EVENTS`（非ブロッキング）を残します。`chronos_registered: success` はイベントが存在して検査を通ったことを示し、イベント未登録の場面を成功扱いしません。明示的に `chronos_cli.py` を実行した場合は、このフラグを理由に拒否しません。
 
-フラグの値は `ON` / `OFF` のみです。未知値・重複キー・既存 `config.md` の読込失敗は設定エラーとして扱います。P0 は日付なしの順序制約と循環検出 `CHR001` に限り、原稿からの自動抽出は行いません。人物状態は別途 `character_state.dimensions` を書いた作品だけ有効です。
+フラグの値は `ON` / `OFF` のみです。未知値・重複キー・既存 `config.md` の読込失敗は設定エラーとして扱います。P0 は日付なしの順序制約と循環検出 `CHR001` を扱います。ゲート未設定の作品からは原稿を抽出せず、従来どおりの検査を行います。`extract_gate` を設定した作品は、候補文書を別途用意し、`extract` で検証・出典照合して候補キャッシュへ置けます。この CLI は provider を呼ばず、本文や CHRONOS の正本を変更しません。`check` は LLM / provider を呼ばず、原稿を読みません。候補は `approve` まで `events/` に現れず、承認時は場面の章番号から `events/chNN.yaml` を選びます。人物状態は別途 `character_state.dimensions` を書いた作品だけ有効です。
 
 ## 操作
 
@@ -67,6 +69,36 @@ python tools/chronos_cli.py check novels/NNN_作品名
 ```
 
 問題がなければ `ok: N events, 0 findings` と出ます。循環があると `CHR001 error:` と閉路のイベント ID が出て、終了コードは 1 です。状態を使う作品では CHR010〜013 も同じ形式で出ます。入力エラー（未知参照など）は終了コード 2 です。warning / info だけのときは終了コード 0 です。`--json` を付けると機械可読になります。
+
+ゲート設定時は `ok` 行に有効イベント数、対象外イベント数、確定順序辺数を分けて表示します。ゲートは `chronos.config.yaml` の `extract_gate` に型付きで記述します。`include` は `EventType` のリスト、`unit` と `exclude` は説明文です。各 profile が自分の `include` を明示し、`chapter-turn` は `night-step` から暗黙継承しません。章あたり件数は `scenes.yaml` の章番号ごとの有効イベント数を数えます。順序を確認できない場面は `CHRONOS_ORDER_UNCONFIRMED` note として report に残り、inspect は失敗しません。承認時は候補イベントが循環に参加するかを検査します。既存の循環と無関係な候補は承認でき、循環へ割り込む候補は保存しません。
+
+候補 YAML の例です。候補文書は CLI の外で用意します。`actors` には登録済みの `CHR-*` のみを書き、未登録人物は `unresolved_actor_mentions` に記録します。未解決の呼称がある候補は承認できません。
+
+```yaml
+schema: 1
+scene_id: ch01-001
+source_file: _novel_text/novel_text01.md
+candidates:
+  - title: 五日分の弁当を夜の段と結び付ける
+    type: decision
+    actors: [CHR-akane]
+    location: LOC-kitchen
+    source_quote: "本文中の短い一節"
+```
+
+候補を登録し、一覧・差分を確認してから承認または却下します。
+
+```bash
+uv run python tools/chronos_cli.py extract novels/NNN_作品名 /path/to/proposals.yaml
+uv run python tools/chronos_cli.py list novels/NNN_作品名
+uv run python tools/chronos_cli.py diff novels/NNN_作品名 CEX-0001
+uv run python tools/chronos_cli.py approve novels/NNN_作品名 CEX-0001 --lock title,actors
+uv run python tools/chronos_cli.py approve novels/NNN_作品名 CEX-0001 --confirm-update --lock title
+uv run python tools/chronos_cli.py reject novels/NNN_作品名 CEX-0002
+uv run python tools/chronos_cli.py link-source novels/NNN_作品名 CEX-0003 --start 120 --end 156
+```
+
+本文 span は改行を LF、文字を NFC に正規化した章ファイル上の Unicode コードポイント半開区間 `[start, end)` です（`end` は区間に含みません）。`link-source --start` / `--end` もこの座標を使います。再抽出では引用 digest を常に保存し、同じ場面・章ファイル・digest・出現順で一意に照合できる候補は同じ `CEX-` を引き継いで座標と章ファイル全体の digest を更新します。章の別箇所を編集しただけでは候補を stale にしません。引用が複数箇所にあり、承認対象の区間を特定できない場合は `link-source` で手動照合するまで approve / reject を実行できません。同じ場面の一部だけを再抽出しても、別候補の未処理キャッシュは一覧に残ります。CEX 番号は `extract_reviews.yaml` の最大値から増やすため再利用しません。イベントの `title` は同一性のキーではありません。既存イベントを更新する候補は `list` に `[update]` と表示されます。`diff` で差分を確認し、`approve --confirm-update` を指定して再承認します。却下しても元イベントの承認記録は保ち、同じ更新案だけを抑止します。ロック欄は候補文書でなく作者が `approve --lock title,actors` のように指定します。ロック中の欄は差分に残して `UNAPPLIED (locked)` と表示し、既存値を維持します。
 
 人物が関与するイベントを、制約順に見ます。循環があるときは CHR001 を標準エラーへ出し、一覧は「順序は信用できない」と注記します。終了コードは 1 です。状態を使う作品で `--actor` を付けると、各イベントの `before` / `after` を表示します。未確定順序や循環では状態を捏造せず、未解決理由を注記します。
 
@@ -165,7 +197,7 @@ effects_on:
 
 - 絶対時刻の窓計算（STN）、年齢・移動可能性（CHR002 / CHR003）
 - 知識グラフ（CHR004 以降）。最初の知識は作品の bool 次元で足ります
-- 原稿からの自動抽出。再抽出が作者編集を壊さない承認フローは P3 です
+- ゲート未設定作品からの原稿抽出。ゲート設定作品の候補取り込みと作者承認は「作品単位の有効化」と「操作」を参照
 - 執筆完了の自動ゲート。`chronos check` は METRON の本文計測を呼びません。執筆工程への接続は [Writing bridge](writing-bridge.md) が行います
 - `chronos watch` と `.cache/resolved.json`（P1 の日付窓）
 - コアへのジャンル語の埋め込み。次元名と値は作品 YAML に閉じます

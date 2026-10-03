@@ -108,8 +108,9 @@ python tools/novel_status.py novels/NNN_作品名
 # 本文ファイルを確認する
 ls novels/NNN_作品名/_novel_text/
 
-# 漫画画像を確認する
+# 漫画画像を確認する（コマは comic/、ページは pages/）
 ls novels/NNN_作品名/manga/_assets/manga_01/comic/
+ls novels/NNN_作品名/manga/_assets/manga_01/pages/
 ```
 
 状態を確認してからチャットで「ファイルが見当たりません」と伝えると、Monogatari Coach が再確認・再実行します。

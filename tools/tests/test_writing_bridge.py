@@ -23,6 +23,9 @@ from writing_bridge.models import ItemStatus, RequestKind, Selector, SelectorKin
 from writing_bridge.storage import load_json_model, load_model, read_journal
 from metron.models import instruction_target_chars
 from metron.storage import load_yaml
+from chronos.models import Character, CharacterFile, Event, EventSource, ExtractGate, SceneFile
+from chronos.storage import atomic_write_model
+from chronos.store import load_store, write_character_file, write_config, write_event_file
 from writing_bridge.models import (
     ArtifactRefsDocument,
     ContextDocument,
@@ -1253,3 +1256,59 @@ def test_inspect_floor_met_below_instruction_is_not_tooshort(tmp_path: Path) -> 
     assert scene_chars < context.instruction_chars
     for beat_id, hint in hints.items():
         assert by_id[beat_id]["chars"] >= hint
+
+
+def test_extract_gate_order_note_is_reported_without_blocking_inspect(tmp_path: Path) -> None:
+    work = _copy_ok(tmp_path)
+    store = load_store(work)
+    store.config.extract_gate = ExtractGate(
+        profile="night-step",
+        unit="scene event",
+        include=["decision", "state_change"],
+        exclude="repetition",
+    )
+    write_config(store.root / "chronos.config.yaml", store.config)
+    write_character_file(
+        store.root / "entities" / "characters.yaml",
+        [*store.characters, Character(id="CHR-c", name="姉")],
+    )
+    events = list(store.events)
+    events.append(
+        Event(
+            id="EVT-0003",
+            title="母が支度を整える",
+            type="state_change",
+            actors=["CHR-c"],
+            location="LOC-home",
+            origin="authored",
+            source=EventSource(scene="ch01-001"),
+        )
+    )
+    write_event_file(store.root / "events" / "ch01.yaml", events)
+    store.scenes[0].refs.append("EVT-0003")
+    atomic_write_model(store.root / "scenes.yaml", SceneFile(scenes=store.scenes))
+    run = _prepare_ok(work)
+    receive(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        candidate=work / "_metron" / "ch01-001" / "marked.md",
+        request_id=None,
+    )
+    code, message = inspect(
+        work,
+        scene_id="ch01-001",
+        run_id="run-0001",
+        observations_path=(
+            FIXTURE / "ok_ch01_001" / "work" / "_writing" / "ch01-001" / "run-0001" / "observations.json"
+        ),
+        marked_path=None,
+        repo_root=ROOT,
+    )
+    assert code == 0, message
+    report = load_json_model(run / "report.json", ReportDocument)
+    assert report.chronos_registered is ItemStatus.FINDINGS
+    notes = [item for item in report.findings if item.code == "CHRONOS_ORDER_UNCONFIRMED"]
+    assert len(notes) == 1
+    assert "1 confirmed order edge(s)" in notes[0].note
+    assert not any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)

@@ -263,6 +263,8 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
     config_path = work / "config.md"
     try:
         flags = iflags.load_inspection_flags(config_path)
+        # 自動ワークフローの起動判定では METRON / CHRONOS を連動させる。
+        iflags.require_linked_inspection_flags(flags)
     except iflags.InspectionConfigError as error:
         return {
             "ok": False,
@@ -351,9 +353,10 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
 
         if unmeasured_chapters:
             warnings.append(
-                "METRON 未計測章があります。複数章処理では最初の未計測章で停止し、"
-                "欠落項目を解消して prepare → receive → inspect を完了してから次章へ進んでください。"
-                "この警告は終了コード0でも次章遷移のゲートとして扱い、_novel_text へ直接追記しないでください。"
+                "METRON 未計測章があります。新規章・場面追記は単一章の依頼でも "
+                "prepare → receive → inspect を先に行い、_novel_text へ直接追記しないでください。"
+                "複数章処理では最初の未計測章で停止し、欠落項目を解消して計測を完了してから次章へ進んでください。"
+                "この警告は終了コード0でも次章遷移のゲートとして扱います。"
             )
 
     return {
@@ -708,6 +711,13 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     if args.bootstrap:
+        if args.metron != args.chronos:
+            print(
+                "error: METRON と CHRONOS は同じ値にしてください"
+                f"（METRON={args.metron}, CHRONOS={args.chronos}）",
+                file=sys.stderr,
+            )
+            return 2
         from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
         from inspection_bootstrap import (
             InspectionBootstrapError,

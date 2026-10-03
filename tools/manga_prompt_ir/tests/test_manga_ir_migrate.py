@@ -198,3 +198,51 @@ def test_migration_blocks_duplicate_panel_ids(tmp_path: Path) -> None:
     assert plan["status"] == "blocked"
     assert plan["changes"] == []
     assert "panel_id" in plan["unresolved"][0]["path"]
+
+
+_LAYOUT_KEYS = ("weight", "size_class", "beat_type")
+
+
+def test_migration_does_not_invent_layout_weight_fields(tmp_path: Path) -> None:
+    page_path = tmp_path / "manga_01_p01.yaml"
+    shutil.copy2(_FIXTURE, page_path)
+
+    plan = migrate_page(page_path)
+
+    proposed = plan["proposed_data"]
+    assert "layout_template_id" not in (proposed.get("manga") or {})
+    for panel in proposed["panels"]:
+        assert not any(key in panel for key in _LAYOUT_KEYS)
+    assert not any(
+        change["path"].rsplit("/", 1)[-1] in (*_LAYOUT_KEYS, "layout_template_id")
+        for change in plan["changes"]
+    )
+
+
+def test_migration_keeps_layout_weight_fields_on_schema_1_1(tmp_path: Path) -> None:
+    page = yaml.safe_load(_FIXTURE.read_text(encoding="utf-8"))
+    page["schema_version"] = "1.1"
+    for index, panel in enumerate(page["panels"]):
+        panel["weight"] = 5 if index == 0 else 2
+        panel["size_class"] = "large" if index == 0 else "small"
+        panel["beat_type"] = "showcase" if index == 0 else "reaction"
+    path = tmp_path / "page.yaml"
+    path.write_text(yaml.safe_dump(page, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+    plan = migrate_page(path)
+
+    assert plan["status"] == "up_to_date"
+    first = plan["proposed_data"]["panels"][0]
+    assert (first["weight"], first["size_class"], first["beat_type"]) == (5, "large", "showcase")
+
+
+def test_migration_reports_layout_weight_fields_written_on_schema_1_0(tmp_path: Path) -> None:
+    page = yaml.safe_load(_FIXTURE.read_text(encoding="utf-8"))
+    page["panels"][0]["weight"] = 5
+    path = tmp_path / "page.yaml"
+    path.write_text(yaml.safe_dump(page, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+    plan = migrate_page(path)
+
+    assert plan["status"] == "error"
+    assert "schema 1.0" in plan["errors"][0]

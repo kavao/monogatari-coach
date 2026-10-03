@@ -29,7 +29,9 @@ import novel_char_count as ncc  # noqa: E402
 _FILE_TYPES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"^score_\d{8}_\d{4}\.md$"), "Editor Score"),
     (re.compile(r"^interest_\d{8}\.md$"), "Interest Check"),
-    (re.compile(r"^consistency_\d{8}\.md$"), "Consistency Audit"),
+    (re.compile(r"^consistency_design_\d{8}_\d{4}\.md$"), "Consistency Audit (design)"),
+    (re.compile(r"^consistency_text_\d{8}_\d{4}\.md$"), "Consistency Audit (text)"),
+    (re.compile(r"^consistency_\d{8}\.md$"), "Consistency Audit（旧形式）"),
     (re.compile(r"^synopsis_\d{8}\.md$"), "Synopsis"),
     (re.compile(r"^\d{8}_\d{4}\.md$"), "First Reader"),
     (re.compile(r"^reader_\d{8}_\d{4}\.md$"), "First Reader（旧形式）"),

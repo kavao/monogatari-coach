@@ -1,4 +1,7 @@
-schema_version: "1.0"
+# 新規ページの手本（schema 1.1・3コマ・非均等割り）。
+# 新規の manga/pages/*.yaml は schema 1.1 で作り、layout_geometry と render_instruction.text_mode を省略しない。
+# 5コマの例は manga_page_5panel.yaml、1.0 の読み取り互換例は manga_page_v1_0.yaml。
+schema_version: "1.1"
 meta:
   intent: manga_page
   reading_order: right_to_left
@@ -6,10 +9,13 @@ meta:
   page_count: 1
 render_instruction:
   task: このYAMLを、漫画1ページ分の作画依頼書として扱う。
-  prompt_header: 以下のYAMLは漫画1ページ分の作画指示です。panelsを読み順に従って配置し、manga.panel_layoutに沿って1ページの漫画として描いてください。
+  prompt_header: 以下のYAMLは漫画1ページ分の作画指示です。panelsを読み順に従って配置し、manga.panel_layoutとlayout_geometryに沿って1ページの漫画として描いてください。
   panel_policy: panels[]の順番とpanel_idを守り、各コマのsummary、subjects、composition、camera、prompt_tagsを統合して作画する。
   character_policy: character_snapshotsまたはcharacter_idに紐づく固定外見・服装・禁止事項を、該当人物が出るすべてのコマへ反映する。
-  text_policy: text.dialogue、monologue、narration、sfxは吹き出し・独白・ナレーション・効果音として扱い、日本語文字が崩れる場合は文字要素を別処理できる余白を残す。
+  # text_mode は generate / letter_later / none のいずれかを必ず明示する。
+  # text_policy は text_mode と同じ方針の文言にする（none なら no text、letter_later なら後載せ／空吹き出し）。
+  text_mode: generate
+  text_policy: text.dialogue、monologue、narration、sfxは吹き出し・独白・ナレーション・効果音として扱い、指定どおりの正確な文言で描く。
   output_policy: 1枚の完成漫画ページとして出力する。コマ境界、読み順、ページ内の大小関係を明確にする。
   notes:
     - prompt_tagsは各コマの作画タグとして扱う。
@@ -22,6 +28,8 @@ render_instruction:
   # コマ単位の上書きは panels[].required_prompt_tags / omit_prompt_tags へ書く。
   user_directives:
     page_notes:
+      - 上段を見せゴマにしてページの半分以上を使い、異物が入り込む瞬間を大きく見せる
+      - 引きのセリフは左下のコマに置き、次のページへめくらせる
       - スマホ画面の発光を毎コマ意識する
       - 屋外背景タグが混入しがちなので除外を明示
     defaults:
@@ -39,7 +47,7 @@ manga:
     - dramatic_paneling
   line_art: crisp ink line
   screentone: soft gray screentone
-  panel_layout: 日本の漫画のコマ割り、上段1コマ・中段2コマ・下段1コマ
+  panel_layout: 日本の漫画のコマ割り、上段の大ゴマ1・下段2コマ。右から左。
   text_policy: Japanese text must be legible; text can be rendered separately if needed
 scene:
   location: 深夜の自室
@@ -65,42 +73,57 @@ background_concepts:
     usage: 第1ページの自室背景やページ生成前の背景検討に使う。
 panels:
   - panel_id: 1
-    summary: 上段の導入コマ。和紀が深夜の自室でスマホの通知に気づく。
+    summary: 上段の見せゴマ。深夜の自室で、机のスマホから異様な光が広がり、和紀が椅子から立ち上がりかける。
+    summary_en: A strange light spreads from the phone on the desk and Kazuki starts to rise from his chair.
+    summary_en_source: 上段の見せゴマ。深夜の自室で、机のスマホから異様な光が広がり、和紀が椅子から立ち上がりかける。
     scene:
       location: 深夜の自室
-      location_en: same bedroom at night, desk, phone screen as only light source
+      location_en: same bedroom at night, desk, phone screen as the only light source
       time_of_day: midnight
       time_of_day_en: midnight
-      background_notes: 机上のスマホだけが明るい
-      background_notes_en: only smartphone on desk is lit, cool screen glow on face and hands
+      background_notes: 机上のスマホだけが明るく、光が部屋全体へ伸びている
+      background_notes_en: only the smartphone on the desk is lit, its glow spreading across the whole room
+    # コマの重み（1〜5）・大きさの区分・拍子の種類（schema 1.1 の任意欄）
+    weight: 5
+    size_class: large
+    beat_type: showcase
     subjects:
-      - character_id: kazuki
-        description: 机に向かう和紀
-        pose_action: スマホの通知へ手を伸ばす
+      - subject_id: p1-s01
+        character_id: kazuki
+        description: 光に照らされる和紀
+        pose_action: 椅子から立ち上がりかける
         position: midground
-        expression: 眠気と警戒が混じった表情
+        expression: 驚き
+      - subject_id: p1-s02
+        description: 机の上のスマホ
+        type: object
+        pose_action: 画面から強い光を放っている
+        position: foreground
     composition:
-      framing: medium shot
-      layout: 上段いっぱいの横長コマ
-      focus: 光るスマホ画面
-      perspective: やや俯瞰
+      framing: wide shot
+      layout: 上段いっぱいの大ゴマ（ページの半分以上）
+      focus: スマホから伸びる光と和紀の影
+      perspective: low angle
     camera:
-      angle: high angle
-      shot_size: medium shot
+      angle: low angle
+      shot_size: wide shot
     lighting:
-      quality: dark room lit by phone screen
-      mood_effect: 不穏な入口
+      direction: from phone screen
+      quality: sharp supernatural light in a dark room
+      mood_effect: 現実が割れる予感
     text:
       narration:
-        - その通知は、眠りかけた夜を静かに裂いた。
+        - text_id: p1-narration-01
+          content: その通知は、眠りかけた夜を静かに裂いた。
       sfx:
-        - content: ピコン
+        - text_id: p1-sfx-01
+          content: ピコン
           placement: スマホの近く
           style: 小さく硬い電子音
           meaning: 通知音
     mood_atmosphere:
+      - supernatural intrusion
       - quiet tension
-      - mysterious
     prompt_tags:
       - phone_screen_light
       - quiet_tension
@@ -110,69 +133,89 @@ panels:
     required_prompt_tags:
       - desk_view
     omit_prompt_tags: []
-    translation: 和紀が深夜の自室でスマホ通知に気づく導入コマ。
+    translation: スマホの光が部屋に広がり、和紀が立ち上がりかける見せゴマ。
   - panel_id: 2
-    summary: 中段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。
+    summary: 下段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。
+    summary_en: The phone screen shows the name of an app he does not remember installing.
+    summary_en_source: 下段右コマ。スマホ画面に見覚えのないアプリ名が表示される情報提示。
+    prompt_tags:
+      - phone_screen
+      - close-up
+      - unease
+    weight: 2
+    size_class: small
+    beat_type: reaction
     subjects:
-      - description: 和紀のスマホ画面
+      - subject_id: p2-s01
+        description: 和紀のスマホ画面
         type: object
         pose_action: DivineQA β の文字を表示している
         position: foreground
     composition:
       framing: close-up
-      layout: 中段右の小コマ
+      layout: 下段右の小コマ
       focus: DivineQA β の通知
     text:
       monologue:
-        - こんなアプリ、入れた覚えはない。
+        - text_id: p2-monologue-01
+          content: こんなアプリ、入れた覚えはない。
     mood_atmosphere:
       - unease
   - panel_id: 3
-    summary: 中段左コマ。和紀がスマホを持ち上げ、画面の光で目元が照らされる。
+    summary: 下段左コマ。和紀がスマホを持ち上げ、画面の光で目元が照らされる。ページの引き。
+    summary_en: Kazuki lifts the phone and the screen light catches his narrowed eyes.
+    summary_en_source: 下段左コマ。和紀がスマホを持ち上げ、画面の光で目元が照らされる。ページの引き。
+    prompt_tags:
+      - bust_up
+      - suspicious
+      - screen_glow_on_face
+    weight: 2
+    size_class: small
+    beat_type: transition
     subjects:
-      - character_id: kazuki
+      - subject_id: p3-s01
+        character_id: kazuki
         description: スマホを持つ和紀
         pose_action: 画面を凝視する
         position: foreground
         expression: 眉を寄せて疑っている
     composition:
       framing: bust up
-      layout: 中段左の小コマ
+      layout: 下段左の小コマ
       focus: 和紀の目元
     text:
       dialogue:
-        - speaker: 和紀
+        - text_id: p3-dialogue-01
+          speaker: 和紀
           content: ……誰が送ってきた？
           bubble_type: small speech bubble
           placement: 顔の左側
     mood_atmosphere:
       - suspicion
-  - panel_id: 4
-    summary: 下段の大ゴマ。画面の光が部屋全体に広がり、日常が異物に侵食される。
-    subjects:
-      - character_id: kazuki
-        description: 光に包まれ始める和紀
-        pose_action: 椅子から立ち上がりかける
-        position: midground
-        expression: 驚き
-    composition:
-      framing: wide shot
-      layout: 下段いっぱいの大ゴマ
-      focus: スマホから伸びる光と和紀の影
-      perspective: low angle
-    lighting:
-      direction: from phone screen
-      quality: sharp supernatural light
-      mood_effect: 現実が割れる予感
-    text:
-      sfx:
-        - content: ザッ
-          placement: 画面の発光部分
-          style: ノイズ混じり
-          meaning: 異常な起動音
-    mood_atmosphere:
-      - supernatural intrusion
       - cliffhanger
+# コマ割りの座標（正規化 0〜1、左上原点）。panels[] と同じ順・同じ panel_id で書く。
+# 右から左に読むので、同じ段の2コマは x が大きい方（右）を先の panel_id にする。
+# 矩形は重ねず、コマの間に隙間を残す。移行ツールはこの欄を書かない。
+layout_geometry:
+  panels:
+    - panel_id: 1
+      rect:
+        x: 0.04
+        y: 0.03
+        w: 0.92
+        h: 0.55
+    - panel_id: 2
+      rect:
+        x: 0.52
+        y: 0.61
+        w: 0.44
+        h: 0.36
+    - panel_id: 3
+      rect:
+        x: 0.04
+        y: 0.61
+        w: 0.44
+        h: 0.36
 color_palette:
   mode: monochrome
   colors:

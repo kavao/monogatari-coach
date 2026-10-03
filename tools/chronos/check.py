@@ -10,7 +10,7 @@ from .store import ChronosStore
 
 
 def check_store(store: ChronosStore) -> list[Finding]:
-    findings: list[Finding] = []
+    findings: list[Finding] = list(store.selection.findings)
     findings.extend(_check_chr001(store))
     resolution = resolve_states(store)
     findings.extend(findings_from_resolution(store, resolution))
@@ -22,7 +22,7 @@ def _check_chr001(store: ChronosStore) -> list[Finding]:
     severity = store.config.severity_for("CHR001", Severity.ERROR)
     if severity is Severity.OFF:
         return []
-    graph = build_order_graph(store.events)
+    graph = build_order_graph(store.selection.events)
     findings: list[Finding] = []
     for cycle in find_cycles(graph):
         unique_ids = list(dict.fromkeys(cycle[:-1] if cycle[0] == cycle[-1] else cycle))

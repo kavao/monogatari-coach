@@ -14,6 +14,7 @@ from novel_meta_yaml import (  # noqa: E402
     load_meta_yaml,
     resolve_meta_path,
     resolve_novelai_portion,
+    novelai_portion_id_token,
 )
 
 
@@ -108,6 +109,56 @@ novelai:
     assert portion is not None
     assert portion.id == "work_only"
     assert portion.strength == 0.55
+
+
+def test_resolve_novelai_portion_none_skips_fallback(tmp_path: Path) -> None:
+    novel = tmp_path / "novel"
+    novel.mkdir()
+    root = tmp_path / "repo"
+    cross = root / "_how_to" / "image_refs" / "novelai"
+    cross.mkdir(parents=True)
+    (cross / "flat.naiv4vibebundle").write_bytes(b"x")
+
+    (novel / "_meta.yaml").write_text(
+        """
+version: 1
+novelai:
+  portion_default: none
+  portion_fallback: cross_flat
+  portions:
+    cross_flat:
+      path: _how_to/image_refs/novelai/flat.naiv4vibebundle
+""".strip(),
+        encoding="utf-8",
+    )
+
+    assert resolve_novelai_portion(novel, root) is None
+    assert resolve_novelai_portion(novel, root, portion_id="none") is None
+
+
+def test_resolve_novelai_portion_yaml_off_skips_fallback(tmp_path: Path) -> None:
+    novel = tmp_path / "novel"
+    novel.mkdir()
+    root = tmp_path / "repo"
+    cross = root / "_how_to" / "image_refs" / "novelai"
+    cross.mkdir(parents=True)
+    (cross / "flat.naiv4vibebundle").write_bytes(b"x")
+
+    (novel / "_meta.yaml").write_text(
+        """
+version: 1
+novelai:
+  portion_default: off
+  portion_fallback: cross_flat
+  portions:
+    cross_flat:
+      path: _how_to/image_refs/novelai/flat.naiv4vibebundle
+""".strip(),
+        encoding="utf-8",
+    )
+
+    assert novelai_portion_id_token(False) == "false"
+    assert resolve_novelai_portion(novel, root) is None
 
 
 def test_load_meta_yaml_missing(tmp_path: Path) -> None:

@@ -23,9 +23,10 @@ targets: ["*"]
 - 明示範囲や列挙がない「次」は、対象作品の `_meta.md` の次回タスクと、本文として完了している最新章から次の未完了章を1章だけ解決する。チャットの記憶だけで決めず、前章が未完了のまま後続章を指定された場合は本文・prepareを始めず、前章の未完了理由を報告する。前章を飛ばすのはユーザーの明示指示がある場合だけとする。
 - 章をまたぐ本文起草、候補受領、修復、publish、story reflectionの並列分担はしない。各章は `receive` → `inspect` →（必要なら修復）→ `publish` → story reflection の証跡を確認してから完了とし、`prepare` や run 内の `candidate.md` だけでは完了としない。ツール失敗、stale、`escalated`、ユーザーの停止指示では現在章を未完了としてバッチ全体を止め、後続章へ進まない。章ごとの完了は内部チェックポイントと査証ログへ残し、明示バッチの最終報告は終端後に行う。
 
-### 複数章 × METRON ON の遷移ゲート
+### METRON / CHRONOS ON の章ゲート（単一章・複数章）
 
-- `batch_manifest` の各章を開始するときは対象場面を確定し、METRON ON なら契約再読のあと `contract.yaml` / `beats.yaml` を整えてから `prepare` を実行し、active run を確認して本文作業へ進む。準備できない章はその章で停止し、`_novel_text` を直接追記・先行作成しない。
+- 章の開始時に `novel_project_check --check-inspection-layers` を実行し、設定エラー（終了コード 1）なら本文作業を始めない。
+- 単一章の依頼、`batch_manifest` の各章、既存章への場面追記のどれでも、開始時に対象場面を確定し、ON なら契約再読のあと `contract.yaml` / `beats.yaml` を整えてから `prepare` を実行し、active run を確認して本文作業へ進む。準備できない章はその章で停止し、`_novel_text` を直接追記・先行作成しない。単一章の停止条件はゲートの免除にならない。
 - 章の遷移は `prepare` → 候補作成 → `receive` → `inspect`（必要なら修復・publish・story reflection）を同じ章で完了した証跡を条件にする。`novel_project_check --check-inspection-layers` の終了コードが0でも、未計測警告があれば次章へ進まない。
 - 既存本文の後追い計測も同じゲートを使う。最初の未計測章を拾い、`contract/beats` の欠落を補ってから計測を完了し、次の章へ移る。
 
@@ -45,6 +46,7 @@ targets: ["*"]
    - 数値の正はスクリプト側。スキルに閾値を写経しない。
 4. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、対象章を解決したうえで `_meta.md` の進捗・文字数・次回タスクと、`design_specification.md` の実文字数・状態および**確定出来事**を同期する。結果は `更新` / `差分なし` / `未完了`。解決不能と書込失敗は未完了として完了報告を止める。`publish` は `_meta.md` を書かない。
 5. **報告の順序**: 上記 0〜4 の **後** に、**更新パス**と契約再読の要約を含めてユーザーへ報告する。確認・反映前に「保存した」「執筆を完了した」と述べ **ない**。
+6. **次手（1行・実行しない）**: 完了報告の末尾に本文監査（Consistency Audit `text`）の指示文を1行出す。第1章の保存では `次手: 本文と設定の照合 → 「第1章の本文一貫性を監査して」`、第2章以降の保存では `次手: 本文の一貫性監査 → 「本文の一貫性を監査して」`。監査は自動で実行せず、執筆完了の条件にもしない。
 
 **禁止（幻覚完了の防止）**: 契約再読（事前）・正本更新・確認・句読点ゲート・ストーリー反映を満たす前に、執筆・保存の **完了**をユーザーに告げない。
 
@@ -82,19 +84,25 @@ targets: ["*"]
 
 完了条件（契約再読（事前）・正本更新・確認・句読点・ストーリー反映）は変えない。先に経路を一つ選ぶ。不変条件は **`.rulesync/rules/concepts.md`** の「執筆接続（writing_bridge）」。起動判定は **`.rulesync/rules/workflow-specification.md`** の「執筆接続の起動判定」。
 
-### 従来経路（既定）
+経路は次の順で決める。
 
-フラグが両方 OFF、または ON でも対象場面にハッシュ一致の active run が無いとき。
+1. METRON / CHRONOS が両方 OFF → 従来経路
+2. 両方 ON → writing_bridge 経路（active run が無ければ `prepare` から）
+3. 片方だけ ON（実効値の食い違い）→ 設定エラーとして報告し、本文作業を始めない
+4. ユーザーが明示した CLI はフラグより優先する
+
+### 従来経路（両方 OFF）
+
+フラグが両方 OFF のときだけ使う。ON 作品で active run が無いことは、従来経路を選ぶ理由にならない。
 
 1. スキル **`novel-planning`** の「執筆・清書での契約再読」を行う（起草前）。
 2. `_novel_text` を直接更新する（本スキルの書き込み手順）。
 3. 確認と句読点ゲートを本スキルどおり行う。
 4. `novel-story-reflection` を行う。
-5. フラグ ON で run が無いときだけ、下記「従来の検査」を起動する。
 
-### writing_bridge 経路
+### writing_bridge 経路（両方 ON）
 
-対象場面に `_writing/<scene_id>/<run_id>/` の active run があり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するとき。入口は `python tools/writing_bridge_cli.py`。ディレクトリがあるだけでは切り替えない。`prepare` 前は従来経路。
+新規場面・新規章・既存章への場面追記は、単一章でも複数章でも、対象場面にハッシュ一致の active run が無ければ **`prepare` を前条件**にする（手順は上記「章ゲート」）。active run は `_writing/<scene_id>/<run_id>/` にあり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するものを指す。ディレクトリがあるだけでは続きとみなさない。入口は `python tools/writing_bridge_cli.py`。同一ターンに `prepare` まで進めない場合は `_novel_text` を触らず、可能な成果物（contract / beats 等）だけを残して「未計測／要対応」と次回タスクを報告する。本文完了とは言わない。
 
 **契約再読は `prepare` の前に行う**（スキル **`novel-planning`** の「執筆・清書での契約再読」）。active run の続きでも、そのターンでまだ再読していなければ `prepare` や起草の前に行う。
 
@@ -104,21 +112,26 @@ targets: ["*"]
 - **候補の校正**: bridge経路では `receive` 前に候補へ `grammar --fix-dry-run` を行い、必要な機械修正も候補だけへ適用する。正本 `_novel_text` を直接校正しない。
 - **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。`CHRONOS_NO_SCENE_EVENTS` は対象場面のイベント未登録を示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認し、`success` をイベント検査済みと読まない。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
 - **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
-- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。METRON ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。CHRONOS ON だけでは進めない。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
+- **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
 - **句読点**: `publish --dry-run` の予検は保存予定の対象ファイル全体。本番後の `report.json` も結合後全文。本スキルで `--gate` を重ねない。
 - **ストーリー反映**: 正本が更新された直後に `novel-story-reflection`。
+- **CHRONOS イベント（執筆後）**: 本文完了の条件にはしないが、報告は必須とする。publish とストーリー反映のあと、次を行う。
+  1. 対象場面の `CHRONOS_NO_SCENE_EVENTS` を `report.json` で確かめる。
+  2. イベントがある場面は、その結果（C1・`chronos_findings`）を報告する。同じ版へ `chronos_cli.py check` を重ねない。
+  3. イベントが無い場面は、報告に「CHRONOS イベント未登録」と書き、`_meta.md` の次回タスクへ「第X章 scene_id のイベント登録」を**追記**する。ストーリー反映が書いた章の次回タスクは消さない。同じターンで当該場面のイベント YAML を手入力で草案化してよい（推奨）。その場合は `chronos_cli.py check` まで行い、結果を報告する。`extract_gate` 設定作品では、承認待ちの候補を用意してもよい（承認は作者）。
+  4. `chronos_registered: success` や inspect の `success` を、イベント検査済みと読まない。
 
 ユーザーが明示した CLI はフラグより優先し、個別 CLI は config.md を理由に拒否しない。
 
-### 従来の検査（run が無い ON 作品）
+### 既稿の検査と後追い（ON 作品）
 
-本文の完了条件は変えない。本文保存・確認・句読点ゲート・ストーリー反映のあと、対象作品の config.md の「## 基本情報」表を共通パーサで読む。
+**既にある本文**の欠落表示と後追い計測に限る。新規場面の経路には使わない（新規は上記 writing_bridge 経路）。対象作品の config.md の「## 基本情報」表を共通パーサで読む。
 
-1. 行なしまたは OFF は、自動の init / analyze / 登録を行わない。
-2. 未知値・重複キー・config.md の読込失敗は設定エラーとして報告し、検査手順を止める。本文完了は取り消さない。
-3. METRON: ON は、既稿の不足を「未計測／要対応」として残し、新規章では可能なら contract / beats / マーカー付き draft を用意して analyze する。同一ターンに用意できない場合は `_novel_text` を触らず、可能な成果物だけを残して「未計測／要対応」と次回タスクを報告する。マーカーを _novel_text に後付けしない。
-4. CHRONOS: ON は、chronos/ が無ければ chronos_cli.py init を試み、既存のイベント YAML があれば chronos_cli.py check を実行する。当該章のイベント手入力は推奨であり、必須の完了条件にはしない。イベントが無い場面は writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS`（非ブロッキング）として残り、`success` を検査済みの意味に読まない。
-5. METRON / CHRONOS の結果は本文保存と分けて報告し、成果物不足・CLI失敗・CHR001で本文完了を取り消さない。未作成の scene / 未登録イベントは次回タスクへ記録する。
+1. 両方 OFF は、自動の init / analyze / 登録を行わない。
+2. 未知値・重複キー・config.md の読込失敗・METRON / CHRONOS の食い違いは設定エラーとして報告し、検査手順を止める。既にある本文の完了は取り消さない。
+3. METRON: 既稿の不足（contract / beats / run）を「未計測／要対応」として残す。後追いは上記「章ゲート」と同じく、最初の未計測章で contract / beats を補ってから `prepare` → 現行本文を候補化 → `receive` → `inspect` する。マーカーを `_novel_text` に後付けしない。
+4. CHRONOS: chronos/ が無ければ chronos_cli.py init を試み、既存のイベント YAML があれば chronos_cli.py check を実行する。イベントが無い章は「未登録」として次回タスクへ記録する。
+5. 結果は本文保存と分けて報告し、成果物不足・CLI失敗・CHR001で既にある本文の完了を取り消さない。
 
 ## 執筆モデルが Grok / xAI 系のとき
 

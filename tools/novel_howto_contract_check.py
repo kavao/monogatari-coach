@@ -53,8 +53,12 @@ def _strip_md(value: str) -> str:
     return text
 
 
-def normalize_recorded_path(raw: str) -> tuple[str, list[str]]:
-    """記録文字列を relative_id に落とす。警告を返す。"""
+def normalize_recorded_path(raw: str, *, is_relative_id: bool = False) -> tuple[str, list[str]]:
+    """記録文字列を relative_id に落とす。警告を返す。
+
+    新形式の `relative_id:` 行はプレフィックスを付けないのが正しい書式なので、
+    is_relative_id=True のときは「プレフィックス無し」を警告しない（旧形式のパス一覧だけで警告する）。
+    """
     warnings: list[str] = []
     text = _strip_md(raw)
     if " / " in text:
@@ -71,7 +75,7 @@ def normalize_recorded_path(raw: str) -> tuple[str, list[str]]:
     elif lower.startswith("_how_to/"):
         rel = text[len("_how_to/") :]
     else:
-        if text and "/" in text:
+        if text and "/" in text and not is_relative_id:
             warnings.append(f"プレフィックス無し: {raw.strip()}")
         rel = text
     return rel.lstrip("./"), warnings
@@ -189,7 +193,7 @@ def parse_new_selected(section: str) -> list[Leaf]:
             if PLACEHOLDER.search(raw):
                 current = None
                 continue
-            rel, warns = normalize_recorded_path(raw)
+            rel, warns = normalize_recorded_path(raw, is_relative_id=True)
             current = Leaf(
                 relative_id=rel,
                 recorded=raw,
