@@ -82,12 +82,13 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 
 1. `_how_to/consistency_audit.md`（無ければ `_how_to.example/consistency_audit.md`）を Read する。
 2. `character.md` / `world.md` / `design_specification.md` を Read で読み直す。書いたときの記憶ではなく、ファイルの内容を入力にする。
-3. 指摘の表と **確認した組み合わせの一覧**（組み合わせごとの確認項目数と指摘数）を作る。件数0件でも書く。一覧が無い監査は未完了とする。
-4. 各指摘には食い違う二つの記述の出典を両方書く。矛盾を要確認へ下げるときは、読み替えの余地を行に書く。
-5. 保存名は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。冒頭に種別・scope・起動・日時・対象パス・CHRONOS 添付・件数を書く。ファイル名と冒頭の scope を一致させる。件数は記憶で書かず、指摘表の判定列を数えて書く。前回指摘の解消確認など件数に含めない表では、判定欄を「前回: 矛盾」のように書く。
-6. 保存後に `python tools/novel_consistency_audit_lint.py <監査ファイル>` を実行する。終了コード 0 になるまで冒頭の件数・組み合わせ表を直す（指摘の判定は変えない）。終了コード 0 になる前に完了報告しない。
-7. 作品 `_meta.md` の評価履歴表へ Audit 行を追記する（「`_meta.md` 更新」節）。件数は lint を通した冒頭の件数を写す。
-8. 完了印の語は「監査済み」。「検査済み」「計測済み」（CHRONOS / METRON の語）は使わない。
+3. 任意: `python tools/novel_proper_noun_lint.py novels/<作品>` を実行してよい。見出し・Mermaid・読み付き・姓名の分かちだけを照合する。終了コード 1 でも監査は止めない。Gate A の必須にはしない。
+4. 指摘の表と **確認した組み合わせの一覧**（組み合わせごとの確認項目数と指摘数）を作る。件数0件でも書く。一覧が無い監査は未完了とする。
+5. 各指摘には食い違う二つの記述の出典を両方書く。矛盾を要確認へ下げるときは、読み替えの余地を行に書く。
+6. 保存名は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。冒頭に種別・scope・起動・日時・対象パス・CHRONOS 添付・件数を書く。ファイル名と冒頭の scope を一致させる。件数は記憶で書かず、指摘表の判定列を数えて書く。前回指摘の解消確認など件数に含めない表では、判定欄を「前回: 矛盾」のように書く。
+7. 保存後に `python tools/novel_consistency_audit_lint.py <監査ファイル>` を実行する。終了コード 0 になるまで冒頭の件数・組み合わせ表を直す（指摘の判定は変えない）。終了コード 0 になる前に完了報告しない。
+8. 作品 `_meta.md` の評価履歴表へ Audit 行を追記する（「`_meta.md` 更新」節）。件数は lint を通した冒頭の件数を写す。
+9. 完了印の語は「監査済み」。「検査済み」「計測済み」（CHRONOS / METRON の語）は使わない。
 
 ### design
 
@@ -238,4 +239,5 @@ Editor Score と Consistency Audit の実施後は、作品 `_meta.md` の「評
 - 企画の設定監査（B4.5）: `.rulesync/skills/novel-planning/SKILL.md`
 - 設定鮮度チェック: `tools/novel_audit_freshness.py`
 - 監査ファイルの体裁検査: `tools/novel_consistency_audit_lint.py`
+- 固有名詞の機械照合（任意）: `tools/novel_proper_noun_lint.py`
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

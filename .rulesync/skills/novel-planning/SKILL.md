@@ -135,8 +135,9 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 **前提**: `novels/<作品>/_reader/` が無ければ作成する。`_meta.md` に「評価・足切り履歴」節が無ければ、雛形の節を内部メタの直後へ挿入する。
 
 1. B4 を終えた `character.md` / `world.md` / `design_specification.md` を Read で読み直す。書いたときの文脈ではなく、ファイルの内容だけを入力にする。
-2. 指摘の表と確認した組み合わせの一覧を作る。各指摘には対立する資料と記述箇所を両方書く。
-3. 本文（`_novel_text/novel_text*.md`）の有無で扱いを分ける。
+2. 任意: `python tools/novel_proper_noun_lint.py novels/<作品>` を実行してよい。終了コード 1 でも B4.5 は止めない。Gate A の必須にはしない。
+3. 指摘の表と確認した組み合わせの一覧を作る。各指摘には対立する資料と記述箇所を両方書く。
+4. 本文（`_novel_text/novel_text*.md`）の有無で扱いを分ける。
 
    | 判定 | 本文なし | 本文1章以上 |
    |------|----------|-------------|
@@ -144,8 +145,8 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
    | 要確認 | 直さない。完了報告でユーザーに示す | 同左 |
    | 軽微 | その場で直してよい | 直さない。完了報告でユーザーに返す |
 
-4. `_reader/consistency_design_YYYYMMDD_HHMM.md` に保存する。再監査は同じファイルの末尾に「## 再監査」節として追記し、ファイルを分けない。設定ハッシュは最終の資料（再監査後）のものを書く。保存後に `novel_consistency_audit_lint.py` で終了コード 0 を確かめる。
-5. `_meta.md` の評価履歴表へ `Consistency Audit (design)` 行を追記する。
+5. `_reader/consistency_design_YYYYMMDD_HHMM.md` に保存する。再監査は同じファイルの末尾に「## 再監査」節として追記し、ファイルを分けない。設定ハッシュは最終の資料（再監査後）のものを書く。保存後に `novel_consistency_audit_lint.py` で終了コード 0 を確かめる。
+6. `_meta.md` の評価履歴表へ `Consistency Audit (design)` 行を追記する。
 
 **完了条件**:
 
@@ -215,5 +216,6 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 - 操作説明: `docs/workflow/planning.md`
 - 受け入れ条件: `docs/developer-verification.md`（Plan Mode Gate A / Gate B）
 - 設定監査（B4.5）の観点・保存: `.rulesync/skills/novel-evaluation-output/SKILL.md`「Consistency Audit の手順」
+- 固有名詞の機械照合（任意・非 Gate A）: `tools/novel_proper_noun_lint.py`
 - 契約実在チェック（任意・非 Gate A）: `tools/novel_howto_contract_check.py`
 - 任意参照（完了条件ではない）: 説得力の配分は `_how_to.example/episode/general/episode_reality.md`、失敗の許容は `episode_hindrance.md`（作業用があれば `_how_to/episode/general/`）

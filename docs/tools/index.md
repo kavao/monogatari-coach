@@ -701,6 +701,24 @@ uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名/_reader
 
 ---
 
+### `novel_proper_noun_lint.py` — 固有名詞の機械照合
+
+設計書と企画書に出る人物名・地名の候補が、`character.md` と `world.md` に定義されているかを照合します。Monogatari Coach は設定監査の任意前処理として使います。Gate A の必須検査にはしません。LLM は呼ばず、作品ファイルも書き換えません。地の文の一語は拾わず、見出し・Mermaid・読み付き・姓名の分かちだけを候補にします。
+
+作品フォルダを指定して照合します。
+
+```powershell
+# 設計書と企画書を照合する
+uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名
+
+# 結果を JSON で表示する
+uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら未定義の候補はありません。1 なら未定義があり、2 なら作品フォルダや定義資料がありません。終了コード 1 でも設定監査は止めません。
+
+---
+
 ### `novel_slush_gate_lint.py` — 評価ファイル必須項目チェック
 
 First Reader 評価ファイル（`_reader/YYYYMMDD_HHMM.md`）に必須の12項目（判定・総合点/100・ゲート段階・6評価項目・判定理由・足切り理由・改善点）が揃っているかを機械確認します。

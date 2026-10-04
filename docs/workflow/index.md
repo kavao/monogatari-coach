@@ -53,7 +53,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - 清書（文章校正）: `_novel_text_backup/` に旧版を退避してから `_novel_text/` を更新して、と指示する
    - 足切り（First Reader）: G1→G2→G3 の順で「第○章を足切り判定してください」と指示する
    - 完稿後の深掘り（Editor Score）: 足切り通過後に「Editor Score で採点してください」と指示する
-   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint）・`novel_audit_freshness.py`（設定監査の鮮度）・`novel_consistency_audit_lint.py`（監査ファイルの件数チェック） — 詳細は [Reader Output](reader-output.md)
+   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint）・`novel_audit_freshness.py`（設定監査の鮮度）・`novel_consistency_audit_lint.py`（監査ファイルの件数チェック）・`novel_proper_noun_lint.py`（固有名詞の任意照合） — 詳細は [Reader Output](reader-output.md)
 
 ## Monogatari Coach の約束（ユーザー視点）
 

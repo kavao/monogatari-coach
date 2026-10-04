@@ -260,6 +260,7 @@ Monogatari Coach は、次の場面では指示がなくても設定監査を行
 - チャットには scope・件数の内訳（矛盾/要確認/軽微）・保存先パスと、要確認の一覧が返ります。
 - 以前の `consistency_YYYYMMDD.md` はそのまま残り、上書きされません。
 - 監査ファイルの冒頭の件数は、`tools/novel_consistency_audit_lint.py` で中の表と照らし合わせてから報告されます。手元で確かめるときは `uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名` を実行します。
+- 設計書の人物名・地名候補を機械照合するときは、`uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名` を実行します。未定義があっても設定監査は止まりません。
 
 ---
 
