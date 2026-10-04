@@ -706,3 +706,61 @@ def test_bootstrap_new_project_accepts_explicit_inspection_on(tmp_path: Path) ->
     assert "| METRON | ON |" in config
     assert (work / "_metron").is_dir()
     assert (work / "chronos").is_dir()
+
+
+def _write_off_config(work: Path) -> None:
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n| novel_ID | 001 |\n",
+        encoding="utf-8",
+    )
+
+
+def test_next_steps_without_text_suggests_first_draft(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    _write_off_config(work)
+
+    assert main([str(work), "--no-character-structure"]) == 0
+    output = capsys.readouterr().out
+    assert "novel_text01.md（または novel_text01_1.md）の初稿執筆" in output
+
+
+def test_next_steps_with_text_suggests_next_chapter(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    _write_off_config(work)
+    for chapter in (1, 2):
+        (work / "_novel_text" / f"novel_text0{chapter}.md").write_text(
+            f"# 第{chapter}章\n\n本文があります。\n", encoding="utf-8"
+        )
+
+    assert main([str(work), "--no-character-structure"]) == 0
+    output = capsys.readouterr().out
+    assert "初稿執筆" not in output
+    assert "第3章（novel_text03.md）の執筆" in output
+
+
+def test_next_steps_with_unmeasured_chapter_suggests_measurement(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n| CHRONOS | ON |\n",
+        encoding="utf-8",
+    )
+    (work / "_novel_text" / "novel_text01.md").write_text(
+        "# 第1章\n\n本文があります。\n", encoding="utf-8"
+    )
+
+    assert (
+        main([str(work), "--no-character-structure", "--check-inspection-layers"])
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "初稿執筆" not in output
+    assert "第1章（未計測）の後追い計測" in output

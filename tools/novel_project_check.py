@@ -134,6 +134,33 @@ def _novel_text_files(work: Path) -> list[Path]:
     return sorted(f for f in text_dir.glob("novel_text*.md") if _RE_NOVEL_TEXT.match(f.name))
 
 
+def _next_steps(work: Path, optional: dict[str, Any]) -> list[str]:
+    """OK 時の「次にすべきこと」。本文の有無と未計測章で案内を変える。"""
+
+    written = sorted(_written_chapter_map(_novel_text_files(work)))
+    if not written:
+        return [
+            "python tools/novel_project_check.py ... --check-image-layout",
+            "design_specification.md を最終確認",
+            "novel_text01.md（または novel_text01_1.md）の初稿執筆",
+        ]
+    pending = (optional.get("inspection_layers") or {}).get("unmeasured_chapters") or []
+    if pending:
+        first = pending[0]
+        label = "計測が古い" if first.get("missing") == ["最新本文の計測"] else "未計測"
+        return [
+            f"第{first.get('chapter')}章（{label}）の後追い計測"
+            "（契約・Beat → prepare → receive → inspect）",
+            "計測が済んでから次章の執筆へ進む",
+        ]
+    next_chapter = written[-1] + 1
+    return [
+        f"第{next_chapter}章（novel_text{next_chapter:02d}.md）の執筆、"
+        f"または既存の第{written[0]}〜{written[-1]}章の清書・評価",
+        "design_specification.md の未執筆章の予定を確認",
+    ]
+
+
 def _written_chapter_map(files: list[Path]) -> dict[int, list[int | None]]:
     """章番号 → 項番号（項なしは None）のリスト。"""
     out: dict[int, list[int | None]] = {}
@@ -1012,9 +1039,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.check_image_layout:
             print(f"画像レイアウトチェック: {opt.get('image_dirs_created_count', 0)} 個の保存フォルダを確認済み")
         print("\n次にすべきこと:")
-        print("  1. python tools/novel_project_check.py ... --check-image-layout")
-        print("  2. design_specification.md を最終確認")
-        print("  3. novel_text01.md（または novel_text01_1.md）の初稿執筆")
+        for index, step in enumerate(_next_steps(Path(wd), opt), start=1):
+            print(f"  {index}. {step}")
         return 0
 
     print("\n=== 結果: NG ===")

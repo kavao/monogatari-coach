@@ -32,10 +32,20 @@ SCENE_FLOOR_TOKEN = "__scene_floor__"
 
 
 def split_sentences(text: str) -> list[str]:
-    """日本語の終端記号を優先した、修復検査用の軽量な文分割。"""
+    """日本語の終端記号を優先した、修復検査用の軽量な文分割。
+
+    改行も文の境界にする。「」」で終わる台詞の行や区切り行が次の段落と
+    一文に結合されると、段落を挟んだだけの Deepen 候補が元文を失ったと
+    判定されるため。
+    """
 
     normalized = unicodedata.normalize("NFC", text)
-    return [part.strip() for part in _SENTENCE_RE.findall(normalized) if part.strip()]
+    return [
+        part.strip()
+        for line in normalized.splitlines()
+        for part in _SENTENCE_RE.findall(line)
+        if part.strip()
+    ]
 
 
 def sentence_tail(text: str, count: int = 5) -> str:
