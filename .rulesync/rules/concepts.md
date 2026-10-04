@@ -42,6 +42,13 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 本文が無い作品の B4.5 を除き、監査の指摘で資料や本文を直さない。要確認は常に直さずユーザーへ返す。
 - 保存は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。`tools/novel_consistency_audit_lint.py` が終了コード 0（冒頭の件数と指摘表が一致）を返し、`_meta.md` 評価履歴へ `Consistency Audit (design|text)` 行を追記してから完了とする。完了印は「監査済み」とし、「検査済み」「計測済み」を使わない。執筆完了・publish の条件にしない。詳細は `workflow-specification.md`「Consistency Audit Mode」とスキル `novel-evaluation-output`。
 
+## 設計層と提示層
+
+- 利用者が読んで否定する出力（チャットで出す物語案・あらすじ・候補案・選択肢、`proposal.md` のログライン・あらすじ・キャラクター紹介の欄、本文）を**提示層**、型名・ジャンル葉の名前・ID・決定表・理論名・構造の説明を**設計層**とする。設計層は `_meta.md`・`design_specification.md`・評価や監査のファイルに置く。
+- 提示層に設計層の語彙を書かない。設計の決定は、提示層では具体的な人物・出来事・選択として書く。型名を伏せただけの抽象（「立場の逆転を軸にした成長の物語」）、作品の意図を外から説明する文（「本作は〜を描く」）、設計上の位置の実況（「ここで第一の転換点」）、選択の保留（「〜か、あるいは〜」）は翻訳とみなさない。
+- 設計層は利用者が求めたときだけ、提示層とは別の枠で見せる。作業報告（Gate B 完了報告など）は提示層ではないが、設計の情報は案・あらすじと別の節に分ける。利用者の否定は話の言葉のまま受け、内部で設計の決定に対応づける。
+- 評価系（下読み・Editor Score・一貫性監査・読み進み）は対象外。書き方の基準は `_how_to.example/synopsis_presentation.md`、適用手順はスキル `novel-planning` / `novel-chat-mode`。
+
 ## METRON V1 修復不変条件
 
 - METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`（文字数比の極端な短さ）、`BeatThin` は別統計の `beat_thin_ratio`（段落・会話の充足率）と構造予算で判定する。両方の閾値を同じ値にしない。`BeatThin` の自動修復は計画の段落下限または会話下限の未達に限る。校正典型値だけの未達は指摘を残し、自動修復しない。

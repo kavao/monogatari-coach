@@ -38,6 +38,8 @@
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する
 6.5. naming.md
    - 小説のタイトル命名、コンセプトに沿った名前の付け方などの技法まとめ
+6.7. synopsis_presentation.md
+   - 物語案・`proposal.md` のログライン・あらすじ・キャラクター紹介・チャットモードのあらすじと選択肢を書くときは、案を出す前に必ず読む（それ以外では読まない）。型名・ジャンル葉の名前・ID を案に出さず、人物・出来事・選択で見せる基準。反パターン、合格例、出す前の検査。
 7. world_wear.md
    - 世界の色彩や、人物デザインを考えるときの参考にする
 7.5. [`genre/`](genre/README.md)（ジャンル別・横断創作リファレンス）
