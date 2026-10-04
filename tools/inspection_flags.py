@@ -1,4 +1,4 @@
-"""作品単位の METRON / CHRONOS / AUDIT_LOG フラグを読む。"""
+"""作品単位の METRON / CHRONOS / AUDIT_LOG フラグと、計測の開始章（METRON_FROM）を読む。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ class InspectionFlag(str, Enum):
 DEFAULT_OFF_KEYS = ("METRON", "CHRONOS")
 DEFAULT_ON_KEYS = ("AUDIT_LOG",)
 FLAG_KEYS = DEFAULT_OFF_KEYS + DEFAULT_ON_KEYS
+MEASURE_FROM_KEY = "METRON_FROM"
+"""計測の開始章。この章より前の本文は、下書き期として未計測ゲートの対象から外す。"""
 _BASIC_INFO_HEADING_RE = re.compile(r"^##[ \t]+基本情報[ \t]*$")
 _ANY_HEADING_RE = re.compile(r"^#{1,6}(?:[ \t]+|$)")
 _SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
@@ -32,6 +34,7 @@ class InspectionFlags:
     metron: InspectionFlag = InspectionFlag.OFF
     chronos: InspectionFlag = InspectionFlag.OFF
     audit_log: InspectionFlag = InspectionFlag.ON
+    measure_from: int | None = None
     explicit: frozenset[str] = field(default_factory=frozenset)
     source: str = "implicit"
 
@@ -52,6 +55,7 @@ class InspectionFlags:
             "METRON": self.metron.value,
             "CHRONOS": self.chronos.value,
             "AUDIT_LOG": self.audit_log.value,
+            "METRON_FROM": self.measure_from,
             "explicit": sorted(self.explicit),
             "source": self.source,
         }
@@ -98,11 +102,30 @@ def parse_inspection_flags(text: str, *, source: str = "config.md") -> Inspectio
     lines = text.splitlines()
     table_rows = _basic_info_table_rows(lines)
     values: dict[str, InspectionFlag] = {}
+    measure_from: int | None = None
     for cells in table_rows:
         if not cells:
             continue
         key = cells[0]
         normalized_key = key.upper()
+        if normalized_key == MEASURE_FROM_KEY:
+            if key != normalized_key:
+                raise InspectionConfigError(
+                    f"inspection flag key must be uppercase {normalized_key}: {key!r}"
+                )
+            if len(cells) != 2:
+                raise InspectionConfigError(
+                    f"inspection flag row must have exactly 2 columns: {key}"
+                )
+            if measure_from is not None:
+                raise InspectionConfigError(f"duplicate inspection flag: {key}")
+            raw = cells[1].strip()
+            if not raw.isdigit() or int(raw) < 1:
+                raise InspectionConfigError(
+                    f"unknown value for {key}: {raw!r} (expected a chapter number >= 1)"
+                )
+            measure_from = int(raw)
+            continue
         if normalized_key not in FLAG_KEYS:
             continue
         if key != normalized_key:
@@ -126,8 +149,9 @@ def parse_inspection_flags(text: str, *, source: str = "config.md") -> Inspectio
         metron=values.get("METRON", InspectionFlag.OFF),
         chronos=values.get("CHRONOS", InspectionFlag.OFF),
         audit_log=values.get("AUDIT_LOG", InspectionFlag.ON),
-        explicit=frozenset(values),
-        source=source if values else "implicit:no-flag-row",
+        measure_from=measure_from,
+        explicit=frozenset(values) | ({MEASURE_FROM_KEY} if measure_from is not None else frozenset()),
+        source=source if values or measure_from is not None else "implicit:no-flag-row",
     )
 
 

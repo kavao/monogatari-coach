@@ -131,9 +131,10 @@ targets: ["*"]
 
 1. 両方 OFF は、自動の init / analyze / 登録を行わない。
 2. 未知値・重複キー・config.md の読込失敗・METRON / CHRONOS の食い違いは設定エラーとして報告し、検査手順を止める。既にある本文の完了は取り消さない。
-3. METRON: 既稿の不足（contract / beats / run）を「未計測／要対応」として残す。後追いは上記「章ゲート」と同じく、最初の未計測章で contract / beats を補ってから `prepare` → 現行本文を候補化 → `receive` → `inspect` する。マーカーを `_novel_text` に後付けしない。
+3. METRON: 既稿の不足（contract / beats / run）と、計測後に本文が書き換わった章（「計測が古い」）を「未計測／要対応」として残す。`METRON_FROM` より前の章は下書き期として対象外。後追いは上記「章ゲート」と同じく、最初の未計測章で contract / beats を補ってから `prepare --allow-publish` → 現行本文を候補化 → `receive` → `inspect` → 必要なら修復 → `publish` する。マーカーを `_novel_text` に後付けしない。
 4. CHRONOS: chronos/ が無ければ chronos_cli.py init を試み、既存のイベント YAML があれば chronos_cli.py check を実行する。イベントが無い章は「未登録」として次回タスクへ記録する。
 5. 結果は本文保存と分けて報告し、成果物不足・CLI失敗・CHR001で既にある本文の完了を取り消さない。
+6. **OFF で下書きした作品を ON にして洗練する**（`concepts.md` フラグ節の正式な経路）: 既稿から契約・Beat を起こすときは、章の出来事・結末・視点を変えない。指示目標は既稿の分量を基準にする（下回る候補にしない）。`publish` は既存の非空本文なので heading で当該章を置き換える。`publish` 後はストーリー反映を行う。CHRONOS のイベントは洗練する章から順に登録し、全章を一度に登録しない。手順の正本は `workflow-specification.md` フラグ節。
 
 ## 執筆モデルが Grok / xAI 系のとき
 

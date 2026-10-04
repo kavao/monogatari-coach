@@ -76,7 +76,8 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
 - METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値（行なしは OFF）が食い違う config.md は、自動ワークフローでは設定エラーとする。新規作成の確認・明示 OFF・一時停止も両方同時に扱う。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
-- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
+- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は OFF（従量 API の量を抑えるため）。作成時に確認し、ユーザーが ON を明示したときだけ ON にする。返答がない場合は **「未応答・既定 OFF」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
+- **OFF で下書き → ON で洗練**を正式な経路とする。OFF の期間は従来経路で書き、ON にした章から後追い計測（既稿から契約・Beat を起こし、`_writing/` 側のマーカー付き作業稿を `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`）で洗練する。`_novel_text` にマーカーを書かない。config.md の基本情報表の `METRON_FROM | N` で、第N章より前を下書き期として未計測ゲートの対象から外せる。いつ ON にするかは `_meta.md` の「検査レイヤの予定」に書く。ON → OFF に戻すときは、active な run・修復を閉じてから切り替える。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
 - ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で**既にある本文**の完了を取り消さない。これから書く新規場面には使わず、`prepare` 前に `_novel_text` を増やす根拠にしない。
@@ -89,10 +90,10 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 同一受領候補の inspect は既存の metrics / spans を再利用する。保存用 run は `inspect --from-run` で本文 hash が一致する observations を流用する。`--from-run` は `run-\d{4,}` に限り、observations 欠落は UNKNOWN_REF、不一致は STALE とする。
 - 修復が active のあいだ、C1 未記録は report に残すが inspect を失敗にしない。完了後と保存前は従来どおり未記録で止める。CHRONOS ON の初回 inspect の前に observations を書く（現行は未記録で exit 1）。座標下書きは `locate-quote`。inspect と同じ版検証のあと、一意一致だけを出し、重複は推測しない。`publish` は C1 成功前に正本を書かない。
 - 正本反映は `permissions.publish` がある run の `publish` だけを使う。ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
-- 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。
+- 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。ON の作品で清書した章は本文ハッシュの照合で「計測が古い」になり、洗練の段階で後追い計測の手順に載せ直して `publish` で戻す。
 - `_meta.md` のストーリー反映は CLI の外で `novel-story-reflection` が行う。
 - ON の新規場面（既存章への場面追記を含む）は、単一章でも複数章でも、ハッシュ一致の active run が無ければ従来経路へ落ちず、契約と Beat を置いて `prepare` する。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
-- **セッション開始ゲート**: 本文作業のターンで作品フラグが ON のときは、そのターンの本文書込み前に `novel_project_check <作品> --check-inspection-layers` を実行する。`未計測章` 警告が出ている作品では新規章の起草を始めず、最初の未計測章の後追い計測（契約・Beat 補完 → `prepare` → `receive` → `inspect`）と CHRONOS イベント登録を先に完了する。警告なしの exit 0 は未計測の免除にならない（`_metron/` が空の作品では本文を書かない）。
+- **セッション開始ゲート**: 本文作業のターンで作品フラグが ON のときは、そのターンの本文書込み前に `novel_project_check <作品> --check-inspection-layers` を実行する。`未計測章` 警告（計測後に本文が書き換わった「計測が古い」章を含む。`METRON_FROM` より前の章は対象外）が出ている作品では新規章の起草を始めず、最初の未計測章の後追い計測（契約・Beat 補完 → `prepare` → `receive` → `inspect`）と CHRONOS イベント登録を先に完了する。警告なしの exit 0 は未計測の免除にならない（`_metron/` が空の作品では本文を書かない）。
 - シーン床到達かつ必須修復なしなら `repair-begin` しない（`REPAIR_NOT_NEEDED`）。必須修復が残れば `auto` でも begin する。明示 Deepen は `--intent explicit_deepen`。`--scope beats` は指定外の助言 Deepen を出さない。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。`--from-run` は CHRONOS ON かつ observations があるときだけ。`inspect` の `status` / `report.md` は required と advisory を分ける。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 
 ## Plan Mode の完了

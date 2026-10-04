@@ -21,7 +21,17 @@ class InspectionBootstrapError(ValueError):
     """新規作品の検査レイヤ初期化に必要な値が不正。"""
 
 
-def _flag(value: InspectionFlag | str, *, name: str) -> InspectionFlag:
+DEFAULT_NEW_LAYER = InspectionFlag.OFF
+"""新規作品の METRON / CHRONOS の既定（未応答のとき）。
+
+従量 API の量を抑えるため、新規作品は OFF で起こし、執筆後に ON にして
+洗練する経路を既定にする。ON は作成時の確認で明示したときだけ。
+"""
+
+
+def _flag(value: InspectionFlag | str | None, *, name: str) -> InspectionFlag:
+    if value is None:
+        return DEFAULT_NEW_LAYER
     if isinstance(value, InspectionFlag):
         return value
     try:
@@ -38,34 +48,40 @@ def _cell(value: str) -> str:
     return value.replace("|", "／").replace("\r", " ").replace("\n", " ").strip()
 
 
+def decision_label(value: InspectionFlag | str | None) -> str:
+    """作成時の確認の記録語。None は未応答（既定 OFF）。"""
+
+    if value is None:
+        return f"未応答・既定 {DEFAULT_NEW_LAYER.value}"
+    return f"ユーザー明示 {_flag(value, name='flag').value}"
+
+
 def initial_config_text(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> str:
     """新規作品用の最小 ``config.md`` を返す。
 
     ``confirmation`` はチャットで確認できなかった場合などの記録で、設定値
-    そのものとは分けて保存する。通常の新規起こしでは「未応答・既定 ON」と
-    なる。
+    そのものとは分けて保存する。``metron`` / ``chronos`` が ``None`` のときは
+    未応答として既定（OFF）を書き、「未応答・既定 OFF」と記録する。
     """
 
     metron_value = _flag(metron, name="METRON").value
     chronos_value = _flag(chronos, name="CHRONOS").value
     audit_value = _flag(audit_log, name="AUDIT_LOG").value
     if confirmation is None:
-        decisions = []
-        decisions.append(
-            f"METRON={'ユーザー明示 OFF' if metron_value == 'OFF' else '未応答・既定 ON'}"
+        confirmation = "; ".join(
+            [
+                f"METRON={decision_label(metron)}",
+                f"CHRONOS={decision_label(chronos)}",
+            ]
         )
-        decisions.append(
-            f"CHRONOS={'ユーザー明示 OFF' if chronos_value == 'OFF' else '未応答・既定 ON'}"
-        )
-        confirmation = "; ".join(decisions)
 
     safe_title = _cell(title)
     safe_confirmation = _cell(confirmation)
@@ -95,8 +111,8 @@ def create_initial_config(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> tuple[Path, str]:
@@ -144,8 +160,8 @@ def initialize_new_layers(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> list[tuple[str, str]]:
@@ -161,6 +177,10 @@ def initialize_new_layers(
         )
     actions: list[tuple[str, str]] = []
 
+    if confirmation is None:
+        confirmation = "; ".join(
+            [f"METRON={decision_label(metron)}", f"CHRONOS={decision_label(chronos)}"]
+        )
     config, status = create_initial_config(
         novel_dir,
         novel_code,

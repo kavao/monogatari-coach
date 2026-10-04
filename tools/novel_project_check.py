@@ -257,6 +257,51 @@ def _needs_cover_plan(work: Path) -> bool:
     return False
 
 
+def _current_text_hash(text_path: Path) -> str:
+    """writing_bridge と同じ正規化（NFC・LF・マーカー除去）で本文ハッシュを取る。"""
+
+    from writing_bridge.hashes import text_sha256
+
+    return text_sha256(text_path.read_text(encoding="utf-8"))
+
+
+def _measured_text_hashes(work: Path, writing_root: Path, chapter: int) -> dict[str, Any]:
+    """章の run が測った本文ハッシュを、対象ファイル（request.yaml の text_path）ごとに集める。
+
+    report.json の target_text_sha256 は、inspect では測った版、publish では保存後の
+    本文ファイルのハッシュである。今の本文と一致する run があれば、その本文は計測済み。
+    """
+
+    import json
+
+    import yaml
+
+    run_exists = False
+    hashes: dict[str, set[str]] = {}
+    if not writing_root.is_dir():
+        return {"run_exists": False, "hashes": hashes}
+    for scene in writing_root.glob(f"ch{chapter:02d}-*"):
+        if not scene.is_dir():
+            continue
+        for run in scene.iterdir():
+            if not (run.is_dir() and re.fullmatch(r"run-\d+", run.name)):
+                continue
+            run_exists = True
+            report = run / "report.json"
+            request = run / "request.yaml"
+            if not (report.is_file() and request.is_file()):
+                continue
+            try:
+                digest = json.loads(report.read_text(encoding="utf-8")).get("target_text_sha256")
+                target = (yaml.safe_load(request.read_text(encoding="utf-8")) or {}).get("target") or {}
+            except (OSError, ValueError, yaml.YAMLError):
+                continue
+            text_rel = target.get("text_path") if isinstance(target, dict) else None
+            if isinstance(digest, str) and isinstance(text_rel, str):
+                hashes.setdefault(text_rel.replace("\\", "/"), set()).add(digest)
+    return {"run_exists": run_exists, "hashes": hashes}
+
+
 def _check_inspection_layers(work: Path) -> dict[str, Any]:
     """作品フラグと検査レイヤの保存先を確認する（WARN はゲートにしない）。"""
 
@@ -290,28 +335,24 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
             warnings.append(f"検査レイヤ METRON がONですが {path.name}/ が空です")
 
     unmeasured_chapters: list[dict[str, Any]] = []
+    excluded_chapters: list[int] = []
     metron_on = flags.value_for("METRON") is iflags.InspectionFlag.ON
     if metron_on:
         metron_root = work / "_metron"
         writing_root = work / "_writing"
+        # 章ごとに本文ファイル（項分割を含む）をまとめる。
+        chapters: dict[int, list[Path]] = {}
         for text_path in _novel_text_files(work):
             match = _RE_NOVEL_TEXT.match(text_path.name)
             if match is None:
                 continue
-            chapter = int(match.group(1))
-            # 項分割は章単位の検査対象へまとめる。代表パスは章ファイルを優先する。
-            if match.group(2) is not None:
-                chapter_text = work / "_novel_text" / f"novel_text{chapter:02d}.md"
-                if chapter_text.is_file():
-                    if text_path != chapter_text:
-                        continue
-                else:
-                    previous = next(
-                        (item for item in unmeasured_chapters if item["chapter"] == chapter),
-                        None,
-                    )
-                    if previous is not None:
-                        continue
+            chapters.setdefault(int(match.group(1)), []).append(text_path)
+        for chapter in sorted(chapters):
+            files = chapters[chapter]
+            if flags.measure_from is not None and chapter < flags.measure_from:
+                # METRON_FROM より前は下書き期として未計測ゲートの対象外。
+                excluded_chapters.append(chapter)
+                continue
             scene_dirs = (
                 [item for item in metron_root.glob(f"ch{chapter:02d}-*") if item.is_dir()]
                 if metron_root.is_dir()
@@ -319,15 +360,8 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
             )
             contract_exists = any((scene / "contract.yaml").is_file() for scene in scene_dirs)
             beats_exists = any((scene / "beats.yaml").is_file() for scene in scene_dirs)
-            run_exists = False
-            if writing_root.is_dir():
-                for scene in writing_root.glob(f"ch{chapter:02d}-*"):
-                    if scene.is_dir() and any(
-                        child.is_dir() and re.fullmatch(r"run-\d+", child.name)
-                        for child in scene.iterdir()
-                    ):
-                        run_exists = True
-                        break
+            measured = _measured_text_hashes(work, writing_root, chapter)
+            run_exists = measured["run_exists"]
             missing: list[str] = []
             if not contract_exists:
                 missing.append("contract.yaml")
@@ -335,28 +369,51 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
                 missing.append("beats.yaml")
             if not run_exists:
                 missing.append("run")
+            stale_files: list[str] = []
+            if run_exists:
+                for text_path in files:
+                    rel = text_path.relative_to(work).as_posix()
+                    if _current_text_hash(text_path) not in measured["hashes"].get(rel, set()):
+                        stale_files.append(text_path.name)
+                if stale_files:
+                    missing.append("最新本文の計測")
             if not missing:
                 continue
+            representative = next(
+                (f for f in files if f.name == f"novel_text{chapter:02d}.md"), files[0]
+            )
             try:
-                display_text = str(text_path.relative_to(work.parent))
+                display_text = str(representative.relative_to(work.parent))
             except ValueError:
-                display_text = str(text_path)
+                display_text = str(representative)
             item = {
                 "chapter": chapter,
                 "text_path": display_text,
                 "missing": missing,
+                "stale": bool(stale_files),
+                "stale_files": stale_files,
             }
             unmeasured_chapters.append(item)
-            warnings.append(
-                f"本文 {display_text} がありますが METRON 未計測です（欠落: {', '.join(missing)}）"
-            )
+            if stale_files and missing == ["最新本文の計測"]:
+                warnings.append(
+                    f"本文 {display_text} は計測後に書き換わっています（計測が古い: {', '.join(stale_files)}）"
+                )
+            else:
+                warnings.append(
+                    f"本文 {display_text} がありますが METRON 未計測です（欠落: {', '.join(missing)}）"
+                )
 
         if unmeasured_chapters:
+            hint = (
+                f"（計測対象は第{flags.measure_from}章以降）"
+                if flags.measure_from is not None
+                else "（下書き期の章を対象から外すときは config.md の基本情報表に METRON_FROM を置く）"
+            )
             warnings.append(
-                "METRON 未計測章があります。新規章・場面追記は単一章の依頼でも "
+                "METRON 未計測章（計測が古い章を含む）があります。新規章・場面追記は単一章の依頼でも "
                 "prepare → receive → inspect を先に行い、_novel_text へ直接追記しないでください。"
                 "複数章処理では最初の未計測章で停止し、欠落項目を解消して計測を完了してから次章へ進んでください。"
-                "この警告は終了コード0でも次章遷移のゲートとして扱います。"
+                "この警告は終了コード0でも次章遷移のゲートとして扱います。" + hint
             )
 
     return {
@@ -365,6 +422,7 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
         "flags": flags.as_dict(),
         "warnings": warnings,
         "unmeasured_chapters": unmeasured_chapters,
+        "excluded_chapters": excluded_chapters,
     }
 
 
@@ -699,22 +757,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--metron",
         choices=("ON", "OFF"),
-        default="ON",
-        help="未作成フォルダを --bootstrap するときの METRON（既定: ON）",
+        default=None,
+        help="未作成フォルダを --bootstrap するときの METRON（省略時: 未応答・既定 OFF）",
     )
     p.add_argument(
         "--chronos",
         choices=("ON", "OFF"),
-        default="ON",
-        help="未作成フォルダを --bootstrap するときの CHRONOS（既定: ON）",
+        default=None,
+        help="未作成フォルダを --bootstrap するときの CHRONOS（省略時: 未応答・既定 OFF）",
     )
     args = p.parse_args(argv)
 
     if args.bootstrap:
-        if args.metron != args.chronos:
+        if (args.metron or "OFF") != (args.chronos or "OFF"):
             print(
                 "error: METRON と CHRONOS は同じ値にしてください"
-                f"（METRON={args.metron}, CHRONOS={args.chronos}）",
+                f"（METRON={args.metron or 'OFF'}, CHRONOS={args.chronos or 'OFF'}）",
                 file=sys.stderr,
             )
             return 2
@@ -929,10 +987,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    検査レイヤ: 設定エラー — {il.get('error', '設定エラー')}")
         for item in il.get("unmeasured_chapters") or []:
             missing = ", ".join(item.get("missing") or []) or "—"
+            label = "計測が古い" if item.get("missing") == ["最新本文の計測"] else "未計測"
             print(
-                f"      - 未計測 第{item.get('chapter')}章: "
+                f"      - {label} 第{item.get('chapter')}章: "
                 f"{item.get('text_path')}（欠落: {missing}）"
             )
+        excluded = il.get("excluded_chapters") or []
+        if excluded:
+            chapters = "・".join(f"第{c}章" for c in excluded)
+            print(f"      - 計測対象外（METRON_FROM より前・下書き期）: {chapters}")
 
     if result.get("warnings"):
         print("\n  警告（WARNING・NG ではない）:")

@@ -60,6 +60,7 @@ description: >-
 ## 作品単位のフラグ
 
 - **METRON / CHRONOS**: 清書では自動の再計測・イベント更新を起動しない。writing_bridge の `prepare` / `repair-*` / `publish` も起動しない。ユーザーが明示したときだけ実行する。
+- **ON の作品で清書した章**: 清書で本文が変わると、`novel_project_check --check-inspection-layers` が本文ハッシュの照合で「計測が古い」と出す。清書の完了は取り消さない。洗練の段階では、その章を後追い計測（`novel-text-file-output`「既稿の検査と後追い」）に載せ直して計測し、`publish` で戻す。完了報告に「清書後は計測が古い。後追い計測が必要」と1行書く。
 - **writing_bridge `publish`**: 既稿退避の採番規則は本スキルと同じ `<元ファイル名>_vNNN.md`。`publish` は rewrite.md 清書を行わない。清書が必要なら本スキルを別途実行する。同一ターンで `publish` と本スキルの正本更新を重ねない。
 - **AUDIT_LOG**: 対象作品の `config.md` が `OFF` なら査証ログを追記しない。行なしは ON。
 

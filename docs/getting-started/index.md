@@ -168,7 +168,7 @@ uv run python tools/novel_onboard.py "作品タイトル"
 uv run python tools/novel_onboard.py "作品タイトル" --dry-run
 ```
 
-新規作成では METRON / CHRONOS が標準 ON です。確認への返答がない場合も、`config.md` に **「未応答・既定 ON」** と記録して進みます。明示的に OFF にする場合だけ `--metron OFF` / `--chronos OFF` を両方指定します。2つのフラグは連動し、片方だけ ON にはできません。
+新規作成では METRON / CHRONOS が標準 OFF です。従量 API の量を抑えるため、まず OFF で下書きし、書き終えた章から ON にして洗練する進め方を標準にしています。確認への返答がない場合も、`config.md` に **「未応答・既定 OFF」** と記録して進みます。最初から ON にする場合だけ `--metron ON` / `--chronos ON` を両方指定します。2つのフラグは連動し、片方だけ ON にはできません。
 
 実行後に `[Plan Mode] → 企画書を作成してください（proposal.md から）` と出たら、チャットで「企画書を作成してください」と伝えるだけで制作が始まります。
 

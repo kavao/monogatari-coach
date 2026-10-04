@@ -42,7 +42,7 @@ novels/<作品>/chronos/
 | CHRONOS | ON |
 ```
 
-新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 ON」として行と `chronos/` を記録・準備します。既存作品の行なしは従来どおり OFF です。
+新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 OFF」として行を記録し、`chronos/` は作りません（従量 API の量を抑えるため）。ON はユーザーが明示したときだけです。既存作品の行なしも従来どおり OFF です。あとから ON にしたときは `chronos_cli.py init` で用意し、洗練する章から順にイベントを登録します。
 
 行なしまたは `OFF` なら、自動ワークフローは CHRONOS の `init` / `check` を行いません。`ON` で `chronos/` が無い場合は `未登録` として本文保存と分けて報告します。当該章のイベント手入力は推奨ですが、本文や執筆完了の必須条件ではありません。イベントが無い場面を writing_bridge で検査した場合は `report.json` に `CHRONOS_NO_SCENE_EVENTS`（非ブロッキング）を残します。`chronos_registered: success` はイベントが存在して検査を通ったことを示し、イベント未登録の場面を成功扱いしません。明示的に `chronos_cli.py` を実行した場合は、このフラグを理由に拒否しません。
 

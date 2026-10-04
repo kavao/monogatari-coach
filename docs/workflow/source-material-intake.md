@@ -39,12 +39,12 @@ Monogatari Coach は、原資料を読み、作品フォルダ内の標準ファ
 
 新規作品の場合は、`tools/novel_code_allocate.py` で次の作品番号を確認します。既存作品がある場合は、重複作成せず、更新対象を見極めます。
 
-新規作品は資料を展開する前に、次のオンボーディングを実行します。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録され、`_metron/` と `chronos/` が準備されます。OFF はユーザーが明示したときだけ指定します。
+新規作品は資料を展開する前に、次のオンボーディングを実行します。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 OFF」** として `config.md` に記録されます（`_metron/` と `chronos/` は作りません）。ON はユーザーが明示したときだけ指定します。
 
 ```bash
 python tools/novel_onboard.py novels/NNN_作品名
-# 例: 明示的に両方止める場合
-python tools/novel_onboard.py novels/NNN_作品名 --metron OFF --chronos OFF
+# 例: 最初から両方 ON にする場合
+python tools/novel_onboard.py novels/NNN_作品名 --metron ON --chronos ON
 ```
 
 既存作品では `novel_onboard.py` を使わず、`novel_scaffold.py` などで不足分だけを補います。既存 `config.md` の METRON / CHRONOS 行なしは従来どおり OFF です。

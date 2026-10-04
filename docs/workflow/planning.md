@@ -99,7 +99,7 @@ uv run python tools/novel_project_check.py novels/NNN_作品名 --check-inspecti
 
 新規作品では、Monogatari Coach は METRON / CHRONOS を標準で ON にします。起こしのときに確認し、OFF にしたいときだけ指示します。行が無い既存作品は従来どおり OFF のままです。ON にした作品では `_metron/` と `chronos/` を用意してから上の確認コマンドを実行します。
 
-オンボーディング時に確認への返答がない場合は、**「未応答・既定 ON」** として `config.md` に記録します。明示的に止める場合だけ、`novel_onboard.py` に `--metron OFF` / `--chronos OFF` を指定してください。`--metron` と `--chronos` は同じ値にしてください。違う値を指定すると、フォルダを作る前にエラーで止まります。`--dry-run` では予定フラグと保存先だけを表示し、ファイルは作成しません。
+オンボーディング時に確認への返答がない場合は、**「未応答・既定 OFF」** として `config.md` に記録します。従量 API の量を抑えるため、まず OFF で下書きし、書き終えた章から ON にして洗練する進め方が標準です。最初から ON にする場合だけ、`novel_onboard.py` に `--metron ON` / `--chronos ON` を指定してください。OFF で起こした作品は、いつ ON にするかを `_meta.md` の「検査レイヤの予定」に残します。API の量を抑えるため、OFF で下書きして書き終えた章から ON にして洗練する進め方は [Writing bridge の「OFF で下書きし、あとで ON にして洗練する」](../architecture/writing-bridge.md#off-で下書きしあとで-on-にして洗練する) を参照してください。`--metron` と `--chronos` は同じ値にしてください。違う値を指定すると、フォルダを作る前にエラーで止まります。`--dry-run` では予定フラグと保存先だけを表示し、ファイルは作成しません。
 
 ### Gate B（知識・厚さ）
 

@@ -94,7 +94,7 @@ uv run python tools/env_check.py
 
 **このように動きます:**
 1. 作品名・ジャンル・ログライン・主人公について必要最低限の質問をする
-2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 ON」** として `config.md` に記録する（OFF は明示時のみ。2つは連動し、両方 ON か両方 OFF にする）
+2. `novels/NNN_作品名/` フォルダを作成し、`proposal.md` / `design_specification.md` / `config.md` / `character.md` / `world.md` を生成する。METRON / CHRONOS は作成時に確認し、返答がない場合は **「未応答・既定 OFF」** として `config.md` に記録する（ON は明示時のみ。2つは連動し、両方 ON か両方 OFF にする。OFF で下書きした作品は、書き終えた章から ON にして洗練できる）
 3. 生成した内容を評価・洗練して、執筆できる状態まで整える
 4. 次のステップ（執筆・タグ作成など）を提案する
 

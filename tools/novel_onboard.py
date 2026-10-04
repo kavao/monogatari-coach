@@ -31,7 +31,9 @@ if str(_TOOLS_DIR) not in sys.path:
 from novel_code_allocate import scan_novels  # noqa: E402
 from novel_scaffold import bootstrap_novel   # noqa: E402
 from inspection_bootstrap import (          # noqa: E402
+    DEFAULT_NEW_LAYER,
     InspectionBootstrapError,
+    decision_label,
     initialize_new_layers,
 )
 from novel_status import (                  # noqa: E402
@@ -111,20 +113,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--metron",
         choices=("ON", "OFF"),
-        default="ON",
-        help="新規作品の METRON（既定: ON。OFF は明示指定）",
+        default=None,
+        help="新規作品の METRON（省略時: 未応答・既定 OFF。ON は明示指定）",
     )
     p.add_argument(
         "--chronos",
         choices=("ON", "OFF"),
-        default="ON",
-        help="新規作品の CHRONOS（既定: ON。OFF は明示指定）",
+        default=None,
+        help="新規作品の CHRONOS（省略時: 未応答・既定 OFF。ON は明示指定）",
     )
     args = p.parse_args(argv)
-    if args.metron != args.chronos:
+    metron_value = args.metron or DEFAULT_NEW_LAYER.value
+    chronos_value = args.chronos or DEFAULT_NEW_LAYER.value
+    if metron_value != chronos_value:
         print(
             "error: METRON と CHRONOS は同じ値にしてください"
-            f"（METRON={args.metron}, CHRONOS={args.chronos}）",
+            f"（METRON={metron_value}, CHRONOS={chronos_value}）",
             file=sys.stderr,
         )
         return 2
@@ -148,13 +152,13 @@ def main(argv: list[str] | None = None) -> int:
     if is_new_target:
         inspection_decision = (
             "（"
-            f"METRON={'未応答・既定 ON' if args.metron == 'ON' else 'ユーザー明示 OFF'}、"
-            f"CHRONOS={'未応答・既定 ON' if args.chronos == 'ON' else 'ユーザー明示 OFF'}"
+            f"METRON={decision_label(args.metron)}、"
+            f"CHRONOS={decision_label(args.chronos)}"
             "）"
         )
     print(
         "  検査レイヤ : "
-        f"METRON={args.metron}, CHRONOS={args.chronos}"
+        f"METRON={metron_value}, CHRONOS={chronos_value}"
         + inspection_decision
     )
 

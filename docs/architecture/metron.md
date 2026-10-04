@@ -31,7 +31,7 @@ config/metron_models.yaml
 | METRON | ON |
 ```
 
-新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 ON」として行と `_metron/` を記録・準備します。既存作品の行なしは従来どおり OFF です。
+新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 OFF」として行を記録し、`_metron/` は作りません（従量 API の量を抑えるため）。ON はユーザーが明示したときだけです。既存作品の行なしも従来どおり OFF です。あとから ON にしたときの後追い計測と、計測が古い章の扱いは [Writing bridge](writing-bridge.md#off-で下書きしあとで-on-にして洗練する) を参照してください。
 
 行なしまたは `OFF` なら、自動ワークフローは METRON の成果物作成・計測を行いません。`ON` でも本文保存の完了ゲートにはならず、契約・Beat・マーカー不足や CLI 失敗は `未計測／要対応` として本文保存と分けて報告します。`novel_project_check.py --check-inspection-layers` は、`_metron/` が空の場合と、本文がある章に対応する契約・Beat・run が欠けている場合を WARN として列挙します（終了コード 0）。明示的に `metron_cli.py` を実行した場合は、このフラグを理由に拒否しません。
 

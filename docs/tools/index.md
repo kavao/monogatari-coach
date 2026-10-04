@@ -300,7 +300,7 @@ python tools/novel_onboard.py "作品タイトル" --dry-run
 python tools/novel_onboard.py "作品タイトル" --metron OFF --chronos OFF
 ```
 
-新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、`_metron/` と `chronos/` を ON の場合だけ準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプションを付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
+新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、`_metron/` と `chronos/` を ON の場合だけ準備します。作成時の確認に返答がない場合は **「未応答・既定 OFF」** として `config.md` のコメントへ記録されます。ON は明示オプション（`--metron ON --chronos ON`）を付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
 
 実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
 
@@ -414,7 +414,9 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OF
 
 `--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
 
-未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。既存フォルダの `--bootstrap` は設定行や値を変更しません。
+未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も OFF です。作成時の確認に返答がない場合は「未応答・既定 OFF」を `config.md` に記録します。
+
+`--check-inspection-layers` は、METRON が ON の作品で、本文のある章ごとに契約・Beat・run の有無と、run が測った本文と今の本文が一致するかを確かめます。計測のあとに清書などで書き換えた章は「計測が古い」と表示され、次の章へ進む前の後追い計測の対象になります。`config.md` の基本情報表に `| METRON_FROM | 5 |` のように書くと、第5章より前は「計測対象外（下書き期）」として扱われます。既存フォルダの `--bootstrap` は設定行や値を変更しません。
 
 ---
 

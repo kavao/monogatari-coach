@@ -133,6 +133,14 @@ Plan Mode の実装・改修後は、次を分けて確認します。
 - 新規: 採番・フォルダ名と `config.md` 整合・scaffold・必須資料・`novel_character_md_check`（plan）・`novel_project_check` が終了コード 0
 - 既存洗練: 再採番せず、対象フォルダと `config.md` 整合・必須資料・上記 lint / check
 - 許容した WARN がある場合は内容と扱いが報告または `_meta.md` に残る
+- 新規の `config.md` は METRON / CHRONOS が両方 `OFF`（作成時の確認に返答がなければ「未応答・既定 OFF」）。`_metron/` と `chronos/` は作られない。ユーザーが ON を明示したときだけ両方 `ON` で、保存先が用意される
+- OFF で起こした作品は `_meta.md` に「検査レイヤの予定」がある
+
+#### 検査レイヤの切り替え（OFF で下書き → ON で洗練）
+
+- OFF で書いた章がある作品を ON にすると、`novel_project_check --check-inspection-layers` が本文のある章を未計測として列挙する。`| METRON_FROM | N |` を置くと、第N章より前は「計測対象外（下書き期）」になり、未計測の一覧に出ない
+- 後追い計測と `publish` を済ませた章は一覧から消える。そのあと清書などで本文を書き換えると、同じ章が「計測が古い」として再び出る
+- 新規章の起草は、計測対象の未計測章（計測が古い章を含む）が残っているあいだは始めない
 
 #### Gate B（知識・厚さ）
 

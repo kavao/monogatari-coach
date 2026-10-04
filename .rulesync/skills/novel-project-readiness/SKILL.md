@@ -63,9 +63,9 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 - **`_novel_text/` または `_reader/` が無い**: ディレクトリを作成（空でよい。Git 用に `.gitkeep` を置いてもよい）。
 - **`tag/<romaji>/` 未作成の WARN**: スキル **`novel-image-layout`**（`tools/novel_image_layout.py scaffold`）で作成。
 - **採番 NG**: スキル **`novel-code-allocate`** に従い `config.md` の `| novel_ID |` 表とフォルダ名を揃える。
-- **METRON / CHRONOS ON で保存先なし**: `_metron/` を作り、`python tools/chronos_cli.py init novels/<作品>` する。新規起こしの標準は ON。新規フォルダを作るときは `novel_onboard.py` を入口にし、確認の返答がない場合は `config.md` に「未応答・既定 ON」を記録する（明示 OFF の場合だけ `--metron OFF` / `--chronos OFF`）。
+- **METRON / CHRONOS ON で保存先なし**: `_metron/` を作り、`python tools/chronos_cli.py init novels/<作品>` する。新規起こしの標準は OFF。新規フォルダを作るときは `novel_onboard.py` を入口にし、確認の返答がない場合は `config.md` に「未応答・既定 OFF」を記録する（明示 ON の場合だけ `--metron ON` / `--chronos ON`）。
 - **METRON / CHRONOS の値が食い違う**: `--check-inspection-layers` が設定エラー（終了コード 1）にする。2つは連動させるので、ユーザーに確認して両方 ON か両方 OFF に揃える。片方に合わせて黙って進めない。
-- **METRON ON で `_metron/` が空、または本文のある章に契約・Beat・run がない**: `--check-inspection-layers` の WARN に未計測章と欠落項目が列挙される。契約・Beat を標準値で自動生成せず、章の設計に沿って準備してから `writing_bridge` の `prepare` を実行する。WARN は既にある本文の完了を取り消さないが、新規章・場面追記は単一章でも `prepare` を先に行い、`_novel_text` へ直接追記しない。
+- **METRON ON で `_metron/` が空、または本文のある章に契約・Beat・run がない、または計測後に本文が書き換わった**: `--check-inspection-layers` の WARN に未計測章と欠落項目（計測が古い章は「最新本文の計測」）が列挙される。`METRON_FROM` より前の章は「計測対象外（下書き期）」として出る。契約・Beat を標準値で自動生成せず、章の設計に沿って準備してから `writing_bridge` の `prepare` を実行する。WARN は既にある本文の完了を取り消さないが、新規章・場面追記は単一章でも `prepare` を先に行い、`_novel_text` へ直接追記しない。
 - **character.md 構造 NG**: スキル **`novel-character-profile`** に従い、必須ラベルの追加や表形式から `- **ラベル**:` 形式への移行を行う。
 
 ## 正本
