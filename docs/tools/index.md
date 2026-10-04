@@ -341,6 +341,26 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 
 ---
 
+### `novel_meta_char_table.py` — 章別文字数表の生成と照合
+
+`_meta.md` I.1 の「章別文字数」表を、`novel_char_count.py` と同じ数え方で生成・照合します。このコマンドは `_meta.md` を書き換えません。表がある作品だけ在庫の正本として使い、無い作品へは自動では足しません。
+
+章別の在庫を表へ写したいとき、ユーザーが作品フォルダを指定すると、Monogatari Coach は `render` で Markdown 表を出し、ストーリー反映経由で `_meta.md` へ写します。数字が表と本文でずれていないかは `check` で確認できます。
+
+```bash
+# 表を標準出力する（状態列は既存表を引き継ぐ。新規行は初稿）
+python tools/novel_meta_char_table.py render novels/NNN_作品名
+
+# 表と集計が一致するか確認する（表が無ければ終了コード 0）
+python tools/novel_meta_char_table.py check novels/NNN_作品名
+```
+
+状態列は、`初稿`（清書をまだ当てていない章）、`清書済`（最後の本文変更が清書だった章）、`清書中`（清書のあとに加筆した章）の3つです。`render` は今の表の状態を引き継ぐだけで、`清書済` へは自動で変えません。
+
+`render` の出力をコピーして、意図した `_meta.md` の同節へ貼れます。`check` が終了コード 1 のときは、表の数字と本文の集計がずれています。設計書の想定総文字数は目標であり、この表の在庫とは混ぜません。
+
+---
+
 ### `novel_punctuation_metrics.py` — 句読点指標の集計と任意ゲート
 
 本文の読点密度・一文あたり読点数・平均文長・接続助詞後読点率・句点誤配置を集計します。地の文と会話文はカギ括弧で分離します。付けない場合は計測だけで、終了コードは 0 です。

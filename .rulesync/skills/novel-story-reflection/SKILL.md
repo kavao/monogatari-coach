@@ -27,7 +27,7 @@ journal / lock / 設計書 / `_meta.md` の原子更新は手編集しない。`
 ## 同期プロトコル（手順）
 
 ### 1. 定量情報の更新（_meta.md）
-- **文字数**: `python tools/novel_char_count.py` を実行し、最新の数値を `_meta.md` の「現在の章・項」節へ反映する。
+- **文字数**: `python tools/novel_char_count.py` を実行し、最新の数値を `_meta.md` の「現在の章・項」節へ反映する。`### 章別文字数` 表がある作品だけ、`python tools/novel_meta_char_table.py render novels/<作品>` の出力を intended_meta の同節へ写す。表が無い作品には作らない。
 - **進捗率**: 全体の章立てに対する現在の到達度を更新する。
 
 ### 2. 定性情報の反映（_meta.md）
@@ -126,7 +126,7 @@ python tools/story_reflection_op.py lock-release novels/<作品>
 
 CLI の終了コード 0 以外は未完了。`確認済み` だけでは完了にしない。
 
-実文字数・状態は、設計書に「執筆スケジュール」等の表があるとき、`novel_char_count.py` の計測で該当章と合計を更新する（空欄のままにしない）。章分割ファイルを足したときは章立て・スケジュールへ反映する。機械的なズレ検出には `python tools/novel_project_check.py <作品> --check-story-sync` を補助に使える。意味一致の正本にはしない。
+実文字数・状態は、`_meta.md` に「章別文字数」表があるときそれを在庫の正本とし、`novel_meta_char_table.py render` で該当章と合計を更新する。状態列は引き継ぎ、反映する章だけ次の基準で決める。`初稿`は清書（`novel-refinement-output`）を一度も当てていない章、`清書済`はその章の最後の本文変更が清書である章、`清書中`は清書のあとに加筆・手直しをした章（もう一度の清書が要る）。`render` は既存の状態を引き継ぐだけで、`清書済` へは自動で変えない。設計書に「執筆スケジュール」等の表があるときは副本として同じ計測で更新してよい（空欄のままにしない）。章分割ファイルを足したときは章立て・スケジュールへ反映する。機械的なズレ検出には `python tools/novel_meta_char_table.py check novels/<作品>` と `python tools/novel_project_check.py <作品> --check-story-sync` を補助に使える。意味一致の正本にはしない。
 
 ### 4. 査証ログへの記録
 - 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは追記しない。行なしまたは ON のときだけ、文字数と同期内容を `_workingspace/log/YYYYMM.md` に追記する（スキル **`workspace-audit-log`**）。`--novel novels/<作品>` を付ける。

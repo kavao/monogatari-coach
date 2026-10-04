@@ -27,6 +27,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - ファイル成果物は、正しい正本パスへの書込み後に再読込または対応する検証で確認してから完了と報告する。
 - 画像生成は、ユーザー承認後の本番実行と指定保存先での実ファイル確認を満たしてから完了とする。キャラクタータグ一括は、承認前のチャットに dry-run のプレビューと Python コマンドを書く。詳細手順は `workflow-specification.md` を正とする。
 - 文字数を報告・記録するときは `tools/novel_char_count.py` の集計値を使う。
+- 章別実文字数の一覧を置くときは `_meta.md` I.1「章別文字数」を正本とする。数値は `novel_char_count.py`。設計書の想定尺は目標であり在庫ではない。
 - 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。`writing_bridge` の `publish --dry-run` が句読点 fail なら正本を書かない。本番 `publish` 後は `report.json` の句読点記録を正とし、失敗でも本文は戻さない。未達なら完了報告しない。
 - 小説本文の執筆・清書完了は、対象章を一意に解決したうえで `design_specification.md` の確定出来事を突き合わせ、`_meta.md` に `更新` / `差分なし` / `未完了` の証跡を残してから報告する。解決不能と書込失敗は完了としない。手順はスキル `novel-story-reflection`。
 - METRON / CHRONOS ON の本文を保存したときは、完了報告に **`計測済み` / `未計測`** を必ず明記する。`_writing/` に run 証跡が無い本文は未計測として扱い、未計測のまま完了報告した章では後続章へ進まない。未計測の保存と完了は両立しない。
