@@ -48,6 +48,8 @@
   リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)
   `tools/` 配下の全スクリプトと CLI 例、rulesync・howto_init・tools_temp の操作方法
+- [AI 執筆基盤（NovelAI テキスト生成）](tools/ai-writer.md)
+  NovelAI で本文の続きや挿入を生成して候補として保存するときの、接続確認・3 操作・比較実験のコマンド（試作段階）
 - [Community](community/index.md)
   サポート、ベータ実験、推奨プラグイン、謝辞
 

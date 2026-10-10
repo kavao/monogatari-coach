@@ -921,6 +921,24 @@ schema 1.0 のページと 6コマ以上のページは対象外です。選び�
 
 ---
 
+## AI 執筆（NovelAI テキスト生成）
+
+NovelAI のテキストモデルで本文の続き・指定つきの続き・挿入を生成し、候補として保存する仕組みです（Phase 1、試作段階）。生成した文は作品の本文へ自動では書き込みません。接続の確認、3 操作の試し方、Benchmark と比較実験のコマンドは [AI 執筆基盤のガイド](ai-writer.md) にまとめています。
+
+| コマンド | 用途 |
+| --- | --- |
+| `ai_writer_provider_cli.py` | NovelAI との接続と途中停止の確認 |
+| `ai_writer_writer_cli.py` | Continue / Directed Continue / Expand の 3 操作の確認 |
+| `ai_writer_bench_cli.py` | 日本語 Benchmark（生成・採点シート・独立採点・照合・集計） |
+| `ai_writer_length_cli.py` | Directed Continue の字数不足への対処の比較 |
+| `ai_writer_validator_fixture_cli.py` | Validator Fixture の検査と採点（送信しない） |
+| `ai_writer_creative_cli.py` | 別の展開を見る（試作）: 同じ出発点から明示したモデルで複数の案を作り、読み比べ用に保存・停止・再開 |
+| `ai_writer_creative_bench_cli.py` | 別の展開を見る 実験A: 6 課題 × 2 モデル × 3 案を作り、モデル名を伏せた採点シートで比べる |
+
+どのコマンドも `--execute` を付けない限り送信しません。
+
+---
+
 ## 画像生成関連
 
 画像生成の設定・プロバイダ選択・dry-run の詳細は [Image Generation](../image-generation/index.md) を参照してください。

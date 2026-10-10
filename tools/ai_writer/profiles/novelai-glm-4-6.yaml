@@ -1,0 +1,125 @@
+# Capability Profile（計画書 §3）。verified: true は Phase 0 Spike の実測、false は推測。
+# 実測の証跡: _workingspace/ai_writer/phase0/20261008_215516/（契約）、20261008_225937/（生成）、20261008_232155/（usage・文脈長・同時実行）、phase0_expand/20261008_233925/（Expand 方式）
+id: novelai-glm-4-6
+provider: novelai
+model: glm-4-6
+family: glm
+revision: 5
+
+endpoints:
+  chat: https://text.novelai.net/oa/v1/chat/completions
+  completions: https://text.novelai.net/oa/v1/completions
+
+capabilities:
+
+  completion:
+    supported: true
+    verified: true
+    source: spike completions（200、文の途中から続く）
+    verified_at: 2026-10-08
+    notes: 段落の区切りが改行ではなく全角空白2つ（「　　」）で出ることがある。整形の後処理が要る
+
+  instruction:
+    supported: true
+    syntax: chat_messages
+    verified: true
+    source: spike chat-stream
+    verified_at: 2026-10-08
+
+  system_prompt:
+    supported: true
+    verified: true
+    source: spike system-role（200）
+    verified_at: 2026-10-08
+
+  assistant_prefill:
+    supported: false
+    verified: true
+    source: spike assistant-prefill
+    verified_at: 2026-10-08
+    notes: assistant に置いた本文を冒頭から繰り返してから続ける。Continue には使わない
+
+  streaming:
+    supported: true
+    verified: true
+    source: spike chat-stream（OpenAI 互換 SSE、choices[0].delta.content、[DONE] 行で終わる）
+    verified_at: 2026-10-08
+
+  non_streaming:
+    supported: false
+    verified: true
+    source: spike chat-nonstream
+    verified_at: 2026-10-08
+    notes: 200 だが choices[0].text が空で token_ids だけ返る。usage は返る。本文取得はストリームを使う
+
+  cancel:
+    supported: true
+    method: close_stream
+    verified: true
+    source: spike cancel（40字で接続を閉じ、部分出力を保持）
+    verified_at: 2026-10-08
+
+  stop_sequences:
+    supported: true
+    verified: true
+    source: spike stop（「。」の直前で止まる。停止文字は出力に含まれない）
+    verified_at: 2026-10-08
+
+  sampling:
+    accepted: [temperature, top_p, top_k, min_p, frequency_penalty, presence_penalty]
+    verified: true
+    source: spike extra-sampling（200。効き目は未測定）
+    verified_at: 2026-10-08
+
+  token_count:
+    supported: true
+    method: stream_token_ids
+    verified: true
+    source: spike stream-usage-*（stream_options.include_usage は無視され usage は null）。各チャンクの choices[0].token_ids を数えれば出力トークン数になる。非ストリームでは usage.prompt_tokens / completion_tokens が返る
+    verified_at: 2026-10-08
+    chars_per_token_output:
+      p10: 1.087
+      median: 1.2
+      p90: 1.314
+      samples: 63
+      source: phase0_bench/20261009_010339（7 Scene × 3 操作 × 3 回。整形前の字数 ÷ token_ids 数）。全体は p10 1.109 / median 1.223 / p90 1.35（126 件）
+    chars_per_token_input:
+      value: 1.21
+      notes: 段落番号付きの繰り返し文（context-8k / 28k）。本番の本文では変わりうる
+
+  max_output:
+    observed_chars: 1819
+    verified: true
+    source: spike long-output（max_tokens 1500、finish_reason stop。上限には達していない）
+    verified_at: 2026-10-08
+
+  context_limit:
+    tokens: 36864
+    counts: prompt_tokens + max_tokens
+    verified: true
+    source: spike context-28k（入力 27,690 で 200）、context-40k（400「too much context. got 39287 + 16, max is 36864」）。公表の 28,672 + rollover 8,192 と一致。契約情報の perks.contextTokens 8192 は使わない
+    verified_at: 2026-10-08
+
+  rate_limit:
+    concurrency: 1
+    verified: true
+    source: spike parallel-3（3本同時で 1本が 200、2本が 429「Concurrent generation is locked」）。x-ratelimit 系ヘッダはなし。直列で送る
+    verified_at: 2026-10-08
+
+  expand_modes:
+    insertion:
+      supported: true
+      preferred: true
+      method: chat_with_marker
+      verified: true
+      source: expand spike insertion-chat（8 か所すべて 1 文、前後の繰り返しなし、新しい事実は軽微。膨張率 1.28〜1.30 で目標 1.5 より短め）。completions 方式は 16 か所中 3 か所で新しい事実や一人称へのずれ
+      verified_at: 2026-10-08
+    rewrite:
+      supported: true
+      preferred: false
+      verified: true
+      source: expand spike rewrite-chat（台詞保持 1.0、膨張率 1.54〜1.59。小さな新事実「図書委員」「五年前」を足す）。Original Preservation Guard と Validator が前提
+      verified_at: 2026-10-08
+
+# Phase 0 の結論で 3 操作の既定（2026-10-09、Benchmark 確定点と Codex の確認）。Rewrite 系は Phase 3 で決める
+preferred_operations: [continue, directed_continue, expand_insertion]

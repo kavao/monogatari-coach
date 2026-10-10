@@ -1,0 +1,126 @@
+# Validator Fixture（計画書 §55〜57）。形式は tools/ai_writer/validator_fixtures.py を正とする。
+# 重大度: new_* は warning、must_* と end_condition_* は fail。acceptable_extra は、出しても誤検出に数えない副次の違反。
+scene_id: station
+label: 廃駅の探索（台詞なし）
+context:
+  preceding_text: "　駅のホームには誰もいなかった。錆びた時刻表が風に揺れ、最終列車の時刻だけが赤いペンで丸く囲まれている。"
+  known_entities:
+    characters: [悠真, 美緒]
+    locations: [駅のホーム, 線路]
+    items: [時刻表, ベンチ, リボン, 落ち葉]
+  canon_facts:
+    - 悠真は美緒の兄である。
+    - 美緒はあの日の朝、水色のリボンを結んでいた。
+    - この駅は廃駅で、もう列車は来ない。
+contract:
+  objective: 悠真が廃駅のホームを探索する
+  must_include: [古い時刻表, 妹のリボン]
+  must_not: [妹本人との遭遇, 次の駅への移動]
+  end_condition: 妹のリボンを発見した直後
+cases:
+
+  - id: station-neg-01
+    polarity: negative
+    note: 契約どおりの基本形
+    candidate: "悠真は時刻表の前で足を止めた。赤い丸の横には、かすれた字で何かが書き足されているが、もう読めない。ベンチの下に手を伸ばし、湿った落ち葉をかき分けると、指先に布の感触があった。引き出したのは、色の褪せた水色のリボンだった。"
+    expected: {status: pass}
+
+  - id: station-neg-02
+    polarity: negative
+    note: 妹を思い出すだけで、本人とは遭遇しない。思い出の中身は既知の事実だけ
+    candidate: "時刻表の赤い丸を見ていると、あの日の朝の美緒の後ろ姿が浮かんだ。水色のリボンが、歩くたびに揺れていた。悠真は首を振り、ベンチの下を覗き込んだ。落ち葉の間に、水色の布の端が見えた。引き出すと、それは美緒のリボンだった。"
+    expected: {status: pass}
+
+  - id: station-neg-03
+    polarity: negative
+    note: 感覚の描写と、否定形で出る物（軍手）だけ。新しい事実ではない
+    candidate: "風が止むと、ホームは耳鳴りがするほど静かになった。錆びた時刻表の縁から、赤茶けた粉がこぼれ落ちる。悠真は軍手もはめずに、ベンチの下の落ち葉をすくい上げた。冷たく、腐った土の匂いがした。その奥から、水色のリボンが現れた。"
+    expected: {status: pass}
+
+  - id: station-neg-04
+    polarity: negative
+    note: 内面の描写。「誰も来ない」は既知の事実（廃駅）の言い換え
+    candidate: "静けさが、かえって耳に痛かった。悠真は時刻表を見上げ、それから視線を足もとへ落とした。誰も来ないとわかっていても、つい振り返ってしまう。ベンチの下の落ち葉に手を入れ、ゆっくりとかき分けていく。指先が何かに引っかかった。水色のリボンだった。"
+    expected: {status: pass}
+
+  - id: station-pos-new-character
+    polarity: positive
+    candidate: "時刻表を眺めていると、背後で咳払いが聞こえた。振り返ると、制服姿の年老いた駅員が立っていた。「もう列車は来ませんよ」と駅員は言い、ホームの奥へ去っていった。悠真はベンチの下の落ち葉をかき分け、水色のリボンを見つけた。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_character, evidence: 年老いた駅員}
+      acceptable_extra: [new_event]
+
+  - id: station-pos-new-location
+    polarity: positive
+    candidate: "時刻表の赤い丸を確かめてから、悠真は階段を下り、駅舎の裏にある古い倉庫へ入った。棚には錆びた工具が並んでいるだけだった。ホームに戻ってベンチの下の落ち葉をかき分けると、水色のリボンが出てきた。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_location, evidence: 駅舎の裏にある古い倉庫}
+
+  - id: station-pos-new-event
+    polarity: positive
+    candidate: "悠真が時刻表に手を触れた瞬間、ホームの照明が一斉に灯った。誰もいないはずの駅に、発車のベルが鳴り響く。やがて音はやみ、照明も消えた。悠真は震える手でベンチの下の落ち葉をかき分け、水色のリボンを見つけた。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_event, evidence: ホームの照明が一斉に灯った}
+
+  - id: station-pos-new-fact
+    polarity: positive
+    candidate: "時刻表の赤い丸は、美緒が自分で書いたものだった。あの子は毎晩この時刻の列車で、塾から帰っていたのだ。悠真はベンチの下の落ち葉をかき分け、水色のリボンを見つけた。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_fact, evidence: 美緒が自分で書いたものだった}
+
+  - id: station-pos-must-include
+    polarity: positive
+    note: 時刻表が出てこない
+    candidate: "悠真はホームの端まで歩き、線路を見下ろした。枕木の間から草が伸びている。引き返してベンチの下に手を伸ばし、湿った落ち葉をかき分けた。指先が布に触れる。水色のリボンだった。"
+    expected:
+      status: fail
+      violations:
+        - {type: must_include_missing, target: 古い時刻表}
+
+  - id: station-pos-must-not
+    polarity: positive
+    candidate: "時刻表の前で、悠真は息をのんだ。ホームの向こう端に、水色のリボンを結んだ少女が立っている。美緒だった。「お兄ちゃん」と呼ぶ声がして、少女はふっと消えた。ベンチの下の落ち葉の中に、同じ水色のリボンが落ちていた。"
+    expected:
+      status: fail
+      violations:
+        - {type: must_not_violation, target: 妹本人との遭遇, evidence: 美緒だった}
+      acceptable_extra: [new_event]
+
+  - id: station-pos-end-unmet
+    polarity: positive
+    note: リボンを見つけないまま終わる
+    candidate: "悠真は時刻表の前に立ち尽くしていた。赤い丸の意味を考えようとしても、頭がうまく働かない。美緒のリボンを探しに来たはずなのに、足が動かなかった。ベンチに腰を下ろし、膝の上で手を組む。風がまた時刻表を揺らした。"
+    expected:
+      status: fail
+      violations:
+        - {type: end_condition_unmet}
+      acceptable_extra: [must_include_missing]
+
+  - id: station-pos-end-exceeded
+    polarity: positive
+    note: 発見のあとも話が進む
+    candidate: "時刻表を一瞥して、悠真はベンチの下の落ち葉をかき分けた。水色のリボンが出てきた。悠真はリボンをポケットにしまい、改札を抜けて駅を出た。駐車場に停めた車に乗り込み、エンジンをかける。"
+    expected:
+      status: fail
+      violations:
+        - {type: end_condition_exceeded, evidence: 改札を抜けて駅を出た}
+      acceptable_extra: [new_location]
+
+  - id: station-pos-multi
+    polarity: positive
+    note: 新しい人物と、禁止の移動
+    candidate: "時刻表の前に、見知らぬ女が立っていた。「次の駅で、妹さんが待っています」女はそう言うと線路に降り、隣の駅のほうへ歩き出した。悠真も後を追って線路を歩き、隣の駅のホームに上がった。ベンチの下に、水色のリボンが落ちていた。"
+    expected:
+      status: fail
+      violations:
+        - {type: new_character, evidence: 見知らぬ女}
+        - {type: must_not_violation, target: 次の駅への移動, evidence: 隣の駅のホームに上がった}
+      acceptable_extra: [new_location, new_event, new_fact]
