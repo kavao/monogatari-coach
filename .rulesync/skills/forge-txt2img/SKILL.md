@@ -180,7 +180,8 @@ HTTP 429 / 403 / 5xx などで失敗した場合は、**`.rulesync/rules/workflo
 - `.env.example` を `.env` にコピーし、**`NOVELAI_ACCESS_TOKEN`** を記入する。初回セットアップでは `howto_init.py` / `init.bat` が未作成時に自動コピーする。
 - 設定は **`config/image_generation.json`** の `providers.novelai`。既定の通信先は `https://image.novelai.net/ai/generate-image`。
 - 既定モデルは **`nai-diffusion-5-full`**。Curated は `v5-curated`。V4.5 に戻すときは `v4-5-full`。
-- **Vibe Transfer / ポーション**（`reference_image_paths` または `reference_image_multiple`）は V5 未提供。`model` 未指定なら自動で **`nai-diffusion-4-5-full`**（`vibe_model`）。V5 を明示したまま参照を付けるとエラー。
+- キャラタグ一括など通常の txt2img は **Vibe なしの V5**。作品 `_meta.yaml` の `portion_default` は **`none`**。Vibe を付けると V4.5 に落ちる。
+- **Vibe Transfer / ポーション**（`reference_image_paths` または `reference_image_multiple`）は V5 未提供。`model` 未指定なら自動で **`nai-diffusion-4-5-full`**（`vibe_model`）。V5 を明示したまま参照を付けるとエラー。V4.5 画風が要るときだけ `--novelai-portion-id cross_flat`。
 - ページ生成の既定 provider は **`grok_pro` のまま**（NovelAI には切り替えない）。
 - params JSON か CLI で **`provider=novelai`** を選ぶ。
 - 画像設定（steps / guidance / sampler など）の意味は NovelAI 公式ドキュメントの Image Generation 節に揃える。REST の詳細は公開仕様が薄いため、エンドポイントや追加フィールドが変わった場合は **config 側で吸収**する前提で運用する。

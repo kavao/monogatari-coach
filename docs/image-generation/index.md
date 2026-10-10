@@ -122,7 +122,9 @@ NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 
 `tools/image_provider_generate.py` の NovelAI provider は、Vibe Transfer / ポーション用に `reference_image_paths` または `reference_image_multiple` を受け付けます。
 
-Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。通常のコマ生成（参照なし）の既定は `nai-diffusion-5-full` です。
+Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。
+
+キャラタグ一括や通常のコマ生成の標準は **参照なしの `nai-diffusion-5-full`** です。作品 `_meta.yaml` の `portion_default` は `none` にします。フラット画風の Vibe が要るときだけ `--novelai-portion-id cross_flat` を付けます（そのジョブは V4.5 になります）。
 
 - `reference_image_paths`: PNG / JPEG / WEBP / `.naiv4vibe` / `.naiv4vibeBundle` のパス配列。`.naiv4vibe` / `.naiv4vibeBundle` は、ファイル内の `encodings.*.encoding` を優先して NovelAI API へ渡します。画像を含む形式なら画像も読み込みます。
 - `reference_image_multiple`: 画像をbase64化した文字列配列。`data:image/...;base64,` 付きでも受け付けます。
@@ -402,7 +404,7 @@ workflows:
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color
-    novelai_portion_id: cross_flat
+    novelai_portion_id: "none"   # NovelAI V5。Vibe なし
     strength: 1.0
     information_extracted: 1.0
 
@@ -410,8 +412,8 @@ workflows:
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color
-    novelai_portion_id: cross_flat
-    strength: 0.5        # ポーション薄め
+    novelai_portion_id: cross_flat  # V4.5。明示したときだけ
+    strength: 0.5
     information_extracted: 0.5
 ```
 

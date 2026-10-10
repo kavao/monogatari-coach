@@ -3243,7 +3243,9 @@ def main(argv: list[str] | None = None) -> int:
             ("strength", "novelai_reference_strength"),
             ("information_extracted", "novelai_reference_information_extracted"),
             ("provider", "provider"),
+            ("model", "model"),
             ("aspect_ratio", "aspect_ratio"),
+            ("panel_aspect", "panel_aspect"),
         ):
             if getattr(args, attr) is None and wf_key in wf:
                 val = wf[wf_key]

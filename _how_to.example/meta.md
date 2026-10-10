@@ -123,8 +123,8 @@ python tools/novel_scaffold.py novels/NNN_作品名
 # _meta.yaml（抜粋）
 version: 1
 novelai:
-  portion_default: cross_flat
-  portion_fallback: cross_flat
+  portion_default: "none"
+  portion_fallback: "none"
   portions:
     cross_flat:
       path: _how_to/image_refs/novelai/2026-05-17_flat.naiv4vibebundle
@@ -132,7 +132,7 @@ novelai:
       information_extracted: 1.0
 ```
 
-別ポーションを試すとき: `--novelai-portion-id work_manga`。詳細は **`_how_to.example/image_refs/novelai/README.md`**。
+標準のキャラ画像・コマ生成は Vibe なしの NovelAI V5。V4.5 画風が要るときだけ `--novelai-portion-id cross_flat`。詳細は **`_how_to.example/image_refs/novelai/README.md`**。
 
 ## 1. 色モード
 - **作品基準**: （`full_color` / `monochrome` / `limited_color` のいずれかを記載）

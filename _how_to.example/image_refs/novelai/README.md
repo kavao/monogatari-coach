@@ -27,7 +27,7 @@
 | **横断既定** | `_how_to/image_refs/novelai/*.naiv4vibebundle` | 作品をまたいだ標準トーン |
 | **作品ごと** | `novels/<code>_<title>/references/novelai/` | その作品だけ別画風・別 strength |
 
-作品側の定量設定は **`novels/<作品>/_meta.yaml`** の `novelai.portions` に書く（雛形: `_how_to.example/_meta.yaml.example`）。バッチは **CLI 未指定時に自動読込**する。散文メモは `_meta.md` に残してよい。
+作品側の定量設定は **`novels/<作品>/_meta.yaml`** の `novelai.portions` に書く（雛形: `_how_to.example/_meta.yaml.example`）。**既定は `portion_default: none`（NovelAI V5・Vibe なし）**。Vibe を付けると V4.5 に落ちる。バッチは CLI 未指定時に `portion_default` を読む。散文メモは `_meta.md` に残してよい。
 
 ---
 
@@ -93,7 +93,7 @@ python tools/image_provider_novel_manga_batch.py novels/<作品> `
 
 ## 作品 `_meta.yaml` に書く例
 
-`_how_to.example/_meta.yaml.example` を `novels/<作品>/_meta.yaml` にコピーし、`portions` を編集する。`_meta.md` には「`portion_default` は cross_flat」と散文メモだけ足してよい。
+`_how_to.example/_meta.yaml.example` を `novels/<作品>/_meta.yaml` にコピーし、`portions` を編集する。`_meta.md` には「`portion_default` は none（NovelAI V5）」と散文メモだけ足してよい。Vibe が要るときだけ `cross_flat` を指定する。
 
 ---
 
