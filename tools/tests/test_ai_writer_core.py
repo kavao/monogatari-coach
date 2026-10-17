@@ -265,3 +265,13 @@ def test_writer_cli_dry_run_does_not_load_token_or_send(capsys, monkeypatch) -> 
     assert "確認 3 件" in out and out.count("model=glm-4-6（default）") == 3 and "Bearer ***" in out
     assert writer_cli.main(["--scene", "sf", "--op", "directed_continue", "--model", "xialong-v1"]) == 0
     assert "model=xialong-v1（explicit）" in capsys.readouterr().out
+
+
+def test_review_items_are_only_inside_the_kept_text() -> None:
+    """探索 E2: *** のあとが途中で切れると末尾ごと切り落とされる。その *** を要確認に残さない。"""
+    raw = "　雨がやんだ。\n***\n　翌朝、彼女は駅で"
+    result = clean(raw, CleanPolicy(scene_break="review"))
+    assert result.text == "　雨がやんだ。"
+    assert result.review == []
+    kept = clean("　雨がやんだ。\n***\n　翌朝、駅に立った。", CleanPolicy(scene_break="review"))
+    assert [r.reason for r in kept.review] == ["scene_break"]

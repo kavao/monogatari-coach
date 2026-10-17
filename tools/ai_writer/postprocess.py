@@ -126,6 +126,8 @@ def clean(raw: str, policy: CleanPolicy) -> CleanResult:
             end = cut + 1
 
     text = raw[start:end]
+    # 要確認は残した本文の中だけ（切り落とした範囲の *** を残さない。探索 E2 で途中切れの末尾に *** があった）
+    review = [r for r in review if start <= r.start and r.end <= end]
     flags = []
     if "**" in text:
         flags.append("markdown_bold")
