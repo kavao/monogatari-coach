@@ -50,6 +50,16 @@ targets: ["*"]
 
 **本文は提示層**（`concepts.md`「設計層と提示層」）。型名・ジャンル葉の名前・ID や、「ここで第一の転換点が訪れ」のような設計上の位置の実況を本文に書かない。
 
+## 起草の文型（言い換えで床を埋めない）
+
+従来経路の起草、writing_bridge の `marked.md` / `candidate.md`、床不足の足し、`repair` の Deepen に共通する。完了条件にはしない。技法の詳細は `_how_to.example/rewrite.md`（短い文の連打、身体描写）を任意参照する。
+
+- **禁止**: 直前の述語を次の主語にして意味を一周させる（「動く。動いた先に…近い。近いのは…」）。
+- **禁止**: 「AでもBでもない」「〜だけだ」「〜というより」で、いまの行為や距離を説明し直す。
+- **禁止**: 設計書のただし書き（何ではないか、どの呼称でもないか等）を地の文や Beat `intent` に写す。`intent` は動作だけにする。ただし書きは `contract.yaml` の forbidden へ置く。
+- **不足時**: 出来事を増やさず、`character.md` の固定外見・身体から、今の距離で見える点を1つ足す。同一章で同じ点を説明し直さない。数値やカルテ語の連呼はしない。
+- 読点をゲート回避のために地の文から抜かない。合否は句読点ゲートだけを正とする。
+
 **禁止（幻覚完了の防止）**: 契約再読（事前）・正本更新・確認・句読点ゲート・ストーリー反映を満たす前に、執筆・保存の **完了**をユーザーに告げない。
 
 **ツールでリポジトリに書けない環境**（ワークスペース非接続の対話のみ等）では、本文を提示し手動で `_novel_text` へ保存するよう依頼する。その場合、**当リポジトリ上の執筆完了とはみなさない**（「下書きを提示した」にとどめ、必要なら完了条件を明示する）。
@@ -98,7 +108,7 @@ targets: ["*"]
 フラグが両方 OFF のときだけ使う。ON 作品で active run が無いことは、従来経路を選ぶ理由にならない。
 
 1. スキル **`novel-planning`** の「執筆・清書での契約再読」を行う（起草前）。
-2. `_novel_text` を直接更新する（本スキルの書き込み手順）。
+2. `_novel_text` を直接更新する（本スキルの書き込み手順）。文型は上記「起草の文型」に従う。
 3. 確認と句読点ゲートを本スキルどおり行う。
 4. `novel-story-reflection` を行う。
 
@@ -110,7 +120,7 @@ targets: ["*"]
 
 起草候補の raw hash と publish 後のマーカー除去・合成済み正本の raw hash は別版として扱う。完了照合は正本最終版と、それを指す publish / story reflection の記録で行い、候補版との raw hash 一致は要求しない。
 
-- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
+- **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。文型は上記「起草の文型」に従う。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
 - **候補の校正**: bridge経路では `receive` 前に候補へ `grammar --fix-dry-run` を行い、必要な機械修正も候補だけへ適用する。正本 `_novel_text` を直接校正しない。
 - **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。`CHRONOS_NO_SCENE_EVENTS` は対象場面のイベント未登録を示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認し、`success` をイベント検査済みと読まない。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
 - **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
