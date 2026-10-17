@@ -11,13 +11,18 @@ from pydantic import Field
 from metron.analyze import analyze_marked_text
 from metron.classify import load_model_calibration, CalibrationNotReady, classify_metrics
 from metron.contract import load_beat_plan
-from metron.models import Failure, GeneratorInfo
+from metron.length import (
+    LENGTH_TOKEN, LengthConfigError, LengthSpec, assembled_chars, band_state, measured_chars,
+    resolve_bounds,
+)
+from metron.models import Failure, GeneratorInfo, LengthTarget
 from metron.repair import marked_text_for_measurement, _text_by_beat
 from metron.repair_steps import (
     RepairSession, RepairJob, StepModel, begin_repair, next_job, submit_result,
 )
 from metron.storage import atomic_write_text
 
+from . import canon_review
 from . import commands as commands
 from .context_build import collect_input_hashes
 from .errors import BridgeError
@@ -33,7 +38,7 @@ class SkippedJob(StepModel):
     job_hash: str
     prompt_hash: str
     input_hash: str
-    operation: Literal["deepen", "regenerate", "seam"]
+    operation: Literal["deepen", "regenerate", "seam", "tighten"]
     beat_id: str | None = None
     reason: Literal["floor_met", "author_stop"]
     at: str
@@ -59,7 +64,7 @@ class BridgeRepair(StepModel):
     output_path: str | None = None
     output_hash: str | None = None
     output_hashes: list[str] = Field(default_factory=list)
-    intent: Literal["auto", "explicit_deepen"] = "auto"
+    intent: Literal["auto", "explicit_deepen", "length"] = "auto"
     scope: Literal["scene", "beats"] = "scene"
     beat_ids: list[str] = Field(default_factory=list)
     skipped_jobs: list[SkippedJob] = Field(default_factory=list)
@@ -201,13 +206,19 @@ def _journal(dest, request, action, job_id=None, hashes=None, note=None):
 def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
                  model: str, authorization: str, repo_root: Path,
                  intent: str = "auto", scope: str = "scene",
-                 beat_ids: list[str] | None = None) -> tuple[int, str]:
+                 beat_ids: list[str] | None = None,
+                 length_target: LengthTarget | None = None) -> tuple[int, str]:
     root, dest, request = _paths(work_root, scene_id, run_id)
-    if intent not in {"auto", "explicit_deepen"}:
-        raise BridgeError("BAD_ID", "intent must be auto or explicit_deepen")
+    if intent not in {"auto", "explicit_deepen", "length"}:
+        raise BridgeError("BAD_ID", "intent must be auto, explicit_deepen or length")
     if scope not in {"scene", "beats"}:
         raise BridgeError("BAD_ID", "scope must be scene or beats")
-    checked_intent = cast(Literal["auto", "explicit_deepen"], intent)
+    if intent == "length" and (scope != "scene" or beat_ids):
+        raise BridgeError("JOB_CONFLICT",
+                          "length adjustment takes its scope from the length target, not --scope/--beat-ids")
+    if intent != "length" and length_target is not None:
+        raise BridgeError("JOB_CONFLICT", "a length target requires --intent length")
+    checked_intent = cast(Literal["auto", "explicit_deepen", "length"], intent)
     checked_scope = cast(Literal["scene", "beats"], scope)
     raw_ids = list(beat_ids or [])
     if intent == "auto" and raw_ids:
@@ -221,9 +232,11 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         _guard(root, dest, request, state, repo_root)
         plan = load_beat_plan(root / "_metron" / scene_id / "beats.yaml")
         normalized = normalize_beat_ids(plan, raw_ids) if raw_ids else []
+        wanted_length = length_target or (plan.length_target if intent == "length" else None)
+        began_length = state.session.length.target if state.session.length else None
         if (model != state.session.model or authorization != state.authorization
                 or intent != state.intent or scope != state.scope
-                or normalized != state.beat_ids):
+                or normalized != state.beat_ids or wanted_length != began_length):
             raise BridgeError("JOB_CONFLICT", "repair already began with different provenance")
         return 0, f"repair already begun: {dest}"
     if request.flags.metron is not FlagValue.ON:
@@ -259,6 +272,12 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         raise BridgeError("RANGE_MISMATCH", "map valid ordered Beat boundaries before repair")
     floor = plan.generation.chars_floor
     floor_met = analyzed.metrics.metrics.scene.chars >= floor
+    if intent == "length":
+        return _begin_length(root, dest, request, model=model, authorization=authorization,
+                             plan=plan, analyzed=analyzed, required=required, source=source,
+                             marked=marked, context=context, calibration=calibration,
+                             calibration_path=calibration_path, floor_met=floor_met,
+                             length_target=length_target)
     if intent == "auto" and floor_met and not required:
         raise BridgeError(
             "REPAIR_NOT_NEEDED",
@@ -308,6 +327,62 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
     return 0, f"repair begun: {dest}; use repair-next"
 
 
+def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, required,
+                  source, marked, context, calibration, calibration_path, floor_met,
+                  length_target):
+    """規定量調整を始める。出来事を変えない伸縮だけを行い、候補は著者確認を経て採用する。"""
+
+    if length_target and plan.length_target and length_target != plan.length_target:
+        raise BridgeError("JOB_CONFLICT", "the length target differs from beats.yaml length_target")
+    target = length_target or plan.length_target
+    if target is None:
+        raise BridgeError("MISSING_FIELD", "length adjustment needs --target-chars or beats.yaml length_target")
+    try:
+        bounds = resolve_bounds(target, plan)
+    except LengthConfigError as error:
+        raise BridgeError("LENGTH_CONFIG", str(error)) from error
+    if required:
+        raise BridgeError("JOB_CONFLICT",
+                          "resolve required repairs before length adjustment: " + ", ".join(required))
+    texts = _text_by_beat(analyzed.clean_text, plan, analyzed.spans)
+    if band_state(measured_chars(target, plan, texts), bounds) == "in_band" and floor_met:
+        raise BridgeError("REPAIR_NOT_NEEDED", "already within the length band and the floor",
+                          exit_code=1)
+    events = canon_review.scene_events(root, request)
+    precheck_note = canon_review.require_precheck(dest, source=source, events=events)
+    prefix = marked[:marked.index(f"<!--beat:{plan.beats[0].id}-->")]
+    closing = f"<!--/beat:{plan.beats[-1].id}-->"
+    suffix = marked[marked.rindex(closing) + len(closing):]
+    contract = (root / "_metron" / request.scene_id / "contract.yaml").read_text(encoding="utf-8")
+    full_context = ("共通執筆文脈（未知状態を補完しない）:\n" +
+                    context.model_dump_json(by_alias=True, indent=2) +
+                    "\n場面契約:\n" + contract + "\n調整前の本文（既出事実の基準）:\n" + marked)
+    try:
+        session = begin_repair(analyzed.metrics, plan, calibration,
+            clean_text=analyzed.clean_text, spans=analyzed.spans, model=model,
+            context=full_context, seam_enabled=False,
+            length=LengthSpec(target=target, known_facts=canon_review.known_facts_text(events)))
+    except (LengthConfigError, ValueError) as error:
+        raise BridgeError("MODEL_UNCALIBRATED", str(error)) from error
+    state = BridgeRepair(session=session, request_hash=raw_sha256(dest / "request.yaml"),
+        input_hashes=_hashes(root, request), calibration_hash=raw_sha256(calibration_path),
+        authorization=authorization, source_path=source.relative_to(root).as_posix(),
+        source_hash=raw_sha256(source), source_marked=marked, prefix=prefix, suffix=suffix,
+        intent="length", notes=[precheck_note])
+    _save(dest, state)
+    _journal(dest, request, JournalAction.REPAIR_BEGIN, note="length")
+    return 0, (f"length adjustment begun: {dest}; band {bounds.effective_lower}-{bounds.upper_chars}; "
+               f"{precheck_note}; use repair-next")
+
+
+def _length_known_text(root, state, events):
+    character = root / "character.md"
+    parts = [state.source_marked, canon_review.known_facts_text(events)]
+    if character.is_file():
+        parts.append(character.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
 def _advance(dest, state):
     try:
         result = next_job(state.session)
@@ -335,11 +410,11 @@ def _advance(dest, state):
             extra = "REQUIRED_UNREPAIRABLE: " + ", ".join(required)
             state.notes = [*(result.notes or []), extra]
         else:
-            state.status = (
-                "escalated" if SCENE_FLOOR_TOKEN in result.escalated_beats else "completed"
-            )
+            stopped = {SCENE_FLOOR_TOKEN, LENGTH_TOKEN} & set(result.escalated_beats)
+            state.status = "escalated" if stopped else "completed"
             if result.notes:
-                state.notes = list(result.notes)
+                kept = [note for note in state.notes if note.startswith("CANON_PRECHECK")]
+                state.notes = [*kept, *result.notes]
     _save(dest, state)  # Reservation is durable BEFORE returning the prompt.
     if isinstance(result, RepairJob):
         jobs = dest / "jobs"
@@ -438,7 +513,8 @@ def repair_next(work_root: Path, *, scene_id: str, run_id: str,
 def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
                   job_id: str, model: str, candidate: Path | None,
                   error: str | None, review: str, repo_root: Path,
-                  observations_path: Path | None = None) -> tuple[int, str]:
+                  observations_path: Path | None = None,
+                  canon_authorization: str | None = None) -> tuple[int, str]:
     root, dest, request = _paths(work_root, scene_id, run_id)
     state = read_state(dest / "repair_state.json")
     _guard(root, dest, request, state, repo_root)
@@ -447,6 +523,25 @@ def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
     if candidate is not None and not candidate.is_file():
         raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
     text = candidate.read_text(encoding="utf-8") if candidate else ""
+    pending = state.session.pending
+    # 提出済みのジョブの再送は submit_result の同一結果判定に任せる（応答喪失からの復旧）。
+    resent = any(item.job.job_id == job_id for item in state.session.history)
+    if state.intent == "length" and candidate is not None and not resent:
+        # 機械検査では出来事の追加・変更・欠落を確定できないため、著者確認を採用条件にする。
+        if review == "confirmed" and not (canon_authorization and canon_authorization.strip()):
+            raise BridgeError(
+                "MISSING_FIELD",
+                "length adjustment needs the author's fact confirmation (--canon-authorization)")
+        if pending is None or pending.job_id != job_id or not pending.beat_id:
+            raise BridgeError("JOB_CONFLICT", "result requires the matching pending job")
+        events = canon_review.scene_events(root, request)
+        # 結果より先に記録する。記録は同一内容なら冪等なので、途中で止まっても再送できる。
+        canon_review.record_candidate(
+            dest, job=pending, candidate=text,
+            original=state.session.working_texts[pending.beat_id], review=review,
+            authorization=canon_authorization,
+            known_text=_length_known_text(root, state, events),
+            names=canon_review.event_names(events))
     try:
         submit_result(state.session, job_id=job_id, model=model, candidate=text,
                       error=error,
@@ -550,7 +645,21 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
             metrics_source_raw_sha256=metrics_hash))
         state.session.pending = None
     state.stop_reason = stop_reason
-    state.status = "escalated" if (unrepairable or not floor_met) else "completed"
+    length_met = True
+    if state.session.length is not None:
+        # 規定量調整は床に加えて許容帯にも入っていなければ完了にしない。
+        target = state.session.length.target
+        bounds = resolve_bounds(target, plan)
+        texts = _text_by_beat(analyzed.clean_text, plan, analyzed.spans)
+        chars = measured_chars(target, plan, texts)
+        length_met = (band_state(chars, bounds) == "in_band"
+                      and assembled_chars(plan, texts) >= bounds.scene_floor)
+        if not length_met:
+            state.notes = [*state.notes,
+                           f"LENGTH_NOT_IN_BAND: stopped at {chars} chars "
+                           f"({bounds.effective_lower}-{bounds.upper_chars})"]
+    state.status = ("escalated" if (unrepairable or not floor_met or not length_met)
+                    else "completed")
     _save(dest, state)
     code, message = _export(root, dest, request, state, repo_root)
     source, _, _ = commands._resolve_inspect_edition(root, request, dest, None)
@@ -571,3 +680,46 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
                  state.skipped_jobs[-1].job_id if state.skipped_jobs else None),
              hashes=hashes, note=reason)
     return code, f"repair {state.status} ({reason}); {message}"
+
+
+@locked_scene
+def canon_precheck(work_root: Path, *, scene_id: str, run_id: str,
+                   result: str | None = None,
+                   authorization: str | None = None) -> tuple[int, str]:
+    """規定量調整の開始前照合。引数なしは材料の表示だけ、--result で著者の返答を記録する。"""
+    root, dest, request = _paths(work_root, scene_id, run_id)
+    commands._assert_base_text_current(root, request)
+    source, _, _ = commands._resolve_inspect_edition(root, request, dest, None)
+    events = canon_review.scene_events(root, request)
+    if not events:
+        return 0, ("CANON_PRECHECK_SKIPPED: no CHRONOS events for this scene; "
+                   "the pre-adjustment text is canon and no pre-check is needed")
+    if result is None:
+        if authorization is not None:
+            raise BridgeError("MISSING_FIELD", "--authorization requires --result")
+        return 0, canon_review.precheck_view(source, events)
+    check = canon_review.record_precheck(dest, source=source, events=events, result=result,
+                                         authorization=authorization or "")
+    return 0, f"canon pre-check recorded ({check.result}): {dest / canon_review.FILE_NAME}"
+
+
+@locked_scene
+def length_review(work_root: Path, *, scene_id: str, run_id: str, job_id: str,
+                  candidate: Path, repo_root: Path) -> tuple[int, str]:
+    """保留中の規定量調整ジョブに対する候補の確認材料を出す（何も書かない）。"""
+    root, dest, request = _paths(work_root, scene_id, run_id)
+    state = read_state(dest / "repair_state.json")
+    _guard(root, dest, request, state, repo_root)
+    if state.intent != "length":
+        raise BridgeError("JOB_CONFLICT", "length-review is only for --intent length runs")
+    pending = state.session.pending
+    if pending is None or pending.job_id != job_id or not pending.beat_id:
+        raise BridgeError("JOB_CONFLICT", "length-review requires the matching pending job")
+    if not candidate.is_file():
+        raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
+    events = canon_review.scene_events(root, request)
+    view = canon_review.review_view(
+        state.session.working_texts[pending.beat_id], candidate.read_text(encoding="utf-8"),
+        known_text=_length_known_text(root, state, events),
+        names=canon_review.event_names(events))
+    return 0, view
