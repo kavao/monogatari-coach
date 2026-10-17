@@ -347,7 +347,7 @@ python tools/novel_char_count.py novels/NNN_作品名
 5. 許容帯に入ったら止める。届かない場合は不足・超過の字数と区間を報告して止め、出来事を足す加筆（または削る改稿）を提案する。提案を承認したときだけ、その作業へ進む
 6. 採用した本文を保存する。METRON / CHRONOS が OFF の作品は、旧版を `_novel_text_backup/` へ退避してから `_novel_text/` を直接更新する。ON の作品は、writing_bridge の `refine` run で確認済みの候補を検査し、`publish` で反映する（直接は書き換えない）
 
-技法の基準は `_how_to.example/length_ops.md`、出来事を足して増やす技法は `_how_to.example/episode/general/episode_sub_episode.md` です。METRON による許容帯の自動判定はまだありません。
+技法の基準は `_how_to.example/length_ops.md`、出来事を足して増やす技法は `_how_to.example/episode/general/episode_sub_episode.md` です。METRON / CHRONOS が ON の作品では、この流れを writing_bridge の規定量調整（`repair-begin --intent length`）で進めます。操作の確認先は [Writing bridge の規定量調整](../architecture/writing-bridge.md#規定量調整既にある本文を目標字数に合わせる) です。
 
 ---
 

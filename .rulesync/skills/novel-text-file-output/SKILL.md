@@ -157,10 +157,10 @@ targets: ["*"]
 5. **止める**: 許容帯に入り床にも届いたら止める。上限回数に達した、または解像度展開・収束で届かないときは、不足・超過の字数と区間を報告して止める。増量で届かないときは、出来事を足す加筆工程（`_how_to.example/episode/general/episode_sub_episode.md`）を、減量で届かないときは出来事を削る改稿工程を提案し、ユーザー承認があるまで行わない。
 6. **保存**: 経路は作品フラグで一つにする（清書の直接更新の例外には含めない）。
    - **両方 OFF**: 採用した本文は `_novel_text_backup/` へ旧版を退避してから正本を直接更新し、確認・ストーリー反映まで行う（`novel-refinement-output` の手順4・6〜9）。
-   - **両方 ON**: 場面作業として writing_bridge で反映する。`prepare --request-kind refine --selector-kind heading --allow-publish` の run を作り、手順4で著者が確認した候補だけを `receive` → `inspect` → `publish --dry-run` → `publish` する（旧版退避は `publish` が行う）。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。`inspect` の分量判定は床だけで、許容帯は手順5で確かめる。
+   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` → （イベントがある場面は）`canon-precheck` を表示して著者に照合を求め、返答を `--result` と `--authorization` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `length-review` を著者に見せる → 確認が得られた候補だけ `repair-submit --review confirmed --canon-authorization "<著者の確認の出典>"`（得られなければ `--review rejected`）。`completed` で保存用の `--allow-publish` 新 run へ採用稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
    - **食い違い**: 設定エラーとして報告し、調整を始めない。
 
-METRON の許容帯判定・引き締めジョブ・候補確認の記録は未実装である（`_workingspace/plans/20261017_length-ops-intake.md` Phase 2）。それまでは本節の手順を手作業で行い、writing_bridge の `repair-*` に許容帯を期待しない。
+METRON の規定量調整が行うのは、出来事を変えない増量（`deepen`）と引き締め（`tighten`）だけである。子エピソードの収束（減量の OP-C）と、意味の照合の自動化（CANON 検査）はまだ無い（`_workingspace/plans/20261017_length-ops-intake.md` Phase 3）。減量が引き締めで届かないときは `LENGTH_ESCALATE_REVISE` で止まるので、収束は手作業で提案する。
 
 ## 執筆モデルが Grok / xAI 系のとき
 

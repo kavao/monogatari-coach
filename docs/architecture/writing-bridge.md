@@ -157,6 +157,41 @@ flowchart TD
 
 途中で失敗したときは候補と旧稿を残します。同じ `--authorization` で再開すると、本文が書けていれば検査から続け、二重退避しません。`publish_state.json` を書いたあとで正本が外部作成・削除・改変された場合は上書きせず `STALE_EVIDENCE` です。反映後に正本が変わっても同様です。修復が active のままでは publish できません。publish を始めた run へ別候補を `receive` することはできず、新しい run が必要です。`inspect --marked` は受領済み候補と同じ内容のパスだけを測ります。別内容を指定すると `STALE_EVIDENCE` です。
 
+## 規定量調整（既にある本文を目標字数に合わせる）
+
+METRON / CHRONOS が ON の作品で、既にある本文を目標字数へ伸縮するときの経路です。チャットでは次の一言で動きます。
+
+```text
+第3章を4000字に合わせてください。
+```
+
+Monogatari Coach は次の順に進めます。
+
+1. `prepare --request-kind refine` の run で今の本文を `receive` → `inspect` する。
+2. 当該場面に CHRONOS イベントがあれば、`canon-precheck` でイベント一覧と本文を並べて示し、食い違いが無いかをユーザーに確かめる。返答を run の `canon_review.json` に記録する。イベントが無い場面では照合を省き、調整前の本文をそのまま基準にする。
+3. `repair-begin --intent length` で許容帯（既定は目標の ±3%）を決める。許容帯の上限が場面の下限（床）より小さい指定は `LENGTH_CONFIG` で止まる。すでに許容帯に入っていれば `REPAIR_NOT_NEEDED` で止まる。
+4. `repair-next` が出す1件ずつのジョブに候補を作る。足りないときは増量（`deepen`）、超えているときは引き締め（`tighten`）だけを出し、増量と減量を往復しない。増量で上限を超えたときに限り、引き締めで戻す。
+5. 候補ごとに `length-review` で「元文に無い文」「消えた・書き換わった元文」と、補助の印（本文や設定に無い語、消えた名前）をユーザーに見せる。出来事の追加・変更・欠落が無いと確認できた候補だけを `repair-submit --review confirmed --canon-authorization` で採用する。確認が無い候補は採用しない。
+6. 許容帯に入れば `repair: completed` になり、保存用の新しい run で `publish` する。試行回数の上限（既定3回。却下した候補も数える）に達したときや、届かないときは `repair: escalated` で止まり、不足・超過の字数を `LENGTH_MAX_PASSES` / `LENGTH_ESCALATE_ADD`（出来事を足す加筆の提案）/ `LENGTH_ESCALATE_REVISE`（畳む・削る改稿の提案）として報告する。加筆・改稿は承認を得てから別の作業として行う。`repair-finish` で途中で止めた場合も、許容帯に入っていなければ `escalated` になる。
+
+字数は Beat 本文の合計で数えます（Beat の外にある章見出しなどは含みません）。ユーザーが確認できるのは、run の `repair_state.json`（状態と報告）、`canon_review.json`（照合と候補ごとの確認の記録）、`jobs/` のジョブです。
+
+```powershell
+# イベントがある場面: 照合の材料を表示する（何も書かない）
+uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001
+# ユーザーの返答を記録する（食い違いがあれば --result conflict）
+uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --result no_conflict --authorization "著者: 本文とイベントに矛盾なし"
+# 規定量調整を始める（--tolerance 0.97,1.03 / --length-scope beat --length-beat-id ID / --max-passes 3 は任意）
+uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --model MODEL_ID --authorization "ユーザー依頼: 第3章を4000字に" --intent length --target-chars 4000 --repo-root .
+uv run python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --repo-root .
+# 候補をユーザーに見せる（何も書かない）
+uv run python tools/writing_bridge_cli.py length-review novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --repo-root .
+# 確認が取れた候補だけ採用する（取れなければ --review rejected）
+uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --model MODEL_ID --candidate path/to/candidate.md --review confirmed --canon-authorization "著者: 出来事の追加・変更・欠落なし" --repo-root .
+```
+
+目標字数は beats.yaml の `length_target`（`target_chars` / `tolerance` / `scope` / `beat_id` / `max_passes`）にも書けます。CLI の指定と食い違うときは `JOB_CONFLICT` です。章単位の指定は受け付けないので、場面ごとに調整します。子エピソードを要約へ畳む減量と、意味の照合の自動化はまだありません。技法の基準は `_how_to.example/length_ops.md` です。
+
 ## OFF で下書きし、あとで ON にして洗練する
 
 このガイドの手順は、METRON と CHRONOS が ON の作品で使います。新規作品は標準で OFF なので、まず OFF のまま下書きし、書き終えた章から ON にして洗練できます。従量課金の API を使うクライアント（Cursor で Gemini を使う場合など）で、使う量を抑えるための進め方です。
