@@ -25,6 +25,7 @@
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
    - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
+   - general（子エピソードによる増量。加筆工程で出来事を足して増やすときだけ読む）: [episode/general/episode_sub_episode.md](episode/general/episode_sub_episode.md)
    - general（友人・偽味方・敵対者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
@@ -33,6 +34,8 @@
    - 清書稿は `_novel_text_backup/` に旧版を退避したうえで `_novel_text/` を直接更新する
    - 旧版は `_novel_text_backup/` に **`<元ファイル名>_vNNN.md`** 形式で退避する
    - 清書稿の保存先・バックアップ・`_novel_text` への反映はスキル **novel-refinement-output**（`.rulesync/skills/novel-refinement-output/SKILL.md`）と **`.rulesync/rules/overview.md` §2.5** を参照
+5.1. length_ops.md
+   - 文章の伸縮操作規定。清書・規定量調整（目標字数への伸縮）・加筆／改稿工程へのエスカレーションのときだけ読む。出来事（CANON）を変えない操作と、加筆・改稿工程に属する操作の境界、検査と停止条件
 6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する

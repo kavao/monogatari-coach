@@ -25,6 +25,7 @@ general の設計技法（抽選 JSON の対象外）:
 - [部活ラブコメ構成（CLUBROM）](general/episode_club_romcom.md)
 - [大学サークルラブコメ類型（CIRCLEROM）](general/episode_circle_romcom.md)
 - [人の心を震わせるもの／揺らぎと作者性の設計（FLUCTUATION）](general/episode_fluctuation.md)
+- [子エピソードによる増量](general/episode_sub_episode.md)（加筆工程で出来事を足して分量を増やすときだけ読む。清書・規定量調整では使わない）
 
 初回セットアップ例:
 
