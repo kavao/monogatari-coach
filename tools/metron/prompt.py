@@ -31,8 +31,12 @@ def build_beat_prompt(
     beat: Beat,
     *,
     previous_context: str | None = None,
+    include_new_facts: bool = True,
 ) -> str:
-    """Beatの意図・構造予算・分量下限を含む Writer 向け指示を作る。"""
+    """Beatの意図・構造予算・分量下限を含む Writer 向け指示を作る。
+
+    Deepen は出来事を足さない操作なので ``include_new_facts=False`` で新規事実の指示を出さない。
+    """
 
     budget = to_prompt_budget(beat.budget)
     lines = [
@@ -46,11 +50,11 @@ def build_beat_prompt(
         f"内面描写: 少なくとも {budget.interiority} 箇所",
         f"本文下限: {budget.chars_floor}字（検査の床。これ未満は不足）",
         f"指示目標: {budget.chars_instruction}字（下限以上に書く。控えめで足りなくなるため）",
-        "水増し禁止。出来事を増やさず、手順・制度・選択に加え、感情の変化と身体の変化、感覚・内面・会話を、すでに書いた内容の言い換えではなく固有の情報で深めて下限に届ける。",
+        "水増し禁止。計画にない出来事・選択を足さず、既にある出来事の解像度（動作の分解・感覚・心理の迷いと判断・相手の反応・その人物らしい癖）と、感情の変化と身体の変化、会話を、すでに書いた内容の言い換えではなく固有の情報で深めて下限に届ける。",
         "Beatの冒頭で状況を再説明せず、直前の文脈から続ける。",
         "指定した出来事と結末を変更しない。",
     ]
-    if budget.new_facts > 0:
+    if include_new_facts and budget.new_facts > 0:
         lines.extend(
             [
                 f"新規事実を {budget.new_facts} 件導入する。意図した新規事実ごとに、本文中へ <!--fact:<id>--> を1つ置く。",

@@ -20,6 +20,9 @@ from .repair import (
     run_marked_seam_correction, strip_generation_markers, current_beat_chars,
 )
 from .markers import parse_markers
+from .length import (
+    LengthSpec, length_adjust_impl, resolve_bounds, tighten_min_chars, validate_tightening,
+)
 
 
 def digest(text: str) -> str:
@@ -32,7 +35,7 @@ class StepModel(BaseModel):
 
 class RepairJob(StepModel):
     job_id: str
-    operation: Literal["deepen", "regenerate", "seam"]
+    operation: Literal["deepen", "regenerate", "seam", "tighten"]
     beat_id: str | None
     attempt: int
     model: str
@@ -65,6 +68,7 @@ class RepairSession(StepModel):
     force_deepen_ids: list[str] = Field(default_factory=list)
     force_ending_rush: bool = False
     restrict_beat_ids: list[str] = Field(default_factory=list)
+    length: LengthSpec | None = None
     history: list[SubmittedResult] = Field(default_factory=list)
     pending: RepairJob | None = None
     working_texts: dict[str, str] = Field(default_factory=dict)
@@ -80,11 +84,15 @@ def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                  deepen_enabled: bool = True, regenerate_enabled: bool = True,
                  force_deepen_ids: list[str] | None = None,
                  force_ending_rush: bool = False,
-                 restrict_beat_ids: list[str] | None = None) -> RepairSession:
+                 restrict_beat_ids: list[str] | None = None,
+                 length: LengthSpec | None = None) -> RepairSession:
     require_calibration(calibration)
     if not model:
         raise ValueError("generation model is required")
+    if length is not None:
+        resolve_bounds(length.target, beat_plan)
     return RepairSession(metrics=metrics, beat_plan=beat_plan, calibration=calibration,
+                         length=length,
                          clean_text=clean_text, spans=spans, model=model,
                          context=context, seam_enabled=seam_enabled,
                          deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled,
@@ -101,7 +109,7 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
         nonlocal index
         key = (operation, beat_id)
         attempts[key] = attempts.get(key, 0) + 1
-        limit = 2 if operation == "deepen" else 1
+        limit = 2 if operation in {"deepen", "tighten"} else 1
         if attempts[key] > limit:
             raise ValueError("repair attempt limit exceeded")
         current = json.dumps(state.working_texts, ensure_ascii=False, sort_keys=True)
@@ -123,18 +131,26 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
     # These callbacks are capability flags only; dispatch handles every call.
     callback = lambda prompt: ""
     try:
-        result = _repair_scene_impl(
-            state.metrics, state.beat_plan, state.calibration,
-            clean_text=state.clean_text, spans=state.spans,
-            expander=callback if state.deepen_enabled else None,
-            regenerator=callback if state.regenerate_enabled else None,
-            seam_corrector=callback if state.seam_enabled else None,
-            dispatch=dispatch,
-            checkpoint=lambda texts: setattr(state, "working_texts", texts),
-            force_deepen_ids=state.force_deepen_ids,
-            force_ending_rush=state.force_ending_rush,
-            restrict_beat_ids=state.restrict_beat_ids,
-        )
+        if state.length is not None:
+            result = length_adjust_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans, length=state.length,
+                dispatch=dispatch,
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+            )
+        else:
+            result = _repair_scene_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans,
+                expander=callback if state.deepen_enabled else None,
+                regenerator=callback if state.regenerate_enabled else None,
+                seam_corrector=callback if state.seam_enabled else None,
+                dispatch=dispatch,
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+                force_deepen_ids=state.force_deepen_ids,
+                force_ending_rush=state.force_ending_rush,
+                restrict_beat_ids=state.restrict_beat_ids,
+            )
     except _AwaitJob as waiting:
         return waiting.job
     if index != len(state.history):
@@ -192,6 +208,17 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
                 retention_threshold=_retention_threshold(state.calibration))
             if not check.accepted:
                 rejection = check.reason
+        elif job.operation == "tighten":
+            if state.length is None:
+                rejection = "tighten requires a length adjustment session"
+            else:
+                bounds = resolve_bounds(state.length.target, state.beat_plan)
+                minimum = tighten_min_chars(beat_id, state.beat_plan, state.working_texts,
+                                            state.length.target, bounds)
+                check = validate_tightening(state.working_texts[beat_id],
+                    strip_generation_markers(candidate), min_chars=minimum)
+                if not check.accepted:
+                    rejection = check.reason
         elif job.operation == "seam":
             check = run_marked_seam_correction(state.beat_plan, state.working_texts,
                                                lambda prompt: candidate)

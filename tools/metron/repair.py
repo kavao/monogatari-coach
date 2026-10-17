@@ -68,7 +68,7 @@ def build_expand_prompt(beat: Beat, current_text: str) -> str:
     dlg_low, dlg_high = beat.budget.dialogue_turns
     observed_para, observed_dlg = _axis_observed(current_text)
     return (
-        build_beat_prompt(beat)
+        build_beat_prompt(beat, include_new_facts=False)
         + "\n現在の Beat 本文:\n"
         + current_text
         + "\n\nDeepen 指示:\n"
@@ -77,7 +77,9 @@ def build_expand_prompt(beat: Beat, current_text: str) -> str:
         + f"段落の残余裕 {_axis_room_label(observed_para, (para_low, para_high))}、"
         + f"会話の残余裕 {_axis_room_label(observed_dlg, (dlg_low, dlg_high))}。"
         + "現在の出来事・結末・視点を変更せず、現在の本文を残したまま、"
-        + "不足している手順・制度・選択、感情の変化と身体の変化、感覚・内面・会話を、言い換えではなく固有の情報で深めて下限を超えること。"
+        + "既にある出来事の解像度（動作の分解・感覚・心理の迷いと判断・相手の反応・その人物らしい癖、本文に既にある過去と因果）と、"
+        + "感情の変化と身体の変化、会話を、言い換えではなく固有の情報で深めて下限を超えること。"
+        + "新しい出来事・人物・過去・選択・所持品・事実は足さない。"
         + "字数だけを同一段落へ足しても、段落数・会話往復の不足は解消しない。"
         + "段落が下限未満なら空行で段落を増やし、会話往復が下限未満なら往復を足す。"
         + "同じ内容の反復や埋草は禁止。書き直し、要約、既存文の削除は禁止する。"
