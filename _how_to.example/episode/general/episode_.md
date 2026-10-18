@@ -24,7 +24,7 @@
 | Q | [episode_club_romcom.md](episode_club_romcom.md) | 部活ラブコメ構成・CLUBROM（接触・期限・役割反転・借り物の親密さ） |
 | R | [episode_circle_romcom.md](episode_circle_romcom.md) | 大学サークルラブコメ・CIRCLEROM（口実の一生・離脱L・活動の外縁） |
 | S | [episode_fluctuation.md](episode_fluctuation.md) | 揺らぎと作者性の設計・FLUCTUATION（予測との差・注意の痕跡・選択） |
-| T | [episode_sub_episode.md](episode_sub_episode.md) | 子エピソードによる増量（演算子 INTERRUPT〜BREATHE・親への接続・禁止パターン・不足率）。加筆工程で出来事を足して増やすときだけ読む |
+| T | [episode_sub_episode.md](episode_sub_episode.md) | 子エピソードによる増量（演算子 INTERRUPT〜BREATHE・親への接続・禁止パターン・不足率）。加筆工程で出来事を足して増やすときだけ読む。削減上限到達後の追加削減分も含む |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 
