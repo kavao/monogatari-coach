@@ -11,15 +11,19 @@ from .locate import locate_quote_run
 from .publish import publish
 from .repair import (
     canon_check, canon_precheck, length_review, repair_begin, repair_next, repair_submit,
-    repair_finish,
+    repair_finish, repair_summary,
 )
 from .revise import strip_check, strip_record
 from .errors import BridgeError, ErrorDocument
 from .models import RequestKind, Selector, SelectorKind
+from metron.length import DEFAULT_FINISH_MARGIN, finish_target
 from metron.models import LengthTarget, LengthTolerance
 
 
 def main(argv: list[str] | None = None) -> int:
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
     parser = argparse.ArgumentParser(
         prog="writing-bridge",
         description="Connect METRON/CHRONOS context to a writing run (no provider calls)",
@@ -96,12 +100,19 @@ def main(argv: list[str] | None = None) -> int:
         if name == "repair-begin":
             repair.add_argument("--authorization", required=True,
                                 help="source of the user's scoped repair request")
-            repair.add_argument("--intent", choices=["auto", "explicit_deepen", "length"],
+            repair.add_argument("--intent",
+                                choices=["auto", "explicit_deepen", "length", "contract_fix"],
                                 default="auto")
+            repair.add_argument("--instruction",
+                                help="what the contract fix must change (with --intent contract_fix)")
             repair.add_argument("--scope", choices=["scene", "beats"], default="scene")
             repair.add_argument("--beat-ids", help="comma-separated Beat IDs for explicit_deepen")
             repair.add_argument("--target-chars", type=int,
                                 help="length adjustment target (with --intent length)")
+            repair.add_argument("--finish-target", type=int,
+                                help="finished length after refinement; the adjustment adds a margin")
+            repair.add_argument("--finish-margin", type=float, default=DEFAULT_FINISH_MARGIN,
+                                help="margin for the refinement that follows (default 0.08)")
             repair.add_argument("--tolerance", default="0.97,1.03",
                                 help="lower,upper ratios of the length band")
             repair.add_argument("--length-scope", choices=["scene", "beat"], default="scene")
@@ -132,11 +143,26 @@ def main(argv: list[str] | None = None) -> int:
     pre.add_argument("--scene-id", required=True)
     pre.add_argument("--run-id", required=True)
     pre.add_argument("--result", choices=["no_conflict", "conflict"])
-    pre.add_argument("--authorization", help="source of the author's answer")
+    pre.add_argument("--authorization",
+                     help="source of the author's answer, or the agent's basis with --by agent")
+    pre.add_argument("--by", choices=["author", "agent"], default="author",
+                     help="who compared the events with the text (agent: ask the author only on doubt)")
     pre.add_argument("--check-prompt", action="store_true",
                      help="write a prompt for a separate model check of events vs text")
     pre.add_argument("--check-result", type=Path, help="JSON answer of that check")
     pre.add_argument("--checker-model", help="model that answered the check")
+
+    summ = sub.add_parser("repair-summary",
+                          help="show the main changes once before saving, or record the answer")
+    _add_work(summ)
+    summ.add_argument("--scene-id", required=True)
+    summ.add_argument("--run-id", required=True)
+    summ.add_argument("--accept", action="store_true",
+                      help="record the author's answer to the summary")
+    summ.add_argument("--authorization", help="source of the author's answer")
+    summ.add_argument("--refined", type=Path,
+                      help="the refined draft (with Beat markers) made right after the adjustment")
+    summ.add_argument("--repo-root", type=Path, default=Path.cwd())
 
     chk = sub.add_parser("canon-check",
                          help="write or judge the canon check of a pending length candidate")
@@ -237,6 +263,10 @@ def main(argv: list[str] | None = None) -> int:
                 quote=args.quote,
                 marked_path=args.marked,
             )
+        elif args.command == "repair-summary":
+            code, message = repair_summary(Path(args.work), scene_id=args.scene_id,
+                run_id=args.run_id, repo_root=args.repo_root, accept=args.accept,
+                authorization=args.authorization, refined_path=args.refined)
         elif args.command.startswith("repair-"):
             kwargs = dict(scene_id=args.scene_id, run_id=args.run_id, repo_root=args.repo_root)
             if args.command == "repair-begin":
@@ -245,7 +275,8 @@ def main(argv: list[str] | None = None) -> int:
                     authorization=args.authorization, intent=args.intent,
                     scope=args.scope, beat_ids=beat_ids,
                     length_target=_length_target(args),
-                    check_replaces_author=args.check_replaces_author, **kwargs)
+                    check_replaces_author=args.check_replaces_author,
+                    instruction=args.instruction, **kwargs)
             elif args.command == "repair-next":
                 code, message = repair_next(Path(args.work), **kwargs)
             elif args.command == "repair-finish":
@@ -260,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             code, message = canon_precheck(Path(args.work), scene_id=args.scene_id,
                 run_id=args.run_id, result=args.result, authorization=args.authorization,
                 check_prompt=args.check_prompt, check_result=args.check_result,
-                checker_model=args.checker_model)
+                checker_model=args.checker_model, by=args.by)
         elif args.command == "canon-check":
             code, message = canon_check(Path(args.work), scene_id=args.scene_id,
                 run_id=args.run_id, job_id=args.job_id, candidate=args.candidate,
@@ -293,16 +324,20 @@ def main(argv: list[str] | None = None) -> int:
 
 def _length_target(args: argparse.Namespace) -> LengthTarget | None:
     """--target-chars があるときだけ許容帯を組み立てる（無ければ beats.yaml を使う）。"""
-    if args.target_chars is None:
+    if args.target_chars is not None and args.finish_target is not None:
+        raise BridgeError("JOB_CONFLICT", "use either --target-chars or --finish-target")
+    if args.target_chars is None and args.finish_target is None:
         if args.length_beat_id or args.length_scope != "scene":
             raise BridgeError("MISSING_FIELD", "--length-scope/--length-beat-id need --target-chars")
         return None
     try:
         lower, upper = (float(item) for item in args.tolerance.split(","))
-        return LengthTarget(
-            target_chars=args.target_chars,
-            tolerance=LengthTolerance(lower=lower, upper=upper),
-            scope=args.length_scope, beat_id=args.length_beat_id, max_passes=args.max_passes)
+        fields = dict(tolerance=LengthTolerance(lower=lower, upper=upper),
+                      scope=args.length_scope, beat_id=args.length_beat_id,
+                      max_passes=args.max_passes)
+        if args.finish_target is not None:
+            return finish_target(args.finish_target, margin=args.finish_margin, **fields)
+        return LengthTarget(target_chars=args.target_chars, **fields)
     except ValueError as error:
         raise BridgeError("LENGTH_CONFIG", f"invalid length target: {error}") from error
 

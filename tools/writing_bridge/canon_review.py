@@ -37,7 +37,8 @@ class PreCheck(StepModel):
     authorization: str
     at: str
     # author: 著者が照合した。check: 別の呼び出しの検査で照合した（開始時のオプトインが要る）。
-    source: Literal["author", "check"] = "author"
+    # agent: エージェントが照合した（D15。矛盾の疑いがあるときだけ著者に相談する）。
+    source: Literal["author", "check", "agent"] = "author"
     checker_model: str | None = None
     conflicts: list[str] = Field(default_factory=list)
     input_sha256: str | None = None
@@ -69,11 +70,28 @@ class CandidateReview(StepModel):
     at: str
 
 
+class FinalReview(StepModel):
+    """保存前の1回の確認（D15）。主要な変化の報告に対する著者の返答。"""
+
+    at: str
+    authorization: str
+    status: str
+    output_hash: str | None = None
+    summary_sha256: str
+    # D19・D20: 続けて清書した稿と、増量後からの削減率（既定の余地を見直す材料）。
+    refined_hash: str | None = None
+    refined_chars: int | None = None
+    deepened_chars: int | None = None
+    trim_ratio: float | None = None
+    finish_chars: int | None = None
+
+
 class CanonReview(StepModel):
     version: Literal[1] = 1
     pre_check: PreCheck | None = None
     candidates: list[CandidateReview] = Field(default_factory=list)
     checks: list[CandidateCheck] = Field(default_factory=list)
+    final_review: FinalReview | None = None
 
 
 def _digest(text: str) -> str:
@@ -119,6 +137,18 @@ def load(dest: Path) -> CanonReview:
 
 def save(dest: Path, document: CanonReview) -> None:
     atomic_write_text(dest / FILE_NAME, document.model_dump_json(indent=2) + "\n")
+
+
+def record_final_review(dest: Path, *, authorization: str, status: str,
+                        output_hash: str | None, summary: str, **refined) -> FinalReview:
+    if not authorization.strip():
+        raise BridgeError("MISSING_FIELD", "record the author's answer to the summary")
+    document = load(dest)
+    document.final_review = FinalReview(at=now_iso(), authorization=authorization, status=status,
+                                        output_hash=output_hash, summary_sha256=_digest(summary),
+                                        **refined)
+    save(dest, document)
+    return document.final_review
 
 
 def scene_events(root: Path, request: RequestDocument) -> list[dict]:
@@ -177,16 +207,19 @@ def precheck_view(source: Path, events: list[dict]) -> str:
 
 
 def record_precheck(dest: Path, *, source: Path, events: list[dict], result: str,
-                    authorization: str) -> PreCheck:
+                    authorization: str, by: str = "author") -> PreCheck:
     if result not in {"no_conflict", "conflict"}:
         raise BridgeError("BAD_ID", "result must be no_conflict or conflict")
+    if by not in {"author", "agent"}:
+        raise BridgeError("BAD_ID", "by must be author or agent")
     if not authorization.strip():
-        raise BridgeError("MISSING_FIELD", "record the author's confirmation source")
+        raise BridgeError("MISSING_FIELD", "record the source or basis of the pre-check")
     document = load(dest)
     check = PreCheck(text_sha256=raw_sha256(source), event_ids=[item["id"] for item in events],
                      events_sha256=events_sha256(events),
                      result=result,  # type: ignore[arg-type]
-                     authorization=authorization, at=now_iso())
+                     authorization=authorization, at=now_iso(),
+                     source=by)  # type: ignore[arg-type]
     document.pre_check = check
     save(dest, document)
     return check
@@ -254,7 +287,8 @@ def require_precheck(dest: Path, *, source: Path, events: list[dict],
             "the pre-check was done by a model check; the author must confirm it, "
             "or begin with --check-replaces-author",
         )
-    by = "the author" if check.source == "author" else f"a check by {check.checker_model}"
+    by = {"author": "the author", "agent": "the agent"}.get(
+        check.source, f"a check by {check.checker_model}")
     return f"CANON_PRECHECK_OK: {len(events)} event(s) confirmed by {by}"
 
 
@@ -269,6 +303,8 @@ def review_view(original: str, candidate: str, *, known_text: str,
     lines.extend(f"- {item}" for item in digest.new_sentences or ("なし",))
     lines.extend(["", "## 消えた・書き換わった元文"])
     lines.extend(f"- {item}" for item in digest.removed_sentences or ("なし",))
+    lines.extend(["", "## 順序が変わった文"])
+    lines.extend(f"- {item}" for item in digest.moved_sentences or ("なし",))
     lines.extend(["", "## 印（補助）",
                   "- 本文・設定に無い語: " + ("、".join(digest.new_terms) or "なし"),
                   "- 消えた名前・語: " + ("、".join(digest.removed_terms) or "なし"), ""])

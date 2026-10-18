@@ -123,27 +123,34 @@ def test_precheck_requires_authorization_when_recording(tmp_path):
     assert error.value.code == "MISSING_FIELD"
 
 
-def test_confirmed_candidate_needs_author_fact_confirmation(tmp_path):
+def test_deepen_candidate_is_accepted_by_mechanical_checks_and_recorded(tmp_path):
+    """D14: 増量は機械検査を通れば著者確認なしで採用し、差分は証跡に残す。"""
     work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
     _begin(work, repo, LengthTarget(target_chars=400))
     repair_next(work, repo_root=repo, **SCENE)
     job, candidate = _write_candidate(tmp_path, run)
     _, view = length_review(work, job_id=job.job_id, candidate=candidate, repo_root=repo, **SCENE)
     assert ADDITION in view and "元文に無い文" in view
-    with pytest.raises(BridgeError) as error:
-        repair_submit(work, job_id=job.job_id, model="fixture-writer", candidate=candidate,
-                      error=None, review="confirmed", repo_root=repo, **SCENE)
-    assert error.value.code == "MISSING_FIELD"
-    assert read_state(run / "repair_state.json").session.history == []
+    repair_submit(work, job_id=job.job_id, model="fixture-writer", candidate=candidate,
+                  error=None, review="confirmed", repo_root=repo, **SCENE)
+    record = json.loads((run / "canon_review.json").read_text(encoding="utf-8"))
+    entry = record["candidates"][0]
+    assert entry["job_id"] == job.job_id and entry["review"] == "confirmed"
+    assert entry["authorization"] == "agent:mechanical-checks" and entry["new_sentences"] == 1
+    history = read_state(run / "repair_state.json").session.history
+    assert history[0].rejection is None
+
+
+def test_author_confirmation_is_kept_when_given(tmp_path):
+    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
+    _begin(work, repo, LengthTarget(target_chars=400))
+    repair_next(work, repo_root=repo, **SCENE)
+    job, candidate = _write_candidate(tmp_path, run)
     repair_submit(work, job_id=job.job_id, model="fixture-writer", candidate=candidate,
                   error=None, review="confirmed", repo_root=repo,
                   canon_authorization="著者: 出来事の追加・変更・欠落なし", **SCENE)
     record = json.loads((run / "canon_review.json").read_text(encoding="utf-8"))
-    entry = record["candidates"][0]
-    assert entry["job_id"] == job.job_id and entry["review"] == "confirmed"
-    assert entry["authorization"].startswith("著者") and entry["new_sentences"] == 1
-    history = read_state(run / "repair_state.json").session.history
-    assert history[0].rejection is None
+    assert record["candidates"][0]["authorization"].startswith("著者")
 
 
 def test_rejected_candidate_is_recorded_and_not_adopted(tmp_path):
@@ -165,9 +172,11 @@ def test_rejected_candidate_is_recorded_and_not_adopted(tmp_path):
 
 def test_cli_length_begin_and_review(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
+    # サブプロセスには D21 の停止を外す fixture が効かないので、不足が10%未満になる目標にする。
+    target = int(_beat_chars(work) / 0.94)
     begun = _run_cli("repair-begin", str(work), "--scene-id", "ch01-001", "--run-id", "run-0001",
                      "--model", "fixture-writer", "--authorization", "ユーザー依頼",
-                     "--intent", "length", "--target-chars", "400", "--repo-root", str(repo))
+                     "--intent", "length", "--target-chars", str(target), "--repo-root", str(repo))
     assert begun.returncode == 0, begun.stderr
     bad = _run_cli("repair-begin", str(work), "--scene-id", "ch01-001", "--run-id", "run-0001",
                    "--model", "fixture-writer", "--authorization", "ユーザー依頼",
@@ -228,3 +237,13 @@ def test_resubmitting_the_same_result_is_idempotent(tmp_path):
     with pytest.raises(BridgeError) as error:
         repair_submit(work, **changed)
     assert error.value.code == "JOB_CONFLICT"
+
+
+@pytest.fixture(autouse=True)
+def _before_d21_design_routing(monkeypatch):
+    """このモジュールは、D21（不足10%以上は Deepen せず設計追加へ回す）より前の増量の仕組みを
+    検証する。fixture の本文は目標から大きく不足しているので、D21 の停止だけを外す。
+    D21 の挙動は test_length_phase6.py で既定値のまま確かめる。"""
+    import metron.length
+
+    monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)

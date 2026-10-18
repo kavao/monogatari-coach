@@ -57,6 +57,20 @@ def _deepen_job(tmp_path, work, repo, run, **begin):
     return _write_candidate(tmp_path, run)
 
 
+def _tighten_job(tmp_path, work, repo, run, **begin):
+    """著者確認が残る操作（引き締め）のジョブと、形の検査を通る候補を作る。"""
+    _begin(work, repo, LengthTarget(target_chars=_beat_chars(work) - 20), **begin)
+    repair_next(work, repo_root=repo, **SCENE)
+    state = read_state(run / "repair_state.json")
+    job = state.session.pending
+    assert job.operation == "tighten"
+    lines = state.session.working_texts[job.beat_id].split("\n")
+    padding = next(index for index, line in enumerate(lines) if line.startswith("ああああ"))
+    candidate = tmp_path / "tighten.md"
+    candidate.write_text("\n".join(lines[:padding] + lines[padding + 1:]), encoding="utf-8")
+    return job, candidate
+
+
 def test_canon_check_writes_prompt_then_records_result(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
     job, candidate = _deepen_job(tmp_path, work, repo, run)
@@ -72,16 +86,16 @@ def test_canon_check_writes_prompt_then_records_result(tmp_path):
 
 
 def test_passing_check_replaces_the_author_only_with_opt_in(tmp_path):
-    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
-    job, candidate = _deepen_job(tmp_path, work, repo, run)
+    work, repo, run = _ops_bridge(tmp_path, chars=260, floor=200)
+    job, candidate = _tighten_job(tmp_path, work, repo, run)
     canon_check(work, job_id=job.job_id, candidate=candidate, repo_root=repo,
                 result_path=_issued_candidate_result(tmp_path, work, repo, run, job, candidate, PASSING), checker_model="checker-x", **SCENE)
     with pytest.raises(BridgeError) as error:
         _submit(work, repo, job, candidate, review="confirmed")
     assert error.value.code == "MISSING_FIELD"
 
-    work2, repo2, run2 = _ops_bridge(tmp_path / "opt", chars=220, floor=200)
-    job2, candidate2 = _deepen_job(tmp_path / "opt", work2, repo2, run2, check_replaces_author=True)
+    work2, repo2, run2 = _ops_bridge(tmp_path / "opt", chars=260, floor=200)
+    job2, candidate2 = _tighten_job(tmp_path / "opt", work2, repo2, run2, check_replaces_author=True)
     canon_check(work2, job_id=job2.job_id, candidate=candidate2, repo_root=repo2,
                 result_path=_issued_candidate_result(tmp_path, work2, repo2, run2, job2, candidate2, PASSING), checker_model="checker-x", **SCENE)
     _submit(work2, repo2, job2, candidate2, review="confirmed")
@@ -243,8 +257,8 @@ def test_strip_target_must_be_found_once(tmp_path):
     dict(PASSING, facts_before=[]),
 ])
 def test_incomplete_check_cannot_replace_author(tmp_path, payload):
-    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
-    job, candidate = _deepen_job(tmp_path, work, repo, run, check_replaces_author=True)
+    work, repo, run = _ops_bridge(tmp_path, chars=260, floor=200)
+    job, candidate = _tighten_job(tmp_path, work, repo, run, check_replaces_author=True)
     canon_check(work, job_id=job.job_id, candidate=candidate, repo_root=repo, **SCENE)
     with pytest.raises(BridgeError) as error:
         canon_check(work, job_id=job.job_id, candidate=candidate, repo_root=repo,
@@ -282,8 +296,8 @@ def test_check_result_needs_an_issued_request(tmp_path):
 
 
 def test_check_result_is_stale_after_candidate_changes_and_after_reissue(tmp_path):
-    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
-    job, candidate = _deepen_job(tmp_path, work, repo, run, check_replaces_author=True)
+    work, repo, run = _ops_bridge(tmp_path, chars=260, floor=200)
+    job, candidate = _tighten_job(tmp_path, work, repo, run, check_replaces_author=True)
     result = _issued_candidate_result(tmp_path, work, repo, run, job, candidate, PASSING)
     candidate.write_text(candidate.read_text(encoding="utf-8") + "\n\n　兄は拾った鍵を鞄へ入れた。",
                          encoding="utf-8")
@@ -383,3 +397,13 @@ def test_episode_selection_also_checks_overlapping_protected_contracts(tmp_path)
     _write_episodes(work, [EPISODE, protected])
     code, report = strip_check(work, scene_id="ch01-001", episode_id=EPISODE["id"])
     assert code == 1 and "券売機 → ch02-001" in report
+
+
+@pytest.fixture(autouse=True)
+def _before_d21_design_routing(monkeypatch):
+    """このモジュールは、D21（不足10%以上は Deepen せず設計追加へ回す）より前の増量の仕組みを
+    検証する。fixture の本文は目標から大きく不足しているので、D21 の停止だけを外す。
+    D21 の挙動は test_length_phase6.py で既定値のまま確かめる。"""
+    import metron.length
+
+    monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)
