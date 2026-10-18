@@ -16,9 +16,14 @@ import unicodedata
 
 from novel_char_count import count_chars
 
+from pydantic import Field
+
 from .analyze import analyze_marked_text
 from .calibrate import ModelCalibration
 from .classify import classify_metrics
+from .episodes import (
+    ChildEpisode, EpisodeError, build_condense_prompt, condense_priority, locate_span, splice,
+)
 from .models import Beat, BeatPlan, LengthTarget, MetricsDocument, SpansDocument, StrictModel
 from .prompt import current_beat_chars
 
@@ -43,6 +48,8 @@ class LengthConfigError(ValueError):
 class LengthSpec(StrictModel):
     target: LengthTarget
     known_facts: str = ""
+    # 減量で収束（OP-C）してよい子エピソード。作者が episodes.yaml に登録したものだけ。
+    episodes: list[ChildEpisode] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -330,15 +337,21 @@ def length_adjust_impl(
     def current() -> int:
         return measured_chars(target, beat_plan, texts)
 
-    def run(operation: str, beat: Beat, prompt: str) -> None:
+    def run(operation: str, beat: Beat, prompt: str, episode: ChildEpisode | None = None) -> None:
         nonlocal passes
-        attempts[(operation, beat.id)] = attempts.get((operation, beat.id), 0) + 1
+        key = (operation, episode.id if episode else beat.id)
+        attempts[key] = attempts.get(key, 0) + 1
         passes += 1
         if checkpoint:
             checkpoint(dict(texts))
-        candidate = dispatch(operation, beat.id, prompt)
-        if candidate.strip():
-            texts[beat.id] = strip_generation_markers(candidate)
+        if episode is None:
+            candidate = dispatch(operation, beat.id, prompt)
+        else:
+            candidate = dispatch(operation, beat.id, prompt, episode.id)
+        if not candidate.strip():
+            return
+        cleaned = strip_generation_markers(candidate)
+        texts[beat.id] = splice(texts[beat.id], episode, cleaned) if episode else cleaned
 
     def pick(order: list[Beat], operation: str) -> Beat | None:
         for beat in order:
@@ -346,8 +359,8 @@ def length_adjust_impl(
                 return beat
         return None
 
-    def tighten_until_upper() -> None:
-        while current() > bounds.upper_chars and passes < target.max_passes:
+    def tighten_until_upper(*, reserve: int = 0) -> None:
+        while current() > bounds.upper_chars and passes < target.max_passes - reserve:
             beat = pick(_tighten_order(beat_plan, texts, target), "tighten")
             if beat is None:
                 return
@@ -355,6 +368,30 @@ def length_adjust_impl(
             minimum = tighten_min_chars(beat.id, beat_plan, texts, target, bounds)
             reduce = current() - bounds.upper_chars
             run("tighten", beat, build_tighten_prompt(beat, text, reduce_chars=reduce, min_chars=minimum))
+
+    def condense_until_upper() -> None:
+        # 引き締めで届かないときだけ、登録された子エピソードを要約へ畳む（持ち帰りは残す）。
+        order = sorted(
+            enumerate(length.episodes), key=lambda pair: (condense_priority(pair[1]), pair[0])
+        )
+        for _, episode in order:
+            if current() <= bounds.upper_chars or passes >= target.max_passes:
+                return
+            if target.scope == "beat" and episode.beat_id != target.beat_id:
+                continue
+            if attempts.get(("condense", episode.id)):
+                continue
+            beat = by_id[episode.beat_id]
+            try:
+                start, end = locate_span(texts[beat.id], episode)
+            except EpisodeError as error:
+                notes.append(f"CONDENSE_SKIPPED: {error}")
+                continue
+            span_text = texts[beat.id][start:end]
+            reduce = current() - bounds.upper_chars
+            keep_min = max(1, bounds.effective_lower - (current() - beat_chars(span_text)))
+            run("condense", beat, build_condense_prompt(
+                episode, span_text, reduce_chars=reduce, keep_min_chars=keep_min), episode)
 
     start_state = band_state(current(), bounds)
     if start_state == "short" and not _deepen_order(beat_plan, texts, target):
@@ -378,7 +415,20 @@ def length_adjust_impl(
             # 増量で上限を超えたときに使えるのは引き締めだけ（減量へは転じない）。
             tighten_until_upper()
     elif start_state == "over":
-        tighten_until_upper()
+        reserve = 0
+        if target.max_passes > 1:
+            for episode in length.episodes:
+                if target.scope == "beat" and episode.beat_id != target.beat_id:
+                    continue
+                try:
+                    locate_span(texts[episode.beat_id], episode)
+                except EpisodeError:
+                    continue
+                reserve = 1
+                break
+        # 引き締めを試したあと、登録済みの収束対象に少なくとも1回を残す。
+        tighten_until_upper(reserve=reserve)
+        condense_until_upper()
 
     final = current()
     state = band_state(final, bounds)
@@ -412,7 +462,8 @@ def length_adjust_impl(
         else:
             notes.append(
                 f"LENGTH_ESCALATE_REVISE: over by {gap} chars in {where}; "
-                "propose condensing or the revision step (user approval)"
+                "register child episodes to condense, or propose the revision step "
+                "(OP-S, user approval)"
             )
     if checkpoint:
         checkpoint(dict(texts))

@@ -20,8 +20,10 @@ from .repair import (
     run_marked_seam_correction, strip_generation_markers, current_beat_chars,
 )
 from .markers import parse_markers
+from .episodes import EpisodeError, locate_span, splice, validate_condense
 from .length import (
-    LengthSpec, length_adjust_impl, resolve_bounds, tighten_min_chars, validate_tightening,
+    LengthSpec, assembled_chars, length_adjust_impl, measured_chars, resolve_bounds,
+    tighten_min_chars, validate_tightening,
 )
 
 
@@ -35,8 +37,9 @@ class StepModel(BaseModel):
 
 class RepairJob(StepModel):
     job_id: str
-    operation: Literal["deepen", "regenerate", "seam", "tighten"]
+    operation: Literal["deepen", "regenerate", "seam", "tighten", "condense"]
     beat_id: str | None
+    episode_id: str | None = None
     attempt: int
     model: str
     prompt: str
@@ -105,9 +108,9 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
     index = 0
     attempts: dict[tuple[str, str | None], int] = {}
 
-    def dispatch(operation, beat_id, prompt):
+    def dispatch(operation, beat_id, prompt, episode_id=None):
         nonlocal index
-        key = (operation, beat_id)
+        key = (operation, episode_id or beat_id)
         attempts[key] = attempts.get(key, 0) + 1
         limit = 2 if operation in {"deepen", "tighten"} else 1
         if attempts[key] > limit:
@@ -116,7 +119,8 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
         actual = (state.context + "\n\n修復時の全Beat本文:\n" + current + "\n\n" + prompt
                   if state.context else prompt)
         job = RepairJob(job_id=f"JOB-{index + 1:04d}", operation=operation,
-                        beat_id=beat_id, attempt=attempts[key], model=state.model,
+                        beat_id=beat_id, episode_id=episode_id,
+                        attempt=attempts[key], model=state.model,
                         prompt=actual, prompt_hash=digest(actual),
                         input_hash=digest(state.working_texts[beat_id] if beat_id else current),
                         context_hash=digest(state.context))
@@ -219,6 +223,8 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
                     strip_generation_markers(candidate), min_chars=minimum)
                 if not check.accepted:
                     rejection = check.reason
+        elif job.operation == "condense":
+            rejection = _condense_rejection(state, job, strip_generation_markers(candidate))
         elif job.operation == "seam":
             check = run_marked_seam_correction(state.beat_plan, state.working_texts,
                                                lambda prompt: candidate)
@@ -234,9 +240,36 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
     state.pending = None
 
 
+def _condense_rejection(state: RepairSession, job: RepairJob, candidate: str) -> str | None:
+    """収束候補の形と、畳んだあとも実効の下限と場面の床を割らないことを確かめる。"""
+
+    if state.length is None:
+        return "condense requires a length adjustment session"
+    episode = next((item for item in state.length.episodes if item.id == job.episode_id), None)
+    if episode is None or job.beat_id != episode.beat_id:
+        return "condense job does not match a registered child episode"
+    text = state.working_texts[episode.beat_id]
+    try:
+        start, end = locate_span(text, episode)
+    except EpisodeError as error:
+        return str(error)
+    check = validate_condense(text[start:end], candidate)
+    if not check.accepted:
+        return check.reason
+    texts = dict(state.working_texts)
+    texts[episode.beat_id] = splice(text, episode, candidate)
+    bounds = resolve_bounds(state.length.target, state.beat_plan)
+    if measured_chars(state.length.target, state.beat_plan, texts) < bounds.effective_lower:
+        return "condensing falls below the effective lower bound"
+    if assembled_chars(state.beat_plan, texts) < bounds.scene_floor:
+        return "condensing falls below the scene floor"
+    return None
+
+
 def history_summary(state: RepairSession) -> list[dict]:
     return [{"job_id": item.job.job_id, "operation": item.job.operation,
-             "beat_id": item.job.beat_id, "attempt": item.job.attempt,
+             "beat_id": item.job.beat_id, "episode_id": item.job.episode_id,
+             "attempt": item.job.attempt,
              "model": item.job.model, "prompt_hash": item.job.prompt_hash,
              "candidate_hash": digest(item.candidate), "review": item.review,
              "error": item.error, "rejection": item.rejection} for item in state.history]

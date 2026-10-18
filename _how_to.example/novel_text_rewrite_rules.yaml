@@ -150,6 +150,48 @@ rules:
       - "　　"
     message: "全角スペースが連続しています。段落インデントは全角1字で統一"
 
+  # ── F. 冗長化（OP-P）の候補（length_ops「冗長化の候補抽出」CHK-P1）────────
+  # すべて候補の抽出であり違反の確定ではない（level: info・自動修正なし）。
+  # 修辞的反復・意図的な繰り返し・台詞の口癖は残してよい。default / full には含めない。
+  - id: padding_circumlocution
+    level: info
+    patterns:
+      - "ことができ(た|る|ない|なかった)"
+      - "という(状況|状態|形|こと)に(なった|なる)"
+      - "という行動を"
+      - "を行うことに"
+    message: "迂言の候補（〜することができた／〜という状況になった等）。意味が変わらなければ引き締める"
+
+  - id: padding_meta_preface
+    level: info
+    patterns:
+      - "言うまでもな(く|い)"
+      - "ここで少し説明"
+      - "改めて言うまでもな"
+      - "説明しておくと"
+      - "前置きはさておき"
+    message: "メタ前置きの候補。語り口として意図していなければ削る"
+
+  - id: padding_abstract
+    level: info
+    patterns:
+      - "言葉にできない(ほど|くらい)"
+      - "筆舌に尽くし(がた|難)"
+      - "何とも言えない"
+      - "言い表せない(ほど|くらい)"
+    message: "抽象への逃げの候補。本文に既にある具体（感覚・動作）へ寄せる"
+
+  - id: padding_redundant_modifier
+    level: info
+    patterns:
+      - "まず最初に"
+      - "一番最初"
+      - "非常にとても"
+      - "とても非常に"
+      - "頭痛が痛"
+      - "後で後悔"
+    message: "重複語の候補（まず最初に・非常にとても等）。一語に統合する"
+
   # ── D. 段落インデント（rewrite §1）── stateful ──────────────────────────
   # patterns は空。Python 側の _check_paragraph_indent() が状態付きチェックを行う。
   # 除外条件（Python 実装済み）:
@@ -200,6 +242,14 @@ profiles:
       - empty_dialogue
       - duplicate_particle
       - fullwidth_space_double
+
+  padding:
+    description: "冗長化（OP-P）の候補抽出（CHK-P1）。清書・規定量調整の前に候補を見る。info のみで --strict を落とさない"
+    rules:
+      - padding_circumlocution
+      - padding_meta_preface
+      - padding_abstract
+      - padding_redundant_modifier
 
   minimal:
     description: "章メタ未整備の旧稿向け。句読点のみ確認したいとき（ルール B + C）"
