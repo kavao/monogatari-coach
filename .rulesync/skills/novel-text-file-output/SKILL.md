@@ -50,6 +50,16 @@ targets: ["*"]
 
 **本文は提示層**（`concepts.md`「設計層と提示層」）。型名・ジャンル葉の名前・ID や、「ここで第一の転換点が訪れ」のような設計上の位置の実況を本文に書かない。
 
+## 執筆前の設計密度（分量は出来事の数で用意する）
+
+章を書く前（writing_bridge 経路では `prepare` の前）に、対象章の目標字数と章出来事の件数を見る。基準は `_how_to.example/length_ops.md` §4.7。
+
+1. **目標の取り先**: ユーザーが明示した字数か、`design_specification.md` の章の `**分量目安**：` の書き出しの字数だけ。どちらも無ければ密度は「保留」と報告して書き進めてよい。実測字数や場面の床を章の目標に読み替えない。
+2. **判定**: `uv run python tools/design_density.py <作品フォルダ> --chapter N [--target N]`。1項あたり 500〜800字が推奨帯、1000字超は少なすぎ、300字未満は多すぎ。あわせて各項の親（目的・障害・結果・変化）が薄くないかを人が見る。本文が無い段階では字数の不足率を使わない。
+3. **少なすぎ**: 本文を書かずに、足す子エピソードの案（「誰が何をした」の一文と、状態変化・持ち帰り・局所的効果）を出してユーザーの承認を待つ。承認されたら `design_specification.md` に項目を足し、同じ子エピソードを `_metron/<scene_id>/episodes.yaml` に `span_pending: true` で登録する（本文を書いたあと `span` の引用を補い、`span_pending` を外す）。CHRONOS ON なら当該場面の events を既存の承認手順で足し、METRON ON なら Beat と `chars_hint` を配り直してから書く。技法は `_how_to.example/episode/general/episode_sub_episode.md`。
+4. **多すぎ**: 統合案だけを出して止まる。設計・本文・events を消すのは改稿工程と同じ承認のあと。
+5. 依頼された章だけを判定し、既存作品の設計書を承認なしに増減しない。
+
 ## 起草の文型（言い換えで床を埋めない）
 
 従来経路の起草、writing_bridge の `marked.md` / `candidate.md`、床不足の足し、`repair` の Deepen に共通する。完了条件にはしない。技法の詳細は `_how_to.example/rewrite.md`（短い文の連打、身体描写）を任意参照する。
@@ -123,7 +133,7 @@ targets: ["*"]
 - **起草**: 初稿は `context.md` の指示目標以上を1回で狙う（助言。検査床ではない）。文型は上記「起草の文型」に従う。起草ターンで字数合わせの反復計測をしない。CHRONOS 先行 publish からの METRON リテイクをしない。古い run の `instruction_chars` を現行倍率と見なさない。必要なら新 `prepare`。
 - **候補の校正**: bridge経路では `receive` 前に候補へ `grammar --fix-dry-run` を行い、必要な機械修正も候補だけへ適用する。正本 `_novel_text` を直接校正しない。
 - **検査**: `inspect`（必要なら先に `receive`）。CHRONOS ON は初回 inspect の前に observations を書く（未記録は exit 1）。引用座標は `locate-quote` で下書きし、一意一致だけ使う。重複は推測しない。候補や正本の版がずれたら `STALE_EVIDENCE`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。`status` / `report.md` は required と advisory を分ける。`CHRONOS_NO_SCENE_EVENTS` は対象場面のイベント未登録を示す非ブロッキング警告で、`status` の `chronos_findings` と `report.md` の other で確認し、`success` をイベント検査済みと読まない。「保存へ」は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときだけ。C1 未確認と修復中は案内しない。床到達・必須なしなら `repair-begin` しない。
-- **修復**: 初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
+- **修復**: 自動修復は床に対する不足率を `shortage_log.jsonl` に記録し、10% 以上なら `DESIGN_DENSITY` を notes に残すが止めない（完了報告で不足と設計追加の候補を伝える）。auto の Deepen も JOB ごとに著者へ承認を求めない（機械検査で採用し、保存前に主要な変化を1回報告する）。床に届いたあとの EndingRush は末尾を作り直さず、報告（`ENDING_RUSH_ADVISORY`）に残す。初回 inspect でシーン床到達かつ必須修復なしなら `repair-begin` しない。残る Beat hint / EndingRush は advisory のまま保存へ進む。床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` / `repair-next` / `repair-submit`。`--scope beats` は指定 Beat だけを Deepen する（BeatMissing は範囲外でも必須）。生成打切りなど job を出せない必須は `repair-next` で `escalated` にし、新 `prepare` する。pending を捨てて止めるときは `repair-finish`。job JSON が消えていたら `STALE_EVIDENCE`。全文のやり直しは、begin 前なら同一 run の再 receive、begin 後なら新 `prepare`。`repair-next` / `repair-submit` の前後に receive・inspect を重ねない。この間は正本を触らない。`completed` / `escalated` のあと新しい稿は同じ run へ `receive` せず、新 `prepare` する。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 - **正本反映**: `permissions.publish` がある run だけ `publish --dry-run` のあと `--authorization` 付きで `publish`。起草用 run に後から権限は付かない。ON の場面作業では、修復が terminal で床到達したら同じターンで `--allow-publish` の新 run へ進み、「保存しますか」と再確認しない。止めの明示があるときだけ止める。保存用は `--allow-publish` の新 run で `receive` する。未作成または空の正本は `request_kind=new` に selector を付けない。既存の非空本文だけ heading / scene アンカー / `append`（または `refine`）。見出し stub を先に正本へ置かない。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けない。CHRONOS ON では C1 成功前に正本を書かない。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。`publish --dry-run` が句読点 fail なら本番 `publish` しない。
 - **句読点**: `publish --dry-run` の予検は保存予定の対象ファイル全体。本番後の `report.json` も結合後全文。本スキルで `--gate` を重ねない。
 - **ストーリー反映**: 正本が更新された直後に `novel-story-reflection`。
@@ -150,17 +160,22 @@ targets: ["*"]
 
 ユーザーが既にある本文を目標字数へ合わせるよう指示したときに使う（例:「第3章を4000字に合わせて」）。新規場面の執筆と清書には使わない。原則は `concepts.md`「文章の伸縮」、技法の基準は `_how_to.example/length_ops.md`。
 
-1. **範囲を決める**: 対象（Beat / 場面 / 章）、目標字数、許容帯（既定 ±3%）、試行回数の上限（既定3）を確かめる。床（場面の下限・Beat の下限）がある作品では、許容帯の上限が床を下回る指定を受け付けず、実効の下限は許容帯の下限と床の大きい方にする。現在の字数は `novel_char_count.py` で数える。
-2. **既出事実リスト**: 調整前の本文を基準にする。時系列イベントを登録している場面では、イベント一覧と本文の該当区間を並べて著者に示し、矛盾が無いことの確認を得てから始める。矛盾があれば始めずに著者へ返す。
+1. **範囲を決める**: 対象（Beat / 場面 / 章）、目標字数、許容帯（既定 ±3%）、試行回数の上限（既定3）を確かめる。ユーザーの字数は清書後の仕上がり目標とし、清書で削る分の余地（既定 +8%）を足した字数を増量の目標にする。余地はユーザーに尋ねず、最後の報告で説明する。床（場面の下限・Beat の下限）がある作品では、許容帯の上限が床を下回る指定を受け付けず、実効の下限は許容帯の下限と床の大きい方にする。現在の字数は `novel_char_count.py` で数える。
+1a. **不足率を見る**: 増量の目標 `T`（余地込み）と同じ範囲の字数 `C` から `(T − C) ÷ T` を出す。10% 以上なら解像度展開を始めず、上記「執筆前の設計密度」の手順3と同じく子エピソードの追加を提案して承認を待つ（ON の `repair-begin --intent length` は `DESIGN_DENSITY` で止まり、`_metron/<scene_id>/shortage_log.jsonl` に記録する）。欠落 Beat があるときは止めずに先に埋める。
+2. **既出事実リスト**: 調整前の本文を基準にする。時系列イベントを登録している場面では、エージェントがイベント一覧と本文の該当区間を照合する。著者には尋ねない。矛盾の疑いがあるときだけ、始めずに著者へ相談する。欠落 Beat があっても止めず、調整の中で先に埋める。
 3. **一方向で伸縮する**: 増量は冗長化の除去 → 引き締め → 既出事実の範囲での解像度展開。減量は冗長化の除去 → 引き締め → 子エピソードの収束（持ち帰りのある要素は要約に残す）。往復しない。増量で上限を超えたら引き締めだけで戻す。
-4. **候補ごとの事実確認**: 採用前に、差分と、元文に対応しない新しい文（増量）または消えた・短くなった文（引き締め・収束）を著者に示し、出来事・人物・所持品・情報の授受・関係・心境の変化・過去・因果の追加・変更・欠落が無いことの確認を得る。確認の無い候補は採用しない。却下した候補も試行回数に数える。
+4. **候補の採用**: 増量と欠落 Beat の埋めは、機械検査を通れば採用する。JOB ごとに著者へ「採用／否認」を尋ねない（尋ねるのは作業の本体にならない範囲に限る）。引き締め・収束は、消えた・短くなった文を著者に示し、出来事・人物・所持品・情報の授受・関係・心境の変化・過去・因果の追加・変更・欠落が無いことの確認を得てから採用する。却下した候補も試行回数に数える。
+4b. **続けて清書する**: 増量が終わったら、そのまま `rewrite.md` で清書する（スキル `novel-refinement-output` の手順5。METRON ON では作業稿へ行う）。床を割らないところで削るのをやめる（床はルールで厳守）。仕上がり目標との数%（5%以内）の差は誤差として合わせ直さず、増量へは戻らない。場面単位の反復（`--profile padding` の `padding_repeated_phrase`、または保存前の報告の反復語句の表）を先に見て、要所の1〜2回に絞る。
+4a. **保存前の1回の確認**: 清書まで終わったら、主要な変化（字数の前後、採用した JOB、新しい文と消えた文、補助の印、イベント照合の根拠、場面契約の終了状態と次章の書き出し）を報告し、「この内容で保存してよいか」を1回だけ尋ねる。作業前と保存前の2回は尋ねない。気になる箇所を指摘されたら、その箇所だけを直してから保存する。
 5. **止める**: 許容帯に入り床にも届いたら止める。上限回数に達した、または解像度展開・収束で届かないときは、不足・超過の字数と区間を報告して止める。増量で届かないときは、出来事を足す加筆工程（`_how_to.example/episode/general/episode_sub_episode.md`）を、減量で届かないときは出来事を削る改稿工程を提案し、ユーザー承認があるまで行わない。
 6. **保存**: 経路は作品フラグで一つにする（清書の直接更新の例外には含めない）。
    - **両方 OFF**: 採用した本文は `_novel_text_backup/` へ旧版を退避してから正本を直接更新し、確認・ストーリー反映まで行う（`novel-refinement-output` の手順4・6〜9）。
-   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` → （イベントがある場面は）`canon-precheck` を表示して著者に照合を求め、返答を `--result` と `--authorization` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `length-review` を著者に見せる → 確認が得られた候補だけ `repair-submit --review confirmed --canon-authorization "<著者の確認の出典>"`（得られなければ `--review rejected`）。`completed` で保存用の `--allow-publish` 新 run へ採用稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
+   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` →（イベントがある場面は）`canon-precheck` の材料をエージェントが照合し、`--result no_conflict --by agent --authorization "<照合の根拠>"` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `repair-submit --review confirmed`（増量と欠落 Beat の埋めは機械検査で採用。引き締め・収束は著者の確認を得て `--canon-authorization "<著者の確認の出典>"` を付ける）。`repair-begin` は `--finish-target N`（仕上がり目標。余地 +8% を自動で足す）を使う。`completed` のあと、出力された作業稿（`repair_state.json` の `output_path`。Beat マーカー付き）を写して清書し、`_metron/<scene_id>/refined.<run_id>.md` に置く（マーカーは消さない）。`repair-summary --refined <清書稿>` を著者に見せて1回だけ確認し、返答を `--accept --authorization` で記録する。この1回を保存の確認とし、保存用の `--allow-publish` 新 run へ清書稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
    - **食い違い**: 設定エラーとして報告し、調整を始めない。
 
-METRON の規定量調整が行うのは、出来事を変えない増量（`deepen`）・引き締め（`tighten`）・収束（`condense`）だけである。
+METRON の規定量調整が行うのは、欠落 Beat の埋め（`regenerate`）と、出来事を変えない増量（`deepen`）・引き締め（`tighten`）・収束（`condense`）だけである。
+
+- **契約修正**: 章末などを場面契約・設計に合わせて書き直すときは、規定量調整ではなく `repair-begin --intent contract_fix --scope beats --beat-ids ID --instruction "<直す内容>"` を使う。長さは旧稿ではなく Beat の床で判定し、同じ Beat に2回まで候補を出せる。契約を変える操作なので、採用には著者の確認を要する。
 
 - **収束**: 引き締めで上限まで届かないとき、作者が `_metron/<scene_id>/episodes.yaml` に登録した子エピソード（`span` の開始・終了の引用で範囲を示す）だけを、持ち帰りも局所的効果も無い子 → 局所的効果だけの子 → 持ち帰りの軽い子の順に畳む。登録はエージェントが推測で作らず、作者と決める。
 - **CANON 検査（任意）**: 候補ごとに `canon-check` で検査の指示を書き、別の呼び出しで JSON を得て `--result` と `--checker-model` で記録する。不合格の候補は、著者が確認しない限り採用しない。合格を著者確認の代わりにするのは、ユーザーが明示して `repair-begin --check-replaces-author` で始めたときだけ。開始前照合も `canon-precheck --check-prompt` → `--check-result` で検査に代えられる（同じオプトインが要る）。検査とその記録は、候補を作ったのと同じ呼び出しの自己申告で済ませない。

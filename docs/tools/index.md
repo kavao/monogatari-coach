@@ -341,6 +341,22 @@ python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.m
 
 ---
 
+### `design_density.py` — 章の設計密度
+
+`design_specification.md` の章ごとに、番号付きの出来事の件数と章の目標字数から、1項あたりの見込み字数を出します。設計書も本文も書き換えません。目標は、`--target` で渡した字数か、章の「**分量目安**：」の書き出しの字数だけを使います（同じ行の「初稿は 7,983字」のような実測は使いません）。どちらも無い章は「保留」です。出来事として数えるのは、章見出しの下で行頭（字下げなし）から始まる番号付き項目だけです。字下げした入れ子の補足と、コードブロックの中は数えません。
+
+```bash
+# 全章
+uv run python tools/design_density.py novels/NNN_作品名
+
+# 第3章を、伝えられた目標 8000字で判定する
+uv run python tools/design_density.py novels/NNN_作品名 --chapter 3 --target 8000
+```
+
+判定は、500〜800字/項が推奨帯、1000字超が少なすぎ（子エピソードを足す）、300字未満が多すぎ（統合を提案）、それ以外が帯の外だが許容です。推奨件数の列は目標 ÷ 800 〜 目標 ÷ 500 です。基準は `_how_to.example/length_ops.md` §4.7 にあります。
+
+---
+
 ### `novel_meta_char_table.py` — 章別文字数表の生成と照合
 
 `_meta.md` I.1 の「章別文字数」表を、`novel_char_count.py` と同じ数え方で生成・照合します。このコマンドは `_meta.md` を書き換えません。表がある作品だけ在庫の正本として使い、無い作品へは自動では足しません。
@@ -552,6 +568,8 @@ python tools/novel_code_allocate.py novels/
 | `padding_meta_preface` | 「言うまでもなく」「ここで少し説明」などのメタ前置き | info | padding |
 | `padding_abstract` | 「言葉にできないほど」などの抽象への逃げ | info | padding |
 | `padding_redundant_modifier` | 「まず最初に」「非常にとても」などの重複語 | info | padding |
+| `padding_measurement` | 「数十センチもない」などの数値による計測 | info | padding |
+| `padding_repeated_phrase` | 同じ10字の語句がファイル内で3回以上（3回目の行に1件） | info | padding |
 
 `padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。作業用の `_how_to/novel_text_rewrite_rules.yaml` を使っている環境では、雛形の `padding_*` ルールと `padding` プロファイルを写すまで使えません。
 

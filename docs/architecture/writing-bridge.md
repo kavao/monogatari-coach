@@ -168,11 +168,11 @@ METRON / CHRONOS が ON の作品で、既にある本文を目標字数へ伸�
 Monogatari Coach は次の順に進めます。
 
 1. `prepare --request-kind refine` の run で今の本文を `receive` → `inspect` する。
-2. 当該場面に CHRONOS イベントがあれば、`canon-precheck` でイベント一覧と本文を並べて示し、食い違いが無いかをユーザーに確かめる。返答を run の `canon_review.json` に記録する。イベントが無い場面では照合を省き、調整前の本文をそのまま基準にする。
-3. `repair-begin --intent length` で許容帯（既定は目標の ±3%）を決める。許容帯の上限が場面の下限（床）より小さい指定は `LENGTH_CONFIG` で止まる。すでに許容帯に入っていれば `REPAIR_NOT_NEEDED` で止まる。
+2. 当該場面に CHRONOS イベントがあれば、`canon-precheck` のイベント一覧と本文を Monogatari Coach が照合し、`--by agent` で記録する。ユーザーには尋ねない。食い違いの疑いがあるときだけ、始める前に相談する。イベントが無い場面では照合を省き、調整前の本文をそのまま基準にする。
+3. `repair-begin --intent length --finish-target N` で始める。ユーザーの字数 N は、清書後の仕上がり目標として扱う。清書で削る分の余地（既定 +8%）を足した字数を増量の目標にし、許容帯（既定は目標の ±3%）を決める。許容帯の上限が場面の下限（床）より小さい指定は `LENGTH_CONFIG` で止まる。すでに許容帯に入っていれば `REPAIR_NOT_NEEDED` で止まる。増量の目標（余地込み）に対して本文が10%以上足りないときは、Deepen を始めず `DESIGN_DENSITY` で止まる（`repair_state.json` は作らない）。足す子エピソードを提案し、承認後に設計書と `_metron/<scene_id>/episodes.yaml`（`span_pending: true`）へ足してから加筆する。欠落 Beat があるときは止めずに先に埋め、埋めたあとの字数でもう一度不足率を見る。まだ10%以上足りなければ、Deepen へ進まず `DESIGN_DENSITY` で `escalated` になる。
 4. `repair-next` が出す1件ずつのジョブに候補を作る。足りないときは増量（`deepen`）、超えているときは引き締め（`tighten`）だけを出し、増量と減量を往復しない。増量で上限を超えたときに限り、引き締めで戻す。
-5. 候補ごとに `length-review` で「元文に無い文」「消えた・書き換わった元文」と、補助の印（本文や設定に無い語、消えた名前）をユーザーに見せる。出来事の追加・変更・欠落が無いと確認できた候補だけを `repair-submit --review confirmed --canon-authorization` で採用する。確認が無い候補は採用しない。
-6. 許容帯に入れば `repair: completed` になり、保存用の新しい run で `publish` する。試行回数の上限（既定3回。却下した候補も数える）に達したときや、届かないときは `repair: escalated` で止まり、不足・超過の字数を `LENGTH_MAX_PASSES` / `LENGTH_ESCALATE_ADD`（出来事を足す加筆の提案）/ `LENGTH_ESCALATE_REVISE`（畳む・削る改稿の提案）として報告する。加筆・改稿は承認を得てから別の作業として行う。`repair-finish` で途中で止めた場合も、許容帯に入っていなければ `escalated` になる。
+5. 増量と欠落 Beat の埋めは、機械検査（元文残存率・同義反復・短縮の棄却など）を通れば採用する。ユーザーに JOB ごとの「採用／否認」を尋ねない。差分は `canon_review.json` に証跡として残り、`length-review` でいつでも見られる。引き締めと収束は、消えた文をユーザーに見せ、出来事の欠落が無いと確認できたものだけを `--canon-authorization` 付きで採用する。欠落 Beat があっても開始でき、調整の最初に埋める。
+6. 許容帯に入れば `repair: completed` になる。出力された作業稿（Beat マーカー付き）を続けて清書し（`rewrite.md`。床を割らないところで止める。仕上がり目標との数%（5%以内）の差は合わせ直さない）、`repair-summary --refined <清書稿>` で（清書稿は Beat の順序・Beat の間・章見出しなど Beat の外を作業稿のまま保つこと。変わっていれば `RANGE_MISMATCH` で受け付けない。Beat 指定の調整では、対象 Beat の仕上がりと床を、場面全体の床とは別に確かめる）、調整前 → 増量後 → 清書後の字数、清書で消えた文、場面内で3回以上に増えた語句の推移を含めて報告する。主要な変化（字数の前後、採用した JOB、新しい文と消えた文、順序が変わった文、補助の印、イベント照合の根拠、場面契約の終了状態と次章の書き出し）を一度だけ見せ、「この内容で保存してよいか」を尋ねる。ユーザーへの確認はこの1回だけで、返答は `repair-summary --accept --authorization` で記録する。そのあと保存用の新しい run で `publish` する。試行回数の上限（既定3回。却下した候補も数える）に達したときや、届かないときは `repair: escalated` で止まり、不足・超過の字数を `LENGTH_MAX_PASSES` / `LENGTH_ESCALATE_ADD`（出来事を足す加筆の提案）/ `LENGTH_ESCALATE_REVISE`（畳む・削る改稿の提案）として報告する。加筆・改稿は承認を得てから別の作業として行う。`repair-finish` で途中で止めた場合も、許容帯に入っていなければ `escalated` になる。
 
 字数は Beat 本文の合計で数えます（Beat の外にある章見出しなどは含みません）。ユーザーが確認できるのは、run の `repair_state.json`（状態と報告）、`canon_review.json`（照合と候補ごとの確認の記録）、`jobs/` のジョブです。
 
@@ -181,16 +181,28 @@ Monogatari Coach は次の順に進めます。
 uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001
 # ユーザーの返答を記録する（食い違いがあれば --result conflict）
 uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --result no_conflict --authorization "著者: 本文とイベントに矛盾なし"
-# 規定量調整を始める（--tolerance 0.97,1.03 / --length-scope beat --length-beat-id ID / --max-passes 3 は任意）
-uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --model MODEL_ID --authorization "ユーザー依頼: 第3章を4000字に" --intent length --target-chars 4000 --repo-root .
+# 規定量調整を始める。4000 は清書後の仕上がり目標で、増量は余地 +8% の 4320 を目標にする
+# （--finish-margin / --tolerance 0.97,1.03 / --length-scope beat --length-beat-id ID / --max-passes 3 は任意。余地なしは --target-chars）
+uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --model MODEL_ID --authorization "ユーザー依頼: 第3章を4000字に" --intent length --finish-target 4000 --repo-root .
 uv run python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --repo-root .
-# 候補をユーザーに見せる（何も書かない）
+# 候補の差分を見る（何も書かない。引き締め・収束の確認や、後からの指摘に使う）
 uv run python tools/writing_bridge_cli.py length-review novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --repo-root .
-# 確認が取れた候補だけ採用する（取れなければ --review rejected）
-uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --model MODEL_ID --candidate path/to/candidate.md --review confirmed --canon-authorization "著者: 出来事の追加・変更・欠落なし" --repo-root .
+# 増量の候補を採用する（機械検査で採否が決まる）
+uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --model MODEL_ID --candidate path/to/candidate.md --review confirmed --repo-root .
+# 引き締め・収束の候補は、ユーザーの確認を得てから出典を付けて採用する
+uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0004 --model MODEL_ID --candidate path/to/tighten.md --review confirmed --canon-authorization "著者: 出来事の欠落なし" --repo-root .
+# 続けて清書した稿（Beat マーカー付き）を渡し、保存前に主要な変化を一度だけ見せる → 返答を記録する
+uv run python tools/writing_bridge_cli.py repair-summary novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --refined novels/NNN_作品名/_metron/ch03-001/refined.run-0001.md --repo-root .
+uv run python tools/writing_bridge_cli.py repair-summary novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --refined novels/NNN_作品名/_metron/ch03-001/refined.run-0001.md --accept --authorization "著者: この内容で保存してよい" --repo-root .
+# 章末を契約に合わせて書き直す（規定量調整とは別。Beat の床で長さを判定し、ユーザーの確認を要する）
+uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0002 --model MODEL_ID --authorization "ユーザー依頼: 章末を設計どおりに" --intent contract_fix --scope beats --beat-ids rest_hint --instruction "湯船から上がらず、休憩室を思い出すところで終える" --repo-root .
 ```
 
 目標字数は beats.yaml の `length_target`（`target_chars` / `tolerance` / `scope` / `beat_id` / `max_passes`）にも書けます。CLI の指定と食い違うときは `JOB_CONFLICT` です。章単位の指定は受け付けないので、場面ごとに調整します。技法の基準は `_how_to.example/length_ops.md` です。
+
+### 不足率の記録（`shortage_log.jsonl`）
+
+`repair-begin` は規定量調整（`--intent length`）と自動修復（`auto` / `explicit_deepen`）のどちらでも、開始時の不足率を `_metron/<scene_id>/shortage_log.jsonl` に1行ずつ追記します（`at`、`run_id`、`intent`、`scope`、`target`、`chars`、`shortage`、`over_limit`、`stopped`）。`target` は規定量調整では余地込みの増量の目標、自動修復では場面の床です。自動修復は10%以上でも止めず、`DESIGN_DENSITY` を `repair_state.json` の notes に残して Deepen を続けます。止めるように切り替えるかは、この記録の頻度を見てから決めます。
 
 ### 収束・CANON 検査・改稿工程
 
