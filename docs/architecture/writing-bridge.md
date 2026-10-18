@@ -190,7 +190,32 @@ uv run python tools/writing_bridge_cli.py length-review novels/NNN_作品名 --s
 uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --model MODEL_ID --candidate path/to/candidate.md --review confirmed --canon-authorization "著者: 出来事の追加・変更・欠落なし" --repo-root .
 ```
 
-目標字数は beats.yaml の `length_target`（`target_chars` / `tolerance` / `scope` / `beat_id` / `max_passes`）にも書けます。CLI の指定と食い違うときは `JOB_CONFLICT` です。章単位の指定は受け付けないので、場面ごとに調整します。子エピソードを要約へ畳む減量と、意味の照合の自動化はまだありません。技法の基準は `_how_to.example/length_ops.md` です。
+目標字数は beats.yaml の `length_target`（`target_chars` / `tolerance` / `scope` / `beat_id` / `max_passes`）にも書けます。CLI の指定と食い違うときは `JOB_CONFLICT` です。章単位の指定は受け付けないので、場面ごとに調整します。技法の基準は `_how_to.example/length_ops.md` です。
+
+### 収束・CANON 検査・改稿工程
+
+収束対象があり、`max_passes` が2以上なら、引き締めに使う回数を全体上限の1回手前までに抑え、収束用に1回を残します。既定3回なら引き締めを最大2回、そのあと収束を試します。上限1回では引き締めだけを試します。増量後の上限超過には、この予約を適用しません。
+
+- **収束**: 減量で引き締めが届かないとき、`_metron/<scene_id>/episodes.yaml` に登録した子エピソードを要約へ畳むジョブ（`condense`）が出ます。候補ファイルには、畳んだ文だけを書きます。`length-review` は、畳んだあとの Beat 全体で差分を見せます。登録が無い場面では収束しません。
+- **CANON 検査**: 候補ごとに、別のモデル呼び出しで事実の照合を行えます。不合格の候補は、ユーザーの確認が無い限り採用されません。合格を確認の代わりにするのは、ユーザーが明示して `--check-replaces-author` で始めたときだけです。
+- **改稿工程**: 減量が届かず `LENGTH_ESCALATE_REVISE` で止まったときは、削りたい部分ごとに `strip-check` で参照を確かめます。持ち帰り・他のイベントからの参照・後の本文に現れる語があれば終了コード 1 で、削らずに収束へ戻します。参照が無く、ユーザーが承認したときだけ `strip-record` で `_metron/<scene_id>/canon_deletions.yaml` に記録し、本文は refine run の `publish` で削ります。CHRONOS イベントは CHRONOS の承認手順で直します。
+
+```powershell
+# CANON 検査の指示を jobs/JOB-0001.canon_check.prompt.md に書く
+uv run python tools/writing_bridge_cli.py canon-check novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --repo-root .
+# 別の呼び出しで得た JSON を判定して記録する（完了印と入力ハッシュを含む。不合格なら終了コード 1）
+uv run python tools/writing_bridge_cli.py canon-check novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --result path/to/check.json --checker-model CHECKER_ID --repo-root .
+# 改稿工程: 削る前の参照チェック（参照があれば終了コード 1。何も書かない）
+uv run python tools/writing_bridge_cli.py strip-check novels/NNN_作品名 --scene-id ch03-001 --quote "削りたい一文。"
+# ユーザーが承認したあとに削除を記録する
+uv run python tools/writing_bridge_cli.py strip-record novels/NNN_作品名 --scene-id ch03-001 --quote "削りたい一文。" --reason "山場の前を軽くする" --authorization "ユーザー承認: 改稿"
+```
+
+検査結果は、指示に記載された `input_sha256` をそのまま返し、`completed: true` と事実一覧・指摘一覧をすべて含める必要があります。候補検査では `facts_before` / `facts_after` にそれぞれ最低一文の事実を書き、`findings` / `condense` も省略しません。開始前照合では `facts` に最低一文を記録し、`conflicts` も省略しません。空のJSON・未完了・項目不足は `SCHEMA_UNSUPPORTED` です。
+
+検査依頼は `jobs/JOB-xxxx.canon_check.request.json`、開始前照合は `canon_precheck.request.json` に保存されます。依頼前の結果読込は `UNKNOWN_REF`、依頼後に本文・候補・イベントなどが変わった結果の読込は `STALE_EVIDENCE` です。変更した場合は指示を再出力し、検査をやり直してください。別runの結果も流用できません。従来形式の検査結果も、この形式で検査し直す必要があります。
+
+開始前の照合材料には、イベントの題名・人物だけでなく、因果参照（`causes` / `effects`）、時刻・場所・人物状態（`effects_on`）を含めます。改稿の引用指定でも、重なる登録済み子エピソードの持ち帰りを確認します。保護する契約の範囲を一意に特定できない場合は、契約の引用を修正してから再確認してください。
 
 ## OFF で下書きし、あとで ON にして洗練する
 

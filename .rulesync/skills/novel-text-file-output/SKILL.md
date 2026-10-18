@@ -160,7 +160,11 @@ targets: ["*"]
    - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` → （イベントがある場面は）`canon-precheck` を表示して著者に照合を求め、返答を `--result` と `--authorization` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `length-review` を著者に見せる → 確認が得られた候補だけ `repair-submit --review confirmed --canon-authorization "<著者の確認の出典>"`（得られなければ `--review rejected`）。`completed` で保存用の `--allow-publish` 新 run へ採用稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
    - **食い違い**: 設定エラーとして報告し、調整を始めない。
 
-METRON の規定量調整が行うのは、出来事を変えない増量（`deepen`）と引き締め（`tighten`）だけである。子エピソードの収束（減量の OP-C）と、意味の照合の自動化（CANON 検査）はまだ無い（`_workingspace/plans/20261017_length-ops-intake.md` Phase 3）。減量が引き締めで届かないときは `LENGTH_ESCALATE_REVISE` で止まるので、収束は手作業で提案する。
+METRON の規定量調整が行うのは、出来事を変えない増量（`deepen`）・引き締め（`tighten`）・収束（`condense`）だけである。
+
+- **収束**: 引き締めで上限まで届かないとき、作者が `_metron/<scene_id>/episodes.yaml` に登録した子エピソード（`span` の開始・終了の引用で範囲を示す）だけを、持ち帰りも局所的効果も無い子 → 局所的効果だけの子 → 持ち帰りの軽い子の順に畳む。登録はエージェントが推測で作らず、作者と決める。
+- **CANON 検査（任意）**: 候補ごとに `canon-check` で検査の指示を書き、別の呼び出しで JSON を得て `--result` と `--checker-model` で記録する。不合格の候補は、著者が確認しない限り採用しない。合格を著者確認の代わりにするのは、ユーザーが明示して `repair-begin --check-replaces-author` で始めたときだけ。開始前照合も `canon-precheck --check-prompt` → `--check-result` で検査に代えられる（同じオプトインが要る）。検査とその記録は、候補を作ったのと同じ呼び出しの自己申告で済ませない。
+- **改稿工程**: 減量が届かず `LENGTH_ESCALATE_REVISE` で止まったら、出来事を削る候補ごとに `strip-check --episode-id`（または `--quote`）で参照を確かめる。終了コード 1（持ち帰り・他イベントの参照・後の本文の語）なら脱落せず収束に戻す。参照が無く、ユーザーが承認したときだけ `strip-record --reason --authorization` で記録し、本文は ON なら refine run の `publish`、OFF なら旧版退避のうえ直接更新で削る。CHRONOS イベントの削除・退避は CHRONOS の承認手順で行う。
 
 ## 執筆モデルが Grok / xAI 系のとき
 

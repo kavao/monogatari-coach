@@ -529,6 +529,7 @@ python tools/novel_code_allocate.py novels/
 | `grammar` | セリフ行頭・段落インデント・句読点連続・半角カンマ・空括弧・助詞重複・全角スペース | **執筆直後**のクイックチェック／`--fix` |
 | `full` | `default` + `grammar` の全ルール | 清書前の総合チェック |
 | `minimal` | 三点リーダー・`。」` のみ | 旧稿を句読点から直したいとき |
+| `padding` | 冗長化の候補（迂言・メタ前置き・抽象への逃げ・重複語）。すべて info | 清書・字数合わせの前に、削る候補を見る |
 
 **検出ルール一覧**:
 
@@ -547,6 +548,12 @@ python tools/novel_code_allocate.py novels/
 | `empty_dialogue` | 空のカギ括弧 `「」` | warning | grammar/full |
 | `duplicate_particle` | `をを` `がが` など助詞の重複 | info | grammar/full |
 | `fullwidth_space_double` | 全角スペースの連続 `　　` | info | grammar/full |
+| `padding_circumlocution` | 「〜ことができた」「〜という状況になった」などの迂言 | info | padding |
+| `padding_meta_preface` | 「言うまでもなく」「ここで少し説明」などのメタ前置き | info | padding |
+| `padding_abstract` | 「言葉にできないほど」などの抽象への逃げ | info | padding |
+| `padding_redundant_modifier` | 「まず最初に」「非常にとても」などの重複語 | info | padding |
+
+`padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。作業用の `_how_to/novel_text_rewrite_rules.yaml` を使っている環境では、雛形の `padding_*` ルールと `padding` プロファイルを写すまで使えません。
 
 **推奨ワークフロー（全体）**:
 
