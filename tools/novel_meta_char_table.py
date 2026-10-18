@@ -215,6 +215,9 @@ def cmd_check(work: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
     parser = argparse.ArgumentParser(
         description="_meta.md の章別文字数表を生成・照合する。_meta.md は書かない。"
     )

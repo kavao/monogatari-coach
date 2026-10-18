@@ -19,6 +19,7 @@ defaults:
     - "^\\*\\*"    # Markdown 太字見出し（**ボディーの変化・経験ログ** 等）
     - "^>"         # Markdown ブロック引用
     - "^\\|"       # Markdown テーブル行
+    - "^\\s*<!--"  # HTML コメント（METRON の Beat / fact 印。--fix で壊さない）
 
 # ────────────────────────────────────────────
 # B. 三点リーダー（rewrite §1 文体）
@@ -192,6 +193,21 @@ rules:
       - "後で後悔"
     message: "重複語の候補（まず最初に・非常にとても等）。一語に統合する"
 
+  - id: padding_measurement
+    level: info
+    patterns:
+      - "数[十百]?センチ"
+      - "[0-9０-９一二三四五六七八九十]+センチ(もない|ほど|しかない|先)"
+      - "[0-9０-９一二三四五六七八九十数]+メートル(もない|ほど|しかない|先)"
+    message: "数値による計測の候補（「数十センチもない」等）。息遣い・手触りなど身体の実感で書けないか見る"
+
+  # 場面単位の語句反復（length_ops「冗長化」・計画 D18）。patterns は空で Python 側が数える。
+  # 同じ10字の語句が1ファイルで3回以上出たら、3回目の行に1件だけ候補を出す。意図した反復は残してよい。
+  - id: padding_repeated_phrase
+    level: info
+    patterns: []
+    message: "同じ語句が3回以上出ています（枕詞・修飾句の連打、葛藤のやり直し、定型の情景の候補）。要所の1〜2回に絞れないか見る"
+
   # ── D. 段落インデント（rewrite §1）── stateful ──────────────────────────
   # patterns は空。Python 側の _check_paragraph_indent() が状態付きチェックを行う。
   # 除外条件（Python 実装済み）:
@@ -250,6 +266,8 @@ profiles:
       - padding_meta_preface
       - padding_abstract
       - padding_redundant_modifier
+      - padding_measurement
+      - padding_repeated_phrase
 
   minimal:
     description: "章メタ未整備の旧稿向け。句読点のみ確認したいとき（ルール B + C）"
