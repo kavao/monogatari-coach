@@ -14,6 +14,7 @@
 - 「続きを書く」「契約（目的・含めるもの・終わる位置）を指定して続きを書く」「文と文の間に描写を挟む」の 3 つの操作を試したいとき
 - 生成の品質をまとめて比べたいとき（日本語 Benchmark、字数の比較実験）
 - 同じ場面から「この先どうなるか」の別案をいくつか見比べ、気に入った展開や表現を拾いたいとき（別の展開を見る、試作）
+- 同じ契約・Beat で、エージェント（local-writer）と NovelAI に同じ章を書かせて読み比べたいとき（試し書き・書き比べ）
 
 前提として、`.env` に `NOVELAI_ACCESS_TOKEN` が設定されている必要があります。テキスト生成は NovelAI の契約の範囲で使えます（Xialong は Opus 契約が必要です）。
 
@@ -33,6 +34,7 @@ NovelAI の接続を確認して
 AI 執筆基盤で daily の場面の 3 操作を試して
 日本語 Benchmark を dry-run して
 romance の場面で、Xialong で別の展開を 3 案見たい
+第1章を local と NAI で書き比べてください
 ```
 
 ### Monogatari Coach が行うこと
@@ -229,6 +231,49 @@ uv run python tools/ai_writer_creative_bench_cli.py report _workingspace/ai_writ
 
 実行後、`_workingspace/ai_writer/creative_bench/<実行日時>/blind/` に、モデル名と順番を伏せた採点シート（`review.md`）と採点欄（案ごとの `candidates.csv`、群ごとの `groups.csv`）ができます。対応表 `key.json` は採点を保存するまで開きません。採点の基準は [rubric.md](../../tools/ai_writer/fixtures/creative/rubric.md) です。
 
+### `ai_writer_compare_cli.py` — 試し書き・書き比べ
+
+このコマンドを使うと、作品の同じ契約と Beat（`_metron/<場面>/contract.yaml` / `beats.yaml`）から、エージェント（local-writer）と NovelAI に同じ章を書かせ、METRON で測って読み比べられます。作品の本文（`_novel_text`）、`_writing/`、`_metron/` には書きません。
+
+この機能は執筆スキルに登録されています。チャットで次のように入力するだけで動きます。
+
+```text
+第1章を local と NAI で書き比べてください
+```
+
+1本だけ試すときは「第1章を NAI で試し書きしてください」と入力します。「NAI で執筆してください」は正本へ載せる依頼で、試し書きとは別です。
+
+入力すると、Monogatari Coach は次の順に進めます。
+
+1. 契約と Beat を確かめ、NovelAI に渡す設定の要点（`facts.yaml`）を用意します。Beat の割り方は Monogatari Coach が決め、NovelAI は本文だけを書きます。
+2. `plan` で比較用のフォルダを作り、送信回数・モデル・保存先を表示して承認を求めます。比較1回分の送信は、1回の承認でまとめて送ります。
+3. 承認後に NovelAI へ Beat ごとに送ります。エージェントは同じ文脈（`context.md`）を見て1回で書きます。
+4. 両方の候補を METRON で測り、読み比べ（`review.md`）を書きます。点数は付けません。
+
+```bash
+# 確認（dry-run）— 比較用フォルダを作り、送信予定を表示する。送信しない
+uv run python tools/ai_writer_compare_cli.py plan novels/NNN_作品名 --scene-id ch01-001 --writers local,nai --facts facts.yaml
+
+# 本番（承認後）— NovelAI へ Beat ごとに送る。plan と Beat が食い違うときや、送信済みのときは送らない
+uv run python tools/ai_writer_compare_cli.py run _workingspace/ai_writer/NNN_ch01_compare/run-<日時> --writer nai --execute
+
+# エージェントが書いたマーカー付き候補を受け取る
+uv run python tools/ai_writer_compare_cli.py receive _workingspace/ai_writer/NNN_ch01_compare/run-<日時> --candidate local.md
+
+# 両方を METRON で測り、summary.json と読み比べの下書きを作る（送信しない）
+uv run python tools/ai_writer_compare_cli.py measure _workingspace/ai_writer/NNN_ch01_compare/run-<日時>
+```
+
+実行後、`_workingspace/ai_writer/<作品code>_ch<章>_compare/run-<日時>/` に次のファイルができます。
+
+- `plan.json` / `context.md`: 送信予定と、Writer に共通の文脈
+- `candidates/<writer>/marked.md`: Beat の目印（マーカー）付きの候補。NovelAI は Beat ごとの本文も同じフォルダに残ります
+- `metrics/<writer>/`: METRON の計測（`metrics.yaml` / `spans.yaml` / マーカーを除いた本文）
+- `summary.json`: Writer ごとの字数、床への到達、Beat ごとの字数、マーカーの誤り、同じ文（20字以上）の繰り返し。NovelAI は前の Beat を写し返して字数が増えることがあるので、床への到達と合わせて見ます
+- `review_skeleton.md` と `review.md`: 数値の表を埋めた下書きと、Monogatari Coach が書く読み比べ
+
+気に入った候補を本文にしたいときは、本経路（起草 run → 保存用 run → `publish`）に載せます。手順は [Writing bridge の局所修復と本文反映](../architecture/writing-bridge.md) の「第1章など新章の初稿（起草 run から）」です。
+
 ### Phase 0 の確認用コマンド
 
 NovelAI の API 仕様を確かめたときのコマンドです。通常の利用では使いません。
@@ -240,7 +285,7 @@ NovelAI の API 仕様を確かめたときのコマンドです。通常の利�
 
 ## 現在できないこと・注意
 
-- **作品の本文へは書き込みません。** 生成結果は候補として `_workingspace/` や候補の保存先に残るだけです。本文への反映は、Phase 2 で導入予定の採用（Accept）と Canon Gate（新しい設定を人が確認する関門）を通します。
+- **作品の本文へは書き込みません。** 生成結果は候補として `_workingspace/` や候補の保存先に残るだけです。本文への反映は、Phase 2 で導入予定の採用（Accept）と Canon Gate（新しい設定を人が確認する関門）を通します。第1章などの初稿を正本へ置く経路は別で、METRON / CHRONOS が ON の作品では writing_bridge の `publish` だけが `_novel_text` を書きます。初稿を書くときは [Writing bridge の局所修復と本文反映](../architecture/writing-bridge.md) の「第1章など新章の初稿（起草 run から）」を見てください。
 - **Guard は機械的な検査だけです。** 物の状態の矛盾（箸を置いた直後に箸を握る）や、名前のない新しい出来事は見つけられません。意味の検査は Phase 2 で導入予定です。
 - **Xialong は既定にしていません。** Benchmark で、指定した終わる位置を越えて書き続ける傾向が強かったためです。使う場合は `--model xialong-v1` で明示します。
 - **同時に生成できるのは 1 本だけです。** NovelAI の Web 画面で生成している最中に送ると、待ってから送り直します。

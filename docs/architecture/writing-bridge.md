@@ -107,6 +107,26 @@ python tools/writing_bridge_cli.py locate-quote novels/NNN_作品名 --scene-id 
 
 未作成または空のファイルへ新章を書くときは、selector を付けません。未作成の本文に heading を付けると、`publish --dry-run` が `UNKNOWN_REF` になります。
 
+**第1章など新章の初稿（起草 run から）**
+
+「第1章を執筆してください。」と入力すると、Monogatari Coach は run を2本使います。先に正本へ書けない**起草 run**（`--allow-publish` なし）で候補を受けて測り、床に届いて必須修復が無いときだけ、正本へ書ける**保存用 run**（レシピ1）へ移ります。起草 run を分けるのは、測る前の候補が正本へ書かれないようにするためです。
+
+起草 run の前に、Monogatari Coach は `_metron/<scene>/` に `contract.yaml`（場面の始まりと終わり・禁止事項）と `beats.yaml`（Beat ごとの意図と字数目安）を置きます。章の出来事を項数どおりの Beat にはせず、目的の塊で 5〜8 Beat 程度にまとめます。どちらのファイルにも決められた項目以外は書けないので、設計の項と Beat の対応を残すときは `beats.yaml` の `#` コメントにします。
+
+次は起草 run の手順です。`run-0001` は本番の `prepare` が返した id に置き換えます。
+
+```powershell
+# 起草 run: 未作成または空の正本。selector なし、--allow-publish なし（正本へは書けない）。
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --dry-run --repo-root .
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --repo-root .
+# マーカー付き候補を受ける。正本はまだ空のまま。
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --candidate path/to/marked.md
+# CHRONOS ON: 候補を読んで書いた observations を渡して測る。CHRONOS OFF では --observations は不要。
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --observations path/to/observations.json
+```
+
+`inspect` のあと、`_writing/ch01-001/run-0001/report.json` でシーン床への到達と必須修復の有無を確認できます。届いていればレシピ1へ進み、同じ候補を保存用 run で受け直します。レシピ1の `--from-run run-0001` は、この起草 run を指します。床未達や必須修復が残るときは、起草 run のまま修復（`repair-*`）へ進みます。
+
 ```powershell
 # レシピ1: 未作成または空の正本。selector なし。
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --allow-publish --dry-run --repo-root .

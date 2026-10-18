@@ -181,6 +181,17 @@ METRON の規定量調整が行うのは、欠落 Beat の埋め（`regenerate`�
 - **CANON 検査（任意）**: 候補ごとに `canon-check` で検査の指示を書き、別の呼び出しで JSON を得て `--result` と `--checker-model` で記録する。不合格の候補は、著者が確認しない限り採用しない。合格を著者確認の代わりにするのは、ユーザーが明示して `repair-begin --check-replaces-author` で始めたときだけ。開始前照合も `canon-precheck --check-prompt` → `--check-result` で検査に代えられる（同じオプトインが要る）。検査とその記録は、候補を作ったのと同じ呼び出しの自己申告で済ませない。
 - **改稿工程**: 減量が届かず `LENGTH_ESCALATE_REVISE` で止まったら、出来事を削る候補ごとに `strip-check --episode-id`（または `--quote`）で参照を確かめる。終了コード 1（持ち帰り・他イベントの参照・後の本文の語）なら脱落せず収束に戻す。参照が無く、ユーザーが承認したときだけ `strip-record --reason --authorization` で記録し、本文は ON なら refine run の `publish`、OFF なら旧版退避のうえ直接更新で削る。CHRONOS イベントの削除・退避は CHRONOS の承認手順で行う。
 
+## 試し書き・書き比べ（正本へ載せない）
+
+「第N章を NAI で試し書きしてください」「第N章を local と NAI で書き比べてください」のように **試し書き / 書き比べ** と明示されたときだけ適用する。本文の完了条件（上記）は適用しない。正本・`_writing/`・`_metron/` は書かない。「NAI で執筆してください」（正本へ載せる本経路）とは別。
+
+1. 対象場面の `_metron/<scene_id>/contract.yaml` / `beats.yaml` を確かめる（無ければ本経路と同じく親の LLM が起こす。Beat の割り方は親の LLM が決める）。
+2. NAI を含むときは、設定の要点を親の LLM が `facts.yaml`（`canon_facts` と、Beat 別の `must_include` / `end_condition` の上書き）に書く。無いと NAI へ渡る要点が視点人物だけになる。
+3. `tools/ai_writer_compare_cli.py plan <作品> --scene-id <id> --writers local,nai [--facts facts.yaml]`。表示された課金のある送信回数・モデル・保存先をユーザーに見せ、承認を得る（比較1回分をまとめて1回）。
+4. 承認後に `run <run_dir> --writer nai --execute`。local は `context.md` を見てマーカー付き候補を1回で書き、`receive <run_dir> --candidate <path>` で渡す。
+5. `measure <run_dir>` のあと、`review_skeleton.md` を元に `review.md`（総評・分量・項ごと・設定とのずれ・文体・採否）を書く。点数は付けない。
+6. 完了報告に「正本は書いていない」と比較 run のパスを書く。正本にしたい候補があれば、本経路（起草 run → 保存用 run → `publish`）に載せる。
+
 ## 執筆モデルが Grok / xAI 系のとき
 
 セッション先頭のモデル名、またはユーザーが Grok で書くと指定したときに適用する。他モデルは読み飛ばす。
