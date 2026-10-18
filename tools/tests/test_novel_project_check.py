@@ -327,17 +327,17 @@ def test_require_meta_yaml_passes_when_present(tmp_path: Path) -> None:
 
 
 def test_bootstrap_new_project_uses_inspection_defaults(tmp_path: Path) -> None:
-    """未作成フォルダの --bootstrap は、省略時に未応答・既定 OFF を記録する。"""
+    """未作成フォルダの --bootstrap は、省略時に未応答・既定 ON を記録する。"""
     work = tmp_path / "123_新規"
 
     assert main([str(work), "--bootstrap", "--no-character-structure"]) == 1
 
     config = (work / "config.md").read_text(encoding="utf-8")
-    assert "未応答・既定 OFF" in config
-    assert "| METRON | OFF |" in config
-    assert "| CHRONOS | OFF |" in config
-    assert not (work / "_metron").exists()
-    assert not (work / "chronos").exists()
+    assert "未応答・既定 ON" in config
+    assert "| METRON | ON |" in config
+    assert "| CHRONOS | ON |" in config
+    assert (work / "_metron").is_dir()
+    assert (work / "chronos").is_dir()
 
 
 def test_bootstrap_new_project_accepts_explicit_inspection_off(tmp_path: Path) -> None:

@@ -4,9 +4,9 @@ OpenRouter is a transport. Strategy is chosen from the capability table, not
 from `if provider == "novelai"` alone. Values marked provisional are not
 measured fixtures.
 
-NovelAI aliases `v5` / `v5-full` / `nai-v5-full` / `v5-curated` resolve to
-`nai-diffusion-5-*` and then to `novelai_v5`. `nai-diffusion-4-5-*` is not a
-V5 alias.
+NovelAI aliases `v5` / `v5-full` / `nai-v5-full` / `novelai5` / `NovelAI5` /
+`v5-curated` resolve to `nai-diffusion-5-*` and then to `novelai_v5`.
+`nai-diffusion-4-5-*` is not a V5 alias.
 """
 
 from __future__ import annotations
@@ -67,6 +67,8 @@ NOVELAI_V5_ALIASES = {
     "v5": "nai-diffusion-5-full",
     "v5-full": "nai-diffusion-5-full",
     "nai-v5-full": "nai-diffusion-5-full",
+    "novelai5": "nai-diffusion-5-full",
+    "NovelAI5": "nai-diffusion-5-full",
     "v5-curated": "nai-diffusion-5-curated",
     "nai-v5-curated": "nai-diffusion-5-curated",
 }

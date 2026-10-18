@@ -115,6 +115,8 @@
         "v5": "nai-diffusion-5-full",
         "v5-full": "nai-diffusion-5-full",
         "nai-v5-full": "nai-diffusion-5-full",
+        "novelai5": "nai-diffusion-5-full",
+        "NovelAI5": "nai-diffusion-5-full",
         "v5-curated": "nai-diffusion-5-curated",
         "nai-v5-curated": "nai-diffusion-5-curated",
         "v4-5-full": "nai-diffusion-4-5-full",

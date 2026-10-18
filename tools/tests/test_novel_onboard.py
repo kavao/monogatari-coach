@@ -18,7 +18,7 @@ def test_dry_run_reports_default_decision_without_creating(tmp_path: Path, monke
     assert novel_onboard.main(["試験作品", "--dry-run"]) == 0
 
     output = capsys.readouterr().out
-    assert "未応答・既定 OFF" in output
+    assert "未応答・既定 ON" in output
     assert not (root / "novels" / "001_試験作品").exists()
 
 
@@ -53,10 +53,10 @@ def test_new_onboard_writes_flags_and_layers(tmp_path: Path, monkeypatch) -> Non
 
     work = root / "novels" / "001_試験作品"
     flags = load_inspection_flags(work / "config.md")
-    assert flags.metron is InspectionFlag.OFF
-    assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
-    assert not (work / "chronos").exists()
+    assert flags.metron is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.ON
+    assert (work / "_metron").is_dir()
+    assert (work / "chronos").is_dir()
 
     assert novel_onboard.main(["検査作品", "--metron", "ON", "--chronos", "ON"]) == 0
     work_on = root / "novels" / "002_検査作品"

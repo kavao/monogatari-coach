@@ -80,7 +80,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
 - 正本は config.md の「## 基本情報」表。METRON と CHRONOS は連動させ（両方 ON か両方 OFF。食い違いは設定エラー）、行なしは METRON / CHRONOS が OFF、AUDIT_LOG が ON。未知値・重複・読込失敗は設定エラー。
-- 新規作品は既定 OFF で、ON はユーザー明示のときだけ（返答なしは「未応答・既定 OFF」）。OFF で下書き → ON で洗練が正式な経路。
+- 新規作品は既定 ON で、OFF はユーザー明示のときだけ（返答なしは「未応答・既定 ON」）。行なしの既存作品は従来どおり OFF。OFF で下書き → ON で洗練は、明示 OFF した作品の経路として残す。
 - フラグは自動ワークフローの起動判定にだけ使い、明示された CLI は拒否しない。ON の検査結果は本文保存の完了と分け、既にある本文の完了を取り消さない。ON は当該作品の writing_bridge 場面作業を承認済みと扱う（課金生成・イベント上書き・画像は対象外）。詳細は `workflow-specification.md`「作品単位の METRON / CHRONOS / AUDIT_LOG フラグの詳細」。
 
 ## 執筆接続（writing_bridge）

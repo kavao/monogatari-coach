@@ -29,7 +29,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 | provider | モデル | 主な用途 |
 |----------|--------|---------|
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
-| `novelai` | 既定 `nai-diffusion-5-full`。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
+| `novelai` | 描画時は NovelAI 5（既定 `nai-diffusion-5-full` / alias `v5`・`novelai5`）。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
 | `grok` | `grok-imagine-image-2.0` | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
 | `grok_pro` | `grok-imagine-image-2.0` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵。1.0 は `--model standard`、quality slug は `--model quality` |
 | `openai` | `gpt-image-2`（旧 `gpt-image-1.5` も明示指定可） | ページ生成の代替 |

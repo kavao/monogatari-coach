@@ -37,6 +37,7 @@ def test_capability_keys_are_model_profile_not_transport() -> None:
     assert resolve_renderer_capability_key(provider="grok", model="grok-imagine-image-2.0") == "grok_imagine_2"
     assert resolve_renderer_capability_key(provider="grok_pro", model="v2") == "grok_imagine_2"
     assert resolve_renderer_capability_key(provider="novelai", model="v5-full") == "novelai_v5"
+    assert resolve_renderer_capability_key(provider="novelai", model="novelai5") == "novelai_v5"
     assert resolve_renderer_capability_key(provider="novelai", model="nai-diffusion-5-full") == "novelai_v5"
 
 

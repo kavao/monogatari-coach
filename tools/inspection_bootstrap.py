@@ -21,11 +21,11 @@ class InspectionBootstrapError(ValueError):
     """新規作品の検査レイヤ初期化に必要な値が不正。"""
 
 
-DEFAULT_NEW_LAYER = InspectionFlag.OFF
+DEFAULT_NEW_LAYER = InspectionFlag.ON
 """新規作品の METRON / CHRONOS の既定（未応答のとき）。
 
-従量 API の量を抑えるため、新規作品は OFF で起こし、執筆後に ON にして
-洗練する経路を既定にする。ON は作成時の確認で明示したときだけ。
+新規作品は ON で起こし、計測しながら書く。OFF は作成時の確認で明示した
+ときだけ。行なしの既存作品は inspection_flags 側で従来どおり OFF。
 """
 
 
@@ -49,7 +49,7 @@ def _cell(value: str) -> str:
 
 
 def decision_label(value: InspectionFlag | str | None) -> str:
-    """作成時の確認の記録語。None は未応答（既定 OFF）。"""
+    """作成時の確認の記録語。None は未応答（既定 ON）。"""
 
     if value is None:
         return f"未応答・既定 {DEFAULT_NEW_LAYER.value}"
@@ -69,7 +69,7 @@ def initial_config_text(
 
     ``confirmation`` はチャットで確認できなかった場合などの記録で、設定値
     そのものとは分けて保存する。``metron`` / ``chronos`` が ``None`` のときは
-    未応答として既定（OFF）を書き、「未応答・既定 OFF」と記録する。
+    未応答として既定（ON）を書き、「未応答・既定 ON」と記録する。
     """
 
     metron_value = _flag(metron, name="METRON").value

@@ -785,29 +785,32 @@ def main(argv: list[str] | None = None) -> int:
         "--metron",
         choices=("ON", "OFF"),
         default=None,
-        help="未作成フォルダを --bootstrap するときの METRON（省略時: 未応答・既定 OFF）",
+        help="未作成フォルダを --bootstrap するときの METRON（省略時: 未応答・既定 ON）",
     )
     p.add_argument(
         "--chronos",
         choices=("ON", "OFF"),
         default=None,
-        help="未作成フォルダを --bootstrap するときの CHRONOS（省略時: 未応答・既定 OFF）",
+        help="未作成フォルダを --bootstrap するときの CHRONOS（省略時: 未応答・既定 ON）",
     )
     args = p.parse_args(argv)
 
     if args.bootstrap:
-        if (args.metron or "OFF") != (args.chronos or "OFF"):
+        from inspection_bootstrap import (
+            DEFAULT_NEW_LAYER,
+            InspectionBootstrapError,
+            initialize_new_layers,
+        )
+
+        default_layer = DEFAULT_NEW_LAYER.value
+        if (args.metron or default_layer) != (args.chronos or default_layer):
             print(
                 "error: METRON と CHRONOS は同じ値にしてください"
-                f"（METRON={args.metron or 'OFF'}, CHRONOS={args.chronos or 'OFF'}）",
+                f"（METRON={args.metron or default_layer}, CHRONOS={args.chronos or default_layer}）",
                 file=sys.stderr,
             )
             return 2
         from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
-        from inspection_bootstrap import (
-            InspectionBootstrapError,
-            initialize_new_layers,
-        )
 
         work = args.work_dir
         if not work.is_absolute():

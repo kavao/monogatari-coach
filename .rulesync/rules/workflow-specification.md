@@ -39,7 +39,7 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値が食い違う config.md は自動ワークフローでは設定エラーとし（`novel_project_check --check-inspection-layers` が検出）、片方に合わせて進めない。新規起こしで行を書くときの既定は両方 OFF（従量 API の量を抑えるため）。作成時に1回確認して両方に同じ値を書き、返答がない場合は **「未応答・既定 OFF」** と記録する。ON はユーザー明示に限る。途中の切り替えも両方同時に行う。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値が食い違う config.md は自動ワークフローでは設定エラーとし（`novel_project_check --check-inspection-layers` が検出）、片方に合わせて進めない。新規起こしで行を書くときの既定は両方 ON。作成時に1回確認して両方に同じ値を書き、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示に限る。途中の切り替えも両方同時に行う。
 
 **OFF で下書き → ON で洗練**: OFF の作品は従来経路で書き、書き終えた章（または洗練する章）から ON にして後追い計測で洗練する。手順は次のとおり。
 
@@ -93,8 +93,8 @@ ON の新規場面は「執筆接続の起動判定」に従い `prepare` から
 - 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
 - METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値（行なしは OFF）が食い違う config.md は、自動ワークフローでは設定エラーとする。新規作成の確認・明示 OFF・一時停止も両方同時に扱う。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
-- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は OFF（従量 API の量を抑えるため）。作成時に確認し、ユーザーが ON を明示したときだけ ON にする。返答がない場合は **「未応答・既定 OFF」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
-- **OFF で下書き → ON で洗練**を正式な経路とする。OFF の期間は従来経路で書き、ON にした章から後追い計測（既稿から契約・Beat を起こし、`_writing/` 側のマーカー付き作業稿を `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`）で洗練する。`_novel_text` にマーカーを書かない。config.md の基本情報表の `METRON_FROM | N` で、第N章より前を下書き期として未計測ゲートの対象から外せる。いつ ON にするかは `_meta.md` の「検査レイヤの予定」に書く。ON → OFF に戻すときは、active な run・修復を閉じてから切り替える。
+- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
+- **OFF で下書き → ON で洗練**は、明示 OFF した作品の経路として残す。OFF の期間は従来経路で書き、ON にした章から後追い計測（既稿から契約・Beat を起こし、`_writing/` 側のマーカー付き作業稿を `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`）で洗練する。`_novel_text` にマーカーを書かない。config.md の基本情報表の `METRON_FROM | N` で、第N章より前を下書き期として未計測ゲートの対象から外せる。いつ ON にするかは `_meta.md` の「検査レイヤの予定」に書く。ON → OFF に戻すときは、active な run・修復を閉じてから切り替える。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
 - ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で**既にある本文**の完了を取り消さない。これから書く新規場面には使わず、`prepare` 前に `_novel_text` を増やす根拠にしない。
@@ -1331,6 +1331,7 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 #### 画像生成（txt2img）の事前確認
 - 承認・dry-run の横断正本は本ファイルの「画像生成: dry-run から本番まで」。
 - 完了扱いの横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。
+- NovelAI の描画は既定で **NovelAI 5**（`nai-diffusion-5-full` / alias `v5` / `novelai5`）を選ぶ。V4.5 は Vibe Transfer があるジョブだけ。
 - 画像生成は必ず **`.env` / `config/image_generation.json` 確認 → `--dry-run` → ユーザー承認 → 本番 → 保存先のファイル確認** の順に進める。
 - `--dry-run` の結果を提示した時点では本番を実行しない。承認なしに `--dry-run` なしのコマンドへ進まない。
 - 運用の詳細・Flux 特有のパラメータ・例コマンドはスキル **`image-provider`（旧 `forge-txt2img`）**（`.rulesync/skills/forge-txt2img/SKILL.md`）および `docs/image-generation/` を参照する。

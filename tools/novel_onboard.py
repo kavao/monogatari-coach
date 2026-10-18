@@ -114,13 +114,13 @@ def main(argv: list[str] | None = None) -> int:
         "--metron",
         choices=("ON", "OFF"),
         default=None,
-        help="新規作品の METRON（省略時: 未応答・既定 OFF。ON は明示指定）",
+        help="新規作品の METRON（省略時: 未応答・既定 ON。OFF は明示指定）",
     )
     p.add_argument(
         "--chronos",
         choices=("ON", "OFF"),
         default=None,
-        help="新規作品の CHRONOS（省略時: 未応答・既定 OFF。ON は明示指定）",
+        help="新規作品の CHRONOS（省略時: 未応答・既定 ON。OFF は明示指定）",
     )
     args = p.parse_args(argv)
     metron_value = args.metron or DEFAULT_NEW_LAYER.value

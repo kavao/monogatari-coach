@@ -16,20 +16,20 @@ from inspection_bootstrap import (  # noqa: E402
 from inspection_flags import InspectionFlag, load_inspection_flags  # noqa: E402
 
 
-def test_new_defaults_record_unanswered_off_without_layers(tmp_path: Path) -> None:
+def test_new_defaults_record_unanswered_on_and_prepare_layers(tmp_path: Path) -> None:
     work = tmp_path / "001_旅"
 
     actions = initialize_new_layers(work, 1, "旅")
 
     config = (work / "config.md").read_text(encoding="utf-8")
-    assert "METRON=未応答・既定 OFF" in config
-    assert "CHRONOS=未応答・既定 OFF" in config
+    assert "METRON=未応答・既定 ON" in config
+    assert "CHRONOS=未応答・既定 ON" in config
     flags = load_inspection_flags(work / "config.md")
-    assert flags.metron is InspectionFlag.OFF
-    assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
-    assert not (work / "chronos").exists()
-    assert not any(rel in {"_metron/", "chronos/"} for rel, _ in actions)
+    assert flags.metron is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.ON
+    assert (work / "_metron").is_dir()
+    assert (work / "chronos").is_dir()
+    assert any(rel == "_metron/" for rel, _ in actions)
 
 
 def test_explicit_on_is_recorded_and_prepares_layers(tmp_path: Path) -> None:
