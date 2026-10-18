@@ -10,8 +10,10 @@ from .commands import inspect, prepare, receive, status
 from .locate import locate_quote_run
 from .publish import publish
 from .repair import (
-    canon_precheck, length_review, repair_begin, repair_next, repair_submit, repair_finish,
+    canon_check, canon_precheck, length_review, repair_begin, repair_next, repair_submit,
+    repair_finish,
 )
+from .revise import strip_check, strip_record
 from .errors import BridgeError, ErrorDocument
 from .models import RequestKind, Selector, SelectorKind
 from metron.models import LengthTarget, LengthTolerance
@@ -105,7 +107,10 @@ def main(argv: list[str] | None = None) -> int:
             repair.add_argument("--length-scope", choices=["scene", "beat"], default="scene")
             repair.add_argument("--length-beat-id", help="Beat ID for --length-scope beat")
             repair.add_argument("--max-passes", type=int, default=3,
-                                help="max deepen/tighten jobs, rejected ones included")
+                                help="max deepen/tighten/condense jobs, rejected ones included")
+            repair.add_argument("--check-replaces-author", action="store_true",
+                                help="accept a passing canon check instead of the author's "
+                                     "confirmation (only when the user asked for it)")
         if name == "repair-finish":
             repair.add_argument("--reason", required=True, choices=["floor_met", "author_stop"])
             repair.add_argument("--authorization", required=True,
@@ -128,6 +133,33 @@ def main(argv: list[str] | None = None) -> int:
     pre.add_argument("--run-id", required=True)
     pre.add_argument("--result", choices=["no_conflict", "conflict"])
     pre.add_argument("--authorization", help="source of the author's answer")
+    pre.add_argument("--check-prompt", action="store_true",
+                     help="write a prompt for a separate model check of events vs text")
+    pre.add_argument("--check-result", type=Path, help="JSON answer of that check")
+    pre.add_argument("--checker-model", help="model that answered the check")
+
+    chk = sub.add_parser("canon-check",
+                         help="write or judge the canon check of a pending length candidate")
+    _add_work(chk)
+    chk.add_argument("--scene-id", required=True)
+    chk.add_argument("--run-id", required=True)
+    chk.add_argument("--job-id", required=True)
+    chk.add_argument("--candidate", type=Path, required=True)
+    chk.add_argument("--result", type=Path, help="JSON answer of the check")
+    chk.add_argument("--checker-model", help="model that answered the check")
+    chk.add_argument("--repo-root", type=Path, default=Path.cwd())
+
+    for name in ("strip-check", "strip-record"):
+        strip = sub.add_parser(name, help="revision step: reference check / record of a deletion")
+        _add_work(strip)
+        strip.add_argument("--scene-id", required=True)
+        target = strip.add_mutually_exclusive_group(required=True)
+        target.add_argument("--episode-id")
+        target.add_argument("--quote")
+        if name == "strip-record":
+            strip.add_argument("--reason", required=True)
+            strip.add_argument("--authorization", required=True,
+                               help="source of the user's approval of the revision step")
 
     rev = sub.add_parser("length-review",
                          help="show what the author must confirm for a pending length job")
@@ -212,7 +244,8 @@ def main(argv: list[str] | None = None) -> int:
                 code, message = repair_begin(Path(args.work), model=args.model,
                     authorization=args.authorization, intent=args.intent,
                     scope=args.scope, beat_ids=beat_ids,
-                    length_target=_length_target(args), **kwargs)
+                    length_target=_length_target(args),
+                    check_replaces_author=args.check_replaces_author, **kwargs)
             elif args.command == "repair-next":
                 code, message = repair_next(Path(args.work), **kwargs)
             elif args.command == "repair-finish":
@@ -225,7 +258,21 @@ def main(argv: list[str] | None = None) -> int:
                     canon_authorization=args.canon_authorization, **kwargs)
         elif args.command == "canon-precheck":
             code, message = canon_precheck(Path(args.work), scene_id=args.scene_id,
-                run_id=args.run_id, result=args.result, authorization=args.authorization)
+                run_id=args.run_id, result=args.result, authorization=args.authorization,
+                check_prompt=args.check_prompt, check_result=args.check_result,
+                checker_model=args.checker_model)
+        elif args.command == "canon-check":
+            code, message = canon_check(Path(args.work), scene_id=args.scene_id,
+                run_id=args.run_id, job_id=args.job_id, candidate=args.candidate,
+                repo_root=args.repo_root, result_path=args.result,
+                checker_model=args.checker_model)
+        elif args.command == "strip-check":
+            code, message = strip_check(Path(args.work), scene_id=args.scene_id,
+                episode_id=args.episode_id, quote=args.quote)
+        elif args.command == "strip-record":
+            code, message = strip_record(Path(args.work), scene_id=args.scene_id,
+                episode_id=args.episode_id, quote=args.quote, reason=args.reason,
+                authorization=args.authorization)
         elif args.command == "length-review":
             code, message = length_review(Path(args.work), scene_id=args.scene_id,
                 run_id=args.run_id, job_id=args.job_id, candidate=args.candidate,

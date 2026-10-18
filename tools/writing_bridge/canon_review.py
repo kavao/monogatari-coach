@@ -13,6 +13,9 @@ from typing import Literal
 from pydantic import Field
 
 from chronos.store import ChronosLoadError, load_store
+from metron.canon_check import (
+    CanonCheckResult, PrecheckResult, build_precheck_prompt, evaluate_canon_check,
+)
 from metron.length import canon_review_digest
 from metron.repair_steps import StepModel
 from metron.storage import atomic_write_text
@@ -32,6 +35,23 @@ class PreCheck(StepModel):
     events_sha256: str
     result: Literal["no_conflict", "conflict"]
     authorization: str
+    at: str
+    # author: 著者が照合した。check: 別の呼び出しの検査で照合した（開始時のオプトインが要る）。
+    source: Literal["author", "check"] = "author"
+    checker_model: str | None = None
+    conflicts: list[str] = Field(default_factory=list)
+    input_sha256: str | None = None
+
+
+class CandidateCheck(StepModel):
+    job_id: str
+    candidate_hash: str
+    input_sha256: str | None = None
+    checker_model: str
+    passed: bool
+    reasons: list[str] = Field(default_factory=list)
+    facts_before: list[str] = Field(default_factory=list)
+    facts_after: list[str] = Field(default_factory=list)
     at: str
 
 
@@ -53,10 +73,38 @@ class CanonReview(StepModel):
     version: Literal[1] = 1
     pre_check: PreCheck | None = None
     candidates: list[CandidateReview] = Field(default_factory=list)
+    checks: list[CandidateCheck] = Field(default_factory=list)
 
 
 def _digest(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+class CheckRequest(StepModel):
+    input_sha256: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    inputs: dict[str, str]
+
+
+def check_input_hash(inputs: dict[str, str]) -> str:
+    return _digest(json.dumps(inputs, ensure_ascii=False, sort_keys=True))
+
+
+def write_check_request(path: Path, inputs: dict[str, str]) -> str:
+    request = CheckRequest(input_sha256=check_input_hash(inputs), inputs=inputs)
+    atomic_write_text(path, request.model_dump_json(indent=2) + "\n")
+    return request.input_sha256
+
+
+def require_check_request(path: Path, inputs: dict[str, str], reported_hash: str) -> None:
+    if not path.is_file():
+        raise BridgeError("UNKNOWN_REF", "issue the check prompt before submitting its result")
+    try:
+        request = CheckRequest.model_validate_json(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError) as error:
+        raise BridgeError("SCHEMA_UNSUPPORTED", f"invalid check request: {error}") from error
+    current = check_input_hash(inputs)
+    if request.inputs != inputs or request.input_sha256 != current or reported_hash != current:
+        raise BridgeError("STALE_EVIDENCE", "the check result no longer matches its issued inputs")
 
 
 def load(dest: Path) -> CanonReview:
@@ -121,14 +169,9 @@ def event_names(events: list[dict]) -> tuple[str, ...]:
 
 def precheck_view(source: Path, events: list[dict]) -> str:
     """著者が本文とイベントの矛盾を照合するための材料（読取専用）。"""
-
-    lines = ["# 規定量調整の開始前照合", "", "## 当該場面のイベント", ""]
-    lines.extend(
-        f"- {event['id']}: {event['title']}"
-        + (f"（人物: {'、'.join(event['actor_names'])}）" if event.get("actor_names") else "")
-        for event in events
-    )
-    lines.extend(["", "## 調整前の本文", "", source.read_text(encoding="utf-8").rstrip(), ""])
+    lines = ["# 規定量調整の開始前照合", "", "## 当該場面のイベント", "",
+             events_text(events), "", "## 調整前の本文", "",
+             source.read_text(encoding="utf-8").rstrip(), ""]
     lines.append("本文とイベントに矛盾が無ければ --result no_conflict、あれば conflict を記録する。")
     return "\n".join(lines) + "\n"
 
@@ -149,7 +192,42 @@ def record_precheck(dest: Path, *, source: Path, events: list[dict], result: str
     return check
 
 
-def require_precheck(dest: Path, *, source: Path, events: list[dict]) -> str:
+def events_text(events: list[dict]) -> str:
+    """照合対象のイベントを、結果・時刻・人物状態を省略せず渡す。"""
+    return json.dumps(events, ensure_ascii=False, sort_keys=True, indent=2)
+
+
+def precheck_prompt(source: Path, events: list[dict], *, input_sha256: str) -> str:
+    return build_precheck_prompt(events_text=events_text(events),
+                                 text=source.read_text(encoding="utf-8"),
+                                 input_sha256=input_sha256)
+
+
+def record_precheck_by_check(dest: Path, *, source: Path, events: list[dict],
+                             result: PrecheckResult, checker_model: str) -> PreCheck:
+    """検査で照合した結果を記録する。採用するかは repair-begin のオプトインで決まる。"""
+
+    if not checker_model.strip():
+        raise BridgeError("MISSING_FIELD", "record the checker model")
+    known = {item["id"] for item in events}
+    unknown = sorted({item.event_id for item in result.conflicts} - known)
+    if unknown:
+        raise BridgeError("BAD_ID", "conflict refers to events outside this scene: " + ", ".join(unknown))
+    document = load(dest)
+    check = PreCheck(
+        text_sha256=raw_sha256(source), event_ids=[item["id"] for item in events],
+        events_sha256=events_sha256(events),
+        result="conflict" if result.conflicts else "no_conflict",
+        authorization=f"canon-check:{checker_model}", at=now_iso(), source="check",
+        checker_model=checker_model, input_sha256=result.input_sha256,
+        conflicts=[f"{item.event_id}: {item.description}" for item in result.conflicts])
+    document.pre_check = check
+    save(dest, document)
+    return check
+
+
+def require_precheck(dest: Path, *, source: Path, events: list[dict],
+                     accept_check: bool = False) -> str:
     """イベントがある場面は、今の本文とイベントに結び付いた「矛盾なし」を要する。"""
 
     if not events:
@@ -165,9 +243,19 @@ def require_precheck(dest: Path, *, source: Path, events: list[dict]) -> str:
     if check.result != "no_conflict":
         raise BridgeError(
             "CANON_CONFLICT",
-            "the author found a conflict between the text and the events; resolve it before adjusting",
+            "a conflict between the text and the events was found; resolve it before adjusting",
+            refs={"conflicts": check.conflicts},
         )
-    return f"CANON_PRECHECK_OK: {len(events)} event(s) confirmed by the author"
+    if check.source == "check" and check.input_sha256 is None:
+        raise BridgeError("STALE_EVIDENCE", "the model pre-check has no issued input hash; check again")
+    if check.source == "check" and not accept_check:
+        raise BridgeError(
+            "CANON_PRECHECK_REQUIRED",
+            "the pre-check was done by a model check; the author must confirm it, "
+            "or begin with --check-replaces-author",
+        )
+    by = "the author" if check.source == "author" else f"a check by {check.checker_model}"
+    return f"CANON_PRECHECK_OK: {len(events)} event(s) confirmed by {by}"
 
 
 def review_view(original: str, candidate: str, *, known_text: str,
@@ -185,6 +273,36 @@ def review_view(original: str, candidate: str, *, known_text: str,
                   "- 本文・設定に無い語: " + ("、".join(digest.new_terms) or "なし"),
                   "- 消えた名前・語: " + ("、".join(digest.removed_terms) or "なし"), ""])
     return "\n".join(lines)
+
+
+def find_check(dest: Path, *, job_id: str, candidate: str) -> CandidateCheck | None:
+    wanted = _digest(candidate)
+    return next((item for item in load(dest).checks
+                 if item.job_id == job_id and item.candidate_hash == wanted
+                 and item.input_sha256 is not None), None)
+
+
+def record_candidate_check(dest: Path, *, job, candidate: str, result: CanonCheckResult,
+                           checker_model: str, episode=None) -> CandidateCheck:
+    if not checker_model.strip():
+        raise BridgeError("MISSING_FIELD", "record the checker model")
+    passed, reasons = evaluate_canon_check(result, operation=job.operation, episode=episode)
+    document = load(dest)
+    entry = CandidateCheck(job_id=job.job_id, candidate_hash=_digest(candidate),
+                           input_sha256=result.input_sha256,
+                           checker_model=checker_model, passed=passed, reasons=reasons,
+                           facts_before=result.facts_before, facts_after=result.facts_after,
+                           at=now_iso())
+    previous = next((item for item in document.checks
+                     if item.job_id == entry.job_id and item.candidate_hash == entry.candidate_hash),
+                    None)
+    if previous is not None:
+        if (previous.passed, previous.reasons) != (entry.passed, entry.reasons):
+            raise BridgeError("JOB_CONFLICT", "a different check was already recorded for this candidate")
+        return previous
+    document.checks.append(entry)
+    save(dest, document)
+    return entry
 
 
 def record_candidate(dest: Path, *, job, candidate: str, original: str, review: str,

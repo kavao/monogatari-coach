@@ -15,6 +15,10 @@ from metron.length import (
     LENGTH_TOKEN, LengthConfigError, LengthSpec, assembled_chars, band_state, measured_chars,
     resolve_bounds,
 )
+from metron.canon_check import (
+    CanonCheckError, build_canon_check_prompt, parse_canon_check, parse_precheck,
+)
+from metron.episodes import EpisodeError, load_episodes, splice, validate_against_plan
 from metron.models import Failure, GeneratorInfo, LengthTarget
 from metron.repair import marked_text_for_measurement, _text_by_beat
 from metron.repair_steps import (
@@ -38,7 +42,7 @@ class SkippedJob(StepModel):
     job_hash: str
     prompt_hash: str
     input_hash: str
-    operation: Literal["deepen", "regenerate", "seam", "tighten"]
+    operation: Literal["deepen", "regenerate", "seam", "tighten", "condense"]
     beat_id: str | None = None
     reason: Literal["floor_met", "author_stop"]
     at: str
@@ -69,6 +73,8 @@ class BridgeRepair(StepModel):
     beat_ids: list[str] = Field(default_factory=list)
     skipped_jobs: list[SkippedJob] = Field(default_factory=list)
     stop_reason: Literal["floor_met", "author_stop"] | None = None
+    # 規定量調整で、CANON 検査の合格を著者確認の代わりにする（ユーザーが開始時に明示したときだけ）。
+    check_replaces_author: bool = False
 
 
 def read_state(path: Path) -> BridgeRepair:
@@ -176,8 +182,10 @@ def _guard(root, dest, request, state, repo_root):
 
 
 def _job_json(dest, job):
+    # episode_id は収束ジョブだけに出す（既存のジョブ JSON とのバイト一致を保つ）。
+    body = job.model_dump(exclude={"episode_id"} if job.episode_id is None else set())
     return json.dumps({"schema": 1, "run_id": dest.name, "status": "pending",
-                       **job.model_dump()}, ensure_ascii=False, indent=2) + "\n"
+                       **body}, ensure_ascii=False, indent=2) + "\n"
 
 
 def _check_job_files(dest, job):
@@ -207,7 +215,8 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
                  model: str, authorization: str, repo_root: Path,
                  intent: str = "auto", scope: str = "scene",
                  beat_ids: list[str] | None = None,
-                 length_target: LengthTarget | None = None) -> tuple[int, str]:
+                 length_target: LengthTarget | None = None,
+                 check_replaces_author: bool = False) -> tuple[int, str]:
     root, dest, request = _paths(work_root, scene_id, run_id)
     if intent not in {"auto", "explicit_deepen", "length"}:
         raise BridgeError("BAD_ID", "intent must be auto, explicit_deepen or length")
@@ -216,7 +225,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
     if intent == "length" and (scope != "scene" or beat_ids):
         raise BridgeError("JOB_CONFLICT",
                           "length adjustment takes its scope from the length target, not --scope/--beat-ids")
-    if intent != "length" and length_target is not None:
+    if intent != "length" and (length_target is not None or check_replaces_author):
         raise BridgeError("JOB_CONFLICT", "a length target requires --intent length")
     checked_intent = cast(Literal["auto", "explicit_deepen", "length"], intent)
     checked_scope = cast(Literal["scene", "beats"], scope)
@@ -236,7 +245,8 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
         began_length = state.session.length.target if state.session.length else None
         if (model != state.session.model or authorization != state.authorization
                 or intent != state.intent or scope != state.scope
-                or normalized != state.beat_ids or wanted_length != began_length):
+                or normalized != state.beat_ids or wanted_length != began_length
+                or check_replaces_author != state.check_replaces_author):
             raise BridgeError("JOB_CONFLICT", "repair already began with different provenance")
         return 0, f"repair already begun: {dest}"
     if request.flags.metron is not FlagValue.ON:
@@ -277,7 +287,8 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
                              plan=plan, analyzed=analyzed, required=required, source=source,
                              marked=marked, context=context, calibration=calibration,
                              calibration_path=calibration_path, floor_met=floor_met,
-                             length_target=length_target)
+                             length_target=length_target,
+                             check_replaces_author=check_replaces_author)
     if intent == "auto" and floor_met and not required:
         raise BridgeError(
             "REPAIR_NOT_NEEDED",
@@ -329,7 +340,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
 
 def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, required,
                   source, marked, context, calibration, calibration_path, floor_met,
-                  length_target):
+                  length_target, check_replaces_author):
     """規定量調整を始める。出来事を変えない伸縮だけを行い、候補は著者確認を経て採用する。"""
 
     if length_target and plan.length_target and length_target != plan.length_target:
@@ -349,7 +360,9 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
         raise BridgeError("REPAIR_NOT_NEEDED", "already within the length band and the floor",
                           exit_code=1)
     events = canon_review.scene_events(root, request)
-    precheck_note = canon_review.require_precheck(dest, source=source, events=events)
+    precheck_note = canon_review.require_precheck(dest, source=source, events=events,
+                                                  accept_check=check_replaces_author)
+    episodes = _load_scene_episodes(root, request.scene_id, plan)
     prefix = marked[:marked.index(f"<!--beat:{plan.beats[0].id}-->")]
     closing = f"<!--/beat:{plan.beats[-1].id}-->"
     suffix = marked[marked.rindex(closing) + len(closing):]
@@ -361,18 +374,50 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
         session = begin_repair(analyzed.metrics, plan, calibration,
             clean_text=analyzed.clean_text, spans=analyzed.spans, model=model,
             context=full_context, seam_enabled=False,
-            length=LengthSpec(target=target, known_facts=canon_review.known_facts_text(events)))
+            length=LengthSpec(target=target, known_facts=canon_review.known_facts_text(events),
+                              episodes=episodes))
     except (LengthConfigError, ValueError) as error:
         raise BridgeError("MODEL_UNCALIBRATED", str(error)) from error
     state = BridgeRepair(session=session, request_hash=raw_sha256(dest / "request.yaml"),
         input_hashes=_hashes(root, request), calibration_hash=raw_sha256(calibration_path),
         authorization=authorization, source_path=source.relative_to(root).as_posix(),
         source_hash=raw_sha256(source), source_marked=marked, prefix=prefix, suffix=suffix,
-        intent="length", notes=[precheck_note])
+        intent="length", notes=[precheck_note], check_replaces_author=check_replaces_author)
     _save(dest, state)
     _journal(dest, request, JournalAction.REPAIR_BEGIN, note="length")
     return 0, (f"length adjustment begun: {dest}; band {bounds.effective_lower}-{bounds.upper_chars}; "
                f"{precheck_note}; use repair-next")
+
+
+def _load_scene_episodes(root, scene_id, plan):
+    """作者が登録した子エピソード契約（任意）。収束（OP-C）の対象はこれだけ。"""
+    path = root / "_metron" / scene_id / "episodes.yaml"
+    if not path.is_file():
+        return []
+    try:
+        document = load_episodes(path)
+        validate_against_plan(document, plan, scene_id=scene_id)
+    except (EpisodeError, OSError, ValueError) as error:
+        raise BridgeError("SCHEMA_UNSUPPORTED", f"invalid episodes.yaml: {error}") from error
+    return document.episodes
+
+
+def _episode_of(state, job):
+    if job.episode_id is None or state.session.length is None:
+        return None
+    return next((item for item in state.session.length.episodes if item.id == job.episode_id), None)
+
+
+def _candidate_beat_text(state, job, text):
+    """収束の候補は子エピソードの範囲の置き換えなので、Beat 全体に戻して比べる。"""
+    episode = _episode_of(state, job)
+    original = state.session.working_texts[job.beat_id]
+    if episode is None:
+        return original, text
+    try:
+        return original, splice(original, episode, text)
+    except EpisodeError as error:
+        raise BridgeError("RANGE_MISMATCH", str(error)) from error
 
 
 def _length_known_text(root, state, events):
@@ -527,19 +572,16 @@ def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
     # 提出済みのジョブの再送は submit_result の同一結果判定に任せる（応答喪失からの復旧）。
     resent = any(item.job.job_id == job_id for item in state.session.history)
     if state.intent == "length" and candidate is not None and not resent:
-        # 機械検査では出来事の追加・変更・欠落を確定できないため、著者確認を採用条件にする。
-        if review == "confirmed" and not (canon_authorization and canon_authorization.strip()):
-            raise BridgeError(
-                "MISSING_FIELD",
-                "length adjustment needs the author's fact confirmation (--canon-authorization)")
         if pending is None or pending.job_id != job_id or not pending.beat_id:
             raise BridgeError("JOB_CONFLICT", "result requires the matching pending job")
+        authorization = _length_authorization(dest, state, pending, text, review,
+                                              canon_authorization)
         events = canon_review.scene_events(root, request)
+        original, full = _candidate_beat_text(state, pending, text)
         # 結果より先に記録する。記録は同一内容なら冪等なので、途中で止まっても再送できる。
         canon_review.record_candidate(
-            dest, job=pending, candidate=text,
-            original=state.session.working_texts[pending.beat_id], review=review,
-            authorization=canon_authorization,
+            dest, job=pending, candidate=full, original=original, review=review,
+            authorization=authorization,
             known_text=_length_known_text(root, state, events),
             names=canon_review.event_names(events))
     try:
@@ -569,6 +611,25 @@ def _reanalyze_current(root, dest, request, state, repo_root):
     if inherited:
         analyzed.metrics.metrics.finish_reason = inherited
     return analyzed, candidate_hash, plan
+
+
+def _length_authorization(dest, state, job, text, review, canon_authorization):
+    """採用の根拠を決める。著者確認が基本で、検査の合格は開始時のオプトインがあるときだけ代わりになる。"""
+    if review != "confirmed":
+        return canon_authorization
+    check = canon_review.find_check(dest, job_id=job.job_id, candidate=text)
+    if canon_authorization and canon_authorization.strip():
+        return canon_authorization  # 著者の確認は検査の不合格（誤検出）にも優先する。
+    if check is not None and not check.passed:
+        raise BridgeError(
+            "CANON_CHECK_FAILED",
+            "the canon check failed: " + "; ".join(check.reasons)
+            + " (submit --review rejected, or get the author's confirmation)")
+    if check is not None and check.passed and state.check_replaces_author:
+        return f"canon-check:{check.checker_model}"
+    raise BridgeError(
+        "MISSING_FIELD",
+        "length adjustment needs the author's fact confirmation (--canon-authorization)")
 
 
 @locked_scene
@@ -685,7 +746,10 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
 @locked_scene
 def canon_precheck(work_root: Path, *, scene_id: str, run_id: str,
                    result: str | None = None,
-                   authorization: str | None = None) -> tuple[int, str]:
+                   authorization: str | None = None,
+                   check_prompt: bool = False,
+                   check_result: Path | None = None,
+                   checker_model: str | None = None) -> tuple[int, str]:
     """規定量調整の開始前照合。引数なしは材料の表示だけ、--result で著者の返答を記録する。"""
     root, dest, request = _paths(work_root, scene_id, run_id)
     commands._assert_base_text_current(root, request)
@@ -694,6 +758,31 @@ def canon_precheck(work_root: Path, *, scene_id: str, run_id: str,
     if not events:
         return 0, ("CANON_PRECHECK_SKIPPED: no CHRONOS events for this scene; "
                    "the pre-adjustment text is canon and no pre-check is needed")
+    inputs = {"run_path_sha256": text_sha256(dest.resolve().as_posix()),
+              "request_sha256": raw_sha256(dest / "request.yaml"),
+              "text_sha256": raw_sha256(source),
+              "events_sha256": canon_review.events_sha256(events)}
+    issued = dest / "canon_precheck.request.json"
+    if check_result is not None:
+        # 別の呼び出しによる検査で照合した結果。採用には repair-begin のオプトインが要る。
+        if result is not None or authorization is not None:
+            raise BridgeError("JOB_CONFLICT", "use either the author's --result or --check-result")
+        if not check_result.is_file():
+            raise BridgeError("UNKNOWN_REF", f"check result not found: {check_result}")
+        try:
+            parsed = parse_precheck(check_result.read_text(encoding="utf-8"))
+        except CanonCheckError as error:
+            raise BridgeError("SCHEMA_UNSUPPORTED", str(error)) from error
+        canon_review.require_check_request(issued, inputs, parsed.input_sha256)
+        check = canon_review.record_precheck_by_check(
+            dest, source=source, events=events, result=parsed, checker_model=checker_model or "")
+        return 0, f"canon pre-check recorded by check ({check.result}): {dest / canon_review.FILE_NAME}"
+    if check_prompt:
+        path = dest / "canon_precheck.prompt.md"
+        atomic_write_text(path, canon_review.precheck_prompt(
+            source, events, input_sha256=canon_review.check_input_hash(inputs)))
+        canon_review.write_check_request(issued, inputs)
+        return 0, f"canon pre-check prompt: {path}"
     if result is None:
         if authorization is not None:
             raise BridgeError("MISSING_FIELD", "--authorization requires --result")
@@ -718,8 +807,64 @@ def length_review(work_root: Path, *, scene_id: str, run_id: str, job_id: str,
     if not candidate.is_file():
         raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
     events = canon_review.scene_events(root, request)
+    original, full = _candidate_beat_text(state, pending, candidate.read_text(encoding="utf-8"))
     view = canon_review.review_view(
-        state.session.working_texts[pending.beat_id], candidate.read_text(encoding="utf-8"),
+        original, full,
         known_text=_length_known_text(root, state, events),
         names=canon_review.event_names(events))
     return 0, view
+
+
+@locked_scene
+def canon_check(work_root: Path, *, scene_id: str, run_id: str, job_id: str,
+                candidate: Path, repo_root: Path, result_path: Path | None = None,
+                checker_model: str | None = None) -> tuple[int, str]:
+    """CANON 検査。結果なしは検査用の指示を jobs/ に書き、結果ありは判定して記録する。"""
+    root, dest, request = _paths(work_root, scene_id, run_id)
+    state = read_state(dest / "repair_state.json")
+    _guard(root, dest, request, state, repo_root)
+    if state.intent != "length" or state.session.length is None:
+        raise BridgeError("JOB_CONFLICT", "canon-check is only for --intent length runs")
+    pending = state.session.pending
+    if pending is None or pending.job_id != job_id or not pending.beat_id:
+        raise BridgeError("JOB_CONFLICT", "canon-check requires the matching pending job")
+    if not candidate.is_file():
+        raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
+    text = candidate.read_text(encoding="utf-8")
+    episode = _episode_of(state, pending)
+    original, full = _candidate_beat_text(state, pending, text)
+    events = canon_review.scene_events(root, request)
+    inputs = {"run_path_sha256": text_sha256(dest.resolve().as_posix()),
+              "request_sha256": raw_sha256(dest / "request.yaml"),
+              "job_sha256": text_sha256(pending.model_dump_json()),
+              "source_sha256": state.source_hash,
+              "original_sha256": text_sha256(original),
+              "candidate_sha256": raw_sha256(candidate),
+              "known_facts_sha256": text_sha256(state.session.length.known_facts),
+              "events_sha256": canon_review.events_sha256(events),
+              "episode_sha256": text_sha256(episode.model_dump_json() if episode else "")}
+    issued = dest / "jobs" / f"{pending.job_id}.canon_check.request.json"
+    if result_path is None:
+        if checker_model is not None:
+            raise BridgeError("MISSING_FIELD", "--checker-model requires --result")
+        prompt = build_canon_check_prompt(
+            operation=pending.operation, known_facts=state.session.length.known_facts,
+            original=original, candidate=full, episode=episode,
+            input_sha256=canon_review.check_input_hash(inputs))
+        path = dest / "jobs" / f"{pending.job_id}.canon_check.prompt.md"
+        atomic_write_text(path, prompt)
+        canon_review.write_check_request(issued, inputs)
+        return 0, f"canon check prompt: {path}"
+    if not result_path.is_file():
+        raise BridgeError("UNKNOWN_REF", f"check result not found: {result_path}")
+    try:
+        result = parse_canon_check(result_path.read_text(encoding="utf-8"))
+    except CanonCheckError as error:
+        raise BridgeError("SCHEMA_UNSUPPORTED", str(error)) from error
+    canon_review.require_check_request(issued, inputs, result.input_sha256)
+    check = canon_review.record_candidate_check(
+        dest, job=pending, candidate=text, result=result,
+        checker_model=checker_model or "", episode=episode)
+    if check.passed:
+        return 0, f"canon check passed ({check.checker_model})"
+    return 1, "canon check failed: " + "; ".join(check.reasons)
