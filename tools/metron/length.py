@@ -29,6 +29,20 @@ from .prompt import current_beat_chars
 
 
 LENGTH_TOKEN = "__length__"
+# D19: 清書で削られる分の余地（043 第2章の実測で清書が -8.6%）。
+DEFAULT_FINISH_MARGIN = 0.08
+# 清書後が仕上がり目標から数%ずれる程度は誤差として扱い、無理に合わせない（床は別。ルールで厳守）。
+FINISH_SLACK = 0.05
+# D21: Deepen（OP-R）で埋めてよい不足の上限。これ以上の不足は、出来事を足す設計追加へ回す。
+DESIGN_SHORTAGE_LIMIT = 0.10
+
+
+def shortage_ratio(target_chars: int, current_chars: int) -> float:
+    """同じ対象範囲の目標 T と本文字数 C から max(0, T - C) / T を出す（D21）。"""
+
+    if target_chars <= 0:
+        return 0.0
+    return max(0, target_chars - current_chars) / target_chars
 # 引き締め候補の各文の文字が、元文のどれかの文へこの割合以上、順序どおりに含まれること。
 # 迂言の圧縮（「走るという行動を開始した」→「走り出した」）は通し、新しい文を検出する。
 TIGHTEN_CONTAINMENT = 0.6
@@ -83,7 +97,37 @@ def resolve_bounds(target: LengthTarget, plan: BeatPlan) -> LengthBounds:
             f"length band upper {upper} is below the floor {floor}; the band and floor cannot both hold"
         )
     effective = max(lower, floor)
+    if target.finish_chars is not None:
+        finish = finish_bounds(target, plan)
+        if finish is not None and finish[0] > finish[1]:
+            raise LengthConfigError(
+                f"finish band upper {finish[1]} is below the floor {floor}; "
+                "the finished length and the floor cannot both hold")
     return LengthBounds(lower, upper, effective, floor, scene_floor, effective > lower)
+
+
+def finish_target(finish_chars: int, *, margin: float = DEFAULT_FINISH_MARGIN,
+                  **fields) -> LengthTarget:
+    """仕上がり目標から、余地を足した増量の目標を作る（D19）。"""
+
+    if not 0 <= margin < 1:
+        raise LengthConfigError("finish margin must be between 0 and 1")
+    return LengthTarget(target_chars=round(finish_chars * (1 + margin)),
+                        finish_chars=finish_chars, **fields)
+
+
+def finish_bounds(target: LengthTarget, plan: BeatPlan) -> tuple[int, int] | None:
+    """清書後の仕上がりの帯（下限は床まで引き上げる）。仕上がり目標が無ければ None。"""
+
+    if target.finish_chars is None:
+        return None
+    floor = plan.generation.chars_floor
+    if target.scope == "beat":
+        beat = next(item for item in plan.beats if item.id == target.beat_id)
+        floor = beat.budget.chars_hint
+    lower = math.ceil(round(target.finish_chars * target.tolerance.lower, 6))
+    upper = math.floor(round(target.finish_chars * target.tolerance.upper, 6))
+    return max(lower, floor), upper
 
 
 def assembled_chars(plan: BeatPlan, texts: dict[str, str]) -> int:
@@ -186,6 +230,20 @@ class CanonReviewDigest:
     removed_sentences: tuple[str, ...]
     new_terms: tuple[str, ...]
     removed_terms: tuple[str, ...]
+    # 前後の両方にあるが、順序が変わった文（存在の比較だけでは見えない並べ替え）。
+    moved_sentences: tuple[str, ...] = ()
+
+
+def moved_sentences(before: list[str], after: list[str]) -> tuple[str, ...]:
+    """両方にある文のうち、最長の共通の並びから外れた文を、調整後の順で返す。"""
+
+    common_before = [item for item in before if item in after]
+    common_after = [item for item in after if item in before]
+    matcher = SequenceMatcher(None, common_before, common_after, autojunk=False)
+    kept: set[int] = set()
+    for block in matcher.get_matching_blocks():
+        kept.update(range(block.b, block.b + block.size))
+    return tuple(item for index, item in enumerate(common_after) if index not in kept)
 
 
 def canon_review_digest(
@@ -208,10 +266,11 @@ def canon_review_digest(
     candidate_n = unicodedata.normalize("NFC", candidate)
     original_n = unicodedata.normalize("NFC", original)
     watched = list(dict.fromkeys([*_KATAKANA_RE.findall(original_n), *names]))
+    moved = moved_sentences(before, after)
     removed_terms = tuple(
         term for term in watched if term and term in original_n and term not in candidate_n
     )
-    return CanonReviewDigest(new, removed, tuple(new_terms), removed_terms)
+    return CanonReviewDigest(new, removed, tuple(new_terms), removed_terms, moved)
 
 
 def build_length_deepen_prompt(
@@ -222,7 +281,10 @@ def build_length_deepen_prompt(
     room_chars: int,
     bounds: LengthBounds,
     known_facts: str,
+    avoid: tuple[str, ...] = (),
 ) -> str:
+    from .repetition import style_rules_text
+
     return "\n".join(
         [
             f"Beat {beat.id} の規定量調整（増量）。",
@@ -237,6 +299,7 @@ def build_length_deepen_prompt(
             "同じ内容の言い換えや、段落末のまとめ直しで字数を稼がない。",
             "現在の本文を残したまま書き足す。既存文の削除・要約・書き直しはしない。",
             "許容帯に届かない場合は無理に増やさない。",
+            style_rules_text(avoid),
             "現在の Beat 本文:",
             current_text,
             "この Beat の本文だけを出力する。",
@@ -312,11 +375,14 @@ def length_adjust_impl(
     length: LengthSpec,
     dispatch: Callable[[str, str | None, str], str],
     checkpoint: Callable[[dict[str, str]], None] | None = None,
+    allowed_repeats: tuple[str, ...] = (),
 ):
     """一方向の伸縮を ``max_passes`` 回まで行う。却下された候補も回数に数える。"""
 
     from .repair import SceneRepairResult, _text_by_beat, assemble_beat_texts, marked_text_for_measurement
-    from .repair import strip_generation_markers
+    from .repair import _previous_text, strip_generation_markers
+    from .models import Failure
+    from .prompt import build_beat_prompt
 
     classification = classify_metrics(metrics, beat_plan, calibration, spans=spans)
     target = length.target
@@ -393,7 +459,53 @@ def length_adjust_impl(
             run("condense", beat, build_condense_prompt(
                 episode, span_text, reduce_chars=reduce, keep_min_chars=keep_min), episode)
 
-    start_state = band_state(current(), bounds)
+    # D17: 欠落 Beat を先に再生成してから分量を合わせる。max_passes には数えない。
+    missing = list(dict.fromkeys(
+        item.beat_id for item in classification.findings
+        if item.failure == Failure.BEAT_MISSING and item.beat_id
+    ))
+    unrepaired: list[str] = []
+    for beat_id in missing:
+        index = next(position for position, beat in enumerate(beat_plan.beats) if beat.id == beat_id)
+        prompt = build_beat_prompt(
+            by_id[beat_id], previous_context=_previous_text(index, beat_plan, texts))
+        if checkpoint:
+            checkpoint(dict(texts))
+        candidate = dispatch("regenerate", beat_id, prompt)
+        if candidate.strip():
+            texts[beat_id] = strip_generation_markers(candidate)
+        else:
+            unrepaired.append(beat_id)
+    if missing:
+        # 採用した稿でもまだ欠落に当たることがある。分類をやり直し、残れば分量は合わせない。
+        refilled = analyze_marked_text(
+            marked_text_for_measurement(beat_plan, texts), beat_plan, run=metrics.metrics.run + 1)
+        still = {
+            item.beat_id for item in classify_metrics(
+                refilled.metrics, beat_plan, calibration, spans=refilled.spans).findings
+            if item.failure == Failure.BEAT_MISSING and item.beat_id
+        }
+        unrepaired.extend(beat_id for beat_id in missing
+                          if beat_id in still and beat_id not in unrepaired)
+        notes.append("LENGTH_MISSING_FILLED: " + ", ".join(b for b in missing if b not in unrepaired))
+    if unrepaired:
+        escalated.add(LENGTH_TOKEN)
+        notes.append("LENGTH_REQUIRED_UNREPAIRED: missing beats were not filled: "
+                     + ", ".join(unrepaired))
+
+    start_state = "blocked" if unrepaired else band_state(current(), bounds)
+    if missing and start_state == "short":
+        # D21: 欠落を埋めたあとも大きく足りない稿は、Deepen へ進まず設計追加へ回す。
+        filled = current()
+        ratio = shortage_ratio(target.target_chars, filled)
+        if ratio >= DESIGN_SHORTAGE_LIMIT:
+            escalated.add(LENGTH_TOKEN)
+            notes.append(
+                f"DESIGN_DENSITY: short by {target.target_chars - filled} chars ({ratio:.0%}) of "
+                f"{target.target_chars} after filling missing beats; Deepen is for gaps under "
+                f"{DESIGN_SHORTAGE_LIMIT:.0%}. Propose adding design items or child episodes"
+            )
+            start_state = "design"
     if start_state == "short" and not _deepen_order(beat_plan, texts, target):
         notes.append("LENGTH_NO_ELIGIBLE: no expandable beat in scope (expandable=false)")
     if start_state == "short":
@@ -402,6 +514,8 @@ def length_adjust_impl(
             if beat is None:
                 break
             now = current()
+            from .repetition import frequent_phrases
+
             prompt = build_length_deepen_prompt(
                 beat,
                 texts[beat.id],
@@ -409,6 +523,7 @@ def length_adjust_impl(
                 room_chars=bounds.upper_chars - now,
                 bounds=bounds,
                 known_facts=length.known_facts,
+                avoid=tuple(frequent_phrases(texts.values(), allowed=allowed_repeats)),
             )
             run("deepen", beat, prompt)
         if current() > bounds.upper_chars:
@@ -433,7 +548,9 @@ def length_adjust_impl(
     final = current()
     state = band_state(final, bounds)
     scene_total = assembled_chars(beat_plan, texts)
-    if state == "in_band" and scene_total < bounds.scene_floor:
+    if unrepaired:
+        pass  # 欠落を埋められないまま分量を合わせない（上で記録済み）。
+    elif state == "in_band" and scene_total < bounds.scene_floor:
         # Beat 指定では Beat の帯に入っても場面の床は満たされないことがある。
         escalated.add(LENGTH_TOKEN)
         notes.append(

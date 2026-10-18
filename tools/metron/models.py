@@ -76,6 +76,8 @@ class SceneDefinition(StrictModel):
     start_state: SceneState | None = None
     end_state: SceneState | None = None
     forbidden: list[str] = Field(default_factory=list)
+    # 意図した反復（モチーフ）。場面単位の反復検査（D18）で、この語句を含む反復は許す。
+    allowed_repeats: list[str] = Field(default_factory=list)
 
 
 class SceneContract(StrictModel):
@@ -144,6 +146,8 @@ class LengthTarget(StrictModel):
     scope: Literal["beat", "scene", "chapter"] = "scene"
     beat_id: str | None = Field(default=None, pattern=_BEAT_ID_PATTERN)
     max_passes: int = Field(default=3, ge=1)
+    # D19: ユーザーが言った字数（清書後の仕上がり目標）。target_chars はそれに余地を足した増量の目標。
+    finish_chars: int | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def validate_scope(self) -> "LengthTarget":

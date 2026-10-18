@@ -66,6 +66,9 @@ class ChildEpisode(StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
     beat_id: str = Field(pattern=_BEAT_ID_PATTERN)
     span: EpisodeSpan | None = None
+    # D21・6-5: 本文を書く前に設計から登録した子エピソード。範囲は本文を書いたあとに補う。
+    # true のあいだは範囲が決まっていないので、収束・脱落の対象にしない（span 省略＝Beat 全体とは別）。
+    span_pending: bool = False
     parent: str | None = None
     operator: Literal[
         "INTERRUPT", "PREPARE", "DISCOVER", "RELATE", "HESITATE", "CONSEQUENCE", "MIRROR", "BREATHE"
@@ -80,6 +83,12 @@ class ChildEpisode(StrictModel):
     order_note: str | None = None
     chronos: bool = True
     checks: EpisodeChecks = Field(default_factory=EpisodeChecks)
+
+    @model_validator(mode="after")
+    def validate_pending(self) -> "ChildEpisode":
+        if self.span_pending and self.span is not None:
+            raise ValueError("span_pending must be false once span is written")
+        return self
 
     @property
     def concrete_payoff(self) -> list[LocalPayoff]:
@@ -144,6 +153,8 @@ def locate_span(text: str, episode: ChildEpisode) -> tuple[int, int]:
     """Beat 本文での子エピソードの範囲を返す。引用が無い・重複するときは失敗。"""
 
     normalized = unicodedata.normalize("NFC", text)
+    if episode.span_pending:
+        raise EpisodeError(f"{episode.id}: span is pending (registered before writing)")
     if episode.span is None:
         stripped = normalized.strip("\n")
         start = normalized.index(stripped) if stripped else 0

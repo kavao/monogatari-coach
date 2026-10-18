@@ -20,6 +20,7 @@ from .repair import (
     run_marked_seam_correction, strip_generation_markers, current_beat_chars,
 )
 from .markers import parse_markers
+from .contract_fix import ContractFixSpec, contract_fix_impl, validate_contract_fix
 from .episodes import EpisodeError, locate_span, splice, validate_condense
 from .length import (
     LengthSpec, assembled_chars, length_adjust_impl, measured_chars, resolve_bounds,
@@ -72,6 +73,8 @@ class RepairSession(StepModel):
     force_ending_rush: bool = False
     restrict_beat_ids: list[str] = Field(default_factory=list)
     length: LengthSpec | None = None
+    contract_fix: ContractFixSpec | None = None
+    allowed_repeats: list[str] = Field(default_factory=list)
     history: list[SubmittedResult] = Field(default_factory=list)
     pending: RepairJob | None = None
     working_texts: dict[str, str] = Field(default_factory=dict)
@@ -88,14 +91,24 @@ def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                  force_deepen_ids: list[str] | None = None,
                  force_ending_rush: bool = False,
                  restrict_beat_ids: list[str] | None = None,
-                 length: LengthSpec | None = None) -> RepairSession:
+                 length: LengthSpec | None = None,
+                 contract_fix: ContractFixSpec | None = None,
+                 allowed_repeats: list[str] | None = None) -> RepairSession:
     require_calibration(calibration)
     if not model:
         raise ValueError("generation model is required")
     if length is not None:
         resolve_bounds(length.target, beat_plan)
+    if length is not None and contract_fix is not None:
+        raise ValueError("length adjustment and contract fix are separate sessions")
+    if contract_fix is not None:
+        known = {beat.id for beat in beat_plan.beats}
+        unknown = [item for item in contract_fix.beat_ids if item not in known]
+        if unknown:
+            raise ValueError("unknown beat_id for contract fix: " + ", ".join(unknown))
     return RepairSession(metrics=metrics, beat_plan=beat_plan, calibration=calibration,
-                         length=length,
+                         length=length, contract_fix=contract_fix,
+                         allowed_repeats=list(allowed_repeats or []),
                          clean_text=clean_text, spans=spans, model=model,
                          context=context, seam_enabled=seam_enabled,
                          deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled,
@@ -112,7 +125,9 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
         nonlocal index
         key = (operation, episode_id or beat_id)
         attempts[key] = attempts.get(key, 0) + 1
-        limit = 2 if operation in {"deepen", "tighten"} else 1
+        # 契約修正の再生成は、棄却されても同じ Beat に2回目の候補を出せる（D16b）。
+        limit = 2 if (operation in {"deepen", "tighten"}
+                      or (operation == "regenerate" and state.contract_fix is not None)) else 1
         if attempts[key] > limit:
             raise ValueError("repair attempt limit exceeded")
         current = json.dumps(state.working_texts, ensure_ascii=False, sort_keys=True)
@@ -135,11 +150,18 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
     # These callbacks are capability flags only; dispatch handles every call.
     callback = lambda prompt: ""
     try:
-        if state.length is not None:
+        if state.contract_fix is not None:
+            result = contract_fix_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans, spec=state.contract_fix,
+                dispatch=dispatch,
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+            )
+        elif state.length is not None:
             result = length_adjust_impl(
                 state.metrics, state.beat_plan, state.calibration,
                 clean_text=state.clean_text, spans=state.spans, length=state.length,
-                dispatch=dispatch,
+                dispatch=dispatch, allowed_repeats=tuple(state.allowed_repeats),
                 checkpoint=lambda texts: setattr(state, "working_texts", texts),
             )
         else:
@@ -154,6 +176,7 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
                 force_deepen_ids=state.force_deepen_ids,
                 force_ending_rush=state.force_ending_rush,
                 restrict_beat_ids=state.restrict_beat_ids,
+                allowed_repeats=tuple(state.allowed_repeats),
             )
     except _AwaitJob as waiting:
         return waiting.job
@@ -207,9 +230,11 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
         rejection = "candidate is empty"
     if not rejection and not error:
         if job.operation == "deepen":
+            others = tuple(text for key, text in state.working_texts.items() if key != beat_id)
             check = validate_expansion(state.working_texts[beat_id],
                 strip_generation_markers(candidate),
-                retention_threshold=_retention_threshold(state.calibration))
+                retention_threshold=_retention_threshold(state.calibration),
+                others=others, allowed_repeats=tuple(state.allowed_repeats))
             if not check.accepted:
                 rejection = check.reason
         elif job.operation == "tighten":
@@ -230,6 +255,12 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
                                                lambda prompt: candidate)
             if not check.accepted:
                 rejection = check.reason
+        elif state.contract_fix is not None:
+            # 契約修正は旧稿の字数ではなく Beat の床で長さを保証する（D16b）。
+            beat = next(item for item in state.beat_plan.beats if item.id == beat_id)
+            rejection = validate_contract_fix(
+                state.working_texts[beat_id], strip_generation_markers(candidate),
+                floor=beat.budget.chars_hint)
         else:
             original = state.working_texts[beat_id]
             clean = strip_generation_markers(candidate)

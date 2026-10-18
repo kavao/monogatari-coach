@@ -263,6 +263,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
     args = build_parser().parse_args(argv)
     try:
         return args.handler(args)
