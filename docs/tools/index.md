@@ -323,7 +323,28 @@ python tools/novel_status.py novels/NNN_作品名 --next
 
 `--next` は「ファイルが何も揃っていない→Plan Mode」「本文はあるがタグがない→Tag Mode」など、ファイルシステムの状態から次のステップを自動判定します。チャットモード作品（`_meta.md` に「執筆モード: チャットモード」がある）は「次のセグメントを執筆してください」を返します。
 
+ダッシュボードの「goal の状況」欄には、章ごとの状態と `_meta.md` の「次回のタスク」との突合が出ます（詳細は次項）。
+
 詰まったときは [トラブルシューティング](../workflow/troubleshooting.md) を参照してください。
+
+---
+
+### `goal_status.py` — goal の状況と達成判定
+
+場面ごとに「できている／作っている／保留／未着手」を判定して章にまとめ、`_meta.md` に反映します。goal モードで依頼したあとに「どこまで進んだか」を確かめたいときや、会話が要約されたあとに再開するときに使います。読み取り専用で、`--write-meta` を付けたときだけ `_meta.md` の自動生成ブロックを書き換えます。
+
+```bash
+# 確認: 章ごとの状態と、次回のタスクとの突合を表示する
+uv run python tools/goal_status.py novels/NNN_作品名
+
+# 達成判定: 第3章が保存済みで 4000字±3% に入っているか（未達があれば終了コード 1）
+uv run python tools/goal_status.py novels/NNN_作品名 --chapter 3 --chars 4000
+
+# 反映: _meta.md の「goal の状況」枠を更新する
+uv run python tools/goal_status.py novels/NNN_作品名 --write-meta
+```
+
+状態の定義と読み方は [goal モードで依頼する](../workflow/goal-mode.md#状況を確認するgoal_status) を参照してください。
 
 ---
 
