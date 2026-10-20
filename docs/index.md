@@ -30,6 +30,8 @@
   挿絵計画 MD（Step 1）→ YAML IR（Step 2）→ 画像生成の二段パイプライン
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
+- [goal モードで依頼する](workflow/goal-mode.md)
+  Claude / Codex / Cursor などに完了条件つきで制作を任せる書き方、実装例、止まる箇所
 - [ユーザスキル（プラグイン相当）](workflow/user-skills.md)
   `_how_to/skills/` と `_how_to.example/skills/` の関係、ツールの置き場（例: カクヨムルビ）
 - [Source Material Intake](workflow/source-material-intake.md)

@@ -37,6 +37,7 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 --list-wor
 | 出版・題字ヒント | `novel_status --next` が book.yaml / cover / lock / proof を見る | **実装済**（2026-07-26） |
 | セッション再開 | `novel_status --next` の出力を `_meta.md` 次タスクと自動突合 | 検討中 |
 | レシピ | `workflows` の dry-run 一覧を `novel_status` に統合表示 | 検討中 |
+| goal モード | 完了判定を一括で出す入口（CLI）、承認内容の goal 単位の記録 | 検討中（[goal モード](goal-mode.md)） |
 | ドキュメント | 指示出しテンプレと `docs/tools/index.md` の相互リンク強化 | 進行中 |
 
 関連: [ワークフロー索引](index.md)、[指示出しベースのワークフロー](instruction-driven.md)、[トラブルシューティング](troubleshooting.md)

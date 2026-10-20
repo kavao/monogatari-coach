@@ -104,6 +104,10 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - `required_missing` は `_meta.md` の status ではない。selected の実在チェックから導く検査結果である。
 - 手順の正本はスキル **`novel-planning`**。横断の厚さ・命名は `workflow-specification.md` の関連仕様を参照する。
 
+## goal モード
+
+- goal（完了条件つきの自律実行）で依頼されても、承認ゲートと第0層は緩和しない。事前承認は goal 文に明記した項目だけ有効で、git・外部送信・課金・秘密情報は明示された範囲でだけ扱う。手順と完了報告は スキル `novel-goal-mode`、人間向けの説明は `docs/workflow/goal-mode.md`。
+
 ## ルールとドキュメント
 
 - ルール・スキル更新は `.rulesync/` を主編集先とし、`rule-authoring.md` に従う。
@@ -121,3 +125,4 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | METRON / CHRONOS / AUDIT_LOG | `workflow-specification.md` と `docs/architecture/` |
 | 執筆接続 | `writing_bridge` と `docs/architecture/writing-bridge.md` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |
+| goal モード（完了条件つきの自律実行） | `novel-goal-mode` |
