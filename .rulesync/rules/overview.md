@@ -34,6 +34,7 @@ globs: ["**/*"]
 | 企画、設定、人物、世界観を整える | `novel-planning`、`novel-character-profile` |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
+| 本文を「わかりやすく」「読みやすく」直す | `novel-refinement-output`（清書として扱い、`world_glossary.md` の規則5・6を読み直す） |
 | キャラクター、漫画、挿絵、表紙を扱う | `manga-prompt-ir`、対象の Tag / Illustration / Cover スキル |
 | 画像を生成する | `forge-txt2img` と `image-provider`。dry-run 後、ユーザー承認を得る |
 | 下読み、採点、整合性監査をする | `novel-reader-output` または `novel-evaluation-output`。一貫性監査は設定（design）と本文（text）を分ける |
