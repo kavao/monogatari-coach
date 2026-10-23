@@ -489,6 +489,40 @@ def test_cli_publish_permission_and_status(tmp_path: Path) -> None:
     assert "text_save: success" in status.stdout
 
 
+def test_compose_refuses_candidate_with_scene_anchor() -> None:
+    text = "<!-- scene: ch01-001 -->\n# 第1章\n\n　旧本文。\n"
+    with pytest.raises(BridgeError) as caught:
+        compose_published(
+            text,
+            "<!-- scene: ch01-001 -->\n# 第1章\n\n　新本文。\n",
+            scene_id="ch01-001",
+            selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+            request_kind=RequestKind.REFINE,
+        )
+    assert caught.value.code == "JOB_CONFLICT"
+    composed, _, _ = compose_published(
+        text,
+        "# 第1章\n\n　新本文。\n",
+        scene_id="ch01-001",
+        selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+        request_kind=RequestKind.REFINE,
+    )
+    assert composed == "<!-- scene: ch01-001 -->\n# 第1章\n\n　新本文。\n"
+
+
+def test_replacement_span_refuses_duplicate_scene_anchor() -> None:
+    text = "<!-- scene: ch01-001 -->\n　一つ目。\n<!-- scene: ch01-001 -->\n　二つ目。\n"
+    with pytest.raises(BridgeError) as caught:
+        replacement_span(
+            text,
+            scene_id="ch01-001",
+            selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+            request_kind=RequestKind.REFINE,
+        )
+    assert caught.value.code == "UNKNOWN_REF"
+    assert caught.value.refs["count"] == 2
+
+
 def test_new_without_selector_does_not_replace_other_scenes(tmp_path: Path) -> None:
     work = _copy_ok(tmp_path)
     text = work / "_novel_text" / "novel_text01.md"

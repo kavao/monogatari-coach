@@ -130,7 +130,18 @@ def _clean_scene_body(marked: str) -> str:
     return normalize_novel_body(body)
 
 
+def _count_scene_anchors(text: str, scene_id: str) -> int:
+    return sum(1 for match in _SCENE_ANCHOR.finditer(text) if match.group(1) == scene_id)
+
+
 def scene_anchor_span(text: str, scene_id: str) -> tuple[int, int] | None:
+    count = _count_scene_anchors(text, scene_id)
+    if count > 1:
+        raise BridgeError(
+            "UNKNOWN_REF",
+            "scene anchor is not unique in the text; repair the canonical text before publish",
+            refs={"scene_id": scene_id, "count": count},
+        )
     matches = list(_SCENE_ANCHOR.finditer(text))
     for index, match in enumerate(matches):
         if match.group(1) != scene_id:
@@ -237,6 +248,12 @@ def compose_published(
     composed = prefix + body + suffix
     if composed and not composed.endswith("\n"):
         composed += "\n"
+    if _count_scene_anchors(composed, scene_id) > 1:
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "candidate repeats the scene anchor kept in the text; remove the anchor from the candidate",
+            refs={"scene_id": scene_id},
+        )
     return composed, prefix, suffix
 
 
