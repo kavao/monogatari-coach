@@ -77,6 +77,48 @@ def test_edit_after_publish_is_in_progress_not_done(tmp_path: Path) -> None:
     assert "変わった" in scene.detail
 
 
+def test_scenes_published_in_turn_to_one_chapter_file_are_done(tmp_path: Path) -> None:
+    text = _write_text(tmp_path, text="場面1。\n")
+    _run(tmp_path, "ch01-001", "run-0001", actions=["prepare", "publish"], text_path=text)
+    text.write_text("場面1。\n場面2。\n", encoding="utf-8")
+    _run(tmp_path, "ch01-002", "run-0001", actions=["prepare", "publish"], text_path=text)
+
+    chapters, _ = gs.collect_chapters(tmp_path)
+
+    assert [s.state for s in chapters[0].scenes] == [gs.DONE, gs.DONE]
+    assert chapters[0].state == gs.DONE
+
+
+def test_edit_after_last_scene_publish_reopens_every_scene(tmp_path: Path) -> None:
+    text = _write_text(tmp_path, text="場面1。\n")
+    _run(tmp_path, "ch01-001", "run-0001", actions=["publish"], text_path=text)
+    text.write_text("場面1。\n場面2。\n", encoding="utf-8")
+    _run(tmp_path, "ch01-002", "run-0001", actions=["publish"], text_path=text)
+    text.write_text("場面1。\n場面2。\n加筆\n", encoding="utf-8")
+
+    chapters, _ = gs.collect_chapters(tmp_path)
+
+    assert [s.state for s in chapters[0].scenes] == [gs.IN_PROGRESS, gs.IN_PROGRESS]
+    assert chapters[0].state == gs.IN_PROGRESS
+
+
+def test_fullwidth_placeholder_task_is_unfilled(tmp_path: Path) -> None:
+    _meta(tmp_path, "（次にAIが何をすべきか）")
+
+    notes = gs.reconcile_with_meta((tmp_path / "_meta.md").read_text(encoding="utf-8"), [])
+
+    assert notes == ["「次回のタスク」が未記入です"]
+
+
+def test_chars_without_chapter_is_usage_error(tmp_path: Path) -> None:
+    import pytest
+
+    with pytest.raises(SystemExit) as exc:
+        gs.main([str(tmp_path), "--chars", "4000"])
+
+    assert exc.value.code == 2
+
+
 def test_later_unpublished_run_keeps_scene_in_progress(tmp_path: Path) -> None:
     text = _write_text(tmp_path)
     _run(tmp_path, "ch01-001", "run-0001", actions=["publish"], text_path=text)
