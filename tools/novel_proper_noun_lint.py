@@ -113,7 +113,6 @@ _RE_PLACE_FROM_PROSE = re.compile(
     r"王国|辺境伯領|辺境伯家|侯爵家|伯領|伯家|廃工房|辺境工房|工房|"
     r"ギルド|組合|山脈|鉱山|大陸|領都|市|坑)"
 )
-_RE_TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
 
 
 @dataclass
@@ -250,23 +249,20 @@ def parse_character_defs(text: str, filename: str = "character.md") -> list[Name
     return records
 
 
-def _table_cells(line: str) -> list[str]:
-    if not _RE_TABLE_ROW.match(line):
-        return []
-    return [c.strip() for c in line.strip().strip("|").split("|")]
-
-
 def parse_world_defs(text: str, filename: str = "world.md") -> list[NameRecord]:
+    from novel_glossary import parse_glossary, section_kind
+
     records: list[NameRecord] = []
-    in_terms = False
-    header_seen = False
+    # 用語集の節は novel_glossary に読ませる（列は見出しの名前で読む。承認待ちは定義済みに数えない）
+    for term in parse_glossary(text).defined_terms():
+        for surface in term.surfaces:
+            add_record(records, "place", surface, f"{filename}:{term.line}")
     for i, line in enumerate(text.splitlines(), start=1):
         hm = _RE_HEADING.match(line)
         if hm:
             raw = hm.group(2).strip()
             title = heading_title(raw)
-            in_terms = title == "用語" or raw.endswith("用語")
-            header_seen = False
+            in_terms = section_kind(raw) is not None
             if title not in GENERIC_HEADINGS and not in_terms:
                 add_record(records, "place", title, f"{filename}:{i}")
                 add_record(records, "place", raw, f"{filename}:{i}")
@@ -282,17 +278,6 @@ def parse_world_defs(text: str, filename: str = "world.md") -> list[NameRecord]:
             continue
         for quoted in _RE_QUOTE.findall(line):
             add_record(records, "place", quoted, f"{filename}:{i}")
-        if in_terms:
-            cells = _table_cells(line)
-            if not cells:
-                continue
-            if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
-                continue
-            if cells[0] in {"用語", "意味"}:
-                header_seen = True
-                continue
-            if header_seen or cells[0]:
-                add_record(records, "place", cells[0], f"{filename}:{i}")
     for i, line in enumerate(text.splitlines(), start=1):
         if line.startswith("#"):
             continue

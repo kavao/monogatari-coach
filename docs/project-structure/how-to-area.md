@@ -19,6 +19,7 @@
 | `manga_tag_step2.md` | Step2（ページ生成・`step2_summary`・抽象レイアウト）編集時の必読チェック（雛形: `_how_to.example/manga_tag_step2.md`） |
 | `tag.md` | キャラクタータグの創作技法（語彙・混入ルール等）。**必須 `variant_id`・汎用／カスタムの分離**は [ワークフロー詳細仕様](../../.rulesync/rules/workflow-specification.md)（Tag Mode 各節）が正本 |
 | `rewrite.md` | 文章校正・清書の作法 |
+| `world_glossary.md` | `world.md` の用語集（`## 用語` / `## 用語（承認待ち）`）の書式、新しい名前・仕組みを書くときの宣言、用語照合の判定と報告の雛形。雛形は `_how_to.example/world_glossary.md`。使い方は [作品固有の用語と用語照合](../workflow/terminology-audit.md) |
 | `length_ops.md` | 文章の伸縮操作規定（清書・字数合わせで出来事を変えない操作と、加筆・改稿工程に回す操作の境界）。雛形は `_how_to.example/length_ops.md` |
 | `episode/general/episode_sub_episode.md` | 子エピソードによる増量（加筆工程で出来事を足して分量を増やす技法）。雛形は `_how_to.example/episode/general/episode_sub_episode.md` |
 | `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |

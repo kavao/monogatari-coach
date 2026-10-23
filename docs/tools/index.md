@@ -815,6 +815,34 @@ uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名 --json
 
 終了コードが 0 なら未定義の候補はありません。1 なら未定義があり、2 なら作品フォルダや定義資料がありません。終了コード 1 でも設定監査は止めません。
 
+`world.md` の用語集は `novel_glossary.py` と同じ読み方で読みます。`## 用語（承認待ち）` の語は定義済みに数えません。
+
+---
+
+### `novel_glossary.py` — 用語集の構造と表記の照合
+
+`world.md` の用語集（`## 用語` / `## 用語（承認待ち）`）を読み、構造（必須の列、ID の重複、名前と許容表記の衝突、種別の値）と、設定・企画書・本文に出る正式名称・許容表記・避ける表記を照合します。Monogatari Coach は用語照合の最初の手順として使います。LLM は呼ばず、作品ファイルも書き換えません。
+
+作品フォルダを指定して照合します。
+
+```powershell
+# 用語集の構造と表記を照合する
+uv run python tools/novel_glossary.py novels/NNN_作品名
+
+# 本文のカタカナの未登録候補も出す（確度は低い）
+uv run python tools/novel_glossary.py novels/NNN_作品名 --katakana
+
+# 避ける表記の出現も終了コード 1 にする
+uv run python tools/novel_glossary.py novels/NNN_作品名 --strict
+
+# 結果を JSON で表示する（報告に写すハッシュを含む）
+uv run python tools/novel_glossary.py novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら構造のエラーはありません。1 なら構造のエラー（`--strict` では避ける表記の出現も）があり、2 なら作品フォルダや `world.md` がありません。用語集が無い作品は「未整備」と表示され、照合は行いません。`## 用語集` や箇条書きで書いた既存の用語集は「旧形式（読取互換）」として名前と定義だけを読みます。
+
+この照合が 0 件でも、造語や名前のない決まりごとが無いとは限りません。文脈を読む照合の依頼方法は [作品固有の用語と用語照合](../workflow/terminology-audit.md) を参照してください。
+
 ---
 
 ### `novel_slush_gate_lint.py` — 評価ファイル必須項目チェック

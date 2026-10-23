@@ -37,6 +37,7 @@ globs: ["**/*"]
 | キャラクター、漫画、挿絵、表紙を扱う | `manga-prompt-ir`、対象の Tag / Illustration / Cover スキル |
 | 画像を生成する | `forge-txt2img` と `image-provider`。dry-run 後、ユーザー承認を得る |
 | 下読み、採点、整合性監査をする | `novel-reader-output` または `novel-evaluation-output`。一貫性監査は設定（design）と本文（text）を分ける |
+| 造語・作品固有の用語を照合する | `novel-evaluation-output`（用語照合）と `_how_to.example/world_glossary.md` |
 | 読み進み感想を場面ごとに残す | `novel-reader-walk` |
 | 計画、査証ログ、日記を更新する | `workspace-audit-log`、必要に応じ `workspace-diary` |
 

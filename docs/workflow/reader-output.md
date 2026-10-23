@@ -11,6 +11,7 @@
 - 一般読者として場面ごとに感想を残しながら通読したい（Reader Walk）
 - 完稿・推敲後に「どこを直すと何点上がるか」を把握したい（Editor Score）
 - 設定資料どうしの食い違いや、本文と設定・章どうしの矛盾を洗い出したい（Consistency Audit）
+- 本文に紛れた造語や、設定に無い決まりごとの書き足しを洗い出したい（用語照合。[作品固有の用語と用語照合](terminology-audit.md)）
 - 長文評価の前に客観的なあらすじを作りたい（Synopsis）
 
 ---
@@ -25,6 +26,7 @@
 | Consistency Audit | `設定資料の一貫性を監査して` / `本文の一貫性を監査して` | `_reader/consistency_design_YYYYMMDD_HHMM.md` / `_reader/consistency_text_YYYYMMDD_HHMM.md` | なし（表形式） |
 | Synopsis（前処理） | `あらすじを作成してください。` | `_reader/synopsis_YYYYMMDD.md` | なし |
 | Reader Walk（読み進み） | `第1章から読み進めて` | `_reader/walk/<session_id>/journal.md` | なし（感想＋任意の反応メタデータ） |
+| 用語照合 | `用語を照合してください。` | `_reader/terminology_YYYYMMDD_HHMM.md` | なし（抑える／拾い上げる／保留の振り分け） |
 
 足切り（First Reader）と Editor Score は配点・目的が異なる別モードです。First Reader は「読むか読まないか」の選別、Editor Score は「どこを直すと何点上がるか」の改善優先度付けです。Reader Walk は採点せず、一般読者として今読んだ場面の感想だけを残します。
 

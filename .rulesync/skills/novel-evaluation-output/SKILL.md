@@ -1,10 +1,10 @@
 ---
 name: novel-evaluation-output
 description: >-
-  Editor Score・Consistency Audit（design / text）・Synopsis の評価結果を novels/.../_reader/ に保存し、
+  Editor Score・Consistency Audit（design / text）・用語照合・Synopsis の評価結果を novels/.../_reader/ に保存し、
   チャットには要約だけを返す。novel-reader-output（足切り）とは別スキルとして分離し、
   保存先ファイル名・前処理手順・設定鮮度チェック・完了条件を固定する。
-  Consistency Audit は足切りを前提にしない。
+  Consistency Audit と用語照合は足切りを前提にしない。
 targets: ["*"]
 ---
 
@@ -27,6 +27,7 @@ First Reader（足切り）通過後の深掘り評価モード（Editor Score /
 | Editor Score | `_how_to/editor_score.md` | `novels/<作品>/_reader/score_YYYYMMDD_HHMM.md` |
 | Consistency Audit | `_how_to/consistency_audit.md` | `novels/<作品>/_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`） |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md` | `novels/<作品>/_reader/synopsis_YYYYMMDD.md` |
+| 用語照合 | `_how_to/world_glossary.md` | `novels/<作品>/_reader/terminology_YYYYMMDD_HHMM.md` |
 
 - `_reader/` が無ければ作成する。
 - 日付だけの旧 `consistency_YYYYMMDD.md` は読み取りだけ互換とし、上書きしない。scope が分からないので鮮度チェックの基準にしない。
@@ -107,6 +108,22 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 6. 本文も設定も直さない。
 
 チャットへは「scope・起動・矛盾件数（矛盾/要確認/軽微の内訳）・保存先パス」と、要確認の一覧を返す。
+
+## 用語照合の手順
+
+「用語を照合して」「造語を検査して」などで起動する。足切りを前提にせず、点数は付けない。執筆完了・publish の条件にしない。Consistency Audit を置き換えない（重なる指摘は両方に出てよい）。判定と報告の雛形は `_how_to/world_glossary.md`（無ければ `_how_to.example/world_glossary.md`）の §5・§6。
+
+1. `world_glossary.md` を Read する。
+2. `python tools/novel_glossary.py novels/<作品> --json --katakana` を実行し、用語集の形式・構造・避ける表記・承認待ちの語の使用・ハッシュを取る。`未整備` なら「未実施／用語集未整備」として報告して止める（検出0件と扱わない）。構造の error は報告に写し、照合は続ける。
+3. 対象を Read する。順は `world.md` → `character.md` → `design_specification.md` → `proposal.md` → 指定範囲の `_novel_text/`（省略時は全章）。設計書・企画書を本文より先に読む。読めなかった範囲は冒頭の「未確認の範囲」に書く。
+4. 文脈を読んで、機械が拾えない区分を拾う: 未登録の名前、名前のない仕組み・規則・由来、癖の規則への格上げ（`character.md` と照合）、登録語の意味の逸脱、定義の種別と使い方のずれ。人物の誤解・嘘・俗称・意図した謎は作品の事実と分ける。既存の用語の描写を細かくしただけのものは対象にしない（同葉 §3 の線引き）。
+5. 各指摘を「抑える／拾い上げる／保留」に振り分ける（同葉 §4・§5）。拾い上げは、§2 の表に貼れる登録案を書く。
+6. 保存名は `_reader/terminology_YYYYMMDD_HHMM.md`。冒頭に、書いた役と検査した役を書く。同じなら「自己検査」と注記する。件数は記憶で書かず、指摘表の列を数えて書く。
+7. 本文も `world.md` も直さない。拾い上げも報告に登録案として書くだけにし、自動で登録・削除しない。修正を頼まれたときは、清書（`novel-refinement-output`）や設定改稿の手順で、作者が選んだ指摘だけを直す。
+8. 作品 `_meta.md` の評価履歴表へ行を追記する（「`_meta.md` 更新」節）。
+9. 完了印の語は「用語照合済み」。「検査済み」「計測済み」「監査済み」は使わない。
+
+チャットへは「用語集の形式・振り分け別の件数（抑える/拾い上げる/保留）・保存先パス」と、拾い上げの登録案と保留の一覧を返す。
 
 ## Synopsis の手順
 
@@ -198,14 +215,15 @@ novels/<作品>/_reader/
 - `_reader/_work/<YYYYMMDD>/` のファイルは過程の記録。複数回の評価で上書きしない（日付フォルダで分離）。
 - 「保存した」と報告してよいのは `_reader/` 直下の最終成果物が存在し `Read` で確認した後。
 
-## `_meta.md` 更新（Editor Score / Consistency Audit 後）
+## `_meta.md` 更新（Editor Score / Consistency Audit / 用語照合の後）
 
-Editor Score と Consistency Audit の実施後は、作品 `_meta.md` の「評価・足切り履歴」節を更新する。
+Editor Score・Consistency Audit・用語照合の実施後は、作品 `_meta.md` の「評価・足切り履歴」節を更新する。
 
 - **評価履歴表**に行を追記する（既存行は削除しない）。
 - 例: `| 20260608_1400 | Editor Score | 82 / 100 | — | _reader/score_20260608_1400.md |`
 - 例: `| 20261004_1030 | Consistency Audit (design) | — | 矛盾0 / 要確認2 / 軽微1 | _reader/consistency_design_20261004_1030.md |`
 - 例: `| 20261004_1100 | Consistency Audit (text) | — | 矛盾1 / 要確認0 / 軽微3 | _reader/consistency_text_20261004_1100.md |`
+- 例: `| 20261024_1000 | 用語照合 | — | 抑える3 / 拾い上げる2 / 保留1 | _reader/terminology_20261024_1000.md |`
 - Gate B で再監査した design は判定欄を「矛盾2→0」のように書く。
 - 「足切りステータス」は足切り専用とし、Audit の結果を混ぜない。
 - `_meta.md` に「評価・足切り履歴」節がまだない場合は、`_how_to/meta.md`（無ければ `_how_to.example/meta.md`）の「評価・足切り履歴」節を参照してテンプレートを挿入する。挿入位置は内部メタの直後・外部メタの直前。
@@ -237,6 +255,7 @@ Editor Score と Consistency Audit の実施後は、作品 `_meta.md` の「評
 - 読み進み感想: `.rulesync/skills/novel-reader-walk/SKILL.md`
 - 詳細仕様: `.rulesync/rules/workflow-specification.md`（Editor Score / Consistency Audit）
 - 企画の設定監査（B4.5）: `.rulesync/skills/novel-planning/SKILL.md`
+- 用語集の書式と用語照合の判定: `_how_to.example/world_glossary.md`、`tools/novel_glossary.py`
 - 設定鮮度チェック: `tools/novel_audit_freshness.py`
 - 監査ファイルの体裁検査: `tools/novel_consistency_audit_lint.py`
 - 固有名詞の機械照合（任意）: `tools/novel_proper_noun_lint.py`

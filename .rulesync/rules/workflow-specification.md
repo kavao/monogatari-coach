@@ -855,6 +855,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 | Consistency Audit | `_how_to/consistency_audit.md` | `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`。旧 `consistency_YYYYMMDD.md` は読取互換） | なし（表形式） | design: 企画 Gate B の B4.5・評価前の鮮度チェック・ユーザー明示 / text: 本文保存後の次手・ユーザー明示 |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
 | Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/<session_id>/journal.md`（状態は同じセッションディレクトリの `state.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
+| 用語照合 | `_how_to/world_glossary.md` | `_reader/terminology_YYYYMMDD_HHMM.md` | なし（抑える／拾い上げる／保留の振り分け） | ユーザー明示。生成モデルが造語や設定の書き足しをしやすいときの起草後 |
 
 必須:
 
