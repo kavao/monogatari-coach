@@ -382,3 +382,17 @@ def _before_d21_design_routing(monkeypatch):
     import metron.length
 
     monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)
+
+
+def test_slop_profile_lists_stock_phrases_without_failing_strict(tmp_path, monkeypatch):
+    monkeypatch.setenv(lint.ENV_RULES, str(ROOT / "_how_to.example" / "novel_text_rewrite_rules.yaml"))
+    work = tmp_path / "work"
+    (work / "_novel_text").mkdir(parents=True)
+    body = "\n".join(["# 第一章", "", "　彼は—言いかけて、やめた。単なる店ではなく、町の記憶だった。",
+                      "　胸の奥がじんわりと温かくなった。それが答えと言えるでしょう。"])
+    (work / "_novel_text" / "novel_text01.md").write_text(body + "\n", encoding="utf-8")
+    result = lint.run_lint(work, profile="slop", strict=True, root=ROOT)
+    found = {item["rule_id"] for item in result["issues"]}
+    assert {"slop_em_dash", "slop_contrast_frame", "slop_stock_emotion", "slop_hedge_close"} <= found
+    assert all(item["level"] == "info" for item in result["issues"]) and result["ok"]
+    assert "slop_em_dash" in lint.run_lint(work, profile="full", root=ROOT)["active_rules"]

@@ -60,6 +60,7 @@ description: >-
 6. **出力**: `_novel_text/novel_textXX.md` を**直接更新**する。
 7. **確認**: **`Read`** で末尾などを確認するか、**`python tools/novel_char_count.py`** で更新後の **`_novel_text/`** を確認する（定義はスキル **`novel-char-count`**）。
 8. **ストーリー反映**: スキル **`novel-story-reflection`** に従い、対象章を解決したうえで `_meta.md` の進捗・文字数・次回タスクと、`design_specification.md` の実文字数・状態および**確定出来事**を同期する。結果は `更新` / `差分なし` / `未完了`。解決不能と書込失敗は未完了として完了報告を止める。
+8.5. **低品質文（スロップ）の除去**: `rewrite.md` §11 に従い、描写を足した文を `_how_to.example/slop_patterns.md`「出す前の検査」で読み直す。`--profile full`（`slop` を含む）の `slop_*` 候補は、同じ場面で重なっていれば具体の動作・台詞へ置き換える。候補は info であり、残しても完了は妨げない。
 9. **清書後 lint**: `python tools/novel_text_rewrite_lint.py novels/NNN --profile full` のあと、**`--strict`**（既定 `default`）で exit 0 を確認してから「清書完了」と報告する（スキル **`novel-text-rewrite-lint`**）。完了報告に selected の拠り所1句を含める。
    - **部分加筆・シーンの途中挿入**でも手順 4〜8 は同じ。**確認は末尾だけにせず**、**追加した段落の前後を含む範囲を `Read`** し、正本に意図どおり残っていることを検証する。
 

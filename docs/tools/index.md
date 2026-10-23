@@ -564,9 +564,10 @@ python tools/novel_code_allocate.py novels/
 |-------------|-----------|---------|
 | `default`（既定） | 章メタ・三点リーダー・`。」` | 清書後の取りこぼし確認 |
 | `grammar` | セリフ行頭・段落インデント・句読点連続・半角カンマ・空括弧・助詞重複・全角スペース | **執筆直後**のクイックチェック／`--fix` |
-| `full` | `default` + `grammar` の全ルール | 清書前の総合チェック |
+| `full` | `default` + `grammar` + `slop` の全ルール | 清書前の総合チェック |
 | `minimal` | 三点リーダー・`。」` のみ | 旧稿を句読点から直したいとき |
 | `padding` | 冗長化の候補（迂言・メタ前置き・抽象への逃げ・重複語）。すべて info | 清書・字数合わせの前に、削る候補を見る |
+| `slop` | 低品質文（スロップ）の定型句・記号の候補。すべて info | 起草・清書の前後に、AI が多用する言い回しの重なりを見る |
 
 **検出ルール一覧**:
 
@@ -591,6 +592,14 @@ python tools/novel_code_allocate.py novels/
 | `padding_redundant_modifier` | 「まず最初に」「非常にとても」などの重複語 | info | padding |
 | `padding_measurement` | 「数十センチもない」などの数値による計測 | info | padding |
 | `padding_repeated_phrase` | 同じ10字の語句がファイル内で3回以上（3回目の行に1件） | info | padding |
+| `slop_em_dash` | EM DASH `—`（U+2014）。日本語のダッシュは `――` | info | slop/full |
+| `slop_contrast_frame` | 「単なる〜ではなく」などの対比の定型 | info | slop/full |
+| `slop_hedge_close` | 「と言えるでしょう」「ではないでしょうか」などの締め | info | slop/full |
+| `slop_both_sides` | 「どちらが正解というわけでは」などの両論併記 | info | slop/full |
+| `slop_invitation` | 「ぜひ〜してみて」「いかがでしょうか」などの呼びかけ | info | slop/full |
+| `slop_stock_emotion` | 「胸の奥がじんわり」「どこか〜ような」などの感情の定型 | info | slop/full |
+
+`slop` の結果も候補です。一度なら問題のない言い回しも拾うので、同じ場面で重なっていないかを見ます。字義どおり読むと崩れる文（意味破綻）や、省きすぎた見出し（過剰圧縮）は機械では拾えません。系列と文例は `_how_to.example/slop_patterns.md` を参照してください。作業用の `_how_to/novel_text_rewrite_rules.yaml` を使っている環境では、雛形の `slop_*` ルールと `slop` プロファイルを写すまで使えません。
 
 `padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。作業用の `_how_to/novel_text_rewrite_rules.yaml` を使っている環境では、雛形の `padding_*` ルールと `padding` プロファイルを写すまで使えません。
 

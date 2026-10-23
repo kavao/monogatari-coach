@@ -59,6 +59,12 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 反映は、両方 OFF は旧版退避のうえ直接更新、両方 ON は `refine` run の `repair-begin --intent length` と `publish` だけ。手順は `workflow-specification.md`、技法は `_how_to.example/length_ops.md`。
 - 執筆の分量は出来事の数で用意し、Deepen は少量の不足（余地込みの目標に対して 10% 未満）だけに使う。章の目標字数があれば書く前に設計密度（`tools/design_density.py`）を見て、少なすぎれば承認を得て設計へ子エピソードを足してから書く。詳細は `length_ops.md` §4.7。
 
+## 低品質文（スロップ）の回避
+
+- 日本語の文章（本文・あらすじ・物語案・章題・見出し・ログライン・キャッチコピー・作業報告）を書くときは常に、字義どおり読むと崩れる文（意味破綻）、省きすぎて意味が定まらない言い切り（過剰圧縮）、AI が多用する定型句の重なりを書かない。系列・文例・直し方は `_how_to.example/slop_patterns.md`。`rewrite.md` と同じ工程正本で、selected に無くても起草・清書・提示層を出す前に読む。
+- 比喩・五感・物を主語にした描写を足した文ほど崩れやすい。出す前に一文ずつ比喩を外して読み、主語と動詞、感覚と器官、時間幅、修飾先を確かめる。直しで出来事を足さない。
+- 定型句と記号の候補は `novel_text_rewrite_lint.py --profile slop`（`full` にも含む）。info であり、完了の条件にはしない。
+
 ## METRON V1 修復不変条件
 
 - `BeatMissing` と `BeatThin` は別の統計と閾値で判定する。`BeatThin` の自動修復は計画の段落・会話の下限未達に限る。

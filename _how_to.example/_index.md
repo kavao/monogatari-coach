@@ -36,6 +36,8 @@
    - 清書稿の保存先・バックアップ・`_novel_text` への反映はスキル **novel-refinement-output**（`.rulesync/skills/novel-refinement-output/SKILL.md`）と **`.rulesync/rules/overview.md` §2.5** を参照
 5.1. length_ops.md
    - 文章の伸縮操作規定。清書・規定量調整（目標字数への伸縮）・加筆／改稿工程へのエスカレーションのときだけ読む。出来事（CANON）を変えない操作と、加筆・改稿工程に属する操作の境界、検査と停止条件。削減上限到達後は冗長を残さず、追加削減と子エピソード案へ振る（承認後）
+5.2. slop_patterns.md
+   - 低品質文（スロップ）の反面教師の文例集。意味破綻・過剰圧縮・頻度型の定型・構成・記号の5系列。**本文の起草・清書と、あらすじ・案・章題・ログラインを出す前に必ず読む**（`rewrite.md` と同じ工程正本で、selected に無くても読む）。定型句の機械候補は `novel_text_rewrite_lint.py --profile slop`
 6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する
