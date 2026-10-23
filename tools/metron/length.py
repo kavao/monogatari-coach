@@ -373,7 +373,8 @@ def length_adjust_impl(
     clean_text: str,
     spans: SpansDocument,
     length: LengthSpec,
-    dispatch: Callable[[str, str | None, str], str],
+    # (operation, beat_id, prompt[, episode_id]) -> 候補本文。episode_id は子エピソードの収束だけが渡す
+    dispatch: Callable[..., str],
     checkpoint: Callable[[dict[str, str]], None] | None = None,
     allowed_repeats: tuple[str, ...] = (),
 ):

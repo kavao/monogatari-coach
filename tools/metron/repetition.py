@@ -226,7 +226,7 @@ def repeat_report(
 
 def style_rules_text(avoid: Iterable[str]) -> str:
     avoid = list(avoid)
-    lines = list(STYLE_RULES)
+    lines: list[str] = list(STYLE_RULES)
     if avoid:
         lines.append("この場面ですでに繰り返し使われている語句（これ以上使わない）: "
                      + "、".join(f"「{item}」" for item in avoid))

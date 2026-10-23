@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from .commands import inspect, prepare, receive, status
 from .locate import locate_quote_run
@@ -332,11 +333,12 @@ def _length_target(args: argparse.Namespace) -> LengthTarget | None:
         return None
     try:
         lower, upper = (float(item) for item in args.tolerance.split(","))
-        fields = dict(tolerance=LengthTolerance(lower=lower, upper=upper),
-                      scope=args.length_scope, beat_id=args.length_beat_id,
-                      max_passes=args.max_passes)
+        fields: dict[str, Any] = dict(tolerance=LengthTolerance(lower=lower, upper=upper),
+                                      scope=args.length_scope, beat_id=args.length_beat_id,
+                                      max_passes=args.max_passes)
         if args.finish_target is not None:
             return finish_target(args.finish_target, margin=args.finish_margin, **fields)
+        assert args.target_chars is not None  # 冒頭の検査で、両方 None のときは返している
         return LengthTarget(target_chars=args.target_chars, **fields)
     except ValueError as error:
         raise BridgeError("LENGTH_CONFIG", f"invalid length target: {error}") from error
