@@ -564,9 +564,10 @@ python tools/novel_code_allocate.py novels/
 |-------------|-----------|---------|
 | `default`（既定） | 章メタ・三点リーダー・`。」` | 清書後の取りこぼし確認 |
 | `grammar` | セリフ行頭・段落インデント・句読点連続・半角カンマ・空括弧・助詞重複・全角スペース | **執筆直後**のクイックチェック／`--fix` |
-| `full` | `default` + `grammar` の全ルール | 清書前の総合チェック |
+| `full` | `default` + `grammar` + `slop` の全ルール | 清書前の総合チェック |
 | `minimal` | 三点リーダー・`。」` のみ | 旧稿を句読点から直したいとき |
 | `padding` | 冗長化の候補（迂言・メタ前置き・抽象への逃げ・重複語）。すべて info | 清書・字数合わせの前に、削る候補を見る |
+| `slop` | 低品質文（スロップ）の定型句・記号の候補。すべて info | 起草・清書の前後に、AI が多用する言い回しの重なりを見る |
 
 **検出ルール一覧**:
 
@@ -591,8 +592,37 @@ python tools/novel_code_allocate.py novels/
 | `padding_redundant_modifier` | 「まず最初に」「非常にとても」などの重複語 | info | padding |
 | `padding_measurement` | 「数十センチもない」などの数値による計測 | info | padding |
 | `padding_repeated_phrase` | 同じ10字の語句がファイル内で3回以上（3回目の行に1件） | info | padding |
+| `slop_em_dash` | EM DASH `—`（U+2014）。日本語のダッシュは `――` | info | slop/full |
+| `slop_contrast_frame` | 「単なる〜ではなく」「単なる〜ではありません」「単なる〜を超えて」などの対比の定型 | info | slop/full |
+| `slop_hedge_close` | 「と言えるでしょう」「ではないでしょうか」などの締め | info | slop/full |
+| `slop_both_sides` | 「どちらが正解というわけでは」「場合によります」「ケースバイケースです」などの両論併記・判断保留 | info | slop/full |
+| `slop_invitation` | 「ぜひ〜してみて」「いかがでしょうか」などの呼びかけ | info | slop/full |
+| `slop_stock_emotion` | 「胸の奥がじんわり」「どこか〜ような」などの感情の定型 | info | slop/full |
 
-`padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。作業用の `_how_to/novel_text_rewrite_rules.yaml` を使っている環境では、雛形の `padding_*` ルールと `padding` プロファイルを写すまで使えません。
+`slop` の結果も候補です。一度なら問題のない言い回しも拾うので、同じ場面で重なっていないかを見ます。字義どおり読むと崩れる文（意味破綻）や、省きすぎた見出し（過剰圧縮）は機械では拾えません。系列と文例は `_how_to.example/slop_patterns.md` を参照してください。
+
+作業用の `_how_to/novel_text_rewrite_rules.yaml` がある環境では、ツールはその設定を雛形より優先して読み込みます。既存の調整を残して slop を有効にするには、雛形の `_how_to.example/novel_text_rewrite_rules.yaml` から次の定義を反映します。
+
+1. `rules` に、6件の `slop_*` ルール定義を追加します。同じ ID の定義がある場合は、その `patterns` と `message` に雛形の更新を反映します。独自の調整があれば保持します。
+2. `profiles.slop` を追加します。
+3. 既存の `profiles.full.rules` に、`slop_em_dash`、`slop_contrast_frame`、`slop_hedge_close`、`slop_both_sides`、`slop_invitation`、`slop_stock_emotion` を追加します。既存のルール一覧と `extends` は保持します。
+
+手順3を省くと、`--profile slop` は使えても、`--profile full` では slop を検査しません。有効化の確認には、作品を対象に次のコマンドを実行します。
+
+```bash
+uv run python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --profile full --verbose
+```
+
+出力の有効ルール一覧に、上記6件の `slop_*` が含まれることを確認してください。
+
+`padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。
+
+作業用の `_how_to/novel_text_rewrite_rules.yaml` がある環境で padding を有効にするには、雛形から次の定義を反映します。`padding` は `full` に含まれないため、`profiles.full` は変えません。
+
+1. `rules` に、6件の `padding_*` ルール定義を追加します。同じ ID の定義がある場合は、雛形の更新を反映し、独自の調整があれば保持します。
+2. `profiles.padding` を追加します。
+
+有効化の確認には、`--profile padding --verbose` で実行し、出力の有効ルール一覧に6件の `padding_*` が含まれることを確認してください。
 
 **推奨ワークフロー（全体）**:
 

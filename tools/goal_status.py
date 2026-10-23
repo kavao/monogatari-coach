@@ -152,29 +152,59 @@ def _runs(scene_dir: Path) -> list[Path]:
     return sorted(runs, key=lambda p: int(_RE_RUN.match(p.name).group(1)))  # type: ignore[union-attr]
 
 
-def _run_published_and_current(work: Path, run: Path) -> bool:
-    """この run の publish が済み、保存した本文がいまの本文と一致する。"""
+def _publish_record(run: Path) -> tuple[str, str] | None:
+    """この run の publish が済んでいれば (本文の相対パス, 保存後の本文ハッシュ) を返す。"""
     if "publish" not in _journal_actions(run / "journal.jsonl"):
-        return False
+        return None
     report = _read_json(run / "report.json")
     if report.get("text_save") != "success":
-        return False
+        return None
     digest = report.get("target_text_sha256")
     target = _read_yaml(run / "request.yaml").get("target") or {}
     text_rel = target.get("text_path") if isinstance(target, dict) else None
     if not (isinstance(digest, str) and isinstance(text_rel, str)):
-        return False
-    return _current_hash(work / text_rel) == digest
+        return None
+    return text_rel.replace("\\", "/"), digest
 
 
-def judge_scene(work: Path, scene_id: str, chapter: int) -> SceneStatus:
+def published_digests(work: Path, scene_ids: list[str]) -> dict[str, set[str]]:
+    """場面群の publish 済み run が保存した本文ハッシュを、本文ファイルごとに集める。
+
+    target_text_sha256 は保存後のファイル全体のハッシュなので、同じ章ファイルへ後の場面を
+    保存すると先の場面のハッシュは古くなる。章ファイル単位でどれかと一致すれば現行とみなす。
+    """
+    digests: dict[str, set[str]] = {}
+    for scene_id in scene_ids:
+        scene_dir = work / "_writing" / scene_id
+        if not scene_dir.is_dir():
+            continue
+        for run in _runs(scene_dir):
+            record = _publish_record(run)
+            if record:
+                digests.setdefault(record[0], set()).add(record[1])
+    return digests
+
+
+def judge_scene(
+    work: Path,
+    scene_id: str,
+    chapter: int,
+    digests: dict[str, set[str]] | None = None,
+) -> SceneStatus:
+    """場面の状態。digests は同じ章の全場面の保存ハッシュ（省略時はこの場面だけ）。"""
     scene_dir = work / "_writing" / scene_id
     runs = _runs(scene_dir) if scene_dir.is_dir() else []
     if not runs:
         return SceneStatus(scene_id, chapter, NOT_STARTED, "run なし")
 
+    if digests is None:
+        digests = published_digests(work, [scene_id])
     latest = runs[-1]
-    published = [r for r in runs if _run_published_and_current(work, r)]
+    published = []
+    for r in runs:
+        record = _publish_record(r)
+        if record and _current_hash(work / record[0]) in digests.get(record[0], set()):
+            published.append(r)
     if published:
         if latest is not published[-1] and "publish" not in _journal_actions(
             latest / "journal.jsonl"
@@ -264,7 +294,9 @@ def collect_chapters(work: Path) -> tuple[list[ChapterStatus], list[int]]:
         if measure_from is not None and chapter < measure_from:
             excluded.append(chapter)
             continue
-        scenes = [judge_scene(work, sid, chapter) for sid in sorted(scene_map.get(chapter, ()))]
+        scene_ids = sorted(scene_map.get(chapter, ()))
+        digests = published_digests(work, scene_ids)
+        scenes = [judge_scene(work, sid, chapter, digests) for sid in scene_ids]
         chapters.append(fold_chapter(chapter, scenes, chapter in texts))
     return chapters, excluded
 
@@ -284,7 +316,7 @@ def reconcile_with_meta(meta_text: str, chapters: list[ChapterStatus]) -> list[s
     task = read_next_task(meta_text)
     if task is None:
         return ["_meta.md に「次回のタスク」の行がありません"]
-    if not task or task.startswith("("):
+    if not task or task.startswith(("(", "（")):
         return ["「次回のタスク」が未記入です"]
 
     by_chapter = {c.chapter: c for c in chapters}
@@ -326,7 +358,6 @@ def evaluate(
     chars: int | None = None,
     tolerance: tuple[float, float] = (0.97, 1.03),
     project_check: bool = True,
-    now: date | None = None,
 ) -> GoalStatus:
     chapters, excluded = collect_chapters(work)
     meta_path = work / "_meta.md"
@@ -482,6 +513,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json", action="store_true", help="JSON で出力")
     p.add_argument("--write-meta", action="store_true", help="_meta.md の自動生成ブロックを更新する")
     args = p.parse_args(argv)
+    if args.chars is not None and args.chapter is None:
+        p.error("--chars には --chapter が必要です")
 
     work = Path(args.work_dir)
     if not work.is_dir():

@@ -62,6 +62,7 @@ def _target_text(root: Path, scene_id: str, episode_id: str | None,
             raise BridgeError("MISSING_FIELD", f"{episode_id} needs a span to locate the text")
         start_quote, end_quote, label = episode.span.start, episode.span.end, episode_id
     else:
+        assert quote is not None  # 冒頭の検査で、episode_id と quote はちょうど片方だけ
         start_quote = end_quote = quote
         label = "quote"
     start_quote = unicodedata.normalize("NFC", start_quote)
