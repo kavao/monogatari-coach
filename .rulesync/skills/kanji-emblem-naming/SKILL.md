@@ -114,4 +114,4 @@ targets: ["*"]
 
 - 人物の命名条件: `.rulesync/skills/character-naming/SKILL.md`
 - 抽選が明示的に必要な場合: `.rulesync/skills/weighted-pick/SKILL.md`
-- ヤンキー美学の標準葉（`_how_to/_index.md` がない場合、または作業用索引へ追随済みの場合に限り選定条件を確認）: `_how_to.example/yankee_aesthetics.md`
+- ヤンキー美学の標準葉（`_how_to/_index.md` がない場合、または作業用索引へ追随済みの場合に限り選定条件を確認）: `_how_to.example/tropes/yankee_aesthetics.md`

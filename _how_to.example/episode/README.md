@@ -19,6 +19,7 @@ general の設計技法（抽選 JSON の対象外）:
 - [友人類型設計（SODALITAS）](general/episode_friendship.md)
 - [偽味方類型設計（AMICITIA）](general/episode_false_ally.md)
 - [敵対者類型設計（MALITIA）](general/episode_antagonist.md)
+- [敵の顔の庇護者類型設計（INIMICUS・エネンド）](general/episode_enend.md)
 - [危機脱出構成（EXITUS）](general/episode_crisis_escape.md)
 - [恩義設計論（ON）](general/episode_obligation.md)
 - [責任移行の人物類型設計（ONUS）](general/episode_responsibility_shift.md)

@@ -13,8 +13,11 @@
    - 一般的な小説の文法
 1.5. ethos.md
    - 倫理的な決断、規範の差、忠義と恩義、共同体と個人の衝突を設計するときに選ぶ。既定では読まない。
-1.6. yankee_aesthetics.md
-   - 「ヤンキー美学」の適用を明示された場合、または不良文化の筋・意地・仲間・地元・過剰装飾が人物・集団の主要な軸となる場合に選ぶ（既定では読まない。「友情」「義理」「派手」だけでは選ばない）。
+1.6. [`tropes/`](tropes/README.md)（物語の型とあるある。人物・設定）
+   - 葉は既定では読まない。各行の条件に当たるときだけ選ぶ。
+   - [`tropes/yankee_aesthetics.md`](tropes/yankee_aesthetics.md) … 「ヤンキー美学」の適用を明示された場合、または不良文化の筋・意地・仲間・地元・過剰装飾が人物・集団の主要な軸となる場合に選ぶ（「友情」「義理」「派手」だけでは選ばない）。
+   - [`tropes/zero_sum_mindset.md`](tropes/zero_sum_mindset.md) … ゼロサム思考・ハルピュイア型。盗賊・山賊・略奪者・ただ乗りする人物や集団が主要な軸となる場合、または奪う側と作る側の価値観の衝突を物語の推進力にする場合に選ぶ（「悪役」「強欲」だけでは選ばない）。
+   - [`tropes/foreign_element.md`](tropes/foreign_element.md) … 異物導入。作品独自の要素（能力・技術・存在・知識・ルール改変）を既存の世界に持ち込み、その性質・制約・副作用の掘り下げ自体が物語の進行になる場合に選ぶ（魔法や異能が当たり前にある世界を背景にするだけでは選ばない）。
 3. novel_structure.md
    - 一般的な小説構造のデータベース
 3.5. episode/（エピソード技法・雛形）
@@ -26,7 +29,7 @@
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
    - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
    - general（子エピソードによる増量。加筆工程で出来事を足して増やすときだけ読む。削減上限到達後の追加削減分も含む）: [episode/general/episode_sub_episode.md](episode/general/episode_sub_episode.md)
-   - general（友人・偽味方・敵対者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
+   - general（友人・偽味方・敵対者・敵の顔の庇護者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_enend.md](episode/general/episode_enend.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md

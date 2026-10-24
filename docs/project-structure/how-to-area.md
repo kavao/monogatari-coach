@@ -94,7 +94,7 @@ _how_to/           ← ユーザーが作品・運用に合わせて調整する
 
 標準カタログ `_how_to.example/` に葉を足すときは、次を満たします。
 
-1. `_how_to.example/_index.md` に入口を1行置く。該当サブカタログに README または `_index.md` がある場合はそこにも置く（episode、genre、skills、publishing、image_refs、howto_packs など。ルート直下の葉は `_index.md` だけで足ります）
+1. `_how_to.example/_index.md` に入口を1行置く。該当サブカタログに README または `_index.md` がある場合はそこにも置く（episode、genre、tropes、skills、publishing、image_refs、howto_packs など。ルート直下の葉は `_index.md` だけで足ります）
 2. 既定で読まない旨か発動条件を、索引の当該行、該当 README、または目次の冒頭注記のいずれかに書く
 3. 既存作品の `_meta.md` にある selected は、Gate B のやり直しを頼んだ作品以外は変えない
 
