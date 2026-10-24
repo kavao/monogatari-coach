@@ -1358,7 +1358,25 @@ python tools/novel_pick_registry.py list --visibility user
 python tools/novel_pick_registry.py list --prefix mature_
 ```
 
-`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意）。
+`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意。サブコマンドより前に置く: `python tools/novel_pick_registry.py --novel novels/NNN_作品名 show <list_id>`）。作品別の定義は、標準・作業用の同じ `list_id` より後勝ちになる。
+
+---
+
+### `novel_structure_draw.py` — 構造方針 rolled の抽選（プロットのアレンジ）
+
+「平板なのでアレンジして」と頼んだときに、Monogatari Coach がスキル **novel-plot-arrange** の中で使う道具です。章ごとの診断の表（JSON）を受け取り、壊しどころの条件で確率を補正して転を振り、振るたびに `novels/<作品>/_work/structure/draws.jsonl` へ記録します。設計書・本文・`_meta.md` は書き換えません。
+
+まず記録へ書かずに結果だけを確かめ、そのあと記録します（同じシードなので結果は同じです）。
+
+```bash
+# 確認（記録へ書かない）
+uv run python tools/novel_structure_draw.py novels/NNN_作品名 novels/NNN_作品名/_work/structure/diagnosis_20261025_1200.json --dry-run
+
+# 抽選して記録する（--reader-trace は読み進みの推移を平坦の判定に加えるとき）
+uv run python tools/novel_structure_draw.py novels/NNN_作品名 novels/NNN_作品名/_work/structure/diagnosis_20261025_1200.json
+```
+
+実行後、`draws.jsonl` に1抽選1行が追記され、標準出力に章ごとの結果と、転の回数が下限に足りないときの理由が出ます。診断の表の形と手順はスキル **novel-plot-arrange** の手順6、使い方は [プロットのアレンジ](../workflow/plot-arrange.md) を参照してください。
 
 mature / body 向け user list_id の有効化手順は **`_how_to.example/pick_registry/README.md`** を正とする（公式 docs には具体 path を載せない）。
 

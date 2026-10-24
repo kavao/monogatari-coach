@@ -22,6 +22,8 @@ _REPO_ROOT = _TOOLS_DIR.parent
 DEFAULT_MERGE_ORDER = (
     "_how_to.example/pick_registry",
     "_how_to/pick_registry",
+    # 作品別（`--novel` を指定したときだけ。_index.yaml の merge_order と同じ後勝ち）
+    "novels/<作品>/pick_registry",
 )
 
 

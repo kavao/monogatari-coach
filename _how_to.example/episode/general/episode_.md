@@ -26,6 +26,9 @@
 | S | [episode_fluctuation.md](episode_fluctuation.md) | 揺らぎと作者性の設計・FLUCTUATION（予測との差・注意の痕跡・選択） |
 | T | [episode_sub_episode.md](episode_sub_episode.md) | 子エピソードによる増量（演算子 INTERRUPT〜BREATHE・親への接続・禁止パターン・不足率）。加筆工程で出来事を足して増やすときだけ読む。削減上限到達後の追加削減分も含む |
 | U | [episode_enend.md](episode_enend.md) | 敵の顔の庇護者類型設計・INIMICUS（エネンド。庇護装置G1〜G6・敵の顔V1〜V3・偽物Q1〜Q6・偽味方との逆符号） |
+| V | [episode_flow_peak_payoff.md](episode_flow_peak_payoff.md) | 流れ・山・オチの構造論・PEAK（約束・変調・流れ・山・オチ・後味の6層、入れ子、失敗パターン）。主に事後の診断。プロットのアレンジでは selected に無くても読む |
+| W | [episode_flow_break.md](episode_flow_break.md) | 流れ破壊と転の設計・FRACTIO（転の判定、壊す対象13種、壊さない転、置き場所の目安、設計テンプレート）。プロットのアレンジでは selected に無くても読む |
+| X | [episode_golden_structure.md](episode_golden_structure.md) | 黄金律の構造（三幕構成・ヒーローズ・ジャーニー・Save the Cat）。作者が型を選んだときだけ使い、既定にしない |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 

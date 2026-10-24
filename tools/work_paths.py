@@ -34,6 +34,13 @@ DIR_KIND_ROOTS: dict[str, tuple[str, str]] = {
     "reader": ("_reader/_work", "_work/reader"),
 }
 
+# 新しい置き場だけを持つ種類: 種類 → `_work/` の下の親フォルダ。古い置き場が無いので組の解決・移行・
+# 古い構成の印の対象にしない（DIR_KIND_ROOTS には入れない）。作品に一つのフォルダとして使う。
+# structure: 構造方針 rolled の抽選の記録（計画 _workingspace/plans/20261025_structure-theory-dosing.md）。
+NEW_ONLY_DIRS: dict[str, str] = {
+    "structure": "_work/structure",
+}
+
 # まだ無い組（absent）を始める置き場。既定は新しい置き場。書き手のツールがまだ新しい置き場へ
 # 切り替わっていない種類だけを古い置き場にしておき、同じ組が二か所に分かれないようにする。
 # 2026-10-24 の M5 で metron も新しい置き場へ切り替え、今は古い置き場で始める種類は無い（計画 §4）。
@@ -205,6 +212,13 @@ def unit_present(work: Path, kind: str, unit_id: str, layout: Literal["legacy", 
     return _present(work, kind, unit_id, layout)
 
 
+def new_only_location(work: Path, kind: str) -> Path:
+    """新しい置き場だけを持つ種類（NEW_ONLY_DIRS）のフォルダ。何も作らない。"""
+    if kind not in NEW_ONLY_DIRS:
+        raise WorkPathError("BAD_KIND", f"新しい置き場だけの種類ではない: {kind}", refs={"kind": kind})
+    return _join(work, NEW_ONLY_DIRS[kind])
+
+
 def migration_marker(work: Path, kind: str, unit_id: str = STORY_REFLECTION_UNIT) -> Path:
     """移行の記録のパス（`_work/.migrating/<kind>/<unit_id>.json`）。"""
     _check_kind(kind)
@@ -346,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     resolve = sub.add_parser("resolve", help="組の置き場を表示する（無ければ新しく始める置き場）")
     resolve.add_argument("work", type=Path)
-    resolve.add_argument("kind", choices=["story_reflection", "writing", "metron", "reader"])
+    resolve.add_argument("kind", choices=["story_reflection", "writing", "metron", "reader", *NEW_ONLY_DIRS])
     resolve.add_argument("unit_id", nargs="?", default=STORY_REFLECTION_UNIT)
     resolve.add_argument("--json", action="store_true")
     markers = sub.add_parser("legacy-markers", help="古い構成の印を一覧する")
@@ -358,6 +372,13 @@ def main(argv: list[str] | None = None) -> int:
     except AttributeError:
         pass
     try:
+        if args.command == "resolve" and args.kind in NEW_ONLY_DIRS:
+            path = new_only_location(args.work, args.kind)
+            if args.json:
+                print(json.dumps({"layout": "new", "path": path.as_posix()}, ensure_ascii=False))
+            else:
+                print(path.as_posix())
+            return 0
         if args.command == "resolve":
             location = resolve_unit(args.work, args.kind, args.unit_id)
             if args.json:

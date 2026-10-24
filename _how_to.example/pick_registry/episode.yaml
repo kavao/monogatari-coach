@@ -128,3 +128,52 @@ pick_lists:
     source: _how_to.example/episode/common/episode_common.json
     path: 恥じらい.サブカテゴリ.視線と逸らし.内訳
     tool: json_weighted_pick
+
+  # --- 構造方針 rolled（スキル novel-plot-arrange）。基準の重み。補正後の候補は --eval で渡す ---
+  structure_break_major_type:
+    domain: episode
+    visibility: public
+    description: 大きな転の型（壊す転・壊さない転）の基準の重み
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: 大きな転_型
+    tool: json_weighted_pick
+
+  structure_break_minor_type:
+    domain: episode
+    visibility: public
+    description: 小さな転（緩急）の型
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: 小さな転_型
+    tool: json_weighted_pick
+
+  structure_contract_break:
+    domain: episode
+    visibility: public
+    description: 作品の約束の破壊（ジャンル転調）の有無
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: 作品の約束の破壊
+    tool: json_weighted_pick
+
+  structure_payoff_mode:
+    domain: episode
+    visibility: public
+    description: オチの回収のしかた（explicit / implicit / none）
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: オチ_回収のしかた
+    tool: json_weighted_pick
+
+  structure_payoff_answer:
+    domain: episode
+    visibility: public
+    description: オチの答えの形（answer-type）
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: オチ_答えの形
+    tool: json_weighted_pick
+
+  structure_ending_tone:
+    domain: episode
+    visibility: public
+    description: 後味（ENDING の tone）
+    source: _how_to.example/episode/general/episode_structure_dosing.json
+    path: 後味
+    tool: json_weighted_pick

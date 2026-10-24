@@ -20,6 +20,9 @@ general の設計技法（抽選 JSON の対象外）:
 - [偽味方類型設計（AMICITIA）](general/episode_false_ally.md)
 - [敵対者類型設計（MALITIA）](general/episode_antagonist.md)
 - [敵の顔の庇護者類型設計（INIMICUS・エネンド）](general/episode_enend.md)
+- [流れ・山・オチの構造論（PEAK）](general/episode_flow_peak_payoff.md)（主に事後の診断。プロットのアレンジでは selected に無くても読む）
+- [流れ破壊と転の設計（FRACTIO）](general/episode_flow_break.md)（プロットのアレンジでは selected に無くても読む）
+- [黄金律の構造（三幕構成・ヒーローズ・ジャーニー・Save the Cat）](general/episode_golden_structure.md)（作者が型を選んだときだけ。既定にしない）
 - [危機脱出構成（EXITUS）](general/episode_crisis_escape.md)
 - [恩義設計論（ON）](general/episode_obligation.md)
 - [責任移行の人物類型設計（ONUS）](general/episode_responsibility_shift.md)

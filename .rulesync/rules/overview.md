@@ -32,6 +32,7 @@ globs: ["**/*"]
 | `docs/` を変更する | `docs-writing.md` |
 | 新しい物語・ストーリー案を一から出す、ジャンルを指定して話を考える | `novel-planning`。案を出す前に、ジャンル軸を判定し該当する `genre/` の葉を読む（B1） |
 | 企画、設定、人物、世界観を整える | `novel-planning`、`novel-character-profile` |
+| プロットが平板・先が読めるのでアレンジしたい、展開を変えたい | `novel-plot-arrange`（構造論と流れ破壊の葉を工程正本として読む。黄金律は型を指定されたときだけ。清書では転を足さない） |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
 | 本文を「わかりやすく」「読みやすく」直す | `novel-refinement-output`（清書として扱い、`world_glossary.md` の規則5・6を読み直す） |
