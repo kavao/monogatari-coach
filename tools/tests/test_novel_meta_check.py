@@ -159,6 +159,22 @@ def test_cli_dry_run_then_migrate_with_backup(tmp_path: Path, capsys) -> None:
     assert not (work / "_novel_text_backup" / "_meta_v002.md").exists()
 
 
+@pytest.mark.parametrize("newline", ["\r\n", "\n"])
+def test_cli_keeps_original_bytes_and_newline(tmp_path: Path, newline: str) -> None:
+    work = tmp_path / "001_sample"
+    work.mkdir()
+    meta = work / "_meta.md"
+    original = LEGACY.replace("\n", newline).encode("utf-8")
+    meta.write_bytes(original)
+    assert m.main(["migrate", str(work)]) == 0
+    assert (work / "_novel_text_backup" / "_meta_v001.md").read_bytes() == original
+    after = meta.read_bytes()
+    assert after.count(b"\n") == after.count(newline.encode("ascii"))  # 元の改行コードだけで書く
+    assert m.check_text(after.decode("utf-8").replace("\r\n", "\n")).form == "new"
+    assert m.main(["ensure-section", str(work), "evaluation-history"]) == 0  # 節はすでにある
+    assert meta.read_bytes() == after
+
+
 def test_cli_ensure_section(tmp_path: Path) -> None:
     work = tmp_path / "001_sample"
     work.mkdir()

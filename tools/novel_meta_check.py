@@ -14,7 +14,7 @@
   末尾の「# 移行前の節（未分類）」へそのまま置く。ただし機械が読む記録（次回のタスク・章別文字数・評価履歴・
   出来事同期・goal の自動生成ブロック）を含む節の行き先が決まらないときは、移行を止める。
 - 移行の前後で、機械が読む記録が同じに取れることと、2回目の実行で差分が出ないことを確かめてから書く。
-- 書く前に旧版を `_novel_text_backup/_meta_vNNN.md` へ退避する。
+- 書く前に旧版を `_novel_text_backup/_meta_vNNN.md` へ元のバイトのまま退避する。新しい版は元の改行コードで書く。
 """
 
 from __future__ import annotations
@@ -548,7 +548,8 @@ def ensure_section_text(text: str, slot_key: str) -> str:
 # ── ファイル操作 ─────────────────────────────────────────────────────────
 
 
-def _backup(work: Path, text: str) -> Path:
+def _backup(work: Path, raw: bytes) -> Path:
+    """旧版を元のバイトのまま退避する。"""
     backup_dir = work / "_novel_text_backup"
     backup_dir.mkdir(parents=True, exist_ok=True)
     numbers = [
@@ -557,13 +558,19 @@ def _backup(work: Path, text: str) -> Path:
         if (match := re.fullmatch(r"_meta_v(\d+)\.md", path.name))
     ]
     path = backup_dir / f"_meta_v{(max(numbers) + 1 if numbers else 1):03d}.md"
-    path.write_text(text, encoding="utf-8", newline="\n")
+    path.write_bytes(raw)
     return path
 
 
-def _write(path: Path, text: str) -> None:
+def _newline_of(raw: bytes) -> str:
+    """元のファイルの改行コード。混在するときは多いほう。"""
+    crlf = raw.count(b"\r\n")
+    return "\r\n" if crlf and crlf * 2 >= raw.count(b"\n") else "\n"
+
+
+def _write(path: Path, text: str, newline: str) -> None:
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(text, encoding="utf-8", newline="\n")
+    tmp.write_text(text, encoding="utf-8", newline=newline)
     os.replace(tmp, path)
 
 
@@ -618,11 +625,13 @@ class _StoryReflectionGuard:
         self._release()
 
 
-def _read_meta(work: Path) -> tuple[Path, str]:
+def _read_meta(work: Path) -> tuple[Path, str, bytes]:
+    """`_meta.md` のパス、改行を LF にそろえた本文、元のバイト。"""
     path = work / "_meta.md"
     if not path.is_file():
         raise MetaError("NO_META", f"_meta.md が無い: {path}")
-    return path, path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    raw = path.read_bytes()
+    return path, raw.decode("utf-8").replace("\r\n", "\n"), raw
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────
@@ -647,7 +656,7 @@ def main(argv: list[str] | None = None) -> int:
     except AttributeError:
         pass
     try:
-        path, text = _read_meta(args.work)
+        path, text, raw = _read_meta(args.work)
         if args.command == "check":
             result = check_text(text)
             if args.json:
@@ -678,11 +687,11 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 0
             with _StoryReflectionGuard(args.work):
-                path, text = _read_meta(args.work)  # 排他を取ってから読み直す
+                path, text, raw = _read_meta(args.work)  # 排他を取ってから読み直す
                 plan = migrate_text(text)
                 verify_migration(text, plan.text, plan.added)
-                backup = _backup(args.work, text)
-                _write(path, plan.text)
+                backup = _backup(args.work, raw)
+                _write(path, plan.text, _newline_of(raw))
             print(f"移しました（旧版: {backup.as_posix()}）")
             return 0
         slot_key = ENSURE_NAMES[args.section]
@@ -694,13 +703,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"足す節: {SLOT_BY_KEY[slot_key].heading}")
             return 0
         with _StoryReflectionGuard(args.work):
-            path, text = _read_meta(args.work)  # 排他を取ってから読み直す
+            path, text, raw = _read_meta(args.work)  # 排他を取ってから読み直す
             updated = ensure_section_text(text, slot_key)
             if updated == text:
                 print("節はすでにあります")
                 return 0
-            backup = _backup(args.work, text)
-            _write(path, updated)
+            backup = _backup(args.work, raw)
+            _write(path, updated, _newline_of(raw))
         print(f"足しました: {SLOT_BY_KEY[slot_key].heading}（旧版: {backup.as_posix()}）")
         return 0
     except MetaError as error:
