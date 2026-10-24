@@ -28,6 +28,8 @@ _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
+from work_paths import WorkPathError, kind_roots, resolve_unit  # noqa: E402
+
 DONE = "done"
 IN_PROGRESS = "in_progress"
 HELD = "held"
@@ -175,7 +177,10 @@ def published_digests(work: Path, scene_ids: list[str]) -> dict[str, set[str]]:
     """
     digests: dict[str, set[str]] = {}
     for scene_id in scene_ids:
-        scene_dir = work / "_writing" / scene_id
+        try:
+            scene_dir = _writing_scene_dir(work, scene_id)
+        except WorkPathError:
+            continue
         if not scene_dir.is_dir():
             continue
         for run in _runs(scene_dir):
@@ -185,6 +190,11 @@ def published_digests(work: Path, scene_ids: list[str]) -> dict[str, set[str]]:
     return digests
 
 
+def _writing_scene_dir(work: Path, scene_id: str) -> Path:
+    """執筆接続の場面フォルダ（古い _writing/ か新しい _work/writing/。tools/work_paths.py の組の規則）。"""
+    return resolve_unit(work, "writing", scene_id).base
+
+
 def judge_scene(
     work: Path,
     scene_id: str,
@@ -192,7 +202,10 @@ def judge_scene(
     digests: dict[str, set[str]] | None = None,
 ) -> SceneStatus:
     """場面の状態。digests は同じ章の全場面の保存ハッシュ（省略時はこの場面だけ）。"""
-    scene_dir = work / "_writing" / scene_id
+    try:
+        scene_dir = _writing_scene_dir(work, scene_id)
+    except WorkPathError as error:
+        return SceneStatus(scene_id, chapter, HELD, f"場面の置き場を決められない（{error.code}）")
     runs = _runs(scene_dir) if scene_dir.is_dir() else []
     if not runs:
         return SceneStatus(scene_id, chapter, NOT_STARTED, "run なし")
@@ -246,9 +259,7 @@ def _chapter_text_files(work: Path) -> dict[int, list[Path]]:
 
 def _scene_ids(work: Path) -> dict[int, set[str]]:
     found: dict[int, set[str]] = {}
-    for root in (work / "_metron", work / "_writing"):
-        if not root.is_dir():
-            continue
+    for root in (*kind_roots(work, "metron"), *kind_roots(work, "writing")):
         for d in root.iterdir():
             m = _RE_SCENE.match(d.name)
             if d.is_dir() and m:
@@ -260,7 +271,7 @@ def fold_chapter(chapter: int, scenes: list[SceneStatus], has_text: bool) -> Cha
     if not scenes:
         if has_text:
             return ChapterStatus(
-                chapter, UNDETERMINED, [], "本文はあるが場面の記録（_metron / _writing）がない"
+                chapter, UNDETERMINED, [], "本文はあるが場面の記録（METRON・執筆接続の場面フォルダ）がない"
             )
         return ChapterStatus(chapter, NOT_STARTED, [], "")
     states = {s.state for s in scenes}

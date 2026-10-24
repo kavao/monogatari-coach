@@ -164,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         if is_new_target:
-            print("  作成予定: config.md（検査レイヤ設定）、_metron/・chronos/（ON の場合）")
+            print("  作成予定: config.md（検査レイヤ設定）、_work/metron/・chronos/（ON の場合）")
         else:
             print("  既存フォルダ: config.md と検査レイヤ設定は変更しません。")
         print(f"\n  [dry-run] 上記フォルダを作成して scaffold を実行します。")

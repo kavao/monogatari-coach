@@ -336,7 +336,7 @@ def test_bootstrap_new_project_uses_inspection_defaults(tmp_path: Path) -> None:
     assert "未応答・既定 ON" in config
     assert "| METRON | ON |" in config
     assert "| CHRONOS | ON |" in config
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
 
 
@@ -360,7 +360,7 @@ def test_bootstrap_new_project_accepts_explicit_inspection_off(tmp_path: Path) -
 
     config = (work / "config.md").read_text(encoding="utf-8")
     assert "METRON=ユーザー明示 OFF" in config
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -704,7 +704,7 @@ def test_bootstrap_new_project_accepts_explicit_inspection_on(tmp_path: Path) ->
     config = (work / "config.md").read_text(encoding="utf-8")
     assert "ユーザー明示 ON" in config
     assert "| METRON | ON |" in config
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
 
 

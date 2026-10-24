@@ -22,6 +22,10 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 漫画の後載せ写植はページYAMLの `manga.lettering` を基本スタイル正本とする。既定は縦書き・基準サイズ30・矩形中央寄せ・必要時のみ縮小。個別 `writing_direction` は明示時だけ上書き。縦書き約物は縦組み字形へ変換するが `？` は通常字形のまま（IR本文は不変）。
 - 漫画ページの吹き出しはページ生成時に描く。標準は写植なし。後載せと NovelAI の T1 割り当ては `workflow-specification.md`「漫画ページの吹き出し描画」「漫画写植の作品メタ」。既定 provider `grok_pro`。操作は `docs/image-generation/manga-page-edit.md`。
 
+## 作品フォルダの機械の記録
+
+- 機械の記録（ストーリー反映・執筆接続・METRON・評価の中間）の置き場は `tools/work_paths.py` が組ごとに決める（新しい組は `_work/` の下、以前からある組は元の場所）。手でパスを推測・移動しない。`<METRON 場面>` は `work_paths.py resolve novels/<作品> metron <scene_id>` の出力。`CONFLICT`・`MIGRATING`・`STALE_LOCATION` は手で片付けず報告する。作品の作業の前は `novel_work_migrate.py --advise <edit|evaluate|read>` に従う（古い構成への移行の勧めは編集で一度だけ、`_meta.md` の節は `novel_meta_check.py ensure-section` で足す）。詳細は `workflow-specification.md`「作品フォルダの機械の記録」。
+
 ## 完了扱い条件
 
 - ファイル成果物は、正しい正本パスへの書込み後に再読込または対応する検証で確認してから完了と報告する。
@@ -30,7 +34,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 章別実文字数の一覧を置くときは `_meta.md` I.1「章別文字数」を正本とする。数値は `novel_char_count.py`。設計書の想定尺は目標であり在庫ではない。
 - 小説本文の初稿・場面追記は、対象ファイルに対する `tools/novel_punctuation_metrics.py --gate` が成功してから完了とする。`writing_bridge` の `publish --dry-run` が句読点 fail なら正本を書かない。本番 `publish` 後は `report.json` の句読点記録を正とし、失敗でも本文は戻さない。未達なら完了報告しない。
 - 小説本文の執筆・清書完了は、対象章を一意に解決したうえで `design_specification.md` の確定出来事を突き合わせ、`_meta.md` に `更新` / `差分なし` / `未完了` の証跡を残してから報告する。解決不能と書込失敗は完了としない。手順はスキル `novel-story-reflection`。
-- METRON / CHRONOS ON の本文を保存したときは、完了報告に **`計測済み` / `未計測`** を必ず明記する。`_writing/` に run 証跡が無い本文は未計測として扱い、未計測のまま完了報告した章では後続章へ進まない。未計測の保存と完了は両立しない。
+- METRON / CHRONOS ON の本文を保存したときは、完了報告に **`計測済み` / `未計測`** を必ず明記する。執筆接続の run 証跡（`_work/writing/`、古い作品は `_writing/`）が無い本文は未計測として扱い、未計測のまま完了報告した章では後続章へ進まない。未計測の保存と完了は両立しない。
 - ユーザーが第X章だけを指定したときは1章で停止する。第X〜Y章の明示範囲または複数章の列挙は各章を1章ずつ直列に完了させ、指定終端で停止する。失敗・stale・escalated・ユーザー停止では後続章へ進まない。
 - 作業事実は `_workingspace/log/YYYYMM.md` へ追記し、次回以降も使う判断理由は `_workingspace/diary/YYYYMM.md` へ追記する。対象作品の config.md に `AUDIT_LOG | OFF` があるときは査証ログを追記しない。
 - 新規の漫画ページ `manga/pages/*.yaml` は `schema_version: "1.1"` で作り、`layout_geometry`（コマ数と一致する矩形）と `render_instruction.text_mode`（`generate` / `letter_later` / `none`）を省略しない。欠けていれば作成完了としない。既存 1.0 は読み取り互換で残し、1.1 の欄を足すときは `tools/novel_manga_ir_migrate.py` で先に移行する（移行は矩形と `text_mode` を書かない）。

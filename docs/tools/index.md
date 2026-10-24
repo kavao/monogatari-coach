@@ -18,18 +18,18 @@ METRON は Scene を Beat に分け、本文の構造予算を計測してレポ
 
 ```bash
 python tools/metron_cli.py validate \
-  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml
+  --contract novels/NNN_作品名/_work/metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml
 ```
 
 マーカー付き draft を解析し、run ごとの `draft.NNN.md`、`spans.NNN.yaml`、`metrics.NNN.yaml`、`regression.NNN.yaml` を保存します。既存 run のファイルは上書きしません。
 
 ```bash
 python tools/metron_cli.py analyze \
-  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --draft novels/NNN_作品名/_metron/ch03-002/marked.md \
-  --output-dir novels/NNN_作品名/_metron/ch03-002 \
+  --contract novels/NNN_作品名/_work/metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --draft novels/NNN_作品名/_work/metron/ch03-002/marked.md \
+  --output-dir novels/NNN_作品名/_work/metron/ch03-002 \
   --run 1 --model <model-id>
 ```
 
@@ -37,9 +37,9 @@ python tools/metron_cli.py analyze \
 
 ```bash
 python tools/metron_cli.py report \
-  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --output novels/NNN_作品名/_metron/ch03-002/report.001.md
+  --metrics novels/NNN_作品名/_work/metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --output novels/NNN_作品名/_work/metron/ch03-002/report.001.md
 ```
 
 キャリブレーションは、課金や外部生成を伴わない dry-run を先に確認します。dry-run は計画だけを表示し、本番生成を行いません。
@@ -63,13 +63,13 @@ python tools/metron_cli.py calibrate --model <model-id> \
 
 ```bash
 python tools/metron_cli.py classify \
-  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --spans novels/NNN_作品名/_metron/ch03-002/spans.001.yaml \
+  --metrics novels/NNN_作品名/_work/metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --spans novels/NNN_作品名/_work/metron/ch03-002/spans.001.yaml \
   --config config/metron_models.yaml --model <model-id>
 
 python tools/metron_cli.py plan \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
   --config config/metron_models.yaml --model <model-id>
 ```
 
@@ -77,8 +77,8 @@ python tools/metron_cli.py plan \
 
 ```bash
 python tools/metron_cli.py finalize \
-  --draft novels/NNN_作品名/_metron/ch03-002/draft.002.md \
-  --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
+  --draft novels/NNN_作品名/_work/metron/ch03-002/draft.002.md \
+  --output novels/NNN_作品名/_work/metron/ch03-002/FINAL.md
 ```
 
 ### `chronos_cli.py` — CHRONOS の順序検査と人物状態
@@ -110,9 +110,9 @@ python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
 
 ### `writing_bridge_cli.py` — METRON / CHRONOS の執筆接続
 
-Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
+Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_work/writing/<scene_id>/<run_id>/` に残します（以前から `_writing/<scene_id>/` がある場面は、そのまま `_writing/` に残します）。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
 
-両方 OFF のときは run を作りません。契約とマーカー稿は従来どおり `_metron/` に置きます。
+両方 OFF のときは run を作りません。契約とマーカー稿は METRON の場面フォルダ（`_work/metron/<場面>/`）に置きます。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 接続の対象パスを確認します。`--dry-run` では run も `request.yaml` も作りません。
 
@@ -131,7 +131,7 @@ python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --request-kind new
 ```
 
-実行後、`_writing/ch01-001/run-0001/` などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
+実行後、`_work/writing/ch01-001/run-0001/`（以前から `_writing/ch01-001/` がある場面では `_writing/ch01-001/run-0001/`）などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
 
 候補を受領し、同じ本文版を検査します。このレシピは正本を書きません。
 
@@ -300,7 +300,7 @@ python tools/novel_onboard.py "作品タイトル" --dry-run
 python tools/novel_onboard.py "作品タイトル" --metron OFF --chronos OFF
 ```
 
-新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、ON の場合は `_metron/` と `chronos/` も準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプション（`--metron OFF --chronos OFF`）を付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
+新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、ON の場合は `_work/metron/` と `chronos/` も準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプション（`--metron OFF --chronos OFF`）を付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
 
 実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
 
@@ -469,7 +469,7 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OF
 
 本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。出来事リストの意味一致は検査しません。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。確定出来事の同期と lock / journal 操作は `story_reflection_op.py` を使います。
 
-`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_work/metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_work/metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
 
 未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。
 
@@ -507,6 +507,112 @@ python tools/story_reflection_op.py lock-release novels/NNN_作品名
 `lock-inspect` は lock と現行 operation を表示するだけで、ファイルは消しません。`begin` / `apply-design` / `apply-meta` / `fail` / `resume` / `close-orphan` / `lock-release` は、読込から全書込みまで OS 排他を保持します。同じ作品へ同時に走らせると、一方だけが成功し、他方は終了コード 2（`LOCK_HELD`）になります。正式名への公開は既存 lock を上書きしません。解除は正式名が消えるまで排他を保持します。削除に失敗したときは正式名を動かさず、終了コード 2（`LOCK_HELD`）になります。`lock-release` は current と最後の状態遷移が `done` / `failed` で完全一致しているときだけ lock を消します。`lock_released` は削除成功後だけ journal に残します。削除失敗では成功イベントを書きません。進行中や孤児の lock は解除しません。チャットで「ロックを消して」とだけ言われても、Monogatari Coach はこのコマンドの判定を通さずに消しません。`close-orphan` は active の孤児だけを `failed` にできます。`done` / `failed` の terminal は変えません。`resume` も terminal は対象外です。
 
 完了報告の見方は `_meta.md` の `出来事同期` 1行です。`第N章出来事（更新|差分なし|未完了）` が残っているかを後続セッションが参照します。`--check-story-sync` は形式検査だけなので、この1行の代わりにはなりません。
+
+---
+
+### `novel_work_migrate.py` — 作品フォルダを新しい構成へ移す
+
+以前の作品では、機械が書く記録（ストーリー反映の状態、執筆接続の run、METRON の場面、評価の中間）が作品フォルダの直下や `_writing/`・`_metron/`・`_reader/_work/` に置かれています。このツールは、それらを場面などの単位ごとに `_work/` の下へ移し、作品フォルダの直下には読む・直すファイルだけが並ぶようにします。移さなくても、以前の作品はそのまま読めます。
+
+### このツールを使う場面
+
+| 場面 | 使い方 |
+|------|--------|
+| 以前の作品の作品フォルダを整理したい | `--dry-run` で確かめてから移す |
+| 古い構成が残っているかを見たい | `novel_project_check.py --check-layout` |
+| 移行が途中で止まった（電源が落ちた、強制終了した） | `--recover` |
+
+### チャットへの指示文
+
+これだけ入力すれば動きます。
+
+```text
+novels/NNN_作品名 の作品フォルダを新しい構成へ移してください。
+```
+
+と入力すると、Monogatari Coach は次のように進めます。
+
+1. `--dry-run` で、何をどこへ移すかを表示し、移してよいかを確かめます。`_meta.md` が以前の形なら、`novel_meta_check.py migrate --dry-run` の要約も一緒に見せます。
+2. 承認されたら移します。修復や保存（publish）が途中の場面、ストーリー反映の操作が途中の作品は移さず、その理由を報告します。
+3. 移したあとに、`novel_project_check.py --check-layout` で古い構成の印が残っていないかを確かめます。
+
+### 以前の作品を編集するとき
+
+以前の構成のままの作品について「続きを書いて」「清書して」などを頼むと、Monogatari Coach は作業の前に一度だけ「先に新しい構成へ移しますか」と聞きます。
+
+- 移すと答えると、移してから頼まれた作業に入ります。
+- 移さないと答えると、その作品では同じことを聞きません（`_work/migration.json` に記録します）。作業は以前の構成のまま進みます。
+- 用語照合・一貫性監査・下読み・質問への回答では聞きません。
+- 修復や保存が途中の作品では聞きません。
+
+判定は次のコマンドで確かめられます。何も書きません。
+
+```bash
+# 依頼の種類（edit / evaluate / read）ごとに、移行を勧めるかと、_meta.md に足す節を表示する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --advise edit
+
+# 移行を断ったことを記録する（以後は勧めない）
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --decline
+```
+
+### コマンド
+
+まず `--dry-run` で、移す単位とファイル数を確認します。ファイルは何も変わりません。
+
+```bash
+# 確認（dry-run）— 移す単位とファイル数を表示する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --dry-run
+
+# 本番（確認してから）— 単位ごとに移す
+uv run python tools/novel_work_migrate.py novels/NNN_作品名
+
+# 種類を絞る（story_reflection / writing / metron / reader）
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --kind writing --dry-run
+```
+
+実行後、`novels/NNN_作品名/_work/` の下に `story_reflection/`・`writing/<場面>/`・`metron/<場面>/`・`reader/<日付>/` ができます。空になった `_writing/`・`_metron/`・`_reader/_work/` は消えます。ファイルが残っているフォルダは消しません。
+
+移行が途中で止まったときは、次のコマンドで、移行前か移行後のどちらか一方の完全な形に戻ります。止まった単位があると、通常の移行は `--recover` を求めて止まります。
+
+```bash
+# 中断した移行を復旧する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --recover
+```
+
+### 仕組み
+
+- 単位（ストーリー反映の3ファイル、執筆接続の場面、METRON の場面、評価の1日分）ごとに、いったん `_work/.migrating/` へ写し、ハッシュを照らしてから名前の変更で切り替えます。移している間、その単位は各ツールが「移行中」として使いません。
+- 以前の置き場のファイルを直接消す手順はありません。退けるのは名前の変更だけなので、途中で止まっても `--recover` で戻せます。
+- Windows で、誰かが場面のファイルを開いているときなど、以前の置き場を動かせない場合は、何も変えずに `IN_USE` で止まります。ファイルを閉じてからもう一度実行してください。
+- 保存済みの記録の中のパス（`_writing/…`・`_metron/…`）は書き換えません。各ツールが読むときに、移した先を解決します。
+- 置き場の決め方の詳細は [`work_paths.py`](../../tools/work_paths.py) と、計画 `_workingspace/plans/20261024_work-folder-layout.md` にあります。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます。
+
+---
+
+### `novel_meta_check.py` — `_meta.md` の形の判定と移行
+
+作品の `_meta.md` が、雛形（`_how_to.example/meta.md`）の4部構成（内部メタ・外部メタ・画像と漫画の設定・評価履歴）になっているかを判定し、以前の形の `_meta.md` を雛形の並びへ移します。移すときは、本文の段落・表・コードブロックを節ごとにそのまま並べ替え、見出しだけを雛形の見出しに変えます。対応の決まらない節は末尾の「移行前の節（未分類）」にそのまま置きます。
+
+```bash
+# 形を判定する（new / partial / legacy）。書かない
+uv run python tools/novel_meta_check.py check novels/NNN_作品名
+
+# 確認（dry-run）— 見出しの変換・足す節・未分類に置く節と差分を表示する
+uv run python tools/novel_meta_check.py migrate novels/NNN_作品名 --dry-run
+
+# 本番（確認してから）— 旧版を _novel_text_backup/_meta_vNNN.md に退避して書く
+uv run python tools/novel_meta_check.py migrate novels/NNN_作品名
+
+# 必要な節だけ足す（ほかの行は動かさない）
+uv run python tools/novel_meta_check.py ensure-section novels/NNN_作品名 evaluation-history
+```
+
+- 移す前に、次の3つを確かめます。どれかが満たせなければ、書かずに止まります。
+  - 機械が読む記録（次回のタスク・章別文字数の表・評価履歴の表・出来事同期・goal の自動生成ブロック）が、移したあとも同じに取れる。
+  - 本文の行が失われない。
+  - もう一度移しても差分が出ない。
+- 「章別文字数」の表は、雛形の決まりに従って自動では足しません。
+- `ensure-section` で足せる節は `phase-status`・`goal-status`・`context`・`evaluation-history`・`inspection-plan`・`gate-b` です。
 
 ---
 

@@ -136,14 +136,16 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 
 ## 長文多段パイプライン（合計30,000字超 / 章8,000字超）
 
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_work/reader/`）」および「長文評価の閾値と前処理」。
 
 ### 作業領域の構造
 
 ```
 novels/<作品>/_reader/
   synopsis_YYYYMMDD.md          ← 最終成果物（Step A）
-  _work/<YYYYMMDD>/             ← 評価セッション作業フォルダ
+  score_YYYYMMDD_HHMM.md        ← 最終成果物（Step D）
+novels/<作品>/_work/reader/
+  <YYYYMMDD>/                   ← 評価セッション作業フォルダ（同じ日のフォルダが古い _reader/_work/<YYYYMMDD>/ にあればそちら）
     ch01_eval.md                ← 章1 スコアノート
     ch02_eval.md
     ...
@@ -151,7 +153,6 @@ novels/<作品>/_reader/
     step_b.md                   ← 構造・プロット中間分析
     step_c.md                   ← 文体・描写中間分析
     aggregate.md                ← 加重平均計算メモ
-  score_YYYYMMDD_HHMM.md        ← 最終成果物（Step D）
 ```
 
 ### 手順
@@ -165,8 +166,9 @@ novels/<作品>/_reader/
 3. `config.md` / `character.md` / `world.md` / `design_specification.md` を Read する。
 4. 前回の `_reader/` に評価ファイルが存在する場合、パスと判定を確認する。
    - **旧形式（5段階）の扱い**: 旧評価は変更せず残す。引用時は「旧形式(5段階 X.X/5.0 ≈換算 XX/100 相当・参考値)」と明示する。
-5. 作業フォルダ `_reader/_work/<今日の YYYYMMDD>/` を作成する（`_reader/` が無ければ先に作成）。
-   - Windows (PowerShell): `New-Item -ItemType Directory -Force "novels/<作品>/_reader/_work/<YYYYMMDD>"`
+5. **作業フォルダを一つに決める**（以下 `<作業フォルダ>`）。今日の日付のフォルダが古い置き場 `_reader/_work/<今日の YYYYMMDD>/` に既にあれば、それを `<作業フォルダ>` とする。無ければ `_work/reader/<今日の YYYYMMDD>/` を作り、それを `<作業フォルダ>` とする。決めたあとは、Step B〜D の保存と完了確認をすべて `<作業フォルダ>` で行い、途中で別の置き場に作らない（`_reader/` が無ければ先に作成）。
+   - 決め方を機械で確かめるとき: `uv run python tools/novel_evaluation_prepare.py novels/<作品> --mode editor-score` の「算出根拠」に出る `…/aggregate.md` の親フォルダが `<作業フォルダ>`。
+   - 新しく作る場合（PowerShell）: `New-Item -ItemType Directory -Force "novels/<作品>/_work/reader/<YYYYMMDD>"`
 
 **Step A: Synopsis（前処理）**
 
@@ -176,24 +178,24 @@ novels/<作品>/_reader/
 **Step B: 構造・プロット・テーマ分析（あらすじから）**
 
 1. Step A の Synopsis のみを入力として、物語構造・伏線・テーマ一貫性を分析する。
-2. 分析結果を `_reader/_work/<YYYYMMDD>/step_b.md` に保存する（作業ファイル）。
+2. 分析結果を `<作業フォルダ>/step_b.md` に保存する（作業ファイル）。
 
 **Step C: 文体・描写分析（章サンプルから）**
 
 1. 序盤・中盤・終盤から代表章を1〜2章ずつ抜粋して Read する（全文一括が困難な場合）。
 2. 語彙・リズム・描写密度・ジャンル適合を評価する。
-3. 分析結果を `_reader/_work/<YYYYMMDD>/step_c.md` に保存する（作業ファイル）。
+3. 分析結果を `<作業フォルダ>/step_c.md` に保存する（作業ファイル）。
 
 **Step D: 章分割スコア + 加重平均 → 統合**
 
 1. 各章グループ（例: `novel_text01_*` をまとめて「第1章」）に対してスコアを付ける。
-2. 各章スコアを `ch01_eval.md`〜`chNN_eval.md` に保存する（作業ファイル）。
-3. `aggregate.md` に加重平均を記録する:
+2. 各章スコアを `<作業フォルダ>/ch01_eval.md`〜`chNN_eval.md` に保存する（作業ファイル）。
+3. `<作業フォルダ>/aggregate.md` に加重平均を記録する:
    ```
    最終総合点 = Σ(章スコア × 章文字数) ÷ 合計文字数
    ```
 4. Step B・Step C・各章スコアを統合し、`_how_to/editor_score.md` の出力形式で `score_YYYYMMDD_HHMM.md` を作成する（最終成果物）。
-   - **フロントマター要件**: `score_*.md` の冒頭には次を含める: 種別（Editor Score）・作品名・日時・対象範囲（章とファイル数と文字数）・ゲート前提（足切り済みの根拠）・算出根拠（長文時は `_reader/_work/<YYYYMMDD>/aggregate.md` のパス）。
+   - **フロントマター要件**: `score_*.md` の冒頭には次を含める: 種別（Editor Score）・作品名・日時・対象範囲（章とファイル数と文字数）・ゲート前提（足切り済みの根拠）・算出根拠（長文時は `<作業フォルダ>/aggregate.md` のパス）。
 5. 作品 `_meta.md` の「評価・足切り履歴」節を更新する。
 
 チャットへは「Editor Score 総合点・致命的弱点の件数・`synopsis`・`score` の保存先パス」を返す。
@@ -202,7 +204,7 @@ novels/<作品>/_reader/
 
 以下が **全て** 揃ってから「Editor Score 完了」と報告する:
 
-1. `_reader/_work/<YYYYMMDD>/` に `step_b.md` / `step_c.md` / 各 `ch*_eval.md` / `aggregate.md` が存在する
+1. Step 0 で決めた `<作業フォルダ>` に `step_b.md` / `step_c.md` / 各 `ch*_eval.md` / `aggregate.md` がそろって存在する（ほかの置き場に分かれていない）
 2. `_reader/synopsis_YYYYMMDD.md` が存在する
 3. `_reader/score_YYYYMMDD_HHMM.md` が存在する（PowerShell の `Test-Path` または `Read` で確認）
 4. 作品 `_meta.md` の「評価・足切り履歴」節を更新した
@@ -212,12 +214,14 @@ novels/<作品>/_reader/
 ### 作業ファイルと最終成果物の区別
 
 - `_reader/` 直下のファイルのみが最終成果物。点数・判定の根拠はここを参照する。
-- `_reader/_work/<YYYYMMDD>/` のファイルは過程の記録。複数回の評価で上書きしない（日付フォルダで分離）。
+- 作業フォルダのファイルは過程の記録。複数回の評価で上書きしない（日付フォルダで分離）。
 - 「保存した」と報告してよいのは `_reader/` 直下の最終成果物が存在し `Read` で確認した後。
 
 ## `_meta.md` 更新（Editor Score / Consistency Audit / 用語照合の後）
 
 Editor Score・Consistency Audit・用語照合の実施後は、作品 `_meta.md` の「評価・足切り履歴」節を更新する。
+
+- 評価履歴の表が無い作品では、`uv run python tools/novel_meta_check.py ensure-section novels/<作品> evaluation-history` で節を足してから追記する（手で節を作らない。古い構成でも評価では移行を勧めない。`novel_work_migrate.py --advise evaluate`）。
 
 - **評価履歴表**に行を追記する（既存行は削除しない）。
 - 例: `| 20260608_1400 | Editor Score | 82 / 100 | — | _reader/score_20260608_1400.md |`

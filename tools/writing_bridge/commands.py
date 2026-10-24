@@ -39,7 +39,7 @@ from .hashes import (
     text_sha256,
 )
 from .links import raise_if_errors, union_scene_events, validate_links
-from .locking import locked_scene
+from .locking import locked_scene, scene_lock
 from .models import (
     SCHEMA,
     ArtifactRef,
@@ -66,7 +66,16 @@ from .models import (
     TargetSpec,
 )
 from .observe import inspect_observations
-from .paths import resolve_work_path, work_rel_path
+from work_paths import kind_roots
+
+from .paths import (
+    canonical_rel,
+    metron_scene_dir,
+    resolve_work_path,
+    unit_rel,
+    work_rel_path,
+    writing_scene_dir,
+)
 from .storage import (
     append_journal,
     load_json_model,
@@ -87,11 +96,11 @@ def work_root_of(path: Path) -> Path:
 
 
 def run_dir(work_root: Path, scene_id: str, run_id: str) -> Path:
-    return work_root / "_writing" / scene_id / run_id
+    return writing_scene_dir(work_root, scene_id) / run_id
 
 
 def allocate_run_id(work_root: Path, scene_id: str) -> str:
-    parent = work_root / "_writing" / scene_id
+    parent = writing_scene_dir(work_root, scene_id)
     numbers: list[int] = []
     if parent.is_dir():
         for child in parent.iterdir():
@@ -104,8 +113,8 @@ def allocate_run_id(work_root: Path, scene_id: str) -> str:
 
 def allocate_request_id(work_root: Path) -> str:
     numbers: list[int] = []
-    writing = work_root / "_writing"
-    if writing.is_dir():
+    # 混在している間は、古い置き場と新しい置き場の両方を数えて番号がぶつからないようにする。
+    for writing in kind_roots(work_root.resolve(), "writing"):
         for request in writing.glob("**/request.yaml"):
             try:
                 loaded = load_model(request, RequestDocument)
@@ -118,6 +127,53 @@ def allocate_request_id(work_root: Path) -> str:
 
 
 def prepare(
+    work_root: Path,
+    *,
+    scene_id: str,
+    text_path: str,
+    request_kind: RequestKind,
+    model_id: str,
+    selector: Selector | None,
+    links_path: Path | None,
+    repo_root: Path,
+    dry_run: bool = False,
+    allow_publish: bool = False,
+) -> tuple[int, str]:
+    def run(*, dry: bool) -> tuple[int, str]:
+        return _prepare_locked(
+            work_root,
+            scene_id=scene_id,
+            text_path=text_path,
+            request_kind=request_kind,
+            model_id=model_id,
+            selector=selector,
+            links_path=links_path,
+            repo_root=repo_root,
+            dry_run=dry,
+            allow_publish=allow_publish,
+        )
+
+    if dry_run:
+        # dry-run は何も書かないので、場面ロックを取らない。
+        return run(dry=True)
+    # 本番は場面ロックを取り、置き場を確かめ直してから番号を振って保存する
+    # （解決したあとに場面が別の置き場へ移っていたら、古い置き場に run を作らずに止まる）。
+    root = work_root_of(work_root)
+    try:
+        flags = load_inspection_flags(root / "config.md")
+    except InspectionConfigError as error:
+        raise BridgeError("CONFIG_ERROR", str(error), refs={"path": "config.md"}) from error
+    if flags.metron is InspectionFlag.OFF and flags.chronos is InspectionFlag.OFF:
+        # 両方 OFF は run を作らない（場面ロックのファイルも作らない）。
+        return run(dry=False)
+    # ロックを取る前に、dry-run と同じ入力の検査を済ませる。検査で失敗する依頼は場面ロックの
+    # ファイルを作らない（ロックファイルは解放後も残す設計なので、作ってから消すことはしない）。
+    run(dry=True)
+    with scene_lock(root, scene_id):
+        return run(dry=False)
+
+
+def _prepare_locked(
     work_root: Path,
     *,
     scene_id: str,
@@ -236,7 +292,7 @@ def prepare(
                     metron_on=flags.metron is InspectionFlag.ON,
                 )
             )
-    metron_dir = root / "_metron" / scene_id if flags.metron is InspectionFlag.ON else None
+    metron_dir = metron_scene_dir(root, scene_id) if flags.metron is InspectionFlag.ON else None
     extra = _input_rel_paths(root, request)
     dest = run_dir(root, scene_id, run_id)
     if dry_run:
@@ -348,7 +404,7 @@ def receive(
         )
         return 0, f"received (unchanged): {source}"
     if request.flags.metron is FlagValue.ON:
-        metron = root / "_metron" / request.scene_id
+        metron = metron_scene_dir(root, request.scene_id)
         metron.mkdir(parents=True, exist_ok=True)
         stored = _next_versioned_path(metron, "marked", ".md")
     else:
@@ -643,7 +699,7 @@ def _inspect_metron(
     marked: Path,
     repo_root: Path,
 ) -> tuple[ItemStatus, list[ErrorItem], list[ReportFinding], bool]:
-    metron = root / "_metron" / request.scene_id
+    metron = metron_scene_dir(root, request.scene_id)
     if not marked.is_file():
         raise BridgeError(
             "UNKNOWN_REF",
@@ -894,8 +950,8 @@ def _input_rel_paths(root: Path, request: RequestDocument) -> list[str]:
     if request.flags.metron is FlagValue.ON:
         extra.extend(
             [
-                f"_metron/{request.scene_id}/contract.yaml",
-                f"_metron/{request.scene_id}/beats.yaml",
+                unit_rel(root, "metron", request.scene_id, "contract.yaml"),
+                unit_rel(root, "metron", request.scene_id, "beats.yaml"),
             ]
         )
     if request.flags.chronos is FlagValue.ON:
@@ -920,7 +976,7 @@ def _input_rel_paths(root: Path, request: RequestDocument) -> list[str]:
                 for path in sorted(events.glob("**/*.yaml"))
             )
         extra.append(
-            f"_writing/{request.scene_id}/{request.run_id}/links.yaml"
+            unit_rel(root, "writing", request.scene_id, request.run_id, "links.yaml")
         )
     return _unique_paths(extra)
 
@@ -944,8 +1000,9 @@ def _refresh_context_if_stale(
     context = load_json_model(dest / "context.json", ContextDocument)
     extra = _input_rel_paths(root, request)
     current = collect_input_hashes(root, extra)
-    recorded = {(item.path, item.raw_sha256) for item in context.input_hashes}
-    actual = {(item.path, item.raw_sha256) for item in current}
+    # 置き場の移行の前後で同じ組を同じものとして比べる（パスの文字列は置き場によらない形にそろえる）。
+    recorded = {(canonical_rel(item.path), item.raw_sha256) for item in context.input_hashes}
+    actual = {(canonical_rel(item.path), item.raw_sha256) for item in current}
     if recorded == actual:
         return context, False
     store = None
@@ -957,7 +1014,7 @@ def _refresh_context_if_stale(
             raise BridgeError("UNKNOWN_REF", str(error)) from error
         links = _validated_run_links(dest, request, store)
     metron_dir = (
-        root / "_metron" / request.scene_id
+        metron_scene_dir(root, request.scene_id)
         if request.flags.metron is FlagValue.ON
         else None
     )
@@ -1074,7 +1131,7 @@ def _remember_metron_sources(
 ) -> None:
     if request.flags.metron is not FlagValue.ON:
         return
-    metron = root / "_metron" / request.scene_id
+    metron = metron_scene_dir(root, request.scene_id)
     refs.metron = refs.metron or {}
     previous = refs.metron.get("marked")
     refs.metron["marked"] = marked
@@ -1131,7 +1188,7 @@ def _edition_intact(root: Path, item: ArtifactRef, incoming: str) -> bool:
 def _observations_from_run(root: Path, scene_id: str, from_run: str) -> Path:
     if not re.fullmatch(r"run-\d{4,}", from_run):
         raise BridgeError("BAD_ID", "invalid from-run")
-    source = resolve_work_path(root, f"_writing/{scene_id}/{from_run}", field="from-run")
+    source = writing_scene_dir(root, scene_id) / from_run
     if not source.is_dir():
         raise BridgeError("UNKNOWN_REF", f"from-run not found: {source}")
     inherited = source / "observations.json"

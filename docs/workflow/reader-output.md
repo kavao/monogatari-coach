@@ -302,15 +302,16 @@ G3 全文足切りや Editor Score の前に作成する、評価者向けの客
 ```
 novels/<作品>/_reader/
   synopsis_YYYYMMDD.md          ← 最終成果物（Step A）
-  _work/<YYYYMMDD>/             ← 評価セッションの作業フォルダ
+  score_YYYYMMDD_HHMM.md        ← 最終成果物（Editor Score）
+novels/<作品>/_work/reader/
+  <YYYYMMDD>/                   ← 評価セッションの作業フォルダ
     step_b.md                   ← 構造・プロット中間分析
     step_c.md                   ← 文体・描写中間分析
     ch01_eval.md〜chNN_eval.md  ← 章ごとのスコアノート
     aggregate.md                ← 加重平均計算メモ
-  score_YYYYMMDD_HHMM.md        ← 最終成果物（Editor Score）
 ```
 
-`_reader/` 直下は最終成果物のみです。`_work/<YYYYMMDD>/` の中間ファイルは過程の記録として残します。
+`_reader/` 直下は最終成果物のみです。作業フォルダ `_work/reader/<YYYYMMDD>/` の中間ファイルは過程の記録として残します（以前の作品の `_reader/_work/<YYYYMMDD>/` もそのまま読めます。同じ日の作業はそちらで続けます）。
 
 ### 加重平均の計算式
 

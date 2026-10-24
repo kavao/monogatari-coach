@@ -26,7 +26,7 @@ from .models import (
     Selector,
     StateAt,
 )
-from .paths import resolve_work_path
+from .paths import resolve_work_path, unit_rel
 
 
 def peek_model_calibrated(config_path: Path, model_id: str) -> bool:
@@ -108,13 +108,13 @@ def build_context(
             raise BridgeError(
                 "UNKNOWN_REF",
                 "METRON is ON but contract.yaml is missing",
-                refs={"path": "_metron/" + request.scene_id + "/contract.yaml"},
+                refs={"path": unit_rel(work_root, "metron", request.scene_id, "contract.yaml")},
             )
         if not (metron_root / "beats.yaml").is_file():
             raise BridgeError(
                 "UNKNOWN_REF",
                 "METRON is ON but beats.yaml is missing",
-                refs={"path": "_metron/" + request.scene_id + "/beats.yaml"},
+                refs={"path": unit_rel(work_root, "metron", request.scene_id, "beats.yaml")},
             )
         contract = load_scene_contract(metron_root / "contract.yaml")
         plan = load_beat_plan(metron_root / "beats.yaml")

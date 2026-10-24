@@ -292,7 +292,7 @@ def _current_text_hash(text_path: Path) -> str:
     return text_sha256(text_path.read_text(encoding="utf-8"))
 
 
-def _measured_text_hashes(work: Path, writing_root: Path, chapter: int) -> dict[str, Any]:
+def _measured_text_hashes(work: Path, chapter: int) -> dict[str, Any]:
     """章の run が測った本文ハッシュを、対象ファイル（request.yaml の text_path）ごとに集める。
 
     report.json の target_text_sha256 は、inspect では測った版、publish では保存後の
@@ -303,11 +303,22 @@ def _measured_text_hashes(work: Path, writing_root: Path, chapter: int) -> dict[
 
     import yaml
 
+    from work_paths import WorkPathError, iter_unit_ids, resolve_unit
+
     run_exists = False
     hashes: dict[str, set[str]] = {}
-    if not writing_root.is_dir():
-        return {"run_exists": False, "hashes": hashes}
-    for scene in writing_root.glob(f"ch{chapter:02d}-*"):
+    layout_errors: list[dict[str, str]] = []
+    # 執筆接続の場面は古い _writing/ と新しい _work/writing/ のどちらにもありうる。場面ごとに組の規則で
+    # 置き場を決め、競合（両方にある）・移行中の場面は計測済みの根拠に採用しない（ゲートで止める）。
+    scenes: list[Path] = []
+    for scene_id in iter_unit_ids(work, "writing"):
+        if not re.fullmatch(rf"ch{chapter:02d}-\d+", scene_id):
+            continue
+        try:
+            scenes.append(resolve_unit(work, "writing", scene_id).base)
+        except WorkPathError as error:
+            layout_errors.append({"scene": scene_id, "code": error.code})
+    for scene in scenes:
         if not scene.is_dir():
             continue
         for run in scene.iterdir():
@@ -326,7 +337,7 @@ def _measured_text_hashes(work: Path, writing_root: Path, chapter: int) -> dict[
             text_rel = target.get("text_path") if isinstance(target, dict) else None
             if isinstance(digest, str) and isinstance(text_rel, str):
                 hashes.setdefault(text_rel.replace("\\", "/"), set()).add(digest)
-    return {"run_exists": run_exists, "hashes": hashes}
+    return {"run_exists": run_exists, "hashes": hashes, "layout_errors": layout_errors}
 
 
 def _check_inspection_layers(work: Path) -> dict[str, Any]:
@@ -346,27 +357,24 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
             "warnings": [],
         }
 
+    from work_paths import WorkPathError, iter_unit_ids, kind_roots, resolve_unit
+
     warnings: list[str] = []
-    layer_dirs = {
-        "METRON": work / "_metron",
-        "CHRONOS": work / "chronos",
-    }
-    for key, path in layer_dirs.items():
-        if flags.value_for(key) is not iflags.InspectionFlag.ON:
-            continue
-        if not path.is_dir():
-            warnings.append(
-                f"検査レイヤ {key} がONですが保存先がありません: {path.name}/"
-            )
-        elif key == "METRON" and not any(child.is_file() for child in path.rglob("*")):
-            warnings.append(f"検査レイヤ METRON がONですが {path.name}/ が空です")
+    if flags.value_for("METRON") is iflags.InspectionFlag.ON:
+        # METRON の保存先は新しい _work/metron/ か、以前からある _metron/（両方を見る）。
+        metron_roots = kind_roots(work, "metron")
+        if not metron_roots:
+            warnings.append("検査レイヤ METRON がONですが保存先がありません: _work/metron/（以前の作品は _metron/）")
+        elif not any(child.is_file() for root in metron_roots for child in root.rglob("*")):
+            names = "・".join(root.relative_to(work).as_posix() + "/" for root in metron_roots)
+            warnings.append(f"検査レイヤ METRON がONですが {names} が空です")
+    if flags.value_for("CHRONOS") is iflags.InspectionFlag.ON and not (work / "chronos").is_dir():
+        warnings.append("検査レイヤ CHRONOS がONですが保存先がありません: chronos/")
 
     unmeasured_chapters: list[dict[str, Any]] = []
     excluded_chapters: list[int] = []
     metron_on = flags.value_for("METRON") is iflags.InspectionFlag.ON
     if metron_on:
-        metron_root = work / "_metron"
-        writing_root = work / "_writing"
         # 章ごとに本文ファイル（項分割を含む）をまとめる。
         chapters: dict[int, list[Path]] = {}
         for text_path in _novel_text_files(work):
@@ -380,14 +388,19 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
                 # METRON_FROM より前は下書き期として未計測ゲートの対象外。
                 excluded_chapters.append(chapter)
                 continue
-            scene_dirs = (
-                [item for item in metron_root.glob(f"ch{chapter:02d}-*") if item.is_dir()]
-                if metron_root.is_dir()
-                else []
-            )
+            # METRON の場面も組の規則で置き場を決める。競合・移行中の場面は契約・Beat の根拠にしない。
+            scene_dirs: list[Path] = []
+            metron_layout_errors: list[str] = []
+            for scene_id in iter_unit_ids(work, "metron"):
+                if not re.fullmatch(rf"ch{chapter:02d}-[0-9]+", scene_id):
+                    continue
+                try:
+                    scene_dirs.append(resolve_unit(work, "metron", scene_id).base)
+                except WorkPathError as error:
+                    metron_layout_errors.append(f"{scene_id}: {error.code}")
             contract_exists = any((scene / "contract.yaml").is_file() for scene in scene_dirs)
             beats_exists = any((scene / "beats.yaml").is_file() for scene in scene_dirs)
-            measured = _measured_text_hashes(work, writing_root, chapter)
+            measured = _measured_text_hashes(work, chapter)
             run_exists = measured["run_exists"]
             missing: list[str] = []
             if not contract_exists:
@@ -404,6 +417,11 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
                         stale_files.append(text_path.name)
                 if stale_files:
                     missing.append("最新本文の計測")
+            for error in measured["layout_errors"]:
+                # 置き場が決まらない場面（競合・移行中）があれば、その章は計測済みにしない。
+                missing.append(f"場面の置き場（{error['scene']}: {error['code']}）")
+            for entry in metron_layout_errors:
+                missing.append(f"METRON の場面の置き場（{entry}）")
             if not missing:
                 continue
             representative = next(
@@ -471,6 +489,7 @@ def check_novel_project(
     check_story_sync: bool = False,
     strict_story_sync: bool = False,
     check_inspection_layers: bool = False,
+    check_layout: bool = False,
 ) -> dict[str, Any]:
     work = work.resolve()
     out: dict[str, Any] = {
@@ -652,6 +671,24 @@ def check_novel_project(
             else:
                 out["warnings"].append(f"本文・設計書同期: {w}")
 
+    if check_layout:
+        # 古い構成の印（機械の記録が作品直下や古い置き場にある）。WARN だけで NG にはしない。
+        from work_paths import MIGRATING_DIR, legacy_markers
+
+        markers = [{"kind": item.kind, "path": item.path} for item in legacy_markers(work)]
+        pending = sorted(
+            path.relative_to(work).as_posix() for path in work.joinpath(*MIGRATING_DIR.split("/")).glob("*/*.json")
+        )
+        out["optional"]["layout"] = {"legacy_markers": markers, "interrupted_migrations": pending}
+        if markers:
+            out["warnings"].append(
+                "古い構成の印: "
+                + "、".join(item["path"] for item in markers)
+                + "（新しい構成へ移すときは tools/novel_work_migrate.py --dry-run から）"
+            )
+        if pending:
+            out["warnings"].append("中断した移行: " + "、".join(pending) + "（tools/novel_work_migrate.py --recover）")
+
     if check_inspection_layers:
         inspection_result = _check_inspection_layers(work)
         out["optional"]["inspection_layers"] = inspection_result
@@ -772,6 +809,11 @@ def main(argv: list[str] | None = None) -> int:
         help="--check-story-sync の食い違いを WARNING ではなく NG（失敗）扱いにする",
     )
     p.add_argument(
+        "--check-layout",
+        action="store_true",
+        help="作品フォルダの古い構成の印と、中断した移行を表示する（WARN だけ）",
+    )
+    p.add_argument(
         "--check-inspection-layers",
         action="store_true",
         help="config.md の METRON / CHRONOS / AUDIT_LOG フラグと保存先を確認する（欠落は WARN）",
@@ -877,6 +919,7 @@ def main(argv: list[str] | None = None) -> int:
         check_story_sync=args.check_story_sync or args.strict_story_sync,
         strict_story_sync=args.strict_story_sync,
         check_inspection_layers=args.check_inspection_layers,
+        check_layout=args.check_layout,
     )
 
     if args.check_image_layout:

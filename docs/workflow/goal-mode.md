@@ -206,7 +206,7 @@ goal がどこまで進んだかは、Monogatari Coach の申告ではなくツ�
 | できている | 場面の本文を保存済みで、いまの本文と一致する | `publish` 済みの run があり、いまの章ファイルのハッシュが、同じ章のいずれかの場面の保存時のハッシュと同じ（後の場面を同じ章ファイルへ保存しても、先の場面は「できている」のまま） |
 | 作っている | 着手済みで、まだ保存に至っていない | run が進行中、修復中、保存後に本文が変わった、または後続の run が未保存 |
 | 保留 | 修復が `escalated` で止まっている（報告と承認待ち） | run の `repair_state.json` の状態 |
-| 未着手 | 場面の記録はあるが run がない | `_metron/` の場面があり `_writing/` の run がない |
+| 未着手 | 場面の記録はあるが run がない | `_work/metron/` の場面があり、執筆接続の run（`_work/writing/` または `_writing/`）がない |
 
 本文があるのに場面の記録がない章は **「判定不能」** と表示し、「できている」には数えません。METRON / CHRONOS が OFF の作品や、従来経路で書いた章がこれに当たります。
 
@@ -265,3 +265,6 @@ uv run python tools/goal_status.py novels/NNN_作品名 --write-meta
 ---
 
 関連: [指示出しベースのワークフロー](instruction-driven.md)、[チャットモード](chat-writing-mode.md)、[ワークフロー索引](index.md)、[トラブルシューティング](troubleshooting.md)
+
+
+以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます

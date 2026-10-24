@@ -30,7 +30,7 @@ from .models import (
     Selector,
     SelectorKind,
 )
-from .paths import resolve_work_path
+from .paths import metron_scene_dir, resolve_work_path, writing_scene_dir
 from .repair import read_state
 from .storage import (
     append_journal,
@@ -95,7 +95,7 @@ def _paths(work_root, scene_id, run_id):
     if not re.fullmatch(r"run-\d{4,}", run_id):
         raise BridgeError("BAD_ID", "invalid run_id")
     root = commands.work_root_of(work_root)
-    dest = resolve_work_path(root, f"_writing/{scene_id}/{run_id}")
+    dest = writing_scene_dir(root, scene_id) / run_id
     request = load_model(dest / "request.yaml", RequestDocument)
     if request.scene_id != scene_id or request.run_id != run_id:
         raise BridgeError("JOB_CONFLICT", "request does not match run")
@@ -656,7 +656,7 @@ def publish(
         if raw_sha256(text_file) != state.intended_raw_sha256:
             raise BridgeError("JOB_CONFLICT", "published bytes do not match the intended edition")
         state.stage = "write"
-        metron = root / "_metron" / request.scene_id
+        metron = metron_scene_dir(root, request.scene_id)
         metron.mkdir(parents=True, exist_ok=True)
         adopted = metron / f"adopted.{request.run_id}.md"
         marked_text = candidate.read_text(encoding="utf-8")

@@ -27,9 +27,9 @@ def test_new_defaults_record_unanswered_on_and_prepare_layers(tmp_path: Path) ->
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.ON
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
-    assert any(rel == "_metron/" for rel, _ in actions)
+    assert any(rel == "_work/metron/" for rel, _ in actions)
 
 
 def test_explicit_on_is_recorded_and_prepares_layers(tmp_path: Path) -> None:
@@ -42,9 +42,9 @@ def test_explicit_on_is_recorded_and_prepares_layers(tmp_path: Path) -> None:
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.ON
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
-    assert any(rel == "_metron/" for rel, _ in actions)
+    assert any(rel == "_work/metron/" for rel, _ in actions)
 
 
 def test_explicit_off_is_recorded_and_does_not_prepare_layer_dirs(tmp_path: Path) -> None:
@@ -58,7 +58,7 @@ def test_explicit_off_is_recorded_and_does_not_prepare_layer_dirs(tmp_path: Path
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -70,7 +70,7 @@ def test_unlinked_flags_are_rejected_before_writing(tmp_path: Path) -> None:
         initialize_new_layers(work, 5, "片側", metron="ON", chronos="OFF")
 
     assert not (work / "config.md").exists()
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
 
 
 def test_existing_config_is_never_overwritten(tmp_path: Path) -> None:
@@ -83,7 +83,7 @@ def test_existing_config_is_never_overwritten(tmp_path: Path) -> None:
     actions = initialize_new_layers(work, 3, "既存")
 
     assert config.read_text(encoding="utf-8") == original
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
     assert actions == [("config.md", "skip (exists)")]
 

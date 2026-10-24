@@ -78,8 +78,8 @@ Gate B を行うときは分類軸を分けて判定し、チャットまたは 
 4. `python tools/novel_scaffold.py novels/<作品>` で `_meta.yaml` と `references/novelai/` 等を揃える。
 5. `python tools/novel_character_md_check.py novels/<作品> --profile plan`
 6. `python tools/novel_project_check.py novels/<作品>`（不足時は `--bootstrap` 可。character 構造は既定で有効）
-7. `config.md` 初回作成時は METRON / CHRONOS を両方 `ON` とするのが標準。2つは連動させ、作成時に1回だけ確認して両方に同じ値を書く。確認では「最初から ON（標準）」と「OFF で下書きし、あとで ON にして洗練する」を示す。ユーザーが OFF を明示したときだけ両方 `OFF` にする（片方だけ ON は設定エラー）。同一ターンで応答が無いときは標準の ON で進め、`config.md` に **「未応答・既定 ON」** と記録する。ON の作品は `_metron/` と `chronos/` を用意する。OFF で起こした作品は `_meta.md` に「検査レイヤの予定」（今の値、ON にする時期、計測対象の開始章 `METRON_FROM`）を書く。`AUDIT_LOG` 行は省略してよい（行なしは ON）。
-8. METRON / CHRONOS を `ON` にした作品では、`chronos/` が無ければ `python tools/chronos_cli.py init novels/<作品>`、`_metron/` が無ければ作成する。そのあと `python tools/novel_project_check.py novels/<作品> --check-inspection-layers` を追加実行する。保存先不足の WARN は終了コード 0、設定エラーは終了コード 1 とする。
+7. `config.md` 初回作成時は METRON / CHRONOS を両方 `ON` とするのが標準。2つは連動させ、作成時に1回だけ確認して両方に同じ値を書く。確認では「最初から ON（標準）」と「OFF で下書きし、あとで ON にして洗練する」を示す。ユーザーが OFF を明示したときだけ両方 `OFF` にする（片方だけ ON は設定エラー）。同一ターンで応答が無いときは標準の ON で進め、`config.md` に **「未応答・既定 ON」** と記録する。ON の作品は `_work/metron/`（以前の作品は `_metron/`）と `chronos/` を用意する。OFF で起こした作品は `_meta.md` に「検査レイヤの予定」（今の値、ON にする時期、計測対象の開始章 `METRON_FROM`）を書く。`AUDIT_LOG` 行は省略してよい（行なしは ON）。
+8. METRON / CHRONOS を `ON` にした作品では、`chronos/` が無ければ `python tools/chronos_cli.py init novels/<作品>`、METRON の保存先（`_work/metron/`。以前の作品は `_metron/`）が無ければ作成する。そのあと `python tools/novel_project_check.py novels/<作品> --check-inspection-layers` を追加実行する。保存先不足の WARN は終了コード 0、設定エラーは終了コード 1 とする。
 
 ### 既存作品の企画作業
 
@@ -89,8 +89,9 @@ Gate B を行うときは分類軸を分けて判定し、チャットまたは 
 2. Gate A の骨格補完では欠落した必須資料だけを作成する。既存ファイルの内容を厚くする作業は、ユーザーが洗練を明示した場合に Gate B で行う。
 3. character lint と `novel_project_check` を実行する（上記と同じコマンド）。
    既存作品のフラグ行がない場合はパーサ上 `OFF`。新規起こしの既定は表へ ON を書く。既存を ON にするのはユーザー確認後。
-   既存作品の欠落した `config.md` を補う場合も、新規起こしの初期化は適用しない。METRON / CHRONOS 行を省略して OFF のままとし、ユーザー確認後に限り両方 ON にする。フラグが ON の場合だけ `chronos/` / `_metron/` を用意して `--check-inspection-layers` を追加実行する。
+   既存作品の欠落した `config.md` を補う場合も、新規起こしの初期化は適用しない。METRON / CHRONOS 行を省略して OFF のままとし、ユーザー確認後に限り両方 ON にする。フラグが ON の場合だけ `chronos/` / `_work/metron/`（以前の作品は `_metron/`） を用意して `--check-inspection-layers` を追加実行する。
 4. 実行した各 `novel_project_check.py` の終了コードを報告する。
+5. 設定の改稿など作品に手を入れるときは、`uv run python tools/novel_work_migrate.py novels/<作品> --advise edit` に従い、古い構成なら一度だけ移行を勧める（`workflow-specification.md`「作品フォルダの機械の記録」）。
 
 ### 既存作品での停止位置
 
@@ -189,7 +190,7 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 - 設定監査（B4.5）: 監査済み / `本文なし` または `本文あり・未修正` / 件数（本文なしで再監査したときは「矛盾2→0」）/ 監査ファイルのパス
 - 提示層での現れ: selected のジャンル葉で採った型・決定ごとに、`proposal.md` のログライン・あらすじ・キャラクター紹介のどの一文（人物・出来事）として現れたかを1行ずつ。設計書の章出来事だけを指して済ませない。指せない決定があれば、それらの欄を直してから Gate B を完了する。ジャンル軸が「なし」なら「なし（ジャンル軸なし）」と書く
 - Gate A で許容した WARN（あれば）
-- 検査レイヤ: 標準 ON で確認済み（`_metron/` と `chronos/` を用意）/ ユーザー明示の OFF（ON にする予定を `_meta.md` に記載）/ 確認未応答で標準 ON
+- 検査レイヤ: 標準 ON で確認済み（`_work/metron/`（以前の作品は `_metron/`）と `chronos/` を用意）/ ユーザー明示の OFF（ON にする予定を `_meta.md` に記載）/ 確認未応答で標準 ON
 
 旧形式（`how_to/` プレフィックス、リポジトリ根からの相対だけ、索引を読んだ一覧に含む）は、第3段の実在チェックで WARN にする。第1段では正規化規則を守って新形式を書き、既存行は触らない。
 

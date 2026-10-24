@@ -13,17 +13,21 @@ novels/<作品>/
 ├─ book.lock.yaml                    # lock コマンドが生成（手編集しない）
 ├─ character.md                      # 制作・設定用の人物資料
 ├─ _novel_text/                      # 物語本文の正本
-├─ book_matter/
-│  ├─ frontmatter/characters.md      # 読者向けの「登場人物」
-│  └─ backmatter/                    # あとがき・読後向け解説（必要な場合）
+│  └─ matter/                        # 付属原稿（章ではないので章として数えない）
+│     ├─ frontmatter/characters.md   # 読者向けの「登場人物」
+│     └─ backmatter/                 # あとがき・読後向け解説（必要な場合）
 └─ illustrations/                    # 挿絵 IR と採用画像
 ```
 
-`character.md` は執筆者のための詳細設定、`book_matter/frontmatter/characters.md` は読者が本文の前に読む付属原稿です。制作資料をそのまま複写せず、読前に必要な情報だけに書き分けます。
+`character.md` は執筆者のための詳細設定、`_novel_text/matter/frontmatter/characters.md` は読者が本文の前に読む付属原稿です。読者が読む原稿なので本文と同じ `_novel_text/` に置きますが、章を数えるツール（文字数・句読点ゲート・ストーリー反映）は `_novel_text/` 直下の `novel_text*.md` だけを見るので、`matter/` の下は章として数えません。制作資料をそのまま複写せず、読前に必要な情報だけに書き分けます。
+
+以前の作品では、付属原稿が作品フォルダ直下の `book_matter/` にあります。`book.yaml` の `file:` にパスを書いているので、そのままでも組めます。新しい置き場へ移すときは `uv run python tools/novel_work_migrate.py novels/NNN_作品名 --kind matter --dry-run` で確かめてから移します（`book.yaml` のパスも書き換わるので、そのあと `book_lock.py` で lock を作り直します）。
+
+人物紹介は `character.md` から作る派生の原稿です。`book_review.py` は、`character.md` にあって人物紹介に無い人物を `P-M05`（info）として知らせます。人物を足したときの見直しに使ってください。結末まで伏せる人物なら、そのままでかまいません。
 
 ## 読者向け「登場人物」テンプレート
 
-次を `book_matter/frontmatter/characters.md` の出発点にします。年齢や正体、関係の変化など、本文の驚きを失わせる情報は書きません。
+次を `_novel_text/matter/frontmatter/characters.md` の出発点にします。年齢や正体、関係の変化など、本文の驚きを失わせる情報は書きません。
 
 ```markdown
 # 登場人物
@@ -48,7 +52,7 @@ manuscript:
   frontmatter:
     - id: characters
       title: "登場人物"
-      file: book_matter/frontmatter/characters.md
+      file: _novel_text/matter/frontmatter/characters.md
       start_page_policy: odd_page
 
 illustrations:
@@ -61,7 +65,7 @@ illustrations:
     asset: null
 ```
 
-読了後の正体・関係・結末に触れる人物解説が必要な場合だけ、`book_matter/backmatter/characters_afterword.md` を `manuscript.backmatter` に追加します。通常の「登場人物」へネタバレ版を混在させません。
+読了後の正体・関係・結末に触れる人物解説が必要な場合だけ、`_novel_text/matter/backmatter/characters_afterword.md` を `manuscript.backmatter` に追加します。通常の「登場人物」へネタバレ版を混在させません。
 
 ## 原稿と挿絵の参照規約
 

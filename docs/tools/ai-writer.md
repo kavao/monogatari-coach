@@ -233,7 +233,7 @@ uv run python tools/ai_writer_creative_bench_cli.py report _workingspace/ai_writ
 
 ### `ai_writer_compare_cli.py` — 試し書き・書き比べ
 
-このコマンドを使うと、作品の同じ契約と Beat（`_metron/<場面>/contract.yaml` / `beats.yaml`）から、エージェント（local-writer）と NovelAI に同じ章を書かせ、METRON で測って読み比べられます。作品の本文（`_novel_text`）、`_writing/`、`_metron/` には書きません。
+このコマンドを使うと、作品の同じ契約と Beat（`_work/metron/<場面>/contract.yaml` / `beats.yaml`）から、エージェント（local-writer）と NovelAI に同じ章を書かせ、METRON で測って読み比べられます。作品の本文（`_novel_text`）、`_writing/`、`_work/metron/` には書きません。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 この機能は執筆スキルに登録されています。チャットで次のように入力するだけで動きます。
 

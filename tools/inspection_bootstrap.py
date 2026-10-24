@@ -202,16 +202,20 @@ def initialize_new_layers(
     chronos_flag = actual_flags.chronos
 
     if metron_flag is InspectionFlag.ON:
-        metron_dir = novel_dir / "_metron"
-        if metron_dir.exists():
-            if not metron_dir.is_dir():
-                raise InspectionBootstrapError(
-                    f"_metron is not a directory: {metron_dir}"
-                )
+        # METRON の場面の置き場は、新しい作品では _work/metron/。以前からある _metron/ はそのまま使う
+        # （場面ごとの置き場は tools/work_paths.py が決める）。
+        legacy_dir = novel_dir / "_metron"
+        new_dir = novel_dir / "_work" / "metron"
+        for label, existing in (("_metron/", legacy_dir), ("_work/metron/", new_dir)):
+            if existing.exists() and not existing.is_dir():
+                raise InspectionBootstrapError(f"{label} is not a directory: {existing}")
+        if legacy_dir.is_dir():
             actions.append(("_metron/", "skip (exists)"))
+        elif new_dir.is_dir():
+            actions.append(("_work/metron/", "skip (exists)"))
         else:
-            metron_dir.mkdir(parents=True)
-            actions.append(("_metron/", "created (METRON ON)"))
+            new_dir.mkdir(parents=True)
+            actions.append(("_work/metron/", "created (METRON ON)"))
 
     if chronos_flag is InspectionFlag.ON:
         from chronos.scaffold import init_chronos

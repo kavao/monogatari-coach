@@ -99,7 +99,7 @@ uv run python tools/novel_project_check.py novels/NNN_作品名 --check-inspecti
 
 `--check-inspection-layers` を付けると、`config.md` の「## 基本情報」表にある METRON / CHRONOS / AUDIT_LOG と保存先を確認します。METRON / CHRONOS は行なしまたは `OFF` が対象外、ON なのに保存先が無い場合は WARN（終了コード 0）です。AUDIT_LOG は行なしが ON です。不正値・重複・読込失敗は設定エラー（終了コード 1）になります。
 
-新規作品では、Monogatari Coach は METRON / CHRONOS を標準で ON にします。起こしのときに確認し、OFF にしたいときだけ指示します。行が無い既存作品は従来どおり OFF のままです。ON にした作品では `_metron/` と `chronos/` を用意してから上の確認コマンドを実行します。
+新規作品では、Monogatari Coach は METRON / CHRONOS を標準で ON にします。起こしのときに確認し、OFF にしたいときだけ指示します。行が無い既存作品は従来どおり OFF のままです。ON にした作品では `_work/metron/` と `chronos/` を用意してから上の確認コマンドを実行します。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 オンボーディング時に確認への返答がない場合は、**「未応答・既定 ON」** として `config.md` に記録します。OFF で下書きしたい場合だけ、`novel_onboard.py` に `--metron OFF` / `--chronos OFF` を指定してください。OFF で起こした作品は、いつ ON にするかを `_meta.md` の「検査レイヤの予定」に残します。明示 OFF した作品をあとから ON にして洗練する進め方は [Writing bridge の「OFF で下書きし、あとで ON にして洗練する」](../architecture/writing-bridge.md#off-で下書きしあとで-on-にして洗練する) を参照してください。`--metron` と `--chronos` は同じ値にしてください。違う値を指定すると、フォルダを作る前にエラーで止まります。`--dry-run` では予定フラグと保存先だけを表示し、ファイルは作成しません。
 

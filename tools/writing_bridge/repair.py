@@ -38,7 +38,7 @@ from .errors import BridgeError
 from .hashes import raw_sha256, text_sha256
 from .locking import locked_scene
 from .models import ArtifactRefsDocument, RequestDocument, FlagValue, JournalAction, JournalEntry
-from .paths import resolve_work_path
+from .paths import canonical_rel, metron_scene_dir, resolve_work_path, writing_scene_dir
 from .storage import load_json_model, load_model, append_journal, now_iso
 
 
@@ -135,7 +135,7 @@ def _paths(work_root, scene_id, run_id):
     if not re.fullmatch(r"run-\d{4,}", run_id):
         raise BridgeError("BAD_ID", "invalid run_id")
     root = commands.work_root_of(work_root)
-    dest = resolve_work_path(root, f"_writing/{scene_id}/{run_id}")
+    dest = writing_scene_dir(root, scene_id) / run_id
     request = load_model(dest / "request.yaml", RequestDocument)
     if request.scene_id != scene_id or request.run_id != run_id:
         raise BridgeError("JOB_CONFLICT", "request does not match run")
@@ -145,6 +145,10 @@ def _paths(work_root, scene_id, run_id):
 def _hashes(root, request):
     return {item.path: item.raw_sha256 for item in collect_input_hashes(
         root, commands._input_rel_paths(root, request))}
+
+
+def _canonical_hashes(hashes):
+    return {canonical_rel(path): digest for path, digest in hashes.items()}
 
 
 def _received_candidate_hashes(dest):
@@ -171,7 +175,8 @@ def _guard(root, dest, request, state, repo_root):
     commands._assert_received_candidates_current(root, dest)
     if raw_sha256(dest / "request.yaml") != state.request_hash:
         raise BridgeError("STALE_EVIDENCE", "repair request changed; start a new run")
-    if _hashes(root, request) != state.input_hashes:
+    # 記録した鍵は書き換えず、照合のときだけ置き場によらない形にそろえる（移行の前後で同じ組を同じに扱う）。
+    if _canonical_hashes(_hashes(root, request)) != _canonical_hashes(state.input_hashes):
         raise BridgeError("STALE_EVIDENCE", "repair context inputs changed; start a new run")
     calibration = repo_root / "config" / "metron_models.yaml"
     if not calibration.is_file() or raw_sha256(calibration) != state.calibration_hash:
@@ -253,7 +258,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
     if (dest / "repair_state.json").exists():
         state = read_state(dest / "repair_state.json")
         _guard(root, dest, request, state, repo_root)
-        plan = load_beat_plan(root / "_metron" / scene_id / "beats.yaml")
+        plan = load_beat_plan(metron_scene_dir(root, scene_id) / "beats.yaml")
         normalized = normalize_beat_ids(plan, raw_ids) if raw_ids else []
         wanted_length = length_target or (plan.length_target if intent == "length" else None)
         began_length = state.session.length.target if state.session.length else None
@@ -285,7 +290,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
     context, _ = commands._refresh_context_if_stale(root, dest, request)
     source, _, _ = commands._resolve_inspect_edition(root, request, dest, None)
     marked = source.read_text(encoding="utf-8")
-    plan = load_beat_plan(root / "_metron" / scene_id / "beats.yaml")
+    plan = load_beat_plan(metron_scene_dir(root, scene_id) / "beats.yaml")
     analyzed = analyze_marked_text(marked, plan, run=1,
         generator=GeneratorInfo(model=model, granularity="auto"))
     inherited = commands._edition_finish_reason(root, dest, source, analyzed.metrics)
@@ -357,7 +362,7 @@ def repair_begin(work_root: Path, *, scene_id: str, run_id: str,
     prefix = marked[:marked.index(f"<!--beat:{plan.beats[0].id}-->")]
     closing = f"<!--/beat:{plan.beats[-1].id}-->"
     suffix = marked[marked.rindex(closing) + len(closing):]
-    contract = (root / "_metron" / scene_id / "contract.yaml").read_text(encoding="utf-8")
+    contract = (metron_scene_dir(root, scene_id) / "contract.yaml").read_text(encoding="utf-8")
     full_context = ("共通執筆文脈（未知状態を補完しない）:\n" +
                     context.model_dump_json(by_alias=True, indent=2) +
                     "\n場面契約:\n" + contract + "\n開始時の前後本文:\n" + marked)
@@ -417,7 +422,7 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
     prefix = marked[:marked.index(f"<!--beat:{plan.beats[0].id}-->")]
     closing = f"<!--/beat:{plan.beats[-1].id}-->"
     suffix = marked[marked.rindex(closing) + len(closing):]
-    contract = (root / "_metron" / request.scene_id / "contract.yaml").read_text(encoding="utf-8")
+    contract = (metron_scene_dir(root, request.scene_id) / "contract.yaml").read_text(encoding="utf-8")
     full_context = ("共通執筆文脈（未知状態を補完しない）:\n" +
                     context.model_dump_json(by_alias=True, indent=2) +
                     "\n場面契約:\n" + contract + "\n調整前の本文（既出事実の基準）:\n" + marked)
@@ -444,7 +449,7 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
 
 def _load_scene_episodes(root, scene_id, plan):
     """作者が登録した子エピソード契約（任意）。収束（OP-C）の対象はこれだけ。"""
-    path = root / "_metron" / scene_id / "episodes.yaml"
+    path = metron_scene_dir(root, scene_id) / "episodes.yaml"
     if not path.is_file():
         return []
     try:
@@ -479,7 +484,7 @@ def _begin_contract_fix(root, dest, request, *, model, authorization, plan, anal
     prefix = marked[:marked.index(f"<!--beat:{plan.beats[0].id}-->")]
     closing = f"<!--/beat:{plan.beats[-1].id}-->"
     suffix = marked[marked.rindex(closing) + len(closing):]
-    contract = (root / "_metron" / request.scene_id / "contract.yaml").read_text(encoding="utf-8")
+    contract = (metron_scene_dir(root, request.scene_id) / "contract.yaml").read_text(encoding="utf-8")
     full_context = ("共通執筆文脈（未知状態を補完しない）:\n" +
                     context.model_dump_json(by_alias=True, indent=2) +
                     "\n場面契約:\n" + contract + "\n修正前の本文:\n" + marked)
@@ -506,7 +511,7 @@ def _measure_shortage(root, request, *, intent: str, target: int, chars: int, st
     """不足率を場面ごとに記録し、D21 の上限を超えたら報告（stop のときは止める）。"""
     ratio = length_rules.shortage_ratio(target, chars)
     limit = length_rules.DESIGN_SHORTAGE_LIMIT
-    log = root / "_metron" / request.scene_id / "shortage_log.jsonl"
+    log = metron_scene_dir(root, request.scene_id) / "shortage_log.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     entry = {"at": now_iso(), "run_id": request.run_id, "intent": intent, "scope": scope,
              "target": target, "chars": chars, "shortage": round(ratio, 4),
@@ -526,7 +531,7 @@ def _measure_shortage(root, request, *, intent: str, target: int, chars: int, st
 
 def _allowed_repeats(root, scene_id) -> list[str]:
     """場面契約の意図した反復（D18）。"""
-    path = root / "_metron" / scene_id / "contract.yaml"
+    path = metron_scene_dir(root, scene_id) / "contract.yaml"
     return list(load_scene_contract(path).scene.allowed_repeats) if path.is_file() else []
 
 
@@ -595,7 +600,7 @@ def _marked_for_export(state):
 def _export(root, dest, request, state, repo_root, observations_path=None):
     marked = _marked_for_export(state)
     # Durable output reference permits recovery if receive/inspect is interrupted.
-    metron = root / "_metron" / request.scene_id
+    metron = metron_scene_dir(root, request.scene_id)
     name = f"repair.{request.run_id}.{len(state.session.history):03d}.md"
     output = metron / name
     if output.exists() and output.read_text(encoding="utf-8") != marked:
@@ -1128,7 +1133,7 @@ def _summary_text(root, dest, request, state, refined: dict[str, str] | None = N
     else:
         lines.append(f"- {check.result}（{check.source}）: {check.authorization}")
     lines.extend(f"- {event['id']}: {event['title']}" for event in events)
-    scene = load_scene_contract(root / "_metron" / request.scene_id / "contract.yaml").scene
+    scene = load_scene_contract(metron_scene_dir(root, request.scene_id) / "contract.yaml").scene
     lines.extend(["", "## 場面契約と次章"])
     if scene.end_state is not None:
         end = scene.end_state

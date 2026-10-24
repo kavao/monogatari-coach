@@ -115,7 +115,13 @@ def parse_chapter_design(design_text: str, chapter: int) -> ChapterDesign | None
 
 
 def load_inputs(work_dir: Path, scene_id: str, *, facts_path: Path | None = None) -> CompareInputs:
-    metron_dir = work_dir / "_metron" / scene_id
+    from work_paths import WorkPathError, resolve_unit
+
+    # METRON の場面は古い _metron/ か新しい _work/metron/ のどちらか一方（tools/work_paths.py の組の規則）。
+    try:
+        metron_dir = resolve_unit(work_dir, "metron", scene_id).base
+    except WorkPathError as error:
+        raise CompareError(f"METRON の場面の置き場を決められない: {error}") from error
     contract_path, beats_path = metron_dir / "contract.yaml", metron_dir / "beats.yaml"
     for path in (contract_path, beats_path):
         if not path.is_file():

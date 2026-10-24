@@ -19,6 +19,7 @@ from metron.episodes import EpisodeError, load_episodes, locate_span
 from metron.storage import atomic_write_text
 
 from .errors import BridgeError
+from .paths import metron_scene_dir
 from .links import union_scene_events
 from .storage import now_iso
 from . import commands
@@ -44,7 +45,7 @@ def _target_text(root: Path, scene_id: str, episode_id: str | None,
 
     if (episode_id is None) == (quote is None):
         raise BridgeError("MISSING_FIELD", "give exactly one of --episode-id or --quote")
-    contract_path = root / "_metron" / scene_id / "episodes.yaml"
+    contract_path = metron_scene_dir(root, scene_id) / "episodes.yaml"
     episodes = []
     if contract_path.is_file():
         try:
@@ -199,7 +200,7 @@ def strip_record(work_root: Path, *, scene_id: str, reason: str, authorization: 
         raise BridgeError("STRIP_REFERENCED",
                           "the text is still referenced; condense it (OP-C) instead of stripping",
                           refs={"carry_back": used_at, "dependents": dependents, "terms": hits})
-    path = root / "_metron" / scene_id / DELETIONS_FILE
+    path = metron_scene_dir(root, scene_id) / DELETIONS_FILE
     entries = []
     if path.is_file():
         loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}

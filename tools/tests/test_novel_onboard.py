@@ -55,14 +55,14 @@ def test_new_onboard_writes_flags_and_layers(tmp_path: Path, monkeypatch) -> Non
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.ON
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
 
     assert novel_onboard.main(["検査作品", "--metron", "ON", "--chronos", "ON"]) == 0
     work_on = root / "novels" / "002_検査作品"
     flags_on = load_inspection_flags(work_on / "config.md")
     assert flags_on.metron is InspectionFlag.ON
-    assert (work_on / "_metron").is_dir()
+    assert (work_on / "_work" / "metron").is_dir()
     assert (work_on / "chronos").is_dir()
 
 
@@ -87,7 +87,7 @@ def test_new_onboard_explicit_off_does_not_prepare_layers(tmp_path: Path, monkey
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -108,5 +108,5 @@ def test_existing_onboard_does_not_turn_missing_flags_on(tmp_path: Path, monkeyp
     assert novel_onboard.main([str(work)]) == 0
 
     assert not (work / "config.md").exists()
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()

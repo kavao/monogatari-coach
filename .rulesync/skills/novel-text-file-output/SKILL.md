@@ -56,7 +56,7 @@ targets: ["*"]
 
 1. **目標の取り先**: ユーザーが明示した字数か、`design_specification.md` の章の `**分量目安**：` の書き出しの字数だけ。どちらも無ければ密度は「保留」と報告して書き進めてよい。実測字数や場面の床を章の目標に読み替えない。
 2. **判定**: `uv run python tools/design_density.py <作品フォルダ> --chapter N [--target N]`。1項あたり 500〜800字が推奨帯、1000字超は少なすぎ、300字未満は多すぎ。あわせて各項の親（目的・障害・結果・変化）が薄くないかを人が見る。本文が無い段階では字数の不足率を使わない。
-3. **少なすぎ**: 本文を書かずに、足す子エピソードの案（「誰が何をした」の一文と、状態変化・持ち帰り・局所的効果）を出してユーザーの承認を待つ。承認されたら `design_specification.md` に項目を足し、同じ子エピソードを `_metron/<scene_id>/episodes.yaml` に `span_pending: true` で登録する（本文を書いたあと `span` の引用を補い、`span_pending` を外す）。CHRONOS ON なら当該場面の events を既存の承認手順で足し、METRON ON なら Beat と `chars_hint` を配り直してから書く。技法は `_how_to.example/episode/general/episode_sub_episode.md`。
+3. **少なすぎ**: 本文を書かずに、足す子エピソードの案（「誰が何をした」の一文と、状態変化・持ち帰り・局所的効果）を出してユーザーの承認を待つ。承認されたら `design_specification.md` に項目を足し、同じ子エピソードを `<METRON 場面>/episodes.yaml` に `span_pending: true` で登録する（本文を書いたあと `span` の引用を補い、`span_pending` を外す）。CHRONOS ON なら当該場面の events を既存の承認手順で足し、METRON ON なら Beat と `chars_hint` を配り直してから書く。技法は `_how_to.example/episode/general/episode_sub_episode.md`。
 4. **多すぎ**: 統合案だけを出して止まる。設計・本文・events を消すのは改稿工程と同じ承認のあと。
 5. 依頼された章だけを判定し、既存作品の設計書を承認なしに増減しない。
 
@@ -98,6 +98,7 @@ targets: ["*"]
 
 上記 **「完了の定義（本文出力での適用）」** の手順に従う。経路は先に一つ選ぶ（下記「本文の書き方」）。
 
+0. **作業の前の判定**: `uv run python tools/novel_work_migrate.py novels/<作品> --advise edit` を実行し、`workflow-specification.md`「作品フォルダの機械の記録」の表に従う（古い構成なら一度だけ移行を勧める。`_meta.md` に書く節が無ければ `novel_meta_check.py ensure-section` で足す）。
 1. **契約再読（事前）**: スキル **`novel-planning`** の「執筆・清書での契約再読」。従来経路は起草前、writing_bridge は `prepare` 前。
 2. **書き込み**: 従来経路では `novels/<novel_code>_<title>/_novel_text/novel_textXX.md`（項がある場合は `novel_textXX_Y.md`）を **新規作成・追記・置換**する。`publish` 経路では CLI が正本を書く。長文をチャットに貼るだけで終えない。
 3. **確認**: **`Read`**（追記は末尾でよい／挿入は追加箇所の前後）または **`python tools/novel_char_count.py`** のいずれかで、保存内容・分量を検証する。
@@ -126,7 +127,7 @@ targets: ["*"]
 
 ### writing_bridge 経路（両方 ON）
 
-新規場面・新規章・既存章への場面追記は、単一章でも複数章でも、対象場面にハッシュ一致の active run が無ければ **`prepare` を前条件**にする（手順は上記「章ゲート」）。active run は `_writing/<scene_id>/<run_id>/` にあり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するものを指す。ディレクトリがあるだけでは続きとみなさない。入口は `python tools/writing_bridge_cli.py`。同一ターンに `prepare` まで進めない場合は `_novel_text` を触らず、可能な成果物（contract / beats 等）だけを残して「未計測／要対応」と次回タスクを報告する。本文完了とは言わない。
+新規場面・新規章・既存章への場面追記は、単一章でも複数章でも、対象場面にハッシュ一致の active run が無ければ **`prepare` を前条件**にする（手順は上記「章ゲート」）。active run は `_work/writing/<scene_id>/<run_id>/`（古い作品は `_writing/<scene_id>/<run_id>/`。場面ごとにどちらか一方で、置き場は CLI が決める）にあり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するものを指す。ディレクトリがあるだけでは続きとみなさない。入口は `python tools/writing_bridge_cli.py`。同一ターンに `prepare` まで進めない場合は `_novel_text` を触らず、可能な成果物（contract / beats 等）だけを残して「未計測／要対応」と次回タスクを報告する。本文完了とは言わない。
 
 **契約再読は `prepare` の前に行う**（スキル **`novel-planning`** の「執筆・清書での契約再読」）。active run の続きでも、そのターンでまだ再読していなければ `prepare` や起草の前に行う。
 
@@ -163,7 +164,7 @@ targets: ["*"]
 ユーザーが既にある本文を目標字数へ合わせるよう指示したときに使う（例:「第3章を4000字に合わせて」）。新規場面の執筆と清書には使わない。原則は `concepts.md`「文章の伸縮」、技法の基準は `_how_to.example/length_ops.md`。
 
 1. **範囲を決める**: 対象（Beat / 場面 / 章）、目標字数、許容帯（既定 ±3%）、試行回数の上限（既定3）を確かめる。ユーザーの字数は清書後の仕上がり目標とし、清書で削る分の余地（既定 +8%）を足した字数を増量の目標にする。余地はユーザーに尋ねず、最後の報告で説明する。床（場面の下限・Beat の下限）がある作品では、許容帯の上限が床を下回る指定を受け付けず、実効の下限は許容帯の下限と床の大きい方にする。現在の字数は `novel_char_count.py` で数える。
-1a. **不足率を見る**: 増量の目標 `T`（余地込み）と同じ範囲の字数 `C` から `(T − C) ÷ T` を出す。10% 以上なら解像度展開を始めず、上記「執筆前の設計密度」の手順3と同じく子エピソードの追加を提案して承認を待つ（ON の `repair-begin --intent length` は `DESIGN_DENSITY` で止まり、`_metron/<scene_id>/shortage_log.jsonl` に記録する）。欠落 Beat があるときは止めずに先に埋める。
+1a. **不足率を見る**: 増量の目標 `T`（余地込み）と同じ範囲の字数 `C` から `(T − C) ÷ T` を出す。10% 以上なら解像度展開を始めず、上記「執筆前の設計密度」の手順3と同じく子エピソードの追加を提案して承認を待つ（ON の `repair-begin --intent length` は `DESIGN_DENSITY` で止まり、`<METRON 場面>/shortage_log.jsonl` に記録する）。欠落 Beat があるときは止めずに先に埋める。
 2. **既出事実リスト**: 調整前の本文を基準にする。時系列イベントを登録している場面では、エージェントがイベント一覧と本文の該当区間を照合する。著者には尋ねない。矛盾の疑いがあるときだけ、始めずに著者へ相談する。欠落 Beat があっても止めず、調整の中で先に埋める。
 3. **一方向で伸縮する**: 増量は冗長化の除去 → 引き締め → 既出事実の範囲での解像度展開。減量は冗長化の除去 → 引き締め → 子エピソードの収束（持ち帰りのある要素は要約に残す）。往復しない。増量で上限を超えたら引き締めだけで戻す。
 4. **候補の採用**: 増量と欠落 Beat の埋めは、機械検査を通れば採用する。JOB ごとに著者へ「採用／否認」を尋ねない（尋ねるのは作業の本体にならない範囲に限る）。引き締め・収束は、消えた・短くなった文を著者に示し、出来事・人物・所持品・情報の授受・関係・心境の変化・過去・因果の追加・変更・欠落が無いことの確認を得てから採用する。却下した候補も試行回数に数える。
@@ -172,22 +173,22 @@ targets: ["*"]
 5. **止める**: 許容帯に入り床にも届いたら止める。上限回数に達した、または解像度展開・収束で届かないときは、不足・超過の字数と区間を報告して止める。増量で届かないときは、出来事を足す加筆工程（`_how_to.example/episode/general/episode_sub_episode.md`）を、減量で届かないときは出来事を削る改稿工程を提案し、ユーザー承認があるまで行わない。
 6. **保存**: 経路は作品フラグで一つにする（清書の直接更新の例外には含めない）。
    - **両方 OFF**: 採用した本文は `_novel_text_backup/` へ旧版を退避してから正本を直接更新し、確認・ストーリー反映まで行う（`novel-refinement-output` の手順4・6〜9）。
-   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` →（イベントがある場面は）`canon-precheck` の材料をエージェントが照合し、`--result no_conflict --by agent --authorization "<照合の根拠>"` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `repair-submit --review confirmed`（増量と欠落 Beat の埋めは機械検査で採用。引き締め・収束は著者の確認を得て `--canon-authorization "<著者の確認の出典>"` を付ける）。`repair-begin` は `--finish-target N`（仕上がり目標。余地 +8% を自動で足す）を使う。`completed` のあと、出力された作業稿（`repair_state.json` の `output_path`。Beat マーカー付き）を写して清書し、`_metron/<scene_id>/refined.<run_id>.md` に置く（マーカーは消さない）。`repair-summary --refined <清書稿>` を著者に見せて1回だけ確認し、返答を `--accept --authorization` で記録する。この1回を保存の確認とし、保存用の `--allow-publish` 新 run へ清書稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
+   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` →（イベントがある場面は）`canon-precheck` の材料をエージェントが照合し、`--result no_conflict --by agent --authorization "<照合の根拠>"` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `repair-submit --review confirmed`（増量と欠落 Beat の埋めは機械検査で採用。引き締め・収束は著者の確認を得て `--canon-authorization "<著者の確認の出典>"` を付ける）。`repair-begin` は `--finish-target N`（仕上がり目標。余地 +8% を自動で足す）を使う。`completed` のあと、出力された作業稿（`repair_state.json` の `output_path`。Beat マーカー付き）を写して清書し、`<METRON 場面>/refined.<run_id>.md` に置く（マーカーは消さない）。`repair-summary --refined <清書稿>` を著者に見せて1回だけ確認し、返答を `--accept --authorization` で記録する。この1回を保存の確認とし、保存用の `--allow-publish` 新 run へ清書稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
    - **食い違い**: 設定エラーとして報告し、調整を始めない。
 
 METRON の規定量調整が行うのは、欠落 Beat の埋め（`regenerate`）と、出来事を変えない増量（`deepen`）・引き締め（`tighten`）・収束（`condense`）だけである。
 
 - **契約修正**: 章末などを場面契約・設計に合わせて書き直すときは、規定量調整ではなく `repair-begin --intent contract_fix --scope beats --beat-ids ID --instruction "<直す内容>"` を使う。長さは旧稿ではなく Beat の床で判定し、同じ Beat に2回まで候補を出せる。契約を変える操作なので、採用には著者の確認を要する。
 
-- **収束**: 引き締めで上限まで届かないとき、作者が `_metron/<scene_id>/episodes.yaml` に登録した子エピソード（`span` の開始・終了の引用で範囲を示す）だけを、持ち帰りも局所的効果も無い子 → 局所的効果だけの子 → 持ち帰りの軽い子の順に畳む。登録はエージェントが推測で作らず、作者と決める。
+- **収束**: 引き締めで上限まで届かないとき、作者が `<METRON 場面>/episodes.yaml` に登録した子エピソード（`span` の開始・終了の引用で範囲を示す）だけを、持ち帰りも局所的効果も無い子 → 局所的効果だけの子 → 持ち帰りの軽い子の順に畳む。登録はエージェントが推測で作らず、作者と決める。
 - **CANON 検査（任意）**: 候補ごとに `canon-check` で検査の指示を書き、別の呼び出しで JSON を得て `--result` と `--checker-model` で記録する。不合格の候補は、著者が確認しない限り採用しない。合格を著者確認の代わりにするのは、ユーザーが明示して `repair-begin --check-replaces-author` で始めたときだけ。開始前照合も `canon-precheck --check-prompt` → `--check-result` で検査に代えられる（同じオプトインが要る）。検査とその記録は、候補を作ったのと同じ呼び出しの自己申告で済ませない。
 - **改稿工程**: 減量が届かず `LENGTH_ESCALATE_REVISE` で止まったら、出来事を削る候補ごとに `strip-check --episode-id`（または `--quote`）で参照を確かめる。終了コード 1（持ち帰り・他イベントの参照・後の本文の語）なら脱落せず収束に戻す。参照が無く、ユーザーが承認したときだけ `strip-record --reason --authorization` で記録し、本文は ON なら refine run の `publish`、OFF なら旧版退避のうえ直接更新で削る。CHRONOS イベントの削除・退避は CHRONOS の承認手順で行う。
 
 ## 試し書き・書き比べ（正本へ載せない）
 
-「第N章を NAI で試し書きしてください」「第N章を local と NAI で書き比べてください」のように **試し書き / 書き比べ** と明示されたときだけ適用する。本文の完了条件（上記）は適用しない。正本・`_writing/`・`_metron/` は書かない。「NAI で執筆してください」（正本へ載せる本経路）とは別。
+「第N章を NAI で試し書きしてください」「第N章を local と NAI で書き比べてください」のように **試し書き / 書き比べ** と明示されたときだけ適用する。本文の完了条件（上記）は適用しない。正本・執筆接続の作業フォルダ（`_work/writing/`・`_writing/`）・METRON の場面フォルダは書かない。「NAI で執筆してください」（正本へ載せる本経路）とは別。
 
-1. 対象場面の `_metron/<scene_id>/contract.yaml` / `beats.yaml` を確かめる（無ければ本経路と同じく親の LLM が起こす。Beat の割り方は親の LLM が決める）。
+1. 対象場面の `<METRON 場面>/contract.yaml` / `beats.yaml` を確かめる（無ければ本経路と同じく親の LLM が起こす。Beat の割り方は親の LLM が決める）。
 2. NAI を含むときは、設定の要点を親の LLM が `facts.yaml`（`canon_facts` と、Beat 別の `must_include` / `end_condition` の上書き）に書く。無いと NAI へ渡る要点が視点人物だけになる。
 3. `tools/ai_writer_compare_cli.py plan <作品> --scene-id <id> --writers local,nai [--facts facts.yaml]`。表示された課金のある送信回数・モデル・保存先をユーザーに見せ、承認を得る（比較1回分をまとめて1回）。
 4. 承認後に `run <run_dir> --writer nai --execute`。local は `context.md` を見てマーカー付き候補を1回で書き、`receive <run_dir> --candidate <path>` で渡す。

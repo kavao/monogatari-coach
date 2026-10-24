@@ -1,4 +1,4 @@
-"""子エピソード契約（``_metron/<scene_id>/episodes.yaml``）と収束（OP-C）の検査。
+"""子エピソード契約（METRON の場面フォルダの ``episodes.yaml``。新しい作品は ``_work/metron/<scene_id>/``、以前の作品は ``_metron/<scene_id>/``）と収束（OP-C）の検査。
 
 契約の書式は ``_how_to.example/length_ops.md`` の「子エピソード契約」。減量では
 局所的効果だけの子 → 持ち帰りの軽い子の順に要約へ畳み、持ち帰りは要約に残す。

@@ -48,6 +48,7 @@ description: >-
 
 ## 手順（推奨順）
 
+0. **作業の前の判定**: `uv run python tools/novel_work_migrate.py novels/<作品> --advise edit` を実行し、`workflow-specification.md`「作品フォルダの機械の記録」の表に従う（古い構成なら一度だけ移行を勧める）。
 1. **作業計画**: 対象の `novel_textXX.md` と、強化したい点（分量・描写・文体）を明示する。
 2. **創作技法契約**: スキル **`novel-planning`** の「執筆・清書での契約再読」。契約外の how_to を使うなら先に契約を更新する。`rewrite.md` は工程正本なので selected に無くても読んでよい。
 3. **入力を読む**: `_novel_text/novel_textXX.md` を正とする。

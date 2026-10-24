@@ -47,7 +47,7 @@
 - [Reader Output](workflow/reader-output.md)
   下読み・書評・興味判定・読み進み感想の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
-  リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
+  リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md)、[作品フォルダの構成](project-structure/work-folder.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)
   `tools/` 配下の全スクリプトと CLI 例、rulesync・howto_init・tools_temp の操作方法
 - [AI 執筆基盤（NovelAI テキスト生成）](tools/ai-writer.md)

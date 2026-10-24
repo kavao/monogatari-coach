@@ -81,7 +81,7 @@ def test_both_off_does_not_create_run(tmp_path: Path) -> None:
     )
     assert code == 0
     assert "skipped" in message
-    assert not (work / "_writing").exists()
+    assert not (work / "_work" / "writing").exists()
 
 
 def test_prepare_inspect_ok_does_not_rewrite_text(tmp_path: Path) -> None:
@@ -99,7 +99,7 @@ def test_prepare_inspect_ok_does_not_rewrite_text(tmp_path: Path) -> None:
         repo_root=ROOT,
     )
     assert code == 0
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     request = load_model(run / "request.yaml", RequestDocument)
     context = load_json_model(run / "context.json", ContextDocument)
     assert request.flags.metron.value == "ON"
@@ -192,7 +192,7 @@ def test_missing_observations_are_unverified(tmp_path: Path) -> None:
         repo_root=ROOT,
     )
     assert code == 1
-    report_path = work / "_writing" / "ch01-001" / "run-0001" / "report.json"
+    report_path = work / "_work" / "writing" / "ch01-001" / "run-0001" / "report.json"
     report = report_path.read_text(encoding="utf-8")
     assert "TEXT_STATE_UNVERIFIED" in report
     parsed = load_json_model(report_path, ReportDocument)
@@ -246,7 +246,7 @@ def test_cli_prepare_dry_run(tmp_path: Path) -> None:
     )
     assert result.returncode == 0
     assert "would prepare" in result.stdout
-    assert not (work / "_writing").exists()
+    assert not (work / "_work" / "writing").exists()
 
 
 @pytest.mark.parametrize("missing_name", ["contract.yaml", "beats.yaml"])
@@ -268,7 +268,7 @@ def test_prepare_dry_run_reports_missing_metron_artifact_like_prepare(
     with pytest.raises(BridgeError) as dry_error:
         prepare(work, **kwargs, dry_run=True)
     assert dry_error.value.code == "UNKNOWN_REF"
-    assert not (work / "_writing").exists()
+    assert not (work / "_work" / "writing").exists()
 
     with pytest.raises(BridgeError) as normal_error:
         prepare(work, **kwargs)
@@ -295,7 +295,7 @@ def test_cli_receive_after_prepare_dry_run_fails(tmp_path: Path) -> None:
         str(ROOT),
     )
     assert dry.returncode == 0
-    assert not (work / "_writing").exists()
+    assert not (work / "_work" / "writing").exists()
     received = _run_cli(
         "receive",
         str(work),
@@ -307,7 +307,7 @@ def test_cli_receive_after_prepare_dry_run_fails(tmp_path: Path) -> None:
         str(work / "_metron" / "ch01-001" / "marked.md"),
     )
     assert received.returncode != 0
-    assert not (work / "_writing" / "ch01-001" / "run-0001" / "request.yaml").exists()
+    assert not (work / "_work" / "writing" / "ch01-001" / "run-0001" / "request.yaml").exists()
 
 
 def test_cli_allow_publish_new_without_selector_fails(tmp_path: Path) -> None:
@@ -327,7 +327,7 @@ def test_cli_allow_publish_new_without_selector_fails(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "MISSING_FIELD" in result.stderr
-    assert not (work / "_writing").exists()
+    assert not (work / "_work" / "writing").exists()
 
 
 def test_metron_only_skips_c1(tmp_path: Path) -> None:
@@ -347,7 +347,7 @@ def test_metron_only_skips_c1(tmp_path: Path) -> None:
         links_path=None,
         repo_root=ROOT,
     )
-    assert not (work / "_writing" / "ch01-001" / "run-0001" / "links.yaml").exists()
+    assert not (work / "_work" / "writing" / "ch01-001" / "run-0001" / "links.yaml").exists()
     receive(
         work,
         scene_id="ch01-001",
@@ -364,7 +364,7 @@ def test_metron_only_skips_c1(tmp_path: Path) -> None:
         repo_root=ROOT,
     )
     assert code == 0
-    report = (work / "_writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
+    report = (work / "_work" / "writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
     assert '"text_state": "skipped"' in report
     assert '"chronos_registered": "skipped"' in report
 
@@ -398,7 +398,7 @@ def test_chronos_only_skips_metron(tmp_path: Path) -> None:
         repo_root=ROOT,
     )
     assert code == 0
-    report = (work / "_writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
+    report = (work / "_work" / "writing" / "ch01-001" / "run-0001" / "report.json").read_text(encoding="utf-8")
     assert '"metron": "skipped"' in report
 
 
@@ -419,7 +419,7 @@ def test_chronos_without_scene_events_is_nonblocking_finding(tmp_path: Path) -> 
         links_path=None,
         repo_root=ROOT,
     )
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     receive(
         work,
         scene_id="ch01-001",
@@ -495,7 +495,7 @@ def test_chronos_events_in_other_scene_do_not_suppress_warning(tmp_path: Path) -
     )
     assert code == 0, message
     report = load_json_model(
-        work / "_writing" / "ch01-001" / "run-0001" / "report.json", ReportDocument
+        work / "_work" / "writing" / "ch01-001" / "run-0001" / "report.json", ReportDocument
     )
     assert report.chronos_registered is ItemStatus.FINDINGS
     assert any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
@@ -524,7 +524,7 @@ def _prepare_ok(work: Path, **kwargs) -> Path:
     defaults.update(kwargs)
     code, message = prepare(work, **defaults)
     assert code == 0, message
-    return work / "_writing" / "ch01-001" / "run-0001"
+    return work / "_work" / "writing" / "ch01-001" / "run-0001"
 
 
 def test_inspect_uses_received_candidate_not_novel(tmp_path: Path) -> None:
@@ -717,7 +717,7 @@ def test_prepare_records_state_and_link_inputs(tmp_path: Path) -> None:
     assert "chronos/entities/characters.yaml" in paths
     assert "chronos/entities/locations.yaml" in paths
     assert "chronos/scenes.yaml" in paths
-    assert "_writing/ch01-001/run-0001/links.yaml" in paths
+    assert "_work/writing/ch01-001/run-0001/links.yaml" in paths
 
 
 def test_inspect_rebuilds_context_when_character_initial_changes(tmp_path: Path) -> None:
@@ -1024,7 +1024,7 @@ def test_inspect_from_run_reuses_matching_observations(tmp_path: Path) -> None:
     )
     assert code == 0, message
     report = load_json_model(
-        work / "_writing" / "ch01-001" / "run-0002" / "report.json",
+        work / "_work" / "writing" / "ch01-001" / "run-0002" / "report.json",
         ReportDocument,
     )
     assert report.text_state.value == "success"
@@ -1130,7 +1130,7 @@ def test_inspect_from_run_missing_observations_is_unknown_ref(tmp_path: Path) ->
         marked_path=None,
         repo_root=ROOT,
     )
-    (work / "_writing" / "ch01-001" / "run-0001" / "observations.json").unlink()
+    (work / "_work" / "writing" / "ch01-001" / "run-0001" / "observations.json").unlink()
     with pytest.raises(BridgeError) as caught:
         inspect(
             work,
@@ -1143,7 +1143,7 @@ def test_inspect_from_run_missing_observations_is_unknown_ref(tmp_path: Path) ->
         )
     assert caught.value.code == "UNKNOWN_REF"
     report = load_json_model(
-        work / "_writing" / "ch01-001" / "run-0002" / "report.json",
+        work / "_work" / "writing" / "ch01-001" / "run-0002" / "report.json",
         ReportDocument,
     )
     assert report.text_state.value == "success"

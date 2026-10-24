@@ -192,7 +192,7 @@ def test_contract_allowed_repeats_reach_the_session(tmp_path):
     repair_begin(work, model="fixture-writer", authorization="x", repo_root=repo,
                  intent="length", length_target=finish_target(400), scene_id="ch01-001",
                  run_id="run-0002")
-    state = read_state(work / "_writing/ch01-001/run-0002/repair_state.json")
+    state = read_state(work / "_work/writing/ch01-001/run-0002/repair_state.json")
     assert state.session.allowed_repeats == ["券売機の前"]
     assert state.session.length.target.finish_chars == 400
 
@@ -210,7 +210,7 @@ def test_cli_finish_target_conflicts_with_target_chars(tmp_path):
                   "--model", "fixture-writer", "--authorization", "x", "--intent", "length",
                   "--finish-target", str(finish), "--repo-root", str(repo))
     assert ok.returncode == 0, ok.stderr
-    state = read_state(work / "_writing/ch01-001/run-0001/repair_state.json")
+    state = read_state(work / "_work/writing/ch01-001/run-0001/repair_state.json")
     assert state.session.length.target.target_chars == round(finish * 1.08)
     assert state.session.length.target.finish_chars == finish
 

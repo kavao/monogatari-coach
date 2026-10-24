@@ -133,7 +133,7 @@ Plan Mode の実装・改修後は、次を分けて確認します。
 - 新規: 採番・フォルダ名と `config.md` 整合・scaffold・必須資料・`novel_character_md_check`（plan）・`novel_project_check` が終了コード 0
 - 既存洗練: 再採番せず、対象フォルダと `config.md` 整合・必須資料・上記 lint / check
 - 許容した WARN がある場合は内容と扱いが報告または `_meta.md` に残る
-- 新規の `config.md` は METRON / CHRONOS が両方 `ON`（作成時の確認に返答がなければ「未応答・既定 ON」）。`_metron/` と `chronos/` が用意される。ユーザーが OFF を明示したときだけ両方 `OFF` で、保存先は作られない
+- 新規の `config.md` は METRON / CHRONOS が両方 `ON`（作成時の確認に返答がなければ「未応答・既定 ON」）。`_work/metron/` と `chronos/` が用意される。ユーザーが OFF を明示したときだけ両方 `OFF` で、保存先は作られない（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 - OFF で起こした作品は `_meta.md` に「検査レイヤの予定」がある
 
 #### 検査レイヤの切り替え（OFF で下書き → ON で洗練）

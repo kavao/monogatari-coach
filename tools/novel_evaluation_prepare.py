@@ -24,6 +24,7 @@ if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
 import novel_char_count as ncc  # noqa: E402
+from work_paths import WorkPathError, record_reference  # noqa: E402
 
 # ─── 評価ファイルの分類 ────────────────────────────────────────────────
 _FILE_TYPES: list[tuple[re.Pattern, str]] = [
@@ -208,6 +209,11 @@ def _render(novel_dir: Path, mode: str, gate: str) -> int:
 
     print("\n【frontmatter テンプレ（コピー用）】")
     if mode == "editor-score":
+        # 評価の中間フォルダは日付ごとに一か所。古い `_reader/_work/<日付>/` があればそこ、無ければ `_work/reader/<日付>/`。
+        try:
+            aggregate = record_reference(novel_dir, "reader", datetime.now().strftime("%Y%m%d"), "aggregate.md")
+        except WorkPathError as error:
+            aggregate = f"（置き場を解決できない: {error}）"
         print(f"""---
 種別: Editor Score（深掘り採点）
 作品: {title}
@@ -215,7 +221,7 @@ def _render(novel_dir: Path, mode: str, gate: str) -> int:
 対象範囲: （例: プロローグ〜第{len(groups)}章 / {total_files}ファイル {total_display:,}字）
 文字数: {total_display:,}
 ゲート前提: {latest}
-算出根拠: novels/{novel_dir.name}/_reader/_work/{datetime.now().strftime('%Y%m%d')}/aggregate.md
+算出根拠: novels/{novel_dir.name}/{aggregate}
 ---""")
     else:
         gate_str = gate if gate in ("G1", "G2", "G3") else "G1 / G2 / G3"

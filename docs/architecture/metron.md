@@ -9,7 +9,7 @@ METRON は、Scene を Beat に分けて本文の密度と構造予算を計測�
 Scene ごとの成果物は、本文アンカーと同じ `scene_id` を使って次へ保存します。
 
 ```text
-novels/<作品>/_metron/<scene_id>/
+novels/<作品>/_work/metron/<scene_id>/
   contract.yaml
   beats.yaml
   draft.NNN.md
@@ -21,7 +21,7 @@ novels/<作品>/_metron/<scene_id>/
 config/metron_models.yaml
 ```
 
-`SceneContract`、`BeatPlan`、`Spans`、`Metrics` は Pydantic v2 のモデルを実行時の正とし、YAML は保存形式として扱います。`scene.id` は `chNN-MMM` 形式で、`_metron/<scene_id>/` と一致させます。V0 では `chronos_span` を省略できます。
+`SceneContract`、`BeatPlan`、`Spans`、`Metrics` は Pydantic v2 のモデルを実行時の正とし、YAML は保存形式として扱います。`scene.id` は `chNN-MMM` 形式で、`_work/metron/<scene_id>/` と一致させます。V0 では `chronos_span` を省略できます。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 ## 作品単位の有効化
 
@@ -31,9 +31,9 @@ config/metron_models.yaml
 | METRON | ON |
 ```
 
-新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 ON」として行を記録し、`_metron/` を作ります。OFF はユーザーが明示したときだけです。既存作品の行なしも従来どおり OFF です。明示 OFF した作品をあとから ON にしたときの後追い計測と、計測が古い章の扱いは [Writing bridge](writing-bridge.md#off-で下書きしあとで-on-にして洗練する) を参照してください。
+新規作品の初回作成は `python tools/novel_onboard.py` を入口にします。作成時に確認への返答がない場合は「未応答・既定 ON」として行を記録し、`_work/metron/` を作ります。OFF はユーザーが明示したときだけです。既存作品の行なしも従来どおり OFF です。明示 OFF した作品をあとから ON にしたときの後追い計測と、計測が古い章の扱いは [Writing bridge](writing-bridge.md#off-で下書きしあとで-on-にして洗練する) を参照してください。
 
-行なしまたは `OFF` なら、自動ワークフローは METRON の成果物作成・計測を行いません。`ON` でも本文保存の完了ゲートにはならず、契約・Beat・マーカー不足や CLI 失敗は `未計測／要対応` として本文保存と分けて報告します。`novel_project_check.py --check-inspection-layers` は、`_metron/` が空の場合と、本文がある章に対応する契約・Beat・run が欠けている場合を WARN として列挙します（終了コード 0）。明示的に `metron_cli.py` を実行した場合は、このフラグを理由に拒否しません。
+行なしまたは `OFF` なら、自動ワークフローは METRON の成果物作成・計測を行いません。`ON` でも本文保存の完了ゲートにはならず、契約・Beat・マーカー不足や CLI 失敗は `未計測／要対応` として本文保存と分けて報告します。`novel_project_check.py --check-inspection-layers` は、`_work/metron/` が空の場合と、本文がある章に対応する契約・Beat・run が欠けている場合を WARN として列挙します（終了コード 0）。明示的に `metron_cli.py` を実行した場合は、このフラグを理由に拒否しません。
 
 フラグの値は `ON` / `OFF` のみです。未知値・重複キー・既存 `config.md` の読込失敗は設定エラーとして扱います。V1 の Deepen / 再生成や provider 呼び出しは、承認済み設定とユーザー承認が別途必要です。執筆工程への接続は [Writing bridge の局所修復と本文反映](writing-bridge.md) です。`chronos check` や `metron_cli.py analyze` を同じ本文版へ重ねません。
 
@@ -72,7 +72,7 @@ provider 呼び出しは `repair_scene()` のコールバックへ注入しま�
 - **増量候補の検査**: 通常の Deepen と同じ検査（元文残存率・同義反復・場面単位の反復）に加え、指示に既出事実リスト（調整前の本文と、当該場面の CHRONOS イベント）を渡し、新しい出来事・人物・過去・選択・所持品を足さないよう指示します。
 - **欠落 Beat**: 開始時に `BeatMissing` があれば、分量の調整に入る前に再生成で埋めます（`max_passes` には数えません）。再生成のあとで分類をやり直し、まだ欠落に当たる Beat が残る場合も含めて、埋められなければ `LENGTH_REQUIRED_UNREPAIRED` で止め、分量は合わせません。打切り（`GenerationTruncated`）や Beat 境界の異常は従来どおり開始しません。
 - **終了**: 許容帯に入り、場面の床も満たせば `LENGTH_IN_BAND` で完了します。届かなければ `__length__` で止め、`LENGTH_MAX_PASSES`、`LENGTH_ESCALATE_ADD`（加筆の候補 Beat を添える）、`LENGTH_ESCALATE_REVISE` を残します。Beat 指定で Beat は帯に入っても場面が床に届かないときは `LENGTH_SCENE_FLOOR`、対象の Beat が `expandable: false` のときは `LENGTH_NO_ELIGIBLE` で止めます。`repair-finish` で途中終了したときも、許容帯に入っていなければ `escalated`（`LENGTH_NOT_IN_BAND`）です。同じ `repair-submit` の再送は、提出済みの同一結果として扱います。
-- **収束（減量）**: 引き締めで上限に届かないときだけ、作者が `_metron/<scene_id>/episodes.yaml` に登録した子エピソードを要約へ畳みます（`condense`。1件につき1回）。畳む順は、持ち帰り（`carry_back`）も局所的効果（`local_payoff`）も無い子、局所的効果だけの子、持ち帰りの少ない子の順です。指示には残すべき持ち帰りと状態変化を載せます。候補は子エピソードの範囲だけを置き換え、短くなっていること、実効の下限と場面の床を割らないことを確かめます。範囲の引用が見つからない子は `CONDENSE_SKIPPED` で飛ばします。増量で上限を超えたあとは収束せず、引き締めだけを使います。
+- **収束（減量）**: 引き締めで上限に届かないときだけ、作者が `_work/metron/<scene_id>/episodes.yaml` に登録した子エピソードを要約へ畳みます（`condense`。1件につき1回）。畳む順は、持ち帰り（`carry_back`）も局所的効果（`local_payoff`）も無い子、局所的効果だけの子、持ち帰りの少ない子の順です。指示には残すべき持ち帰りと状態変化を載せます。候補は子エピソードの範囲だけを置き換え、短くなっていること、実効の下限と場面の床を割らないことを確かめます。範囲の引用が見つからない子は `CONDENSE_SKIPPED` で飛ばします。増量で上限を超えたあとは収束せず、引き締めだけを使います。
 - **CANON 検査**: `metron/canon_check.py` が検査用の指示と、返ってきた JSON の判定を受け持ちます。provider は呼びません。追加（OP-E）と変更（OP-W）は常に不合格です。欠落は、収束の要約で覆われ、状態変化・持ち帰り・感情の向き（CHK-C1〜C3）が保たれているときだけ認めます。検査は事実を一文ずつ挙げさせ（`facts_before` / `facts_after`）、記録に残します。
 - **子エピソード契約**: `metron/episodes.py`。書式は `_how_to.example/length_ops.md` の子エピソード契約に `beat_id` と `span`（開始・終了の引用）を足したものです。加筆で子エピソードを足すときの必須条件は `addition_issues()` で確かめられます。本文を書く前に設計から登録した子は `span_pending: true` とし（`span` と同時には書けません）、範囲が決まるまで収束・脱落の対象から外します（`CONDENSE_SKIPPED`）。`span` を省いた子（Beat 全体）とは別です。
 - **不足率と設計追加（D21）**: `metron/length.py` の `shortage_ratio(T, C)` は `max(0, T − C) / T`、上限は `DESIGN_SHORTAGE_LIMIT`（0.10）です。Deepen は上限未満の不足だけに使い、それ以上は出来事を足す設計追加へ回します。判定と記録は writing_bridge が行います（[Writing bridge の規定量調整](writing-bridge.md#規定量調整既にある本文を目標字数に合わせる)）。

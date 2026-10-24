@@ -139,6 +139,58 @@ def _read_declared_manuscript(
     return contents
 
 
+def _character_names(character_md: str) -> list[str]:
+    """character.md の人物の節（`- **名前**:` の行）から人物名を取る。人物でない節は数えない。"""
+    import re
+
+    names: list[str] = []
+    for line in character_md.splitlines():
+        match = re.match(r"^\s*-\s*\*\*名前\*\*\s*[:：]\s*(.+?)\s*$", line)
+        if not match:
+            continue
+        name = re.sub(r"[（(].*?[）)]", "", match.group(1)).strip()
+        if name:
+            names.append(name)
+    return names
+
+
+def _check_character_intro(
+    package_root: Path,
+    book: BookPackage,
+    manuscript: dict[str, list[tuple[Path, str]]],
+    findings: list[Finding],
+) -> None:
+    """人物紹介（frontmatter の characters）は character.md の派生。character.md にあって紹介に無い人物を知らせる。
+
+    結末まで明かさないために意図して載せない人物もあるので、info にとどめる。
+    """
+    character_md = package_root / "character.md"
+    intro = [
+        text
+        for entry in book.manuscript.frontmatter
+        if entry.id == "characters" or any(Path(f).name == "characters.md" for f in entry.source_files())
+        for _, text in manuscript.get(entry.id, [])
+    ]
+    if not intro or not character_md.is_file():
+        return
+    joined = "".join("".join(text.split()) for text in intro)
+    missing = []
+    for name in _character_names(character_md.read_text(encoding="utf-8")):
+        compact = "".join(name.split())
+        parts = [part for part in name.replace("・", " ").split() if len(part) >= 2]
+        if compact in joined or any(part in joined for part in parts):
+            continue
+        missing.append(name)
+    if missing:
+        _add(
+            findings,
+            "P-M05",
+            "info",
+            "character.md にあって人物紹介に無い人物: " + "、".join(missing),
+            "人物を足したときは人物紹介も見直してください。結末まで伏せる人物なら、このままでかまいません。",
+        )
+
+
 def _collect_findings(
     package_root: Path,
     book: BookPackage,
@@ -186,6 +238,8 @@ def _collect_findings(
                         "本文内の scene アンカーを章内の出現順に並べてください。",
                     )
                 previous_sequence = anchor.sequence
+
+    _check_character_intro(package_root, book, manuscript, findings)
 
     illustration_ids = {illustration.id for illustration in book.illustrations}
     scene_refs = {
