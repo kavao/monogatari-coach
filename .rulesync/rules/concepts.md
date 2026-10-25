@@ -19,8 +19,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 操作説明は `docs/`、チャットは要約である。
 - 小説本文は `novels/<作品>/_novel_text/novel_text*.md`、キャラクタータグは `tag/characters/*.yaml`、漫画ページは `manga/pages/*.yaml`、挿絵ページは `illustrations/pages/*.yaml` を正本とする。
 - 正本を更新できる場合、副本だけを直して完了扱いにしない。生成物を変えたいときは先に正本を変え、再生成する。
-- 漫画の後載せ写植はページYAMLの `manga.lettering` を基本スタイル正本とする。既定は縦書き・基準サイズ30・矩形中央寄せ・必要時のみ縮小。個別 `writing_direction` は明示時だけ上書き。縦書き約物は縦組み字形へ変換するが `？` は通常字形のまま（IR本文は不変）。
-- 漫画ページの吹き出しはページ生成時に描く。標準は写植なし。後載せと NovelAI の T1 割り当ては `workflow-specification.md`「漫画ページの吹き出し描画」「漫画写植の作品メタ」。既定 provider `grok_pro`。操作は `docs/image-generation/manga-page-edit.md`。
+- 漫画の吹き出しはページ生成時に描き、標準は写植なし。写植のスタイル正本はページ YAML の `manga.lettering`。既定・後載せ・provider は `workflow-specification.md`「漫画ページの吹き出し描画」「漫画写植の作品メタ」。
 
 ## 作品フォルダの機械の記録
 
@@ -80,21 +79,11 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## METRON V1 修復不変条件
 
-- `BeatMissing` と `BeatThin` は別の統計と閾値で判定する。`BeatThin` の自動修復は計画の段落・会話の下限未達に限る。
-- 分量の床（場面 `generation.chars_floor`・Beat `chars_hint`）は構造バーと別に置き、床未達（`TooShort`）は出来事を変えない Deepen だけで直す。末尾再生成には使わない。
-- Deepen は出来事・結末・視点を変えず、新しい出来事・選択・事実を足さない。元文残存率未達・同一・非増加・同義反復・場面単位の語句反復の候補は適用しない。同一 Beat の試行は2回まで。
-- 結合校正は最大1回で Beat 順を変えない。既存の `FINAL.md` は上書きしない。詳細は `workflow-specification.md`「METRON V1 修復不変条件の詳細」。
+- Deepen は出来事・結末・視点を変えず、新しい出来事・選択・事実を足さない。床未達（`TooShort`）は Deepen だけで直し、末尾再生成に使わない。判定・候補の棄却・試行回数・結合校正・`FINAL.md` は `workflow-specification.md`「METRON V1 修復不変条件の詳細」を正とする。
 
-## CHRONOS P0 不変条件
+## CHRONOS（休止中）
 
-- 時刻は制約で、日付は任意。検査は決定的コードで行い、LLM に判定を委ねない。`chronos check` は provider を呼ばず、原稿を読まず、書き換えない。
-- 抽出候補は承認まで `events/` に入れない。執筆完了ゲートにしない。詳細は `workflow-specification.md`「CHRONOS P0 不変条件の詳細」。
-
-## CHRONOS 人物状態（P0.5）
-
-- 作品が `character_state.dimensions` で `enum` / `bool` / `loc_ref` を宣言したときだけ状態検査が有効になる。コアはジャンル語を持たない。
-- 循環または同一人物の未確定順序では状態を捏造しない。CHR012 は `rules.CHR012` と bind が揃った作品だけの opt-in である。
-- 検査は挿絵・タグ YAML を読取専用とし、本文や挿絵を書き換えない。執筆完了ゲートにはしない。
+- 再設計予定で、新しい作品は既定 OFF。ON の作品での不変条件（決定的コードで検査、原稿を書き換えない、状態を捏造しない、執筆完了ゲートにしない）は `workflow-specification.md`「CHRONOS P0 不変条件の詳細」を正とする。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
