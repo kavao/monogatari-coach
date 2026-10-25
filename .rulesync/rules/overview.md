@@ -37,6 +37,7 @@ globs: ["**/*"]
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
 | 設計の章出来事を「どうしてがわかるように」「動機が見えるように」直す | `novel-planning`（因果検査の単独起動。Gate B は再実施しない）。設計か本文かが取れないときは一言確かめる |
 | 設計の章出来事・あらすじの抽象を「誰が何をしたか分かる文に」直す | `novel-planning` の口語化（概念比喩検査。Gate B は再実施しない） |
+| 人物の性格欄を「ほぐして」「圧縮された性格を解釈して」直す | `novel-character-profile` の層分け（気質だけを性格に残し、出来事は設計の章項へ戻す。Gate B は再実施しない） |
 | 本文を「わかりやすく」「読みやすく」直す | `novel-refinement-output`（清書として扱い、`world_glossary.md` の規則5・6を読み直す） |
 | キャラクター、漫画、挿絵、表紙を扱う | `manga-prompt-ir`、対象の Tag / Illustration / Cover スキル |
 | 画像を生成する | `forge-txt2img` と `image-provider`。dry-run 後、ユーザー承認を得る |

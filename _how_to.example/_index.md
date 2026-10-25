@@ -85,6 +85,8 @@
 10.5. character_checklist.yaml, character.md.example
    - `character.md` の必須ラベル・任意ラベル・条件付き子項目を宣言するチェックリスト雛形。運用時は `_how_to/character_checklist.yaml` にコピーして調整する
    - `tools/novel_character_md_check.py` とスキル **novel-character-profile** で参照する
+10.6. character_profile_prose.md
+   - 人物プロフィールの圧縮句をほぐす（欄の層分け）。性格などの短句を、気質（性格に残す）・この話での決め方（目標・倫理観）・一度の出来事（設計の章項へ戻す）・知らないことの処理（倫理観・口調）に分ける。いつ・誰に・何をする／しない・なぜは句の意味を資料で確かめる観点で、性格欄の記載条件ではない。資料から取れない句は推測で埋めず要確認。**既定では読まない。** `character.md` を作る・直すとき（B4 の掘り下げを含む）、「性格欄をほぐして」と頼まれたとき、本文・あらすじ・章項を書く前に性格欄の意味の取れない短句に当たったときだけ読む。全件必読にしない。手順はスキル **novel-character-profile**。
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
 11.5. （エピソード抽選）スキル **content-pick-registry**
    - 命名・口調・フック・進行の入口を `list_id` で宣言。

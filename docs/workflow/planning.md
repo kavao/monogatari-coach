@@ -164,6 +164,8 @@ uv run python tools/novel_project_check.py novels/NNN_作品名 --check-inspecti
 uv run python tools/novel_howto_contract_check.py novels/NNN_作品名
 ```
 
+`character.md` の **性格** には、場面を選ばず言える気質だけを書きます。章の出来事を短い句で性格に積むと、あとから「どういう意味で、どこから来たか」が欄だけでは分からなくなります。Monogatari Coach は、性格の句を気質・この話での決め方・一度の出来事・知らないことの処理に分け、気質以外を目標・倫理観・口調の欄や設計の章項へ移します。すでにある作品で直したいときは「性格欄をほぐして」と頼みます。移す前に、句ごとの移し先が案として示されます。書き方の基準は [`_how_to.example/character_profile_prose.md`](../../_how_to.example/character_profile_prose.md) です。
+
 `character.md` 作成時は、命名・トロープ・プロフィール候補の抽選前に **選定レジストリ** を確認します（`uv run python tools/novel_pick_registry.py validate`、スキル **content-pick-registry**）。詳細は [ユーザスキル](user-skills.md) を参照してください。
 
 ## エピソード・トロープの抽選（一般向け）
