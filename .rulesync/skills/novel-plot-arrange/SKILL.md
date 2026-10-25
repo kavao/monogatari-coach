@@ -173,6 +173,7 @@ uv run python -c "import hashlib,sys;print(int(hashlib.sha256(sys.argv[1].encode
 ### 9. 反映する
 
 - 未執筆の章: 作者が採った案を `design_specification.md` の章出来事に反映する。章項の本文は口語の「誰が何をした」、転の型名は章の見出しや `_meta.md`（設計層）に置く。
+- 反映したら、変えた章項とその直前・直後の項に**因果検査**を通す（`novel-planning`「章出来事の因果検査（Gate B の外・単独起動）」の手順3〜4と同じ範囲・同じ拘束）。作者が採った案の項は、反映するときに動機を出してよい。それ以外の前後の項を直すときは、単独起動と同じく「いまの文・直す案・根拠の箇所」を示して作者の承認を得てから書く。根拠を挙げられない項は直さず要確認にする。案出し（手順8）の文の形は変えない。
 - 執筆済みの章: 出来事が変わるので清書ではできない。加筆・改稿工程として、作者の承認を得て扱う（`concepts.md`「文章の伸縮」、METRON / CHRONOS が ON の作品は `writing_bridge` の経路）。このスキルの中で本文を書き換えない。
 
 ### 10. 記録の形式と、採った案の記録
@@ -211,9 +212,9 @@ uv run python -c "import hashlib,sys;print(int(hashlib.sha256(sys.argv[1].encode
 
   | モード | 完了と言える状態 |
   | --- | --- |
-  | `rolled` | 採った案を未執筆の章の設計へ反映し、`design_specification.md` を Read で読み直し、`draws.jsonl` の行数と、`_meta.md` の構造方針欄（`draw_id` の参照つき）を確かめた |
-  | `golden` | 採った案を設計へ反映し、`design_specification.md` を読み直し、構造方針欄（型名・採った案）を確かめた |
-  | `diagnose` | 採った案を設計へ反映し、`design_specification.md` を読み直し、構造方針欄（採った案）を確かめた |
+  | `rolled` | 採った案を未執筆の章の設計へ反映し、変えた項と前後に因果検査を通し、`design_specification.md` を Read で読み直し、`draws.jsonl` の行数と、`_meta.md` の構造方針欄（`draw_id` の参照つき）を確かめた |
+  | `golden` | 採った案を設計へ反映し、変えた項と前後に因果検査を通し、`design_specification.md` を読み直し、構造方針欄（型名・採った案）を確かめた |
+  | `diagnose` | 採った案を設計へ反映し、変えた項と前後に因果検査を通し、`design_specification.md` を読み直し、構造方針欄（採った案）を確かめた |
   | `none` | 作者が意図を確かめ、構造方針欄に `none` と意図を書いて読み直した（設計の変更は無い） |
 
 - 設計を変えたモードでは、報告の行末に `設定資料の一貫性を監査して` を示す（`novel-planning`「Gate B の外での設定改稿」と同じ扱い。監査は実行しない）。
@@ -226,7 +227,8 @@ uv run python -c "import hashlib,sys;print(int(hashlib.sha256(sys.argv[1].encode
 - 案（提示層）。設計情報（型・確率・シード・`draw_id`）は別の節。
 - `rolled` のときだけ: 回数の範囲（L・U）と配置できた数、足りないときは理由。`draws.jsonl` の保存先と行数。
 - 作品全体の項目のうち、維持したものと、見直し・未決として扱ったもの。
-- 工程正本として読んだ葉。
+- 設計へ反映したとき: 因果検査で直した項（章と番号）と項ごとの根拠の箇所、要確認の一覧。
+- 工程正本として読んだ葉（因果検査を通したときは `synopsis_presentation.md` も）。
 
 ## 関連
 

@@ -35,6 +35,7 @@ globs: ["**/*"]
 | プロットが平板・先が読めるのでアレンジしたい、展開を変えたい | `novel-plot-arrange`（構造論と流れ破壊の葉を工程正本として読む。黄金律は型を指定されたときだけ。清書では転を足さない） |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
+| 設計の章出来事を「どうしてがわかるように」「動機が見えるように」直す | `novel-planning`（因果検査の単独起動。Gate B は再実施しない）。設計か本文かが取れないときは一言確かめる |
 | 本文を「わかりやすく」「読みやすく」直す | `novel-refinement-output`（清書として扱い、`world_glossary.md` の規則5・6を読み直す） |
 | キャラクター、漫画、挿絵、表紙を扱う | `manga-prompt-ir`、対象の Tag / Illustration / Cover スキル |
 | 画像を生成する | `forge-txt2img` と `image-provider`。dry-run 後、ユーザー承認を得る |
