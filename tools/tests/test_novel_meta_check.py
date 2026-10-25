@@ -131,6 +131,18 @@ def test_ensure_section_adds_only_that_section() -> None:
     assert m.ensure_section_text(updated, "IV.4") == updated
 
 
+def test_showing_axes_is_not_added_by_migration_but_by_ensure() -> None:
+    plan = m.migrate_text(LEGACY)
+    assert "## 3.7 見せ方軸" not in plan.text
+    text = (
+        "# I. 内部メタ情報\n\n## 3.6 検査レイヤの予定（METRON / CHRONOS）\n- a\n\n"
+        "# II. 外部メタ情報\n\n## 1. カクヨム基本項目\n- b\n"
+    )
+    updated = m.ensure_section_text(text, m.ENSURE_NAMES["showing-axes"])
+    assert updated.index("## 3.6 検査レイヤ") < updated.index("## 3.7 見せ方軸") < updated.index("# II.")
+    assert m.ensure_section_text(updated, "I.3.7") == updated
+
+
 def test_ensure_section_inserts_before_later_sections() -> None:
     text = "# I. 内部メタ情報\n\n## 1. 執筆フェーズ・ステータス\n- a\n\n## 3. 執筆制約・メタ指示\n- b\n"
     updated = m.ensure_section_text(text, "I.2")
