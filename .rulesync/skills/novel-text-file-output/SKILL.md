@@ -111,21 +111,21 @@ targets: ["*"]
 
 経路は次の順で決める。
 
-1. METRON / CHRONOS が両方 OFF → 従来経路
-2. 両方 ON → writing_bridge 経路（active run が無ければ `prepare` から）
-3. 片方だけ ON（実効値の食い違い）→ 設定エラーとして報告し、本文作業を始めない
+1. METRON が OFF（CHRONOS も OFF）→ 従来経路
+2. METRON が ON（CHRONOS は ON でも OFF でも）→ writing_bridge 経路（active run が無ければ `prepare` から）。CHRONOS が OFF なら観測と C1 は skipped
+3. CHRONOS だけ ON（METRON は OFF）→ 設定エラーとして報告し、本文作業を始めない（CHRONOS は休止中）
 4. ユーザーが明示した CLI はフラグより優先する
 
-### 従来経路（両方 OFF）
+### 従来経路（METRON OFF）
 
-フラグが両方 OFF のときだけ使う。ON 作品で active run が無いことは、従来経路を選ぶ理由にならない。
+METRON が OFF のときだけ使う。ON 作品で active run が無いことは、従来経路を選ぶ理由にならない。
 
 1. スキル **`novel-planning`** の「執筆・清書での契約再読」を行う（起草前）。
 2. `_novel_text` を直接更新する（本スキルの書き込み手順）。文型は上記「起草の文型」に従う。
 3. 確認と句読点ゲートを本スキルどおり行う。
 4. `novel-story-reflection` を行う。
 
-### writing_bridge 経路（両方 ON）
+### writing_bridge 経路（METRON ON）
 
 新規場面・新規章・既存章への場面追記は、単一章でも複数章でも、対象場面にハッシュ一致の active run が無ければ **`prepare` を前条件**にする（手順は上記「章ゲート」）。active run は `_work/writing/<scene_id>/<run_id>/`（古い作品は `_writing/<scene_id>/<run_id>/`。場面ごとにどちらか一方で、置き場は CLI が決める）にあり、`request.yaml` の本文ハッシュが今の `_novel_text` と一致するものを指す。ディレクトリがあるだけでは続きとみなさない。入口は `python tools/writing_bridge_cli.py`。同一ターンに `prepare` まで進めない場合は `_novel_text` を触らず、可能な成果物（contract / beats 等）だけを残して「未計測／要対応」と次回タスクを報告する。本文完了とは言わない。
 
@@ -152,8 +152,8 @@ targets: ["*"]
 
 **既にある本文**の欠落表示と後追い計測に限る。新規場面の経路には使わない（新規は上記 writing_bridge 経路）。対象作品の config.md の「## 基本情報」表を共通パーサで読む。
 
-1. 両方 OFF は、自動の init / analyze / 登録を行わない。
-2. 未知値・重複キー・config.md の読込失敗・METRON / CHRONOS の食い違いは設定エラーとして報告し、検査手順を止める。既にある本文の完了は取り消さない。
+1. 両方 OFF は、自動の init / analyze / 登録を行わない。CHRONOS が OFF の作品では、CHRONOS の init・イベント登録・check を行わない。
+2. 未知値・重複キー・config.md の読込失敗・CHRONOS だけ ON（METRON は OFF）は設定エラーとして報告し、検査手順を止める。既にある本文の完了は取り消さない。
 3. METRON: 既稿の不足（contract / beats / run）と、計測後に本文が書き換わった章（「計測が古い」）を「未計測／要対応」として残す。`METRON_FROM` より前の章は下書き期として対象外。後追いは上記「章ゲート」と同じく、最初の未計測章で contract / beats を補ってから `prepare --allow-publish` → 現行本文を候補化 → `receive` → `inspect` → 必要なら修復 → `publish` する。マーカーを `_novel_text` に後付けしない。
 4. CHRONOS: chronos/ が無ければ chronos_cli.py init を試み、既存のイベント YAML があれば chronos_cli.py check を実行する。イベントが無い章は「未登録」として次回タスクへ記録する。
 5. 結果は本文保存と分けて報告し、成果物不足・CLI失敗・CHR001で既にある本文の完了を取り消さない。
@@ -172,8 +172,8 @@ targets: ["*"]
 4a. **保存前の1回の確認**: 清書まで終わったら、主要な変化（字数の前後、採用した JOB、新しい文と消えた文、補助の印、イベント照合の根拠、場面契約の終了状態と次章の書き出し）を報告し、「この内容で保存してよいか」を1回だけ尋ねる。作業前と保存前の2回は尋ねない。気になる箇所を指摘されたら、その箇所だけを直してから保存する。
 5. **止める**: 許容帯に入り床にも届いたら止める。上限回数に達した、または解像度展開・収束で届かないときは、不足・超過の字数と区間を報告して止める。増量で届かないときは、出来事を足す加筆工程（`_how_to.example/episode/general/episode_sub_episode.md`）を、減量で届かないときは出来事を削る改稿工程を提案し、ユーザー承認があるまで行わない。
 6. **保存**: 経路は作品フラグで一つにする（清書の直接更新の例外には含めない）。
-   - **両方 OFF**: 採用した本文は `_novel_text_backup/` へ旧版を退避してから正本を直接更新し、確認・ストーリー反映まで行う（`novel-refinement-output` の手順4・6〜9）。
-   - **両方 ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` →（イベントがある場面は）`canon-precheck` の材料をエージェントが照合し、`--result no_conflict --by agent --authorization "<照合の根拠>"` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `repair-submit --review confirmed`（増量と欠落 Beat の埋めは機械検査で採用。引き締め・収束は著者の確認を得て `--canon-authorization "<著者の確認の出典>"` を付ける）。`repair-begin` は `--finish-target N`（仕上がり目標。余地 +8% を自動で足す）を使う。`completed` のあと、出力された作業稿（`repair_state.json` の `output_path`。Beat マーカー付き）を写して清書し、`<METRON 場面>/refined.<run_id>.md` に置く（マーカーは消さない）。`repair-summary --refined <清書稿>` を著者に見せて1回だけ確認し、返答を `--accept --authorization` で記録する。この1回を保存の確認とし、保存用の `--allow-publish` 新 run へ清書稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
+   - **METRON OFF**: 採用した本文は `_novel_text_backup/` へ旧版を退避してから正本を直接更新し、確認・ストーリー反映まで行う（`novel-refinement-output` の手順4・6〜9）。
+   - **METRON ON**: 手順2〜5を writing_bridge の規定量調整で行う。`prepare --request-kind refine --selector-kind heading` の run で現行本文を `receive` → `inspect` →（イベントがある場面は）`canon-precheck` の材料をエージェントが照合し、`--result no_conflict --by agent --authorization "<照合の根拠>"` で記録 → `repair-begin --intent length --target-chars N`（`--tolerance` / `--length-scope beat --length-beat-id` / `--max-passes` は任意）→ `repair-next` → 候補作成 → `repair-submit --review confirmed`（増量と欠落 Beat の埋めは機械検査で採用。引き締め・収束は著者の確認を得て `--canon-authorization "<著者の確認の出典>"` を付ける）。`repair-begin` は `--finish-target N`（仕上がり目標。余地 +8% を自動で足す）を使う。`completed` のあと、出力された作業稿（`repair_state.json` の `output_path`。Beat マーカー付き）を写して清書し、`<METRON 場面>/refined.<run_id>.md` に置く（マーカーは消さない）。`repair-summary --refined <清書稿>` を著者に見せて1回だけ確認し、返答を `--accept --authorization` で記録する。この1回を保存の確認とし、保存用の `--allow-publish` 新 run へ清書稿を `receive` → `inspect` → `publish --dry-run` → `publish`（旧版退避は `publish` が行う）。`escalated` は手順5のとおり報告して止める。`_novel_text` を手編集しない。完了条件は上記「正本反映」と同じで、`publish` 後にストーリー反映を行う。
    - **食い違い**: 設定エラーとして報告し、調整を始めない。
 
 METRON の規定量調整が行うのは、欠落 Beat の埋め（`regenerate`）と、出来事を変えない増量（`deepen`）・引き締め（`tighten`）・収束（`condense`）だけである。

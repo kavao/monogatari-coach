@@ -23,12 +23,12 @@ def test_new_defaults_record_unanswered_on_and_prepare_layers(tmp_path: Path) ->
 
     config = (work / "config.md").read_text(encoding="utf-8")
     assert "METRON=未応答・既定 ON" in config
-    assert "CHRONOS=未応答・既定 ON" in config
+    assert "CHRONOS=休止中・既定 OFF" in config
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
-    assert flags.chronos is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.OFF
     assert (work / "_work" / "metron").is_dir()
-    assert (work / "chronos").is_dir()
+    assert not (work / "chronos").exists()
     assert any(rel == "_work/metron/" for rel, _ in actions)
 
 
@@ -66,8 +66,8 @@ def test_unlinked_flags_are_rejected_before_writing(tmp_path: Path) -> None:
     work = tmp_path / "005_片側"
     work.mkdir()
 
-    with pytest.raises(InspectionBootstrapError, match="同じ値"):
-        initialize_new_layers(work, 5, "片側", metron="ON", chronos="OFF")
+    with pytest.raises(InspectionBootstrapError, match="METRON も ON"):
+        initialize_new_layers(work, 5, "片側", metron="OFF", chronos="ON")
 
     assert not (work / "config.md").exists()
     assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()

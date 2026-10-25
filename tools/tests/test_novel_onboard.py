@@ -27,9 +27,9 @@ def test_unlinked_flags_are_rejected_before_creating(tmp_path: Path, monkeypatch
     (root / "novels").mkdir()
     monkeypatch.setattr(novel_onboard, "repo_root", lambda: root)
 
-    assert novel_onboard.main(["片側作品", "--metron", "ON", "--chronos", "OFF"]) == 2
+    assert novel_onboard.main(["片側作品", "--metron", "OFF", "--chronos", "ON"]) == 2
 
-    assert "同じ値" in capsys.readouterr().err
+    assert "METRON も ON" in capsys.readouterr().err
     assert not (root / "novels" / "001_片側作品").exists()
 
 
@@ -54,9 +54,9 @@ def test_new_onboard_writes_flags_and_layers(tmp_path: Path, monkeypatch) -> Non
     work = root / "novels" / "001_試験作品"
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
-    assert flags.chronos is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.OFF  # CHRONOS は休止中で既定 OFF
     assert (work / "_work" / "metron").is_dir()
-    assert (work / "chronos").is_dir()
+    assert not (work / "chronos").exists()
 
     assert novel_onboard.main(["検査作品", "--metron", "ON", "--chronos", "ON"]) == 0
     work_on = root / "novels" / "002_検査作品"

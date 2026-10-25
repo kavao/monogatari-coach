@@ -31,10 +31,11 @@ if str(_TOOLS_DIR) not in sys.path:
 from novel_code_allocate import scan_novels  # noqa: E402
 from novel_scaffold import bootstrap_novel   # noqa: E402
 from inspection_bootstrap import (          # noqa: E402
-    DEFAULT_NEW_LAYER,
     InspectionBootstrapError,
     decision_label,
+    default_for,
     initialize_new_layers,
+    validate_layer_pair,
 )
 from novel_status import (                  # noqa: E402
     _run_project_check,
@@ -120,17 +121,15 @@ def main(argv: list[str] | None = None) -> int:
         "--chronos",
         choices=("ON", "OFF"),
         default=None,
-        help="新規作品の CHRONOS（省略時: 未応答・既定 ON。OFF は明示指定）",
+        help="新規作品の CHRONOS（省略時: 休止中・既定 OFF。ON は METRON も ON のときだけ）",
     )
     args = p.parse_args(argv)
-    metron_value = args.metron or DEFAULT_NEW_LAYER.value
-    chronos_value = args.chronos or DEFAULT_NEW_LAYER.value
-    if metron_value != chronos_value:
-        print(
-            "error: METRON と CHRONOS は同じ値にしてください"
-            f"（METRON={metron_value}, CHRONOS={chronos_value}）",
-            file=sys.stderr,
-        )
+    metron_value = args.metron or default_for("METRON").value
+    chronos_value = args.chronos or default_for("CHRONOS").value
+    try:
+        validate_layer_pair(args.metron, args.chronos)
+    except InspectionBootstrapError as error:
+        print(f"error: {error}", file=sys.stderr)
         return 2
 
     root = repo_root()
@@ -153,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         inspection_decision = (
             "（"
             f"METRON={decision_label(args.metron)}、"
-            f"CHRONOS={decision_label(args.chronos)}"
+            f"CHRONOS={decision_label(args.chronos, name='CHRONOS')}"
             "）"
         )
     print(

@@ -22,16 +22,41 @@ class InspectionBootstrapError(ValueError):
 
 
 DEFAULT_NEW_LAYER = InspectionFlag.ON
-"""新規作品の METRON / CHRONOS の既定（未応答のとき）。
+"""新規作品の METRON の既定（未応答のとき）。
 
 新規作品は ON で起こし、計測しながら書く。OFF は作成時の確認で明示した
 ときだけ。行なしの既存作品は inspection_flags 側で従来どおり OFF。
 """
 
+DEFAULT_NEW_CHRONOS = InspectionFlag.OFF
+"""新規作品の CHRONOS の既定。CHRONOS は休止中（再設計予定）なので OFF。
+
+計画: _workingspace/plans/20261025_chronos-off-redesign.md。ON にできるのは
+METRON も ON のときだけ（CHRONOS だけ ON は設定エラー）。既存作品の値は変えない。
+"""
+
+
+def default_for(name: str) -> InspectionFlag:
+    """未応答のときに書く既定値。CHRONOS は OFF、それ以外（METRON）は ON。"""
+
+    return DEFAULT_NEW_CHRONOS if name == "CHRONOS" else DEFAULT_NEW_LAYER
+
+
+def validate_layer_pair(metron: InspectionFlag | str | None, chronos: InspectionFlag | str | None) -> None:
+    """新規作品の組み合わせを確かめる。CHRONOS だけ ON（METRON は OFF）は認めない。"""
+
+    metron_flag = _flag(metron, name="METRON")
+    chronos_flag = _flag(chronos, name="CHRONOS")
+    if chronos_flag is InspectionFlag.ON and metron_flag is InspectionFlag.OFF:
+        raise InspectionBootstrapError(
+            "CHRONOS を ON にするときは METRON も ON にしてください"
+            f"（METRON={metron_flag.value}, CHRONOS={chronos_flag.value}）"
+        )
+
 
 def _flag(value: InspectionFlag | str | None, *, name: str) -> InspectionFlag:
     if value is None:
-        return DEFAULT_NEW_LAYER
+        return default_for(name)
     if isinstance(value, InspectionFlag):
         return value
     try:
@@ -48,10 +73,12 @@ def _cell(value: str) -> str:
     return value.replace("|", "／").replace("\r", " ").replace("\n", " ").strip()
 
 
-def decision_label(value: InspectionFlag | str | None) -> str:
-    """作成時の確認の記録語。None は未応答（既定 ON）。"""
+def decision_label(value: InspectionFlag | str | None, *, name: str = "METRON") -> str:
+    """作成時の確認の記録語。None は未応答（METRON は既定 ON、CHRONOS は休止中で既定 OFF）。"""
 
     if value is None:
+        if name == "CHRONOS":
+            return f"休止中・既定 {DEFAULT_NEW_CHRONOS.value}"
         return f"未応答・既定 {DEFAULT_NEW_LAYER.value}"
     return f"ユーザー明示 {_flag(value, name='flag').value}"
 
@@ -68,10 +95,12 @@ def initial_config_text(
     """新規作品用の最小 ``config.md`` を返す。
 
     ``confirmation`` はチャットで確認できなかった場合などの記録で、設定値
-    そのものとは分けて保存する。``metron`` / ``chronos`` が ``None`` のときは
-    未応答として既定（ON）を書き、「未応答・既定 ON」と記録する。
+    そのものとは分けて保存する。``metron`` が ``None`` のときは未応答として既定（ON）を書き、
+    「未応答・既定 ON」と記録する。``chronos`` が ``None`` のときは休止中の既定（OFF）を書く。
+    CHRONOS だけ ON は ``InspectionBootstrapError``。
     """
 
+    validate_layer_pair(metron, chronos)
     metron_value = _flag(metron, name="METRON").value
     chronos_value = _flag(chronos, name="CHRONOS").value
     audit_value = _flag(audit_log, name="AUDIT_LOG").value
@@ -79,7 +108,7 @@ def initial_config_text(
         confirmation = "; ".join(
             [
                 f"METRON={decision_label(metron)}",
-                f"CHRONOS={decision_label(chronos)}",
+                f"CHRONOS={decision_label(chronos, name='CHRONOS')}",
             ]
         )
 
@@ -168,18 +197,14 @@ def initialize_new_layers(
     """新規作品の config と ON レイヤ保存先を準備する。"""
 
     # 値の検証を先に済ませてから、config.md の実値を正として扱う。
+    validate_layer_pair(metron, chronos)
     requested_metron = _flag(metron, name="METRON")
     requested_chronos = _flag(chronos, name="CHRONOS")
-    if requested_metron is not requested_chronos:
-        raise InspectionBootstrapError(
-            "METRON と CHRONOS は同じ値にしてください: "
-            f"METRON={requested_metron.value}, CHRONOS={requested_chronos.value}"
-        )
     actions: list[tuple[str, str]] = []
 
     if confirmation is None:
         confirmation = "; ".join(
-            [f"METRON={decision_label(metron)}", f"CHRONOS={decision_label(chronos)}"]
+            [f"METRON={decision_label(metron)}", f"CHRONOS={decision_label(chronos, name='CHRONOS')}"]
         )
     config, status = create_initial_config(
         novel_dir,

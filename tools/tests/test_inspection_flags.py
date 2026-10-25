@@ -120,6 +120,8 @@ def test_parser_keeps_flags_independent_for_explicit_cli() -> None:
         "| METRON | OFF |\n| CHRONOS | OFF |",
         "| novel_ID | 001 |",
         "| METRON | OFF |",
+        "| METRON | ON |\n| CHRONOS | OFF |",
+        "| METRON | ON |",
     ],
 )
 def test_require_linked_accepts_matching_effective_values(rows: str) -> None:
@@ -129,14 +131,13 @@ def test_require_linked_accepts_matching_effective_values(rows: str) -> None:
 @pytest.mark.parametrize(
     "rows",
     [
-        "| METRON | ON |\n| CHRONOS | OFF |",
         "| METRON | OFF |\n| CHRONOS | ON |",
-        "| METRON | ON |",
         "| CHRONOS | ON |",
     ],
 )
 def test_require_linked_rejects_mismatched_effective_values(rows: str) -> None:
-    with pytest.raises(InspectionConfigError, match="both ON or both OFF"):
+    # CHRONOS は休止中。CHRONOS だけ ON（METRON は OFF）だけを設定エラーにする
+    with pytest.raises(InspectionConfigError, match="CHRONOS ON requires METRON ON"):
         require_linked_inspection_flags(parse_inspection_flags(_config(rows)))
 
 

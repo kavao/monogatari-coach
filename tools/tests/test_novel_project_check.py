@@ -116,9 +116,7 @@ def test_inspection_layers_read_flags_and_warn_only_for_missing_enabled_dirs(
 @pytest.mark.parametrize(
     "rows",
     [
-        "| METRON | ON |\n| CHRONOS | OFF |\n",
         "| METRON | OFF |\n| CHRONOS | ON |\n",
-        "| METRON | ON |\n",
         "| CHRONOS | ON |\n",
     ],
 )
@@ -144,8 +142,33 @@ def test_inspection_layer_unlinked_flags_are_a_config_error(
 
     inspection = result["optional"]["inspection_layers"]
     assert inspection["ok"] is False
-    assert "both ON or both OFF" in inspection["error"]
+    assert "CHRONOS ON requires METRON ON" in inspection["error"]
     assert any("検査レイヤ設定" in issue for issue in result["issues"])
+
+
+def test_inspection_layer_metron_only_is_accepted(tmp_path: Path) -> None:
+    """CHRONOS は休止中。METRON だけ ON は設定エラーにしない。"""
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n| CHRONOS | OFF |\n",
+        encoding="utf-8",
+    )
+    (work / "_work" / "metron").mkdir(parents=True)
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert inspection.get("error") is None
+    assert not any("検査レイヤ設定" in issue for issue in result["issues"])
 
 
 def test_inspection_layer_single_off_row_stays_linked(tmp_path: Path) -> None:
@@ -327,17 +350,18 @@ def test_require_meta_yaml_passes_when_present(tmp_path: Path) -> None:
 
 
 def test_bootstrap_new_project_uses_inspection_defaults(tmp_path: Path) -> None:
-    """未作成フォルダの --bootstrap は、省略時に未応答・既定 ON を記録する。"""
+    """未作成フォルダの --bootstrap は、省略時に METRON 未応答・既定 ON、CHRONOS 休止中・既定 OFF を記録する。"""
     work = tmp_path / "123_新規"
 
     assert main([str(work), "--bootstrap", "--no-character-structure"]) == 1
 
     config = (work / "config.md").read_text(encoding="utf-8")
-    assert "未応答・既定 ON" in config
+    assert "METRON=未応答・既定 ON" in config
+    assert "CHRONOS=休止中・既定 OFF" in config
     assert "| METRON | ON |" in config
-    assert "| CHRONOS | ON |" in config
+    assert "| CHRONOS | OFF |" in config
     assert (work / "_work" / "metron").is_dir()
-    assert (work / "chronos").is_dir()
+    assert not (work / "chronos").exists()
 
 
 def test_bootstrap_new_project_accepts_explicit_inspection_off(tmp_path: Path) -> None:
@@ -376,15 +400,15 @@ def test_bootstrap_rejects_unlinked_inspection_flags(
                 "--bootstrap",
                 "--no-character-structure",
                 "--metron",
-                "ON",
-                "--chronos",
                 "OFF",
+                "--chronos",
+                "ON",
             ]
         )
         == 2
     )
 
-    assert "同じ値" in capsys.readouterr().err
+    assert "METRON も ON" in capsys.readouterr().err
     assert not work.exists()
 
 

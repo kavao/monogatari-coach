@@ -62,15 +62,17 @@ class InspectionFlags:
 
 
 def require_linked_inspection_flags(flags: InspectionFlags) -> None:
-    """自動ワークフロー用に METRON と CHRONOS の実効値が一致することを要求する。
+    """自動ワークフロー用に、METRON と CHRONOS の組み合わせを確かめる。
 
+    認めるのは「両方 ON」「METRON だけ ON」「両方 OFF」。CHRONOS だけ ON（METRON は OFF）は
+    設定エラー。CHRONOS は休止中（計画 _workingspace/plans/20261025_chronos-off-redesign.md）で、
+    以前の「両方同じ値」の連動はやめた。関数名は呼び出し元との互換のため残す。
     パーサ自体は各値を独立に読む（明示 CLI は片方だけ ON でも動く）。
-    食い違いは作品の起動判定でだけ設定エラーにする。
     """
 
-    if flags.metron is not flags.chronos:
+    if flags.chronos is InspectionFlag.ON and flags.metron is InspectionFlag.OFF:
         raise InspectionConfigError(
-            "METRON and CHRONOS must be both ON or both OFF: "
+            "CHRONOS ON requires METRON ON: "
             f"METRON={flags.metron.value}, CHRONOS={flags.chronos.value}"
         )
 

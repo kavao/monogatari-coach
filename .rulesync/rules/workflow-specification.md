@@ -39,12 +39,12 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値が食い違う config.md は自動ワークフローでは設定エラーとし（`novel_project_check --check-inspection-layers` が検出）、片方に合わせて進めない。新規起こしで行を書くときの既定は両方 ON。作成時に1回確認して両方に同じ値を書き、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示に限る。途中の切り替えも両方同時に行う。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。CHRONOS は休止中（再設計予定。計画 `_workingspace/plans/20261025_chronos-off-redesign.md`）。認める組み合わせは「両方 ON」「METRON だけ ON」「両方 OFF」で、CHRONOS だけ ON（METRON は OFF）は自動ワークフローでは設定エラーとする（`novel_project_check --check-inspection-layers` が検出）。新規起こしで行を書くときの既定は METRON ON・CHRONOS OFF。METRON は作成時に1回確認し、返答がない場合は **「未応答・既定 ON」** と記録する。METRON の OFF はユーザー明示に限る。CHRONOS は「休止中・既定 OFF」と記録する。既存作品の値は変えない（ON の作品は ON のまま使える）。
 
 **OFF で下書き → ON で洗練**: OFF の作品は従来経路で書き、書き終えた章（または洗練する章）から ON にして後追い計測で洗練する。手順は次のとおり。
 
 1. `_meta.md` の「検査レイヤの予定」に、今の値・ON にする時期・計測対象の開始章を書く。
-2. ON にするときは config.md の METRON / CHRONOS を両方 ON にし、`_work/metron/`（以前の作品は `_metron/`）と `chronos/`（`chronos_cli.py init`）を用意して `novel_project_check --check-inspection-layers` を実行する。
+2. ON にするときは config.md の METRON を ON にし（CHRONOS は休止中なので OFF のままでよい。ON にするなら `chronos/` を `chronos_cli.py init` で用意する）、`_work/metron/`（以前の作品は `_metron/`）を用意して `novel_project_check --check-inspection-layers` を実行する。
 3. 下書き期の章を当面計測しないときは、基本情報表に `| METRON_FROM | N |`（N は1以上の章番号）を置く。第N章より前は「計測対象外（下書き期）」として未計測ゲートから外れる。洗練の対象を広げるときは N を下げるか行を消す。値が整数でない・重複するときは設定エラー。
 4. 後追い計測: 既稿から章の出来事を変えずに契約・Beat を起こし（指示目標は既稿の分量を基準にする）、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側にマーカー付きの作業稿を作って `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`（既存の非空本文は heading で当該章を置き換える）。`_novel_text` にマーカーを後付けしない。`publish` 後はストーリー反映を行う。
 5. CHRONOS のイベントは、洗練する章から順に登録する（全章を一度に登録しない）。未登録の章は従来どおり「未確認」で、矛盾にしない。
@@ -82,9 +82,9 @@ ON の新規場面は「執筆接続の起動判定」に従い `prepare` から
 
 通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。複数章依頼の章境界は `concepts.md` の「完了扱い条件」と本文スキル（清書は `novel-refinement-output` の参照）に従い、経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」に従う。
 
-- 両方 OFF: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
-- 片方だけ ON（実効値の食い違い）: 設定エラーとして報告し、本文作業を始めない。
-- 両方 ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。単一章・複数章・場面追記のどれでも同じで、active run が無いことを理由に従来経路へ落ちない。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- 両方 OFF（METRON OFF）: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
+- CHRONOS だけ ON（METRON は OFF）: 設定エラーとして報告し、本文作業を始めない。
+- METRON ON（CHRONOS は ON でも OFF でも）: CHRONOS が OFF なら観測と C1 は skipped（`--from-run` を付けない）。対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。単一章・複数章・場面追記のどれでも同じで、active run が無いことを理由に従来経路へ落ちない。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
 - Deepen / 局所修復: METRON ON かつ校正済みモデル。シーン床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` → `repair-next` → 候補作成 → `repair-submit`。床到達かつ必須なしの `auto` は `REPAIR_NOT_NEEDED`。`--scope beats` は指定 Beat だけを Deepen する（`BeatMissing` は範囲外でも必須）。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。この間は正本を触らない。修復が active のあいだ C1 未記録は報告して続け、完了後は未記録で止める。速度運用の詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 - 正本反映: `--allow-publish` の run だけ `publish --dry-run` のあと `publish`。起草用 run へ後付けしない。ON の場面作業では追加の保存依頼を待たず、修復が terminal になったあと保存用の新 run へ進める。止めの明示があるときだけ止める。保存用は新 run で receive する。未作成または空の正本は selector なし。既存の非空本文だけ heading / scene アンカー / `append`。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けず C1 は skipped。CHRONOS ON は初回 inspect の前に observations を書き、C1 成功前に正本を書かない。引用座標の下書きは `locate-quote`。inspect と同じ版検証のあと一意一致だけを出し、重複は推測しない。ずれは `STALE_EVIDENCE`。手編集で置換しない。正本ではマーカー除去後の連続空行を段落1つ分に畳む。完了後は `novel-story-reflection`。`publish --dry-run` の句読点 fail は正本を書かない。dry-run の測定対象は `compose_published()` の保存予定全文。本番の句読点は結合後全文を `report.json` に記録し、失敗でも本文は戻さない。未達なら完了報告しない。`inspect` の required と advisory は分けて読む。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。
 - 清書: `novel-refinement-output`。`publish` と重ねない。自動の再計測・イベント更新はしない。ON の作品で清書した章は「計測が古い」になるため、洗練の段階で後追い計測（上の手順4）に載せ直す。
@@ -113,9 +113,9 @@ ON の新規場面は「執筆接続の起動判定」に従い `prepare` から
 ### 作品単位の METRON / CHRONOS / AUDIT_LOG フラグの詳細
 
 - 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
-- METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値（行なしは OFF）が食い違う config.md は、自動ワークフローでは設定エラーとする。新規作成の確認・明示 OFF・一時停止も両方同時に扱う。
+- CHRONOS は休止中。認める組み合わせは「両方 ON」「METRON だけ ON」「両方 OFF」。CHRONOS だけ ON（実効値。行なしは OFF）は、自動ワークフローでは設定エラーとする。
 - METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
-- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書き、既定は ON。作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする。返答がない場合は **「未応答・既定 ON」** と config.md に記録する。行なしの既存作品は従来どおり OFF。
+- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書く。METRON の既定は ON で、作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする（返答がない場合は **「未応答・既定 ON」**）。CHRONOS の既定は OFF（「休止中・既定 OFF」と記録）。行なしの既存作品は従来どおり OFF。既存作品の値は変えない。
 - **OFF で下書き → ON で洗練**は、明示 OFF した作品の経路として残す。OFF の期間は従来経路で書き、ON にした章から後追い計測（既稿から契約・Beat を起こし、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側のマーカー付き作業稿を `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`）で洗練する。`_novel_text` にマーカーを書かない。config.md の基本情報表の `METRON_FROM | N` で、第N章より前を下書き期として未計測ゲートの対象から外せる。いつ ON にするかは `_meta.md` の「検査レイヤの予定」に書く。ON → OFF に戻すときは、active な run・修復を閉じてから切り替える。
 - 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
 - フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。

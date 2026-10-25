@@ -226,7 +226,7 @@ uv run python tools/novel_project_check.py novels/NNN_作品名 --require-manga-
 3. `novels/<作品>/_novel_text/novel_text01.md` に本文を書き出す（4000〜8000字目安）
 4. 正本を再確認し、句読点ゲートとストーリー反映を終えてから `tools/novel_char_count.py` で文字数を集計して報告する。文字数の集計だけでは完了になりません
 
-**METRON / CHRONOS が両方 ON の作品:**
+**METRON が ON の作品（CHRONOS は ON でも OFF でも）:**
 
 3. `tools/novel_project_check.py --check-inspection-layers` で未計測の章が無いことを確かめる。あれば新しい章を始めず、先に後追いで測る
 4. 創作技法の契約を読み直し、`_work/metron/<場面>/` に場面の契約（`contract.yaml`）と Beat（`beats.yaml`）を置く。章の出来事は項数どおりではなく、目的の塊で 5〜8 Beat 程度にまとめる（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
@@ -244,7 +244,7 @@ ON の作品の run の流れとコマンドを確かめるときは、[Writing 
 第2章の前半を執筆してください。
 ```
 
-METRON / CHRONOS が ON の作品では、第1章の初稿や単一章の依頼でも、これだけで接続が起動します。2つのフラグは連動し、片方だけ ON の `config.md` は設定エラーとして止まります。Monogatari Coach は執筆接続の run（`_work/writing/`。以前の作品は `_writing/`）を用意し、同じ本文版の検査を重ねません。両方 OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
+METRON / CHRONOS が ON の作品では、第1章の初稿や単一章の依頼でも、これだけで接続が起動します。CHRONOS は休止中で、OFF の作品では観測と C1 の手順を飛ばします。CHRONOS だけ ON（METRON は OFF）の `config.md` は設定エラーとして止まります。Monogatari Coach は執筆接続の run（`_work/writing/`。以前の作品は `_writing/`）を用意し、同じ本文版の検査を重ねません。METRON が OFF の作品では従来どおり `_novel_text` へ直接書きます。通常の起草 run には `--allow-publish` を付けません。
 
 ```text
 この場面をDeepenしてください。

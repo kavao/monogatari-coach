@@ -168,7 +168,7 @@ uv run python tools/novel_onboard.py "作品タイトル"
 uv run python tools/novel_onboard.py "作品タイトル" --dry-run
 ```
 
-新規作成では METRON / CHRONOS が標準 ON です。確認への返答がない場合も、`config.md` に **「未応答・既定 ON」** と記録して進み、`_work/metron/` と `chronos/` を用意します。OFF で下書きしたい場合だけ `--metron OFF` / `--chronos OFF` を両方指定します。2つのフラグは連動し、片方だけ ON にはできません。行が無い既存作品は従来どおり OFF のままです。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
+新規作成では METRON が標準 ON、CHRONOS が標準 OFF です（CHRONOS は休止中で、再設計を予定しています）。METRON は確認への返答がない場合も、`config.md` に **「未応答・既定 ON」** と記録して進み、`_work/metron/` を用意します。OFF で下書きしたい場合だけ `--metron OFF` を指定します。CHRONOS を ON にできるのは METRON も ON のときだけで、CHRONOS だけ ON にはできません。すでに CHRONOS が ON の作品は、そのまま使えます。行が無い既存作品は従来どおり OFF のままです。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 実行後に `[Plan Mode] → 企画書を作成してください（proposal.md から）` と出たら、チャットで「企画書を作成してください」と伝えるだけで制作が始まります。
 

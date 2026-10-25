@@ -346,7 +346,7 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
     config_path = work / "config.md"
     try:
         flags = iflags.load_inspection_flags(config_path)
-        # 自動ワークフローの起動判定では METRON / CHRONOS を連動させる。
+        # 自動ワークフローの起動判定では、CHRONOS だけ ON（METRON は OFF）を設定エラーにする。
         iflags.require_linked_inspection_flags(flags)
     except iflags.InspectionConfigError as error:
         return {
@@ -833,24 +833,21 @@ def main(argv: list[str] | None = None) -> int:
         "--chronos",
         choices=("ON", "OFF"),
         default=None,
-        help="未作成フォルダを --bootstrap するときの CHRONOS（省略時: 未応答・既定 ON）",
+        help="未作成フォルダを --bootstrap するときの CHRONOS（省略時: 休止中・既定 OFF。ON は METRON も ON のときだけ）",
     )
     args = p.parse_args(argv)
 
     if args.bootstrap:
         from inspection_bootstrap import (
-            DEFAULT_NEW_LAYER,
             InspectionBootstrapError,
             initialize_new_layers,
+            validate_layer_pair,
         )
 
-        default_layer = DEFAULT_NEW_LAYER.value
-        if (args.metron or default_layer) != (args.chronos or default_layer):
-            print(
-                "error: METRON と CHRONOS は同じ値にしてください"
-                f"（METRON={args.metron or default_layer}, CHRONOS={args.chronos or default_layer}）",
-                file=sys.stderr,
-            )
+        try:
+            validate_layer_pair(args.metron, args.chronos)
+        except InspectionBootstrapError as error:
+            print(f"error: {error}", file=sys.stderr)
             return 2
         from novel_scaffold import bootstrap_novel, repo_root as scaffold_root
 
