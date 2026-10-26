@@ -27,9 +27,9 @@ def test_unlinked_flags_are_rejected_before_creating(tmp_path: Path, monkeypatch
     (root / "novels").mkdir()
     monkeypatch.setattr(novel_onboard, "repo_root", lambda: root)
 
-    assert novel_onboard.main(["片側作品", "--metron", "ON", "--chronos", "OFF"]) == 2
+    assert novel_onboard.main(["片側作品", "--metron", "OFF", "--chronos", "ON"]) == 2
 
-    assert "同じ値" in capsys.readouterr().err
+    assert "METRON も ON" in capsys.readouterr().err
     assert not (root / "novels" / "001_片側作品").exists()
 
 
@@ -54,9 +54,16 @@ def test_new_onboard_writes_flags_and_layers(tmp_path: Path, monkeypatch) -> Non
     work = root / "novels" / "001_試験作品"
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
-    assert flags.chronos is InspectionFlag.ON
-    assert (work / "_metron").is_dir()
-    assert (work / "chronos").is_dir()
+    assert flags.chronos is InspectionFlag.OFF  # CHRONOS は休止中で既定 OFF
+    assert (work / "_work" / "metron").is_dir()
+    assert not (work / "chronos").exists()
+
+    assert novel_onboard.main(["検査作品", "--metron", "ON", "--chronos", "ON"]) == 0
+    work_on = root / "novels" / "002_検査作品"
+    flags_on = load_inspection_flags(work_on / "config.md")
+    assert flags_on.metron is InspectionFlag.ON
+    assert (work_on / "_work" / "metron").is_dir()
+    assert (work_on / "chronos").is_dir()
 
 
 def test_new_onboard_explicit_off_does_not_prepare_layers(tmp_path: Path, monkeypatch) -> None:
@@ -80,7 +87,7 @@ def test_new_onboard_explicit_off_does_not_prepare_layers(tmp_path: Path, monkey
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -101,5 +108,5 @@ def test_existing_onboard_does_not_turn_missing_flags_on(tmp_path: Path, monkeyp
     assert novel_onboard.main([str(work)]) == 0
 
     assert not (work / "config.md").exists()
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()

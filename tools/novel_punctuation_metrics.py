@@ -378,6 +378,9 @@ def _print_gate(report: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
     parser = argparse.ArgumentParser(
         description="小説本文の句読点指標を集計する。既定は計測のみ。"
     )

@@ -53,7 +53,7 @@ def test_locate_quote_matches_inspect_observation_coordinates(tmp_path: Path) ->
     )
     assert inspect_code == 0, inspect_message
     observed = load_json_model(
-        work / "_writing" / "ch01-001" / "run-0001" / "observations.json",
+        work / "_work" / "writing" / "ch01-001" / "run-0001" / "observations.json",
         ObservationsDocument,
     )
     matched = next(entry for entry in observed.items if entry.quote == "旅行用の上着")
@@ -106,7 +106,7 @@ def test_locate_quote_core_unique_span() -> None:
 
 def _received_candidate(work):
     refs = load_json_model(
-        work / "_writing" / "ch01-001" / "run-0001" / "artifact_refs.json",
+        work / "_work" / "writing" / "ch01-001" / "run-0001" / "artifact_refs.json",
         ArtifactRefsDocument,
     )
     assert refs.candidate is not None

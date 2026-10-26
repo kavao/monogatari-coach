@@ -1,0 +1,124 @@
+# Validator Fixture（計画書 §55〜57）。形式は tools/ai_writer/validator_fixtures.py を正とする。
+# 重大度: new_* は warning、must_* と end_condition_* は fail。acceptable_extra は、出しても誤検出に数えない副次の違反。
+scene_id: library
+label: 図書室の貸出（台詞あり）
+context:
+  preceding_text: "　放課後の図書室は、窓から差す西日でオレンジ色に染まっていた。\n「また同じ本、借りるの？」\n　カウンターの向こうで、早紀が首をかしげた。"
+  known_entities:
+    characters: [早紀, 陽太]
+    locations: [図書室, カウンター]
+    items: [本, 貸出カード, 判子]
+  canon_facts:
+    - 早紀は図書委員で、放課後にカウンター当番をしている。
+    - 陽太は同じ本を何度も借りている。
+    - 貸出期間は一週間である。
+contract:
+  objective: 陽太が本を借りる
+  must_include: [貸出カード, 返却期限]
+  must_not: [早紀が陽太への好意を口にする, 陽太が本の結末を話す]
+  end_condition: 早紀が貸出カードに判子を押した直後
+cases:
+
+  - id: library-neg-01
+    polarity: negative
+    note: 契約どおりの基本形
+    candidate: "「続きが気になって、眠れないんだよ」\n　陽太は貸出カードを差し出した。早紀はカードの日付欄を指でなぞった。\n「返却は来週の金曜日まで。延滞したら、次は貸さないからね」\n　早紀は小さく笑って、判子を押した。"
+    expected: {status: pass}
+
+  - id: library-neg-02
+    polarity: negative
+    note: スタンプ台やインクの匂いなど、場面にある日用品が増えるだけ
+    candidate: "「何回読んでも、途中で止まらなくなるんだ」\n　陽太が貸出カードを置くと、早紀はスタンプ台のふたを開けた。\n「返却期限は来週の金曜日。忘れないでね」\n　インクの匂いがかすかに漂い、早紀はカードに判子を押した。"
+    expected: {status: pass}
+
+  - id: library-neg-03
+    polarity: negative
+    note: 「好き」は本についての言葉で、陽太への好意ではない
+    candidate: "「好きだね、その本」\n　早紀があきれたように言った。\n「うん。何度読んでもいいんだ」\n　陽太は貸出カードを差し出した。\n「返却期限は一週間後だよ」\n　早紀はそう言って、判子を押した。"
+    expected: {status: pass}
+
+  - id: library-neg-04
+    polarity: negative
+    note: 本の話をするが、結末は明かさない
+    candidate: "「主人公がどうなるか、分かってても読み返したくなるんだ」\n　陽太はそう言って、貸出カードをカウンターに置いた。\n「ふうん。返却期限は来週の金曜日ね」\n　早紀はカードを受け取り、判子を押した。"
+    expected: {status: pass}
+
+  - id: library-pos-new-character
+    polarity: positive
+    candidate: "「続きが気になってさ」\n　陽太が貸出カードを差し出したとき、奥の書庫から司書の森先生が顔を出した。\n「早紀さん、閉館は五時よ」\n「はい。返却期限は来週の金曜日ね」\n　早紀はそう答えて、判子を押した。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_character, evidence: 司書の森先生}
+      acceptable_extra: [new_fact, new_location]
+
+  - id: library-pos-new-location
+    polarity: positive
+    candidate: "「その本なら、二階の閲覧室に下巻があったよ」\n　早紀に言われて、陽太は二階の閲覧室まで下巻を取りに行った。戻ってきて貸出カードを二枚差し出す。\n「返却期限は来週の金曜日ね」\n　早紀は判子を押した。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_location, evidence: 二階の閲覧室まで下巻を取りに行った}
+      acceptable_extra: [new_fact]
+
+  - id: library-pos-new-event
+    polarity: positive
+    candidate: "「続きが気になって、眠れないんだよ」\n　陽太が貸出カードを差し出したそのとき、窓の外で雷が鳴り、図書室の明かりが一瞬消えた。\n「……びっくりした。返却期限は来週の金曜日ね」\n　早紀は判子を押した。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_event, evidence: 窓の外で雷が鳴り、図書室の明かりが一瞬消えた}
+
+  - id: library-pos-new-fact
+    polarity: positive
+    candidate: "「続きが気になって、眠れないんだよ」\n　陽太は貸出カードを差し出した。早紀とは幼なじみで、昔からこの本の話ばかりしている。\n「返却期限は来週の金曜日ね」\n　早紀は判子を押した。"
+    expected:
+      status: warning
+      violations:
+        - {type: new_fact, evidence: 早紀とは幼なじみで}
+
+  - id: library-pos-must-include
+    polarity: positive
+    note: 返却期限が出てこない
+    candidate: "「続きが気になって、眠れないんだよ」\n　陽太は貸出カードを差し出した。\n「ほんとに好きなんだね、その本」\n　早紀は小さく笑って、判子を押した。"
+    expected:
+      status: fail
+      violations:
+        - {type: must_include_missing, target: 返却期限}
+
+  - id: library-pos-must-not
+    polarity: positive
+    candidate: "　陽太は貸出カードを差し出した。\n「返却期限は来週の金曜日。……本当はね、陽太くんが来るのを毎日待ってたんだ」\n　早紀は耳まで赤くして、判子を押した。"
+    expected:
+      status: fail
+      violations:
+        - {type: must_not_violation, target: 早紀が陽太への好意を口にする, evidence: 陽太くんが来るのを毎日待ってたんだ}
+
+  - id: library-pos-end-unmet
+    polarity: positive
+    note: 判子を押す前で終わる
+    candidate: "「続きが気になって、眠れないんだよ」\n　陽太は貸出カードを差し出した。\n「返却期限は来週の金曜日ね」\n　早紀は判子に手を伸ばしかけて、ふと手を止めた。"
+    expected:
+      status: fail
+      violations:
+        - {type: end_condition_unmet}
+
+  - id: library-pos-end-exceeded
+    polarity: positive
+    note: 判子のあとも話が進む
+    candidate: "　陽太は貸出カードを差し出した。\n「返却期限は来週の金曜日ね」\n　早紀は判子を押した。陽太は本を抱えて図書室を出た。校門の前で振り返ると、図書室の窓にはまだ明かりがついていた。"
+    expected:
+      status: fail
+      violations:
+        - {type: end_condition_exceeded, evidence: 陽太は本を抱えて図書室を出た}
+      acceptable_extra: [new_location]
+
+  - id: library-pos-multi
+    polarity: positive
+    note: 結末を話す（禁止）と、新しい事実
+    candidate: "「最後に主人公は、親友に裏切られて死ぬんだよ。それでも読み返したくなる」\n　陽太は貸出カードを差し出した。来月には転校するから、これが最後の貸出になる。\n「返却期限は来週の金曜日ね」\n　早紀は黙って判子を押した。"
+    expected:
+      status: fail
+      violations:
+        - {type: must_not_violation, target: 陽太が本の結末を話す, evidence: 最後に主人公は、親友に裏切られて死ぬんだよ}
+        - {type: new_fact, evidence: 来月には転校する}

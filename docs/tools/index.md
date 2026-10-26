@@ -18,18 +18,18 @@ METRON は Scene を Beat に分け、本文の構造予算を計測してレポ
 
 ```bash
 python tools/metron_cli.py validate \
-  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml
+  --contract novels/NNN_作品名/_work/metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml
 ```
 
 マーカー付き draft を解析し、run ごとの `draft.NNN.md`、`spans.NNN.yaml`、`metrics.NNN.yaml`、`regression.NNN.yaml` を保存します。既存 run のファイルは上書きしません。
 
 ```bash
 python tools/metron_cli.py analyze \
-  --contract novels/NNN_作品名/_metron/ch03-002/contract.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --draft novels/NNN_作品名/_metron/ch03-002/marked.md \
-  --output-dir novels/NNN_作品名/_metron/ch03-002 \
+  --contract novels/NNN_作品名/_work/metron/ch03-002/contract.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --draft novels/NNN_作品名/_work/metron/ch03-002/marked.md \
+  --output-dir novels/NNN_作品名/_work/metron/ch03-002 \
   --run 1 --model <model-id>
 ```
 
@@ -37,9 +37,9 @@ python tools/metron_cli.py analyze \
 
 ```bash
 python tools/metron_cli.py report \
-  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --output novels/NNN_作品名/_metron/ch03-002/report.001.md
+  --metrics novels/NNN_作品名/_work/metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --output novels/NNN_作品名/_work/metron/ch03-002/report.001.md
 ```
 
 キャリブレーションは、課金や外部生成を伴わない dry-run を先に確認します。dry-run は計画だけを表示し、本番生成を行いません。
@@ -63,13 +63,13 @@ python tools/metron_cli.py calibrate --model <model-id> \
 
 ```bash
 python tools/metron_cli.py classify \
-  --metrics novels/NNN_作品名/_metron/ch03-002/metrics.001.yaml \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
-  --spans novels/NNN_作品名/_metron/ch03-002/spans.001.yaml \
+  --metrics novels/NNN_作品名/_work/metron/ch03-002/metrics.001.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
+  --spans novels/NNN_作品名/_work/metron/ch03-002/spans.001.yaml \
   --config config/metron_models.yaml --model <model-id>
 
 python tools/metron_cli.py plan \
-  --beats novels/NNN_作品名/_metron/ch03-002/beats.yaml \
+  --beats novels/NNN_作品名/_work/metron/ch03-002/beats.yaml \
   --config config/metron_models.yaml --model <model-id>
 ```
 
@@ -77,8 +77,8 @@ python tools/metron_cli.py plan \
 
 ```bash
 python tools/metron_cli.py finalize \
-  --draft novels/NNN_作品名/_metron/ch03-002/draft.002.md \
-  --output novels/NNN_作品名/_metron/ch03-002/FINAL.md
+  --draft novels/NNN_作品名/_work/metron/ch03-002/draft.002.md \
+  --output novels/NNN_作品名/_work/metron/ch03-002/FINAL.md
 ```
 
 ### `chronos_cli.py` — CHRONOS の順序検査と人物状態
@@ -110,9 +110,9 @@ python tools/chronos_cli.py view novels/NNN_作品名 --actor CHR-protagonist
 
 ### `writing_bridge_cli.py` — METRON / CHRONOS の執筆接続
 
-Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_writing/<scene_id>/<run_id>/` に残します。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
+Monogatari Coach は、フラグが ON の作品で執筆前後の文脈と検査を `_work/writing/<scene_id>/<run_id>/` に残します（以前から `_writing/<scene_id>/` がある場面は、そのまま `_writing/` に残します）。LLM も起動しません。`prepare` だけでは本文正本を書き換えません。`--allow-publish` 付きの run で `publish` したときだけ `_novel_text` を場面単位で更新します。正本では Beat マーカーを除き、単位の境に残った連続空行を段落1つ分まで畳みます。
 
-両方 OFF のときは run を作りません。契約とマーカー稿は従来どおり `_metron/` に置きます。
+両方 OFF のときは run を作りません。契約とマーカー稿は METRON の場面フォルダ（`_work/metron/<場面>/`）に置きます。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 接続の対象パスを確認します。`--dry-run` では run も `request.yaml` も作りません。
 
@@ -131,7 +131,7 @@ python tools/writing_bridge_cli.py prepare novels/NNN_作品名 \
   --request-kind new
 ```
 
-実行後、`_writing/ch01-001/run-0001/` などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
+実行後、`_work/writing/ch01-001/run-0001/`（以前から `_writing/ch01-001/` がある場面では `_writing/ch01-001/run-0001/`）などができます。次の `--run-id` は、標準出力の `prepared: .../run-XXXX` に合わせて置き換えます。dry-run の直後に `receive` すると `request.yaml` が無く失敗します。
 
 候補を受領し、同じ本文版を検査します。このレシピは正本を書きません。
 
@@ -300,7 +300,7 @@ python tools/novel_onboard.py "作品タイトル" --dry-run
 python tools/novel_onboard.py "作品タイトル" --metron OFF --chronos OFF
 ```
 
-新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、`_metron/` と `chronos/` を ON の場合だけ準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプションを付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
+新規フォルダでは `config.md` に METRON / CHRONOS の行を作り、ON の場合は `_work/metron/` と `chronos/` も準備します。作成時の確認に返答がない場合は **「未応答・既定 ON」** として `config.md` のコメントへ記録されます。OFF は明示オプション（`--metron OFF --chronos OFF`）を付けた場合だけです。既存フォルダを指定した場合、既存の `config.md` とフラグは変更しません。`--dry-run` は予定フラグと保存先を表示するだけです。
 
 実行後は `[Plan Mode]` または `[チャットモード開始]` の案内に従って制作を始めます。
 
@@ -323,7 +323,28 @@ python tools/novel_status.py novels/NNN_作品名 --next
 
 `--next` は「ファイルが何も揃っていない→Plan Mode」「本文はあるがタグがない→Tag Mode」など、ファイルシステムの状態から次のステップを自動判定します。チャットモード作品（`_meta.md` に「執筆モード: チャットモード」がある）は「次のセグメントを執筆してください」を返します。
 
+ダッシュボードの「goal の状況」欄には、章ごとの状態と `_meta.md` の「次回のタスク」との突合が出ます（詳細は次項）。
+
 詰まったときは [トラブルシューティング](../workflow/troubleshooting.md) を参照してください。
+
+---
+
+### `goal_status.py` — goal の状況と達成判定
+
+場面ごとに「できている／作っている／保留／未着手」を判定して章にまとめ、`_meta.md` に反映します。goal モードで依頼したあとに「どこまで進んだか」を確かめたいときや、会話が要約されたあとに再開するときに使います。読み取り専用で、`--write-meta` を付けたときだけ `_meta.md` の自動生成ブロックを書き換えます。
+
+```bash
+# 確認: 章ごとの状態と、次回のタスクとの突合を表示する
+uv run python tools/goal_status.py novels/NNN_作品名
+
+# 達成判定: 第3章が保存済みで 4000字±3% に入っているか（未達があれば終了コード 1）
+uv run python tools/goal_status.py novels/NNN_作品名 --chapter 3 --chars 4000
+
+# 反映: _meta.md の「goal の状況」枠を更新する
+uv run python tools/goal_status.py novels/NNN_作品名 --write-meta
+```
+
+状態の定義と読み方は [goal モードで依頼する](../workflow/goal-mode.md#状況を確認するgoal_status) を参照してください。
 
 ---
 
@@ -338,6 +359,42 @@ python tools/novel_char_count.py novels/NNN_作品名
 # 特定ファイルのみ
 python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.md
 ```
+
+---
+
+### `design_density.py` — 章の設計密度
+
+`design_specification.md` の章ごとに、番号付きの出来事の件数と章の目標字数から、1項あたりの見込み字数を出します。設計書も本文も書き換えません。目標は、`--target` で渡した字数か、章の「**分量目安**：」の書き出しの字数だけを使います（同じ行の「初稿は 7,983字」のような実測は使いません）。どちらも無い章は「保留」です。出来事として数えるのは、章見出しの下で行頭（字下げなし）から始まる番号付き項目だけです。字下げした入れ子の補足と、コードブロックの中は数えません。
+
+```bash
+# 全章
+uv run python tools/design_density.py novels/NNN_作品名
+
+# 第3章を、伝えられた目標 8000字で判定する
+uv run python tools/design_density.py novels/NNN_作品名 --chapter 3 --target 8000
+```
+
+判定は、500〜800字/項が推奨帯、1000字超が少なすぎ（子エピソードを足す）、300字未満が多すぎ（統合を提案）、それ以外が帯の外だが許容です。推奨件数の列は目標 ÷ 800 〜 目標 ÷ 500 です。基準は `_how_to.example/length_ops.md` §4.7 にあります。
+
+---
+
+### `novel_meta_char_table.py` — 章別文字数表の生成と照合
+
+`_meta.md` I.1 の「章別文字数」表を、`novel_char_count.py` と同じ数え方で生成・照合します。このコマンドは `_meta.md` を書き換えません。表がある作品だけ在庫の正本として使い、無い作品へは自動では足しません。
+
+章別の在庫を表へ写したいとき、ユーザーが作品フォルダを指定すると、Monogatari Coach は `render` で Markdown 表を出し、ストーリー反映経由で `_meta.md` へ写します。数字が表と本文でずれていないかは `check` で確認できます。
+
+```bash
+# 表を標準出力する（状態列は既存表を引き継ぐ。新規行は初稿）
+python tools/novel_meta_char_table.py render novels/NNN_作品名
+
+# 表と集計が一致するか確認する（表が無ければ終了コード 0）
+python tools/novel_meta_char_table.py check novels/NNN_作品名
+```
+
+状態列は、`初稿`（清書をまだ当てていない章）、`清書済`（最後の本文変更が清書だった章）、`清書中`（清書のあとに加筆した章）の3つです。`render` は今の表の状態を引き継ぐだけで、`清書済` へは自動で変えません。
+
+`render` の出力をコピーして、意図した `_meta.md` の同節へ貼れます。`check` が終了コード 1 のときは、表の数字と本文の集計がずれています。設計書の想定総文字数は目標であり、この表の在庫とは混ぜません。
 
 ---
 
@@ -412,9 +469,11 @@ python tools/novel_project_check.py novels/NNN_作品名 --bootstrap --metron OF
 
 本文の意味内容までは判定せず、章番号・ファイル存在・スケジュール表記の食い違いだけを見ます。出来事リストの意味一致は検査しません。執筆後の設計書同期（スキル `novel-story-reflection`）の補助として、`dry-run` 的に警告を確認する用途で使います。確定出来事の同期と lock / journal 操作は `story_reflection_op.py` を使います。
 
-`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
+`--check-inspection-layers` は `config.md` の「## 基本情報」表にある `METRON` / `CHRONOS` / `AUDIT_LOG` を読みます。`METRON` / `CHRONOS` は行なしまたは `OFF` が対象外、`ON` なのに `_work/metron/` または `chronos/` が無い場合は WARN（終了コード 0）です。METRON が ON のときは、空の `_work/metron/` と、本文がある章で対応する `contract.yaml` / `beats.yaml` / run が欠けている未計測章も WARN に列挙します。これらの WARN で本文保存の完了を取り消しません。`AUDIT_LOG` は行なしが ON、`OFF` のときだけ査証ログの自動追記を止めます。未知値・重複キー・既存 `config.md` の読込失敗は設定エラー（終了コード 1）です。個別の `metron_cli.py` / `chronos_cli.py` はこのフラグを読みません。
 
-未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。既存フォルダの `--bootstrap` は設定行や値を変更しません。
+未作成フォルダを `--bootstrap` するときは、`--metron` / `--chronos` の既定も ON です。作成時の確認に返答がない場合は「未応答・既定 ON」を `config.md` に記録します。
+
+`--check-inspection-layers` は、METRON が ON の作品で、本文のある章ごとに契約・Beat・run の有無と、run が測った本文と今の本文が一致するかを確かめます。計測のあとに清書などで書き換えた章は「計測が古い」と表示され、次の章へ進む前の後追い計測の対象になります。`config.md` の基本情報表に `| METRON_FROM | 5 |` のように書くと、第5章より前は「計測対象外（下書き期）」として扱われます。既存フォルダの `--bootstrap` は設定行や値を変更しません。
 
 ---
 
@@ -448,6 +507,112 @@ python tools/story_reflection_op.py lock-release novels/NNN_作品名
 `lock-inspect` は lock と現行 operation を表示するだけで、ファイルは消しません。`begin` / `apply-design` / `apply-meta` / `fail` / `resume` / `close-orphan` / `lock-release` は、読込から全書込みまで OS 排他を保持します。同じ作品へ同時に走らせると、一方だけが成功し、他方は終了コード 2（`LOCK_HELD`）になります。正式名への公開は既存 lock を上書きしません。解除は正式名が消えるまで排他を保持します。削除に失敗したときは正式名を動かさず、終了コード 2（`LOCK_HELD`）になります。`lock-release` は current と最後の状態遷移が `done` / `failed` で完全一致しているときだけ lock を消します。`lock_released` は削除成功後だけ journal に残します。削除失敗では成功イベントを書きません。進行中や孤児の lock は解除しません。チャットで「ロックを消して」とだけ言われても、Monogatari Coach はこのコマンドの判定を通さずに消しません。`close-orphan` は active の孤児だけを `failed` にできます。`done` / `failed` の terminal は変えません。`resume` も terminal は対象外です。
 
 完了報告の見方は `_meta.md` の `出来事同期` 1行です。`第N章出来事（更新|差分なし|未完了）` が残っているかを後続セッションが参照します。`--check-story-sync` は形式検査だけなので、この1行の代わりにはなりません。
+
+---
+
+### `novel_work_migrate.py` — 作品フォルダを新しい構成へ移す
+
+以前の作品では、機械が書く記録（ストーリー反映の状態、執筆接続の run、METRON の場面、評価の中間）が作品フォルダの直下や `_writing/`・`_metron/`・`_reader/_work/` に置かれています。このツールは、それらを場面などの単位ごとに `_work/` の下へ移し、作品フォルダの直下には読む・直すファイルだけが並ぶようにします。移さなくても、以前の作品はそのまま読めます。
+
+### このツールを使う場面
+
+| 場面 | 使い方 |
+|------|--------|
+| 以前の作品の作品フォルダを整理したい | `--dry-run` で確かめてから移す |
+| 古い構成が残っているかを見たい | `novel_project_check.py --check-layout` |
+| 移行が途中で止まった（電源が落ちた、強制終了した） | `--recover` |
+
+### チャットへの指示文
+
+これだけ入力すれば動きます。
+
+```text
+novels/NNN_作品名 の作品フォルダを新しい構成へ移してください。
+```
+
+と入力すると、Monogatari Coach は次のように進めます。
+
+1. `--dry-run` で、何をどこへ移すかを表示し、移してよいかを確かめます。`_meta.md` が以前の形なら、`novel_meta_check.py migrate --dry-run` の要約も一緒に見せます。
+2. 承認されたら移します。修復や保存（publish）が途中の場面、ストーリー反映の操作が途中の作品は移さず、その理由を報告します。
+3. 移したあとに、`novel_project_check.py --check-layout` で古い構成の印が残っていないかを確かめます。
+
+### 以前の作品を編集するとき
+
+以前の構成のままの作品について「続きを書いて」「清書して」などを頼むと、Monogatari Coach は作業の前に一度だけ「先に新しい構成へ移しますか」と聞きます。
+
+- 移すと答えると、移してから頼まれた作業に入ります。
+- 移さないと答えると、その作品では同じことを聞きません（`_work/migration.json` に記録します）。作業は以前の構成のまま進みます。
+- 用語照合・一貫性監査・下読み・質問への回答では聞きません。
+- 修復や保存が途中の作品では聞きません。
+
+判定は次のコマンドで確かめられます。何も書きません。
+
+```bash
+# 依頼の種類（edit / evaluate / read）ごとに、移行を勧めるかと、_meta.md に足す節を表示する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --advise edit
+
+# 移行を断ったことを記録する（以後は勧めない）
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --decline
+```
+
+### コマンド
+
+まず `--dry-run` で、移す単位とファイル数を確認します。ファイルは何も変わりません。
+
+```bash
+# 確認（dry-run）— 移す単位とファイル数を表示する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --dry-run
+
+# 本番（確認してから）— 単位ごとに移す
+uv run python tools/novel_work_migrate.py novels/NNN_作品名
+
+# 種類を絞る（story_reflection / writing / metron / reader）
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --kind writing --dry-run
+```
+
+実行後、`novels/NNN_作品名/_work/` の下に `story_reflection/`・`writing/<場面>/`・`metron/<場面>/`・`reader/<日付>/` ができます。空になった `_writing/`・`_metron/`・`_reader/_work/` は消えます。ファイルが残っているフォルダは消しません。
+
+移行が途中で止まったときは、次のコマンドで、移行前か移行後のどちらか一方の完全な形に戻ります。止まった単位があると、通常の移行は `--recover` を求めて止まります。
+
+```bash
+# 中断した移行を復旧する
+uv run python tools/novel_work_migrate.py novels/NNN_作品名 --recover
+```
+
+### 仕組み
+
+- 単位（ストーリー反映の3ファイル、執筆接続の場面、METRON の場面、評価の1日分）ごとに、いったん `_work/.migrating/` へ写し、ハッシュを照らしてから名前の変更で切り替えます。移している間、その単位は各ツールが「移行中」として使いません。
+- 以前の置き場のファイルを直接消す手順はありません。退けるのは名前の変更だけなので、途中で止まっても `--recover` で戻せます。
+- Windows で、誰かが場面のファイルを開いているときなど、以前の置き場を動かせない場合は、何も変えずに `IN_USE` で止まります。ファイルを閉じてからもう一度実行してください。
+- 保存済みの記録の中のパス（`_writing/…`・`_metron/…`）は書き換えません。各ツールが読むときに、移した先を解決します。
+- 置き場の決め方の詳細は [`work_paths.py`](../../tools/work_paths.py) と、計画 `_workingspace/plans/20261024_work-folder-layout.md` にあります。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます。
+
+---
+
+### `novel_meta_check.py` — `_meta.md` の形の判定と移行
+
+作品の `_meta.md` が、雛形（`_how_to.example/meta.md`）の4部構成（内部メタ・外部メタ・画像と漫画の設定・評価履歴）になっているかを判定し、以前の形の `_meta.md` を雛形の並びへ移します。移すときは、本文の段落・表・コードブロックを節ごとにそのまま並べ替え、見出しだけを雛形の見出しに変えます。対応の決まらない節は末尾の「移行前の節（未分類）」にそのまま置きます。
+
+```bash
+# 形を判定する（new / partial / legacy）。書かない
+uv run python tools/novel_meta_check.py check novels/NNN_作品名
+
+# 確認（dry-run）— 見出しの変換・足す節・未分類に置く節と差分を表示する
+uv run python tools/novel_meta_check.py migrate novels/NNN_作品名 --dry-run
+
+# 本番（確認してから）— 旧版を _novel_text_backup/_meta_vNNN.md に退避して書く
+uv run python tools/novel_meta_check.py migrate novels/NNN_作品名
+
+# 必要な節だけ足す（ほかの行は動かさない）
+uv run python tools/novel_meta_check.py ensure-section novels/NNN_作品名 evaluation-history
+```
+
+- 移す前に、次の3つを確かめます。どれかが満たせなければ、書かずに止まります。
+  - 機械が読む記録（次回のタスク・章別文字数の表・評価履歴の表・出来事同期・goal の自動生成ブロック）が、移したあとも同じに取れる。
+  - 本文の行が失われない。
+  - もう一度移しても差分が出ない。
+- 「章別文字数」の表は、雛形の決まりに従って自動では足しません。
+- `ensure-section` で足せる節は `phase-status`・`goal-status`・`context`・`evaluation-history`・`inspection-plan`・`gate-b` です。
 
 ---
 
@@ -505,8 +670,10 @@ python tools/novel_code_allocate.py novels/
 |-------------|-----------|---------|
 | `default`（既定） | 章メタ・三点リーダー・`。」` | 清書後の取りこぼし確認 |
 | `grammar` | セリフ行頭・段落インデント・句読点連続・半角カンマ・空括弧・助詞重複・全角スペース | **執筆直後**のクイックチェック／`--fix` |
-| `full` | `default` + `grammar` の全ルール | 清書前の総合チェック |
+| `full` | `default` + `grammar` + `slop` の全ルール | 清書前の総合チェック |
 | `minimal` | 三点リーダー・`。」` のみ | 旧稿を句読点から直したいとき |
+| `padding` | 冗長化の候補（迂言・メタ前置き・抽象への逃げ・重複語）。すべて info | 清書・字数合わせの前に、削る候補を見る |
+| `slop` | 低品質文（スロップ）の定型句・記号の候補。すべて info | 起草・清書の前後に、AI が多用する言い回しの重なりを見る |
 
 **検出ルール一覧**:
 
@@ -525,6 +692,43 @@ python tools/novel_code_allocate.py novels/
 | `empty_dialogue` | 空のカギ括弧 `「」` | warning | grammar/full |
 | `duplicate_particle` | `をを` `がが` など助詞の重複 | info | grammar/full |
 | `fullwidth_space_double` | 全角スペースの連続 `　　` | info | grammar/full |
+| `padding_circumlocution` | 「〜ことができた」「〜という状況になった」などの迂言 | info | padding |
+| `padding_meta_preface` | 「言うまでもなく」「ここで少し説明」などのメタ前置き | info | padding |
+| `padding_abstract` | 「言葉にできないほど」などの抽象への逃げ | info | padding |
+| `padding_redundant_modifier` | 「まず最初に」「非常にとても」などの重複語 | info | padding |
+| `padding_measurement` | 「数十センチもない」などの数値による計測 | info | padding |
+| `padding_repeated_phrase` | 同じ10字の語句がファイル内で3回以上（3回目の行に1件） | info | padding |
+| `slop_em_dash` | EM DASH `—`（U+2014）。日本語のダッシュは `――` | info | slop/full |
+| `slop_contrast_frame` | 「単なる〜ではなく」「単なる〜ではありません」「単なる〜を超えて」などの対比の定型 | info | slop/full |
+| `slop_hedge_close` | 「と言えるでしょう」「ではないでしょうか」などの締め | info | slop/full |
+| `slop_both_sides` | 「どちらが正解というわけでは」「場合によります」「ケースバイケースです」などの両論併記・判断保留 | info | slop/full |
+| `slop_invitation` | 「ぜひ〜してみて」「いかがでしょうか」などの呼びかけ | info | slop/full |
+| `slop_stock_emotion` | 「胸の奥がじんわり」「どこか〜ような」などの感情の定型 | info | slop/full |
+
+`slop` の結果も候補です。一度なら問題のない言い回しも拾うので、同じ場面で重なっていないかを見ます。字義どおり読むと崩れる文（意味破綻）や、省きすぎた見出し（過剰圧縮）は機械では拾えません。系列と文例は `_how_to.example/slop_patterns.md` を参照してください。
+
+作業用の `_how_to/novel_text_rewrite_rules.yaml` がある環境では、ツールはその設定を雛形より優先して読み込みます。既存の調整を残して slop を有効にするには、雛形の `_how_to.example/novel_text_rewrite_rules.yaml` から次の定義を反映します。
+
+1. `rules` に、6件の `slop_*` ルール定義を追加します。同じ ID の定義がある場合は、その `patterns` と `message` に雛形の更新を反映します。独自の調整があれば保持します。
+2. `profiles.slop` を追加します。
+3. 既存の `profiles.full.rules` に、`slop_em_dash`、`slop_contrast_frame`、`slop_hedge_close`、`slop_both_sides`、`slop_invitation`、`slop_stock_emotion` を追加します。既存のルール一覧と `extends` は保持します。
+
+手順3を省くと、`--profile slop` は使えても、`--profile full` では slop を検査しません。有効化の確認には、作品を対象に次のコマンドを実行します。
+
+```bash
+uv run python tools/novel_text_rewrite_lint.py novels/NNN_作品名 --profile full --verbose
+```
+
+出力の有効ルール一覧に、上記6件の `slop_*` が含まれることを確認してください。
+
+`padding` の結果は候補です。焦りや強調のための繰り返し、語り口として意図した前置きは残してかまいません。`--strict` でも終了コードは変わりません。
+
+作業用の `_how_to/novel_text_rewrite_rules.yaml` がある環境で padding を有効にするには、雛形から次の定義を反映します。`padding` は `full` に含まれないため、`profiles.full` は変えません。
+
+1. `rules` に、6件の `padding_*` ルール定義を追加します。同じ ID の定義がある場合は、雛形の更新を反映し、独自の調整があれば保持します。
+2. `profiles.padding` を追加します。
+
+有効化の確認には、`--profile padding --verbose` で実行し、出力の有効ルール一覧に6件の `padding_*` が含まれることを確認してください。
 
 **推奨ワークフロー（全体）**:
 
@@ -698,6 +902,52 @@ uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名/_reader
 ```
 
 確かめる内容は、ファイル名と冒頭の scope の一致、冒頭の件数と指摘表の行数の一致、「確認した組み合わせ」の指摘数の合計、設定監査の設定ハッシュの有無です。終了コードは 0 が合格、1 が不一致あり、2 がファイルを読めないときです。
+
+---
+
+### `novel_proper_noun_lint.py` — 固有名詞の機械照合
+
+設計書と企画書に出る人物名・地名の候補が、`character.md` と `world.md` に定義されているかを照合します。Monogatari Coach は設定監査の任意前処理として使います。Gate A の必須検査にはしません。LLM は呼ばず、作品ファイルも書き換えません。地の文の一語は拾わず、見出し・Mermaid・読み付き・姓名の分かちだけを候補にします。
+
+作品フォルダを指定して照合します。
+
+```powershell
+# 設計書と企画書を照合する
+uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名
+
+# 結果を JSON で表示する
+uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら未定義の候補はありません。1 なら未定義があり、2 なら作品フォルダや定義資料がありません。終了コード 1 でも設定監査は止めません。
+
+`world.md` の用語集は `novel_glossary.py` と同じ読み方で読みます。`## 用語（承認待ち）` の語は定義済みに数えません。
+
+---
+
+### `novel_glossary.py` — 用語集の構造と表記の照合
+
+`world.md` の用語集（`## 用語` / `## 用語（承認待ち）`）を読み、構造（必須の列、ID の重複、名前と許容表記の衝突、種別の値）と、設定・企画書・本文に出る正式名称・許容表記・避ける表記を照合します。Monogatari Coach は用語照合の最初の手順として使います。LLM は呼ばず、作品ファイルも書き換えません。
+
+作品フォルダを指定して照合します。
+
+```powershell
+# 用語集の構造と表記を照合する
+uv run python tools/novel_glossary.py novels/NNN_作品名
+
+# 本文のカタカナの未登録候補も出す（確度は低い）
+uv run python tools/novel_glossary.py novels/NNN_作品名 --katakana
+
+# 避ける表記の出現も終了コード 1 にする
+uv run python tools/novel_glossary.py novels/NNN_作品名 --strict
+
+# 結果を JSON で表示する（報告に写すハッシュを含む）
+uv run python tools/novel_glossary.py novels/NNN_作品名 --json
+```
+
+終了コードが 0 なら構造のエラーはありません。1 なら構造のエラー（`--strict` では避ける表記の出現も）があり、2 なら作品フォルダや `world.md` がありません。用語集が無い作品は「未整備」と表示され、照合は行いません。`## 用語集` や箇条書きで書いた既存の用語集は「旧形式（読取互換）」として名前と定義だけを読みます。
+
+この照合が 0 件でも、造語や名前のない決まりごとが無いとは限りません。文脈を読む照合の依頼方法は [作品固有の用語と用語照合](../workflow/terminology-audit.md) を参照してください。
 
 ---
 
@@ -878,6 +1128,24 @@ python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga
 ```
 
 schema 1.0 のページと 6コマ以上のページは対象外です。選び方と注意点は [漫画ページ IR の「コマ割りの型から矩形を起こす」](../image-generation/manga-prompt-ir.md#コマ割りの型から矩形を起こすnovel_manga_layout_applypy) を参照してください。
+
+---
+
+## AI 執筆（NovelAI テキスト生成）
+
+NovelAI のテキストモデルで本文の続き・指定つきの続き・挿入を生成し、候補として保存する仕組みです（Phase 1、試作段階）。生成した文は作品の本文へ自動では書き込みません。接続の確認、3 操作の試し方、Benchmark と比較実験のコマンドは [AI 執筆基盤のガイド](ai-writer.md) にまとめています。
+
+| コマンド | 用途 |
+| --- | --- |
+| `ai_writer_provider_cli.py` | NovelAI との接続と途中停止の確認 |
+| `ai_writer_writer_cli.py` | Continue / Directed Continue / Expand の 3 操作の確認 |
+| `ai_writer_bench_cli.py` | 日本語 Benchmark（生成・採点シート・独立採点・照合・集計） |
+| `ai_writer_length_cli.py` | Directed Continue の字数不足への対処の比較 |
+| `ai_writer_validator_fixture_cli.py` | Validator Fixture の検査と採点（送信しない） |
+| `ai_writer_creative_cli.py` | 別の展開を見る（試作）: 同じ出発点から明示したモデルで複数の案を作り、読み比べ用に保存・停止・再開 |
+| `ai_writer_creative_bench_cli.py` | 別の展開を見る 実験A: 6 課題 × 2 モデル × 3 案を作り、モデル名を伏せた採点シートで比べる |
+
+どのコマンドも `--execute` を付けない限り送信しません。
 
 ---
 
@@ -1090,7 +1358,25 @@ python tools/novel_pick_registry.py list --visibility user
 python tools/novel_pick_registry.py list --prefix mature_
 ```
 
-`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意）。
+`--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意。サブコマンドより前に置く: `python tools/novel_pick_registry.py --novel novels/NNN_作品名 show <list_id>`）。作品別の定義は、標準・作業用の同じ `list_id` より後勝ちになる。
+
+---
+
+### `novel_structure_draw.py` — 構造方針 rolled の抽選（プロットのアレンジ）
+
+「平板なのでアレンジして」と頼んだときに、Monogatari Coach がスキル **novel-plot-arrange** の中で使う道具です。章ごとの診断の表（JSON）を受け取り、壊しどころの条件で確率を補正して転を振り、振るたびに `novels/<作品>/_work/structure/draws.jsonl` へ記録します。設計書・本文・`_meta.md` は書き換えません。
+
+まず記録へ書かずに結果だけを確かめ、そのあと記録します（同じシードなので結果は同じです）。
+
+```bash
+# 確認（記録へ書かない）
+uv run python tools/novel_structure_draw.py novels/NNN_作品名 novels/NNN_作品名/_work/structure/diagnosis_20261025_1200.json --dry-run
+
+# 抽選して記録する（--reader-trace は読み進みの推移を平坦の判定に加えるとき）
+uv run python tools/novel_structure_draw.py novels/NNN_作品名 novels/NNN_作品名/_work/structure/diagnosis_20261025_1200.json
+```
+
+実行後、`draws.jsonl` に1抽選1行が追記され、標準出力に章ごとの結果と、転の回数が下限に足りないときの理由が出ます。診断の表の形と手順はスキル **novel-plot-arrange** の手順6、使い方は [プロットのアレンジ](../workflow/plot-arrange.md) を参照してください。
 
 mature / body 向け user list_id の有効化手順は **`_how_to.example/pick_registry/README.md`** を正とする（公式 docs には具体 path を載せない）。
 

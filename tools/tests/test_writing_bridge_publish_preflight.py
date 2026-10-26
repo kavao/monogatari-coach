@@ -67,7 +67,7 @@ def _hashes_from(message: str) -> tuple[str, str]:
 
 
 def _dest(work: Path) -> Path:
-    return work / "_writing" / "ch01-001" / "run-0001"
+    return work / "_work" / "writing" / "ch01-001" / "run-0001"
 
 
 def _snapshot(work: Path, dest: Path, text_file: Path) -> tuple[bytes | None, bytes | None, str]:

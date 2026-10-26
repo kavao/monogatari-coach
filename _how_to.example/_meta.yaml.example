@@ -5,8 +5,9 @@
 version: 1
 
 novelai:
-  portion_default: cross_flat
-  portion_fallback: cross_flat
+  # NovelAI V5 が標準。Vibe は未提供のため既定は none。V4.5 画風が要るときだけ --novelai-portion-id cross_flat
+  portion_default: "none"
+  portion_fallback: "none"
 
   portions:
     cross_flat:
@@ -69,16 +70,16 @@ novelai:
 # 利用可能 ID を確認: python tools/image_provider_novel_manga_batch.py novels/NNN --list-workflows
 workflows:
   manga_step1_default:
-    label: 漫画コマ・標準（フル画風・背景なし）
+    label: 漫画コマ・標準（NovelAI V5・Vibeなし）
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color
-    novelai_portion_id: cross_flat
+    novelai_portion_id: "none"
     strength: 1.0
     information_extracted: 1.0
 
   manga_step1_soft:
-    label: 漫画コマ・ポーション薄め（細部ブレを抑える）
+    label: 漫画コマ・Vibe薄め（V4.5。明示したときだけ）
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color

@@ -78,7 +78,7 @@ def _ops_bridge(tmp_path, *, chars: int, floor: int = 200, chronos: str = "OFF",
     receive(work, scene_id="ch01-001", run_id="run-0001",
             candidate=work / "_metron/ch01-001/marked.md", request_id=None,
             finish_reason=finish_reason)
-    return work, repo, work / "_writing/ch01-001/run-0001"
+    return work, repo, work / "_work/writing/ch01-001/run-0001"
 
 
 def test_e_advisory_tooshort_is_separated_and_does_not_begin(tmp_path):

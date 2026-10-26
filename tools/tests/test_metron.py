@@ -50,6 +50,7 @@ from metron.repair import (
     run_expand_loop,
     run_seam_correction,
     sentence_char_ngram_jaccard,
+    split_sentences,
     strip_generation_markers,
     validate_expansion,
     write_final,
@@ -411,6 +412,17 @@ def test_repair_retention_loop_seam_and_marker_free_final() -> None:
     corrected, accepted, _ = run_seam_correction("一文。", lambda _prompt: "一文。追加。")
     assert accepted and corrected == "一文。追加。"
     assert "<!--beat:b1-->" not in strip_generation_markers("<!--beat:b1-->本文<!--/beat:b1-->")
+
+
+def test_retention_keeps_dialogue_line_when_paragraph_inserted_after_it() -> None:
+    # 「」で終わる台詞の行は改行で文が切れる。直後へ段落を挟んでも元文は残る。
+    original = "「振れ幅は」\n\n「昨日と同じだよ」\n\n　祖父は時計を耳に当てた。"
+    candidate = (
+        "「振れ幅は」\n\n「昨日と同じだよ」\n\n　柱時計の音がこもっていた。"
+        "\n\n　祖父は時計を耳に当てた。"
+    )
+    assert original_retention_ratio(original, candidate) == 1.0
+    assert split_sentences("---\n\n　地の文。") == ["---", "地の文。"]
 
 
 def test_normalize_novel_body_collapses_runaway_blank_lines() -> None:

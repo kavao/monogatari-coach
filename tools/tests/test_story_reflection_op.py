@@ -12,6 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
+from work_paths import migration_marker, resolve_unit  # noqa: E402
 from story_reflection_op import (  # noqa: E402
     EXIT_INCOMPLETE,
     EXIT_OK,
@@ -28,6 +29,11 @@ from story_reflection_op import (  # noqa: E402
     resolve_target,
     sha256_file,
 )
+
+
+def _sr(novel: Path, role: str) -> Path:
+    """ストーリー反映の組（current・journal・lock）のファイル。置き場は work_paths で解決する。"""
+    return resolve_unit(novel, "story_reflection").file(role)
 
 
 def _write(path: Path, text: str) -> Path:
@@ -135,10 +141,10 @@ def test_begin_apply_and_second_operation_does_not_rewrite_terminal(tmp_path: Pa
     code, payload = _run_json(tmp_path, capsys, "apply-meta", str(novel), "--file", str(new_meta))
     assert code == EXIT_OK
     assert payload["current"]["status"] == "done"
-    assert not (novel / "_story_reflection_op.lock").exists()
+    assert not (_sr(novel, "lock")).exists()
     assert "新確定" in (novel / "design_specification.md").read_text(encoding="utf-8")
 
-    journal = parse_journal(novel / "_story_reflection_op.jsonl")
+    journal = parse_journal(_sr(novel, "journal"))
     statuses = [row["status"] for row in journal.rows if row.get("record_kind") == "transition"]
     assert statuses == ["prepared", "replaced", "verified", "done"]
     first_done_seq = journal.last_journal_seq
@@ -155,7 +161,7 @@ def test_begin_apply_and_second_operation_does_not_rewrite_terminal(tmp_path: Pa
     assert payload["current"]["transition_seq"] == 1
     assert payload["current"]["last_journal_seq"] == first_done_seq + 1
 
-    rows = parse_journal(novel / "_story_reflection_op.jsonl").rows
+    rows = parse_journal(_sr(novel, "journal")).rows
     transition_rows = [row for row in rows if row.get("record_kind") == "transition"]
     done_rows = [row for row in transition_rows if row.get("status") == "done"]
     assert len(done_rows) == 1
@@ -200,10 +206,10 @@ def test_orphan_status_mismatch_is_not_resumed_as_prepared(tmp_path: Path, capsy
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
     assert _run_json(tmp_path, capsys, "apply-design", str(novel), "--file", str(new_design))[0] == EXIT_OK
 
-    current = json.loads((novel / "_story_reflection_op.json").read_text(encoding="utf-8"))
+    current = json.loads((_sr(novel, "current")).read_text(encoding="utf-8"))
     current["status"] = "prepared"
     current["transition_seq"] = 1
-    (novel / "_story_reflection_op.json").write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
+    (_sr(novel, "current")).write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
 
     other_meta = _write(tmp_path / "other_meta.md", "# meta\n\n- other\n")
     evidence2 = _hashes(novel, design=novel / "design_specification.md", meta=other_meta)
@@ -228,21 +234,21 @@ def test_lock_release_requires_terminal_match(tmp_path: Path, capsys):
     assert code == EXIT_INCOMPLETE
     assert payload["code"] == "LOCK_RELEASE_DENIED"
     assert payload["detail"]["verdict"] == "active"
-    assert (novel / "_story_reflection_op.lock").exists()
+    assert (_sr(novel, "lock")).exists()
 
     assert _run_json(tmp_path, capsys, "fail", str(novel), "--reason", "stop")[0] == EXIT_INCOMPLETE
     # fail は lock を消す。残存 lock を再現してから解除する。
-    current = json.loads((novel / "_story_reflection_op.json").read_text(encoding="utf-8"))
+    current = json.loads((_sr(novel, "current")).read_text(encoding="utf-8"))
     atomic_write_text(
-        novel / "_story_reflection_op.lock",
+        _sr(novel, "lock"),
         json.dumps({"operation_id": current["operation_id"], "pid": 1, "created_at": "t"}, ensure_ascii=False) + "\n",
     )
     code, payload = _run_json(tmp_path, capsys, "lock-release", str(novel))
     assert code == EXIT_OK
-    assert not (novel / "_story_reflection_op.lock").exists()
-    kinds = [row["record_kind"] for row in parse_journal(novel / "_story_reflection_op.jsonl").rows]
+    assert not (_sr(novel, "lock")).exists()
+    kinds = [row["record_kind"] for row in parse_journal(_sr(novel, "journal")).rows]
     assert "lock_event" in kinds
-    last = parse_journal(novel / "_story_reflection_op.jsonl").last_transition
+    last = parse_journal(_sr(novel, "journal")).last_transition
     assert last["status"] == "failed"
 
 
@@ -302,7 +308,7 @@ def test_os_lock_blocks_parallel_apply_design(tmp_path: Path, capsys):
     assert payload["code"] == "LOCK_HELD"
     statuses = [
         row["status"]
-        for row in parse_journal(novel / "_story_reflection_op.jsonl").rows
+        for row in parse_journal(_sr(novel, "journal")).rows
         if row.get("record_kind") == "transition"
     ]
     assert statuses == ["prepared"]
@@ -365,7 +371,7 @@ def test_parallel_apply_design_does_not_duplicate_journal_seq(tmp_path: Path, ca
     assert "LOCK_HELD" in held_codes
     journal_seqs = [
         row["journal_seq"]
-        for row in parse_journal(novel / "_story_reflection_op.jsonl").rows
+        for row in parse_journal(_sr(novel, "journal")).rows
         if row.get("record_kind") == "transition"
     ]
     assert journal_seqs == sorted(journal_seqs)
@@ -379,7 +385,7 @@ def test_tampered_journal_last_journal_seq_is_orphan(tmp_path: Path, capsys):
     ev_path = _evidence(tmp_path, novel, evidence)
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
 
-    journal_path = novel / "_story_reflection_op.jsonl"
+    journal_path = _sr(novel, "journal")
     row = json.loads(journal_path.read_text(encoding="utf-8").splitlines()[0])
     row["last_journal_seq"] = 99
     journal_path.write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -403,7 +409,7 @@ def test_tampered_current_last_journal_seq_is_orphan(tmp_path: Path, capsys):
     evidence = _hashes(novel, meta=new_meta)
     ev_path = _evidence(tmp_path, novel, evidence)
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
-    current_path = novel / "_story_reflection_op.json"
+    current_path = _sr(novel, "current")
     current = json.loads(current_path.read_text(encoding="utf-8"))
     current["last_journal_seq"] = 99
     current_path.write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
@@ -427,12 +433,12 @@ def test_close_orphan_refuses_terminal(tmp_path: Path, capsys):
     assert payload["code"] == "ORPHAN"
     statuses = [
         row["status"]
-        for row in parse_journal(novel / "_story_reflection_op.jsonl").rows
+        for row in parse_journal(_sr(novel, "journal")).rows
         if row.get("record_kind") == "transition"
     ]
     assert statuses[-1] == "done"
     assert statuses.count("failed") == 0
-    assert json.loads((novel / "_story_reflection_op.json").read_text(encoding="utf-8"))["status"] == "done"
+    assert json.loads((_sr(novel, "current")).read_text(encoding="utf-8"))["status"] == "done"
 
 
 def test_close_orphan_allows_active_orphan(tmp_path: Path, capsys):
@@ -444,14 +450,14 @@ def test_close_orphan_allows_active_orphan(tmp_path: Path, capsys):
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
     assert _run_json(tmp_path, capsys, "apply-design", str(novel), "--file", str(new_design))[0] == EXIT_OK
 
-    current = json.loads((novel / "_story_reflection_op.json").read_text(encoding="utf-8"))
+    current = json.loads((_sr(novel, "current")).read_text(encoding="utf-8"))
     current["status"] = "prepared"
     current["transition_seq"] = 1
-    (novel / "_story_reflection_op.json").write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
+    (_sr(novel, "current")).write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
 
     _code, payload = _run_json(tmp_path, capsys, "close-orphan", str(novel), "--reason", "user-close")
     assert payload["current"]["status"] == "failed"
-    last = parse_journal(novel / "_story_reflection_op.jsonl").last_transition
+    last = parse_journal(_sr(novel, "journal")).last_transition
     assert last["status"] == "failed"
     assert last["transition_seq"] == 4
 
@@ -491,15 +497,15 @@ def test_acquire_does_not_publish_unlocked_official_name(tmp_path: Path):
         env=env,
     )
     time.sleep(0.2)
-    assert not (novel / "_story_reflection_op.lock").exists()
+    assert not (_sr(novel, "lock")).exists()
     code, payload = _subprocess_cli(
         tmp_path, "apply-design", str(novel), "--file", str(novel / "design_specification.md")
     )
     assert code == EXIT_INCOMPLETE
     assert payload["code"] == "LOCK_HELD"
     assert creator.wait(timeout=5) == 0
-    assert (novel / "_story_reflection_op.lock").exists()
-    assert read_lock(novel / "_story_reflection_op.lock")["operation_id"] == "sr-slow"
+    assert (_sr(novel, "lock")).exists()
+    assert read_lock(_sr(novel, "lock"))["operation_id"] == "sr-slow"
 
 
 def test_parse_journal_rejects_non_object_row(tmp_path: Path):
@@ -535,12 +541,12 @@ def test_resume_refuses_stale_hashes(tmp_path: Path, capsys):
     evidence = _hashes(novel, meta=new_meta)
     ev_path = _evidence(tmp_path, novel, evidence)
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
-    before = (novel / "_story_reflection_op.json").read_text(encoding="utf-8")
+    before = (_sr(novel, "current")).read_text(encoding="utf-8")
     _write(novel / "_novel_text" / "novel_text18.md", "本文が変わった\n")
     code, payload = _run_json(tmp_path, capsys, "resume", str(novel))
     assert code == EXIT_INCOMPLETE
     assert payload["code"] == "STALE_EVIDENCE"
-    assert (novel / "_story_reflection_op.json").read_text(encoding="utf-8") == before
+    assert (_sr(novel, "current")).read_text(encoding="utf-8") == before
 
 
 def test_unlink_keeps_exclusive_until_name_is_gone(tmp_path: Path):
@@ -569,7 +575,7 @@ def test_unlink_keeps_exclusive_until_name_is_gone(tmp_path: Path):
     while time.time() < deadline and not ready.exists():
         time.sleep(0.05)
     assert ready.exists()
-    lock = novel / "_story_reflection_op.lock"
+    lock = _sr(novel, "lock")
     assert lock.exists()
 
     def _official_is_old() -> None:
@@ -600,7 +606,7 @@ def test_windows_delete_failure_keeps_official_name(tmp_path: Path, monkeypatch:
     assert not held.released
     assert paths.lock.exists()
     assert read_lock(paths.lock)["operation_id"] == "sr-old"
-    assert not list(paths.lock.parent.glob("._story_reflection_op.lock.dead.*"))
+    assert not list(paths.lock.parent.glob(f".{paths.lock.name}.dead.*"))
     with pytest.raises(OpError) as stolen:
         acquire_lock(paths, "sr-new")
     assert stolen.value.code == "LOCK_HELD"
@@ -618,7 +624,7 @@ def test_finish_lock_raises_when_windows_delete_fails(tmp_path: Path, monkeypatc
     assert finish_exc.value.code == "LOCK_HELD"
     assert paths.lock.exists()
     assert read_lock(paths.lock)["operation_id"] == "sr-keep"
-    assert not list(paths.lock.parent.glob("._story_reflection_op.lock.dead.*"))
+    assert not list(paths.lock.parent.glob(f".{paths.lock.name}.dead.*"))
 
 
 def test_lock_release_failure_does_not_record_success_event(
@@ -631,9 +637,9 @@ def test_lock_release_failure_does_not_record_success_event(
     assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev_path))[0] == EXIT_OK
     assert _run_json(tmp_path, capsys, "fail", str(novel), "--reason", "stop")[0] == EXIT_INCOMPLETE
 
-    current = json.loads((novel / "_story_reflection_op.json").read_text(encoding="utf-8"))
+    current = json.loads((_sr(novel, "current")).read_text(encoding="utf-8"))
     atomic_write_text(
-        novel / "_story_reflection_op.lock",
+        _sr(novel, "lock"),
         json.dumps({"operation_id": current["operation_id"], "pid": 1, "created_at": "t"}, ensure_ascii=False)
         + "\n",
     )
@@ -642,15 +648,15 @@ def test_lock_release_failure_does_not_record_success_event(
     code, payload = _run_json(tmp_path, capsys, "lock-release", str(novel))
     assert code == EXIT_INCOMPLETE
     assert payload["code"] == "LOCK_HELD"
-    assert (novel / "_story_reflection_op.lock").exists()
-    rows = parse_journal(novel / "_story_reflection_op.jsonl").rows
+    assert (_sr(novel, "lock")).exists()
+    rows = parse_journal(_sr(novel, "journal")).rows
     assert not any(row.get("event") == "lock_released" for row in rows)
 
     monkeypatch.delenv("STORY_REFLECTION_FAIL_WINDOWS_DELETE")
     code, payload = _run_json(tmp_path, capsys, "lock-release", str(novel))
     assert code == EXIT_OK
-    assert not (novel / "_story_reflection_op.lock").exists()
-    rows = parse_journal(novel / "_story_reflection_op.jsonl").rows
+    assert not (_sr(novel, "lock")).exists()
+    rows = parse_journal(_sr(novel, "journal")).rows
     assert sum(row.get("event") == "lock_released" for row in rows) == 1
 
 
@@ -675,12 +681,107 @@ def test_resume_refuses_failed_terminal(tmp_path: Path, capsys):
     fail_code, fail_payload = _run_json(tmp_path, capsys, "fail", str(novel), "--reason", "stop")
     assert fail_payload["current"]["status"] == "failed"
     assert fail_code == EXIT_INCOMPLETE
-    before = (novel / "_story_reflection_op.json").read_text(encoding="utf-8")
-    journal_before = (novel / "_story_reflection_op.jsonl").read_text(encoding="utf-8")
+    before = (_sr(novel, "current")).read_text(encoding="utf-8")
+    journal_before = (_sr(novel, "journal")).read_text(encoding="utf-8")
     code, payload = _run_json(tmp_path, capsys, "resume", str(novel))
     assert code == EXIT_INCOMPLETE
     assert payload["code"] == "ORPHAN"
     assert "active" in payload["message"]
-    assert (novel / "_story_reflection_op.json").read_text(encoding="utf-8") == before
-    assert (novel / "_story_reflection_op.jsonl").read_text(encoding="utf-8") == journal_before
-    assert not (novel / "_story_reflection_op.lock").exists()
+    assert (_sr(novel, "current")).read_text(encoding="utf-8") == before
+    assert (_sr(novel, "journal")).read_text(encoding="utf-8") == journal_before
+    assert not (_sr(novel, "lock")).exists()
+
+
+# --- M2: 置き場（_workingspace/plans/20261024_work-folder-layout.md §3.1） ---
+
+
+def _complete_operation(tmp_path: Path, capsys, novel: Path, tag: str) -> None:
+    new_design = _write(tmp_path / f"design_{tag}.md", "## 第18章\n\n1. 新確定\n\n## 予定\n\n1. 未執筆\n")
+    new_meta = _write(tmp_path / f"meta_{tag}.md", f"# meta\n\n- **出来事同期**: 2026-10-24 第18章 更新 op={tag}\n")
+    ev = _write(tmp_path / f"ev_{tag}.json", json.dumps(_hashes(novel, design=new_design, meta=new_meta)))
+    assert _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev))[0] == EXIT_OK
+    assert _run_json(tmp_path, capsys, "apply-design", str(novel), "--file", str(new_design))[0] == EXIT_OK
+    assert _run_json(tmp_path, capsys, "apply-meta", str(novel), "--file", str(new_meta))[0] == EXIT_OK
+
+
+def test_new_work_writes_into_work_dir(tmp_path: Path, capsys):
+    novel = _novel(tmp_path)
+    _complete_operation(tmp_path, capsys, novel, "sr-new")
+    new_dir = novel / "_work" / "story_reflection"
+    assert (new_dir / "op.json").is_file()
+    assert (new_dir / "op.jsonl").is_file()
+    assert not (new_dir / "op.lock").exists()
+    assert not list(novel.glob("_story_reflection_op.*"))
+
+
+def test_legacy_work_keeps_whole_set_in_legacy(tmp_path: Path, capsys):
+    novel = _novel(tmp_path)
+    _complete_operation(tmp_path, capsys, novel, "sr-1")
+    # M2 より前の作品を再現: 組を作品直下の古い名前へ戻す
+    new_dir = novel / "_work" / "story_reflection"
+    (new_dir / "op.json").rename(novel / "_story_reflection_op.json")
+    (new_dir / "op.jsonl").rename(novel / "_story_reflection_op.jsonl")
+    assert resolve_unit(novel, "story_reflection").layout == "legacy"
+
+    _complete_operation(tmp_path, capsys, novel, "sr-2")
+    # 2つ目の操作も古い置き場で続き、組が新しい置き場に分かれない
+    assert not list(new_dir.glob("op.*"))
+    rows = parse_journal(novel / "_story_reflection_op.jsonl").rows
+    done = [row for row in rows if row.get("record_kind") == "transition" and row.get("status") == "done"]
+    assert len(done) == 2
+
+
+def test_conflict_between_locations_stops(tmp_path: Path, capsys):
+    novel = _novel(tmp_path)
+    _write(novel / "_story_reflection_op.jsonl", "")
+    _write(novel / "_work" / "story_reflection" / "op.json", "{}")
+    code, payload = _run_json(tmp_path, capsys, "inspect", str(novel))
+    assert code == EXIT_INCOMPLETE
+    assert payload["code"] == "CONFLICT"
+
+
+def test_migrating_unit_is_refused_by_cli(tmp_path: Path, capsys):
+    novel = _novel(tmp_path)
+    _write(migration_marker(novel, "story_reflection"), '{"state": "copying"}')
+    ev = _write(tmp_path / "ev.json", json.dumps(_hashes(novel)))
+    code, payload = _run_json(tmp_path, capsys, "begin", str(novel), "--evidence", str(ev))
+    assert code == EXIT_INCOMPLETE
+    assert payload["code"] == "MIGRATING"
+    assert not (novel / "_work" / "story_reflection" / "op.lock").exists()
+
+
+def test_marker_created_after_resolution_is_caught_after_lock(tmp_path: Path):
+    novel = _novel(tmp_path)
+    paths = NovelPaths(novel)  # 解決を済ませたあとで移行の印が作られる
+    _write(migration_marker(novel, "story_reflection"), '{"state": "copying"}')
+    with pytest.raises(OpError) as error:
+        acquire_lock(paths, "sr-race")
+    assert error.value.code == "MIGRATING"
+    assert not paths.lock.exists()
+    assert not list(paths.lock.parent.glob(f".{paths.lock.name}.*"))
+
+
+def test_location_moved_after_resolution_is_caught_after_lock(tmp_path: Path, capsys):
+    # レビュー指摘（2026-10-24）: 古い置き場を選んだあとに移行が完了しても、古い置き場にロックを作り直さない。
+    novel = _novel(tmp_path)
+    _complete_operation(tmp_path, capsys, novel, "sr-1")
+    new_dir = novel / "_work" / "story_reflection"
+    (new_dir / "op.json").rename(novel / "_story_reflection_op.json")
+    (new_dir / "op.jsonl").rename(novel / "_story_reflection_op.jsonl")
+    paths = NovelPaths(novel)
+    assert paths.unit.layout == "legacy"
+    # ここで移行が完了したとする（組が新しい置き場へ移り、移行の印も消えている）
+    (novel / "_story_reflection_op.json").rename(new_dir / "op.json")
+    (novel / "_story_reflection_op.jsonl").rename(new_dir / "op.jsonl")
+
+    with pytest.raises(OpError) as error:
+        acquire_lock(paths, "sr-stale")
+    assert error.value.code == "STALE_LOCATION"
+    # 古い置き場にロックも一時ファイルも残らず、組は新しい置き場で解決でき、競合にならない
+    assert not list(novel.glob("_story_reflection_op.*"))
+    assert not list(novel.glob("._story_reflection_op.lock.*"))
+    assert resolve_unit(novel, "story_reflection").layout == "new"
+    # もう一度実行すれば新しい置き場で取れる
+    held = acquire_lock(NovelPaths(novel), "sr-retry")
+    assert held.paths.lock == new_dir / "op.lock"
+    unlink_owned_lock(held)

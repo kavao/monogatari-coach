@@ -414,6 +414,22 @@ def main() -> int:
     else:
         print("  _novel_text/ に本文ファイルがありません")
 
+    # ── goal の状況（場面単位 → 章。_meta.md の次回タスクとの突合を含む）
+    _section("goal の状況")
+    try:
+        import goal_status
+
+        goal = goal_status.evaluate(work_dir, project_check=False)
+        if not goal.chapters:
+            print("  場面の記録がありません")
+        for c in goal.chapters:
+            _row(f"第{c.chapter}章", f"{goal_status.STATE_LABEL[c.state]}  ({goal_status._scene_summary(c)})")
+        for note in goal.reconcile:
+            print(f"       ! 突合: {note}")
+        print("         (詳細: tools/goal_status.py / _meta.md へ反映: --write-meta)")
+    except Exception as error:  # ダッシュボードは goal の集計失敗で止めない
+        print(f"  goal の状況を集計できませんでした: {error}")
+
     # ── 漫画ページ IR
     _section("漫画ページ IR")
     manga_count = _get_manga_yaml_count(work_dir)

@@ -30,6 +30,8 @@
   挿絵計画 MD（Step 1）→ YAML IR（Step 2）→ 画像生成の二段パイプライン
 - [Workflow](workflow/index.md)
   Monogatari Coach の各モードと制作フロー
+- [goal モードで依頼する](workflow/goal-mode.md)
+  Claude / Codex / Cursor などに完了条件つきで制作を任せる書き方、実装例、止まる箇所
 - [ユーザスキル（プラグイン相当）](workflow/user-skills.md)
   `_how_to/skills/` と `_how_to.example/skills/` の関係、ツールの置き場（例: カクヨムルビ）
 - [Source Material Intake](workflow/source-material-intake.md)
@@ -45,9 +47,11 @@
 - [Reader Output](workflow/reader-output.md)
   下読み・書評・興味判定・読み進み感想の保存先とチャット要約の扱い
 - [Project Structure](project-structure/index.md)
-  リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md) を含む）
+  リポジトリ構成、正本の所在、主要ディレクトリ（[`_how_to/` 取り扱いガイド](project-structure/how-to-area.md)、[作品フォルダの構成](project-structure/work-folder.md) を含む）
 - [Tools（ツールリファレンス）](tools/index.md)
   `tools/` 配下の全スクリプトと CLI 例、rulesync・howto_init・tools_temp の操作方法
+- [AI 執筆基盤（NovelAI テキスト生成）](tools/ai-writer.md)
+  NovelAI で本文の続きや挿入を生成して候補として保存するときの、接続確認・3 操作・比較実験のコマンド（試作段階）
 - [Community](community/index.md)
   サポート、ベータ実験、推奨プラグイン、謝辞
 

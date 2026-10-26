@@ -76,6 +76,8 @@ class SceneDefinition(StrictModel):
     start_state: SceneState | None = None
     end_state: SceneState | None = None
     forbidden: list[str] = Field(default_factory=list)
+    # 意図した反復（モチーフ）。場面単位の反復検査（D18）で、この語句を含む反復は許す。
+    allowed_repeats: list[str] = Field(default_factory=list)
 
 
 class SceneContract(StrictModel):
@@ -131,15 +133,43 @@ class GenerationSpec(StrictModel):
     chars_floor: int = Field(default=DEFAULT_SCENE_CHARS_FLOOR, ge=1)
 
 
+class LengthTolerance(StrictModel):
+    lower: float = Field(default=0.97, gt=0, le=1)
+    upper: float = Field(default=1.03, ge=1)
+
+
+class LengthTarget(StrictModel):
+    """規定量調整の許容帯（_how_to.example/length_ops.md）。床とは別に満たす。"""
+
+    target_chars: int = Field(gt=0)
+    tolerance: LengthTolerance = Field(default_factory=LengthTolerance)
+    scope: Literal["beat", "scene", "chapter"] = "scene"
+    beat_id: str | None = Field(default=None, pattern=_BEAT_ID_PATTERN)
+    max_passes: int = Field(default=3, ge=1)
+    # D19: ユーザーが言った字数（清書後の仕上がり目標）。target_chars はそれに余地を足した増量の目標。
+    finish_chars: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> "LengthTarget":
+        if self.scope == "beat" and self.beat_id is None:
+            raise ValueError("scope beat requires beat_id")
+        if self.scope != "beat" and self.beat_id is not None:
+            raise ValueError("beat_id is only allowed with scope beat")
+        return self
+
+
 class BeatPlan(StrictModel):
     generation: GenerationSpec = Field(default_factory=GenerationSpec)
     beats: list[Beat] = Field(min_length=1)
+    length_target: LengthTarget | None = None
 
     @model_validator(mode="after")
     def validate_unique_ids(self) -> "BeatPlan":
         ids = [beat.id for beat in self.beats]
         if len(ids) != len(set(ids)):
             raise ValueError("Beat IDs must be unique")
+        if self.length_target and self.length_target.beat_id not in (None, *ids):
+            raise ValueError("length_target.beat_id is not in the BeatPlan")
         return self
 
 

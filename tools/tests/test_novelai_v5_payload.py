@@ -68,6 +68,8 @@ def test_config_default_model_is_v5_full() -> None:
     novelai = cfg["providers"]["novelai"]
     assert novelai["default_model"] == "nai-diffusion-5-full"
     assert novelai["vibe_model"] == "nai-diffusion-4-5-full"
+    assert novelai["model_aliases"]["v5"] == "nai-diffusion-5-full"
+    assert novelai["model_aliases"]["novelai5"] == "nai-diffusion-5-full"
 
 
 def test_v5_uses_v4_condition() -> None:

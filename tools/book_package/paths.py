@@ -11,6 +11,8 @@ from .schemas import BookPackage
 ManuscriptSource = Literal["novel_text", "novel_text_re"]
 _NOVEL_TEXT_PREFIX = "_novel_text/"
 _NOVEL_TEXT_RE_PREFIX = "_novel_text_re/"
+# 付属原稿（人物紹介・あとがきなど）の置き場。章ではないので手仕上げ稿へ読み替えない。
+_MATTER_PREFIX = "_novel_text/matter/"
 
 
 class PackagePathError(ValueError):
@@ -20,11 +22,13 @@ class PackagePathError(ValueError):
 def apply_manuscript_source(raw_path: str, source: ManuscriptSource) -> str:
     """Rewrite chapter manuscript paths for hand-finished (_novel_text_re) builds.
 
-    Only remaps paths that start with ``_novel_text/``. Frontmatter, backmatter
-    under ``book_matter/``, illustrations, and already-rewritten ``_novel_text_re/``
-    paths are left unchanged.
+    Only remaps paths that start with ``_novel_text/``. Frontmatter and backmatter
+    (``_novel_text/matter/`` or the older ``book_matter/``), illustrations, and
+    already-rewritten ``_novel_text_re/`` paths are left unchanged.
     """
 
+    if raw_path.startswith(_MATTER_PREFIX):
+        return raw_path
     if source == "novel_text_re" and raw_path.startswith(_NOVEL_TEXT_PREFIX):
         return _NOVEL_TEXT_RE_PREFIX + raw_path[len(_NOVEL_TEXT_PREFIX) :]
     return raw_path

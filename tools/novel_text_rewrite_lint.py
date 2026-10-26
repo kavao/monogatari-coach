@@ -354,9 +354,11 @@ def lint_file(
 
     lines = text.splitlines()
 
-    # paragraph_indent は stateful なので通常の regex ループから分離する
-    regex_rules = [r for r in active_rules if r.id != "paragraph_indent"]
+    # paragraph_indent と padding_repeated_phrase は stateful なので通常の regex ループから分離する
+    stateful = {"paragraph_indent", "padding_repeated_phrase"}
+    regex_rules = [r for r in active_rules if r.id not in stateful]
     indent_rule = next((r for r in active_rules if r.id == "paragraph_indent"), None)
+    repeat_rule = next((r for r in active_rules if r.id == "padding_repeated_phrase"), None)
 
     for lineno, raw_line in enumerate(lines, start=1):
         if should_skip_line(raw_line, skip_patterns):
@@ -381,8 +383,28 @@ def lint_file(
 
     if indent_rule:
         issues.extend(_check_paragraph_indent(lines, indent_rule, skip_patterns, allowlist, rel_path))
+    if repeat_rule:
+        issues.extend(_check_repeated_phrases(lines, repeat_rule, skip_patterns, rel_path))
 
     return issues
+
+
+def _check_repeated_phrases(
+    lines: list[str],
+    rule: RuleDef,
+    skip_patterns: list[re.Pattern[str]],
+    rel_path: str,
+) -> list[Issue]:
+    """ファイル内で同じ10字の語句が3回以上出る箇所（候補。3回目の行に1件だけ出す）。"""
+    from metron.repetition import repeated_phrase_lines
+
+    body = [(number, line) for number, line in enumerate(lines, start=1)
+            if not should_skip_line(line, skip_patterns)]
+    return [
+        Issue(level=rule.level, rule_id=rule.id, message=rule.message, file=rel_path,
+              line=line_no, matched=f"{phrase}（{count}回）")
+        for phrase, count, line_no in repeated_phrase_lines(body)
+    ]
 
 
 def collect_target_files(target: Path, globs: list[str], root: Path) -> list[tuple[Path, str]]:

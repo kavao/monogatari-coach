@@ -119,7 +119,7 @@ G3（全文）評価で全文一括読み込みが困難な場合（目安: **�
 1. Synopsis を先行して `_reader/synopsis_YYYYMMDD.md` に保存する（**必須**: 合計30,000字超の場合）。
 2. `novel_char_count.py` で全章の文字数を取得する。
 3. 章グループごと（`novel_text01_*` を「第1章」等）に G2 相当の採点を行う。
-   - 作業ファイル `_reader/_work/<YYYYMMDD>/ch01_eval.md`〜`chNN_eval.md` に保存する（長文パイプライン）。
+   - 作業ファイル `<作業フォルダ>/ch01_eval.md`〜`chNN_eval.md`（`<作業フォルダ>` は最初に一つ決める。今日の日付のフォルダが古い `_reader/_work/<YYYYMMDD>/` にあればそれ、無ければ `_work/reader/<YYYYMMDD>/`。以降の作業ファイルはすべてそこに置く） に保存する（長文パイプライン）。
    - 短編（30,000字未満）では章別作業ファイルを省略し、`_reader/YYYYMMDD_HHMM.md` に直接まとめてよい。
 4. `aggregate.md` で加重平均を記録する:
 

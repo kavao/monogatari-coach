@@ -155,7 +155,12 @@ def discover_pages(novel_dir: Path, stem: str | None, explicit: list[str]) -> li
         if stem and match.group("stem") != stem:
             continue
         found.append(path)
-    return sorted(found, key=lambda p: (_PAGE_RE.match(p.name).group("stem"), int(_PAGE_RE.match(p.name).group("num"))))
+    def _sort_key(p: Path) -> tuple[str, int]:
+        m = _PAGE_RE.match(p.name)
+        assert m is not None
+        return (m.group("stem"), int(m.group("num")))
+
+    return sorted(found, key=_sort_key)
 
 
 def chapter_of(path: Path) -> str:

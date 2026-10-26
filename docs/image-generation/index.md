@@ -29,7 +29,7 @@ Image Provider は、Forge WebUI / NovelAI / Grok / OpenAI / OpenRouter など�
 | provider | モデル | 主な用途 |
 |----------|--------|---------|
 | `forge` | UI で読み込んだ Checkpoint（SDXL / Flux） | ローカルコマ生成 |
-| `novelai` | 既定 `nai-diffusion-5-full`。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
+| `novelai` | 描画時は NovelAI 5（既定 `nai-diffusion-5-full` / alias `v5`・`novelai5`）。Curated は `v5-curated`。Vibe は `v4-5-full` | コマ生成（クラウド） |
 | `grok` | `grok-imagine-image-2.0` | キャラタグ一括・単体画像・背景資料生成（background-concepts） |
 | `grok_pro` | `grok-imagine-image-2.0` | 漫画ページ生成（step1-pages / step2-pages）・表紙/挿絵。1.0 は `--model standard`、quality slug は `--model quality` |
 | `openai` | `gpt-image-2`（旧 `gpt-image-1.5` も明示指定可） | ページ生成の代替 |
@@ -122,7 +122,9 @@ NOVELAI_ACCESS_TOKEN=取得したPersistent API Token
 
 `tools/image_provider_generate.py` の NovelAI provider は、Vibe Transfer / ポーション用に `reference_image_paths` または `reference_image_multiple` を受け付けます。
 
-Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。通常のコマ生成（参照なし）の既定は `nai-diffusion-5-full` です。
+Vibe Transfer は NovelAI V5 では未提供です。参照画像があるジョブは、`model` を省略すると自動で `nai-diffusion-4-5-full` になります。V5 を明示したまま参照を付けるとエラーになります。
+
+キャラタグ一括や通常のコマ生成の標準は **参照なしの `nai-diffusion-5-full`** です。作品 `_meta.yaml` の `portion_default` は `none` にします。フラット画風の Vibe が要るときだけ `--novelai-portion-id cross_flat` を付けます（そのジョブは V4.5 になります）。
 
 - `reference_image_paths`: PNG / JPEG / WEBP / `.naiv4vibe` / `.naiv4vibeBundle` のパス配列。`.naiv4vibe` / `.naiv4vibeBundle` は、ファイル内の `encodings.*.encoding` を優先して NovelAI API へ渡します。画像を含む形式なら画像も読み込みます。
 - `reference_image_multiple`: 画像をbase64化した文字列配列。`data:image/...;base64,` 付きでも受け付けます。
@@ -402,7 +404,7 @@ workflows:
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color
-    novelai_portion_id: cross_flat
+    novelai_portion_id: "none"   # NovelAI V5。Vibe なし
     strength: 1.0
     information_extracted: 1.0
 
@@ -410,8 +412,8 @@ workflows:
     source: step1-panels
     omit_panel_background: true
     color_mode: full_color
-    novelai_portion_id: cross_flat
-    strength: 0.5        # ポーション薄め
+    novelai_portion_id: cross_flat  # V4.5。明示したときだけ
+    strength: 0.5
     information_extracted: 0.5
 ```
 

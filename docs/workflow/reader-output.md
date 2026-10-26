@@ -11,6 +11,7 @@
 - 一般読者として場面ごとに感想を残しながら通読したい（Reader Walk）
 - 完稿・推敲後に「どこを直すと何点上がるか」を把握したい（Editor Score）
 - 設定資料どうしの食い違いや、本文と設定・章どうしの矛盾を洗い出したい（Consistency Audit）
+- 本文に紛れた造語や、設定に無い決まりごとの書き足しを洗い出したい（用語照合。[作品固有の用語と用語照合](terminology-audit.md)）
 - 長文評価の前に客観的なあらすじを作りたい（Synopsis）
 
 ---
@@ -25,6 +26,7 @@
 | Consistency Audit | `設定資料の一貫性を監査して` / `本文の一貫性を監査して` | `_reader/consistency_design_YYYYMMDD_HHMM.md` / `_reader/consistency_text_YYYYMMDD_HHMM.md` | なし（表形式） |
 | Synopsis（前処理） | `あらすじを作成してください。` | `_reader/synopsis_YYYYMMDD.md` | なし |
 | Reader Walk（読み進み） | `第1章から読み進めて` | `_reader/walk/<session_id>/journal.md` | なし（感想＋任意の反応メタデータ） |
+| 用語照合 | `用語を照合してください。` | `_reader/terminology_YYYYMMDD_HHMM.md` | なし（抑える／拾い上げる／保留の振り分け） |
 
 足切り（First Reader）と Editor Score は配点・目的が異なる別モードです。First Reader は「読むか読まないか」の選別、Editor Score は「どこを直すと何点上がるか」の改善優先度付けです。Reader Walk は採点せず、一般読者として今読んだ場面の感想だけを残します。
 
@@ -216,7 +218,7 @@ python tools/novel_reader_walk_check.py novels/NNN_作品名/_reader/walk/<sessi
 | scope | 見るもの | 使う場面 |
 |-------|----------|----------|
 | design（設定監査） | `character.md`・`world.md`・`design_specification.md` どうしの食い違い | 企画を固めたあと、設定を改稿したあと |
-| text（本文監査） | 本文と設定の食い違い（第1章から）、章をまたぐ口調・事実・伏線・時系列（第2章以降） | 本文を書いたあと |
+| text（本文監査） | 本文と設定の食い違い（第1章から）、章をまたぐ口調・事実・伏線・時系列（第2章以降）。`_meta.md` に「見せ方軸」を決めた作品では、周りの反応と語りが決めた見せ方から外れていないか、章ごとに揺れていないかも見て、要確認として出します | 本文を書いたあと |
 
 ### チャットへの指示文
 
@@ -260,6 +262,7 @@ Monogatari Coach は、次の場面では指示がなくても設定監査を行
 - チャットには scope・件数の内訳（矛盾/要確認/軽微）・保存先パスと、要確認の一覧が返ります。
 - 以前の `consistency_YYYYMMDD.md` はそのまま残り、上書きされません。
 - 監査ファイルの冒頭の件数は、`tools/novel_consistency_audit_lint.py` で中の表と照らし合わせてから報告されます。手元で確かめるときは `uv run python tools/novel_consistency_audit_lint.py novels/NNN_作品名` を実行します。
+- 設計書の人物名・地名候補を機械照合するときは、`uv run python tools/novel_proper_noun_lint.py novels/NNN_作品名` を実行します。未定義があっても設定監査は止まりません。
 
 ---
 
@@ -299,15 +302,16 @@ G3 全文足切りや Editor Score の前に作成する、評価者向けの客
 ```
 novels/<作品>/_reader/
   synopsis_YYYYMMDD.md          ← 最終成果物（Step A）
-  _work/<YYYYMMDD>/             ← 評価セッションの作業フォルダ
+  score_YYYYMMDD_HHMM.md        ← 最終成果物（Editor Score）
+novels/<作品>/_work/reader/
+  <YYYYMMDD>/                   ← 評価セッションの作業フォルダ
     step_b.md                   ← 構造・プロット中間分析
     step_c.md                   ← 文体・描写中間分析
     ch01_eval.md〜chNN_eval.md  ← 章ごとのスコアノート
     aggregate.md                ← 加重平均計算メモ
-  score_YYYYMMDD_HHMM.md        ← 最終成果物（Editor Score）
 ```
 
-`_reader/` 直下は最終成果物のみです。`_work/<YYYYMMDD>/` の中間ファイルは過程の記録として残します。
+`_reader/` 直下は最終成果物のみです。作業フォルダ `_work/reader/<YYYYMMDD>/` の中間ファイルは過程の記録として残します（以前の作品の `_reader/_work/<YYYYMMDD>/` もそのまま読めます。同じ日の作業はそちらで続けます）。
 
 ### 加重平均の計算式
 

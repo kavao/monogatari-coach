@@ -30,7 +30,7 @@ from .models import (
     Selector,
     SelectorKind,
 )
-from .paths import resolve_work_path
+from .paths import metron_scene_dir, resolve_work_path, writing_scene_dir
 from .repair import read_state
 from .storage import (
     append_journal,
@@ -95,7 +95,7 @@ def _paths(work_root, scene_id, run_id):
     if not re.fullmatch(r"run-\d{4,}", run_id):
         raise BridgeError("BAD_ID", "invalid run_id")
     root = commands.work_root_of(work_root)
-    dest = resolve_work_path(root, f"_writing/{scene_id}/{run_id}")
+    dest = writing_scene_dir(root, scene_id) / run_id
     request = load_model(dest / "request.yaml", RequestDocument)
     if request.scene_id != scene_id or request.run_id != run_id:
         raise BridgeError("JOB_CONFLICT", "request does not match run")
@@ -130,7 +130,18 @@ def _clean_scene_body(marked: str) -> str:
     return normalize_novel_body(body)
 
 
+def _count_scene_anchors(text: str, scene_id: str) -> int:
+    return sum(1 for match in _SCENE_ANCHOR.finditer(text) if match.group(1) == scene_id)
+
+
 def scene_anchor_span(text: str, scene_id: str) -> tuple[int, int] | None:
+    count = _count_scene_anchors(text, scene_id)
+    if count > 1:
+        raise BridgeError(
+            "UNKNOWN_REF",
+            "scene anchor is not unique in the text; repair the canonical text before publish",
+            refs={"scene_id": scene_id, "count": count},
+        )
     matches = list(_SCENE_ANCHOR.finditer(text))
     for index, match in enumerate(matches):
         if match.group(1) != scene_id:
@@ -237,6 +248,12 @@ def compose_published(
     composed = prefix + body + suffix
     if composed and not composed.endswith("\n"):
         composed += "\n"
+    if _count_scene_anchors(composed, scene_id) > 1:
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "candidate repeats the scene anchor kept in the text; remove the anchor from the candidate",
+            refs={"scene_id": scene_id},
+        )
     return composed, prefix, suffix
 
 
@@ -639,7 +656,7 @@ def publish(
         if raw_sha256(text_file) != state.intended_raw_sha256:
             raise BridgeError("JOB_CONFLICT", "published bytes do not match the intended edition")
         state.stage = "write"
-        metron = root / "_metron" / request.scene_id
+        metron = metron_scene_dir(root, request.scene_id)
         metron.mkdir(parents=True, exist_ok=True)
         adopted = metron / f"adopted.{request.run_id}.md"
         marked_text = candidate.read_text(encoding="utf-8")

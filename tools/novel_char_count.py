@@ -105,6 +105,9 @@ def discover_all_novel_text(repo_root: Path) -> list[Path]:
 
 
 def main() -> int:
+    from console_io import configure_stdio_utf8
+
+    configure_stdio_utf8()
     parser = argparse.ArgumentParser(
         description="小説 Markdown の文字数（Unicode コードポイント、NFC）を数える。"
     )

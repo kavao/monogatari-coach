@@ -32,11 +32,17 @@ globs: ["**/*"]
 | `docs/` を変更する | `docs-writing.md` |
 | 新しい物語・ストーリー案を一から出す、ジャンルを指定して話を考える | `novel-planning`。案を出す前に、ジャンル軸を判定し該当する `genre/` の葉を読む（B1） |
 | 企画、設定、人物、世界観を整える | `novel-planning`、`novel-character-profile` |
+| プロットが平板・先が読めるのでアレンジしたい、展開を変えたい | `novel-plot-arrange`（構造論と流れ破壊の葉を工程正本として読む。黄金律は型を指定されたときだけ。清書では転を足さない） |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
+| 設計の章出来事を「どうしてがわかるように」「動機が見えるように」直す | `novel-planning`（因果検査の単独起動。Gate B は再実施しない）。設計か本文かが取れないときは一言確かめる |
+| 設計の章出来事・あらすじの抽象を「誰が何をしたか分かる文に」直す | `novel-planning` の口語化（概念比喩検査。Gate B は再実施しない） |
+| 人物の性格欄を「ほぐして」「圧縮された性格を解釈して」直す | `novel-character-profile` の層分け（気質だけを性格に残し、出来事は設計の章項へ戻す。Gate B は再実施しない） |
+| 本文を「わかりやすく」「読みやすく」直す | `novel-refinement-output`（清書として扱い、`world_glossary.md` の規則5・6を読み直す） |
 | キャラクター、漫画、挿絵、表紙を扱う | `manga-prompt-ir`、対象の Tag / Illustration / Cover スキル |
 | 画像を生成する | `forge-txt2img` と `image-provider`。dry-run 後、ユーザー承認を得る |
 | 下読み、採点、整合性監査をする | `novel-reader-output` または `novel-evaluation-output`。一貫性監査は設定（design）と本文（text）を分ける |
+| 造語・作品固有の用語を照合する | `novel-evaluation-output`（用語照合）と `_how_to.example/world_glossary.md` |
 | 読み進み感想を場面ごとに残す | `novel-reader-walk` |
 | 計画、査証ログ、日記を更新する | `workspace-audit-log`、必要に応じ `workspace-diary` |
 

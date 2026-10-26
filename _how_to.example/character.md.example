@@ -43,6 +43,8 @@
 
 ---
 
+**性格** には、場面を選ばず言える気質だけを書く。章の出来事やこの話での決め方を短句で積まない（層の分け方は `character_profile_prose.md`）。
+
 `character.md` では画像化でぶれやすい個性を **外見の個性** に3〜5点に絞って書く。髪・目・肌・衣装 variant などの詳細 Danbooru タグは Tag Mode で `tag/characters/<character_id>.yaml` に展開する。
 
 ### 女性キャラクターの胸サイズ（character.md と Tag Mode）

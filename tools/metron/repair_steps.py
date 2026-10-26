@@ -20,6 +20,12 @@ from .repair import (
     run_marked_seam_correction, strip_generation_markers, current_beat_chars,
 )
 from .markers import parse_markers
+from .contract_fix import ContractFixSpec, contract_fix_impl, validate_contract_fix
+from .episodes import EpisodeError, locate_span, splice, validate_condense
+from .length import (
+    LengthSpec, assembled_chars, length_adjust_impl, measured_chars, resolve_bounds,
+    tighten_min_chars, validate_tightening,
+)
 
 
 def digest(text: str) -> str:
@@ -32,8 +38,9 @@ class StepModel(BaseModel):
 
 class RepairJob(StepModel):
     job_id: str
-    operation: Literal["deepen", "regenerate", "seam"]
+    operation: Literal["deepen", "regenerate", "seam", "tighten", "condense"]
     beat_id: str | None
+    episode_id: str | None = None
     attempt: int
     model: str
     prompt: str
@@ -65,6 +72,9 @@ class RepairSession(StepModel):
     force_deepen_ids: list[str] = Field(default_factory=list)
     force_ending_rush: bool = False
     restrict_beat_ids: list[str] = Field(default_factory=list)
+    length: LengthSpec | None = None
+    contract_fix: ContractFixSpec | None = None
+    allowed_repeats: list[str] = Field(default_factory=list)
     history: list[SubmittedResult] = Field(default_factory=list)
     pending: RepairJob | None = None
     working_texts: dict[str, str] = Field(default_factory=dict)
@@ -80,11 +90,25 @@ def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                  deepen_enabled: bool = True, regenerate_enabled: bool = True,
                  force_deepen_ids: list[str] | None = None,
                  force_ending_rush: bool = False,
-                 restrict_beat_ids: list[str] | None = None) -> RepairSession:
+                 restrict_beat_ids: list[str] | None = None,
+                 length: LengthSpec | None = None,
+                 contract_fix: ContractFixSpec | None = None,
+                 allowed_repeats: list[str] | None = None) -> RepairSession:
     require_calibration(calibration)
     if not model:
         raise ValueError("generation model is required")
+    if length is not None:
+        resolve_bounds(length.target, beat_plan)
+    if length is not None and contract_fix is not None:
+        raise ValueError("length adjustment and contract fix are separate sessions")
+    if contract_fix is not None:
+        known = {beat.id for beat in beat_plan.beats}
+        unknown = [item for item in contract_fix.beat_ids if item not in known]
+        if unknown:
+            raise ValueError("unknown beat_id for contract fix: " + ", ".join(unknown))
     return RepairSession(metrics=metrics, beat_plan=beat_plan, calibration=calibration,
+                         length=length, contract_fix=contract_fix,
+                         allowed_repeats=list(allowed_repeats or []),
                          clean_text=clean_text, spans=spans, model=model,
                          context=context, seam_enabled=seam_enabled,
                          deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled,
@@ -97,18 +121,21 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
     index = 0
     attempts: dict[tuple[str, str | None], int] = {}
 
-    def dispatch(operation, beat_id, prompt):
+    def dispatch(operation, beat_id, prompt, episode_id=None):
         nonlocal index
-        key = (operation, beat_id)
+        key = (operation, episode_id or beat_id)
         attempts[key] = attempts.get(key, 0) + 1
-        limit = 2 if operation == "deepen" else 1
+        # 契約修正の再生成は、棄却されても同じ Beat に2回目の候補を出せる（D16b）。
+        limit = 2 if (operation in {"deepen", "tighten"}
+                      or (operation == "regenerate" and state.contract_fix is not None)) else 1
         if attempts[key] > limit:
             raise ValueError("repair attempt limit exceeded")
         current = json.dumps(state.working_texts, ensure_ascii=False, sort_keys=True)
         actual = (state.context + "\n\n修復時の全Beat本文:\n" + current + "\n\n" + prompt
                   if state.context else prompt)
         job = RepairJob(job_id=f"JOB-{index + 1:04d}", operation=operation,
-                        beat_id=beat_id, attempt=attempts[key], model=state.model,
+                        beat_id=beat_id, episode_id=episode_id,
+                        attempt=attempts[key], model=state.model,
                         prompt=actual, prompt_hash=digest(actual),
                         input_hash=digest(state.working_texts[beat_id] if beat_id else current),
                         context_hash=digest(state.context))
@@ -123,18 +150,34 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
     # These callbacks are capability flags only; dispatch handles every call.
     callback = lambda prompt: ""
     try:
-        result = _repair_scene_impl(
-            state.metrics, state.beat_plan, state.calibration,
-            clean_text=state.clean_text, spans=state.spans,
-            expander=callback if state.deepen_enabled else None,
-            regenerator=callback if state.regenerate_enabled else None,
-            seam_corrector=callback if state.seam_enabled else None,
-            dispatch=dispatch,
-            checkpoint=lambda texts: setattr(state, "working_texts", texts),
-            force_deepen_ids=state.force_deepen_ids,
-            force_ending_rush=state.force_ending_rush,
-            restrict_beat_ids=state.restrict_beat_ids,
-        )
+        if state.contract_fix is not None:
+            result = contract_fix_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans, spec=state.contract_fix,
+                dispatch=dispatch,
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+            )
+        elif state.length is not None:
+            result = length_adjust_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans, length=state.length,
+                dispatch=dispatch, allowed_repeats=tuple(state.allowed_repeats),
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+            )
+        else:
+            result = _repair_scene_impl(
+                state.metrics, state.beat_plan, state.calibration,
+                clean_text=state.clean_text, spans=state.spans,
+                expander=callback if state.deepen_enabled else None,
+                regenerator=callback if state.regenerate_enabled else None,
+                seam_corrector=callback if state.seam_enabled else None,
+                dispatch=dispatch,
+                checkpoint=lambda texts: setattr(state, "working_texts", texts),
+                force_deepen_ids=state.force_deepen_ids,
+                force_ending_rush=state.force_ending_rush,
+                restrict_beat_ids=state.restrict_beat_ids,
+                allowed_repeats=tuple(state.allowed_repeats),
+            )
     except _AwaitJob as waiting:
         return waiting.job
     if index != len(state.history):
@@ -187,16 +230,37 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
         rejection = "candidate is empty"
     if not rejection and not error:
         if job.operation == "deepen":
+            others = tuple(text for key, text in state.working_texts.items() if key != beat_id)
             check = validate_expansion(state.working_texts[beat_id],
                 strip_generation_markers(candidate),
-                retention_threshold=_retention_threshold(state.calibration))
+                retention_threshold=_retention_threshold(state.calibration),
+                others=others, allowed_repeats=tuple(state.allowed_repeats))
             if not check.accepted:
                 rejection = check.reason
+        elif job.operation == "tighten":
+            if state.length is None:
+                rejection = "tighten requires a length adjustment session"
+            else:
+                bounds = resolve_bounds(state.length.target, state.beat_plan)
+                minimum = tighten_min_chars(beat_id, state.beat_plan, state.working_texts,
+                                            state.length.target, bounds)
+                check = validate_tightening(state.working_texts[beat_id],
+                    strip_generation_markers(candidate), min_chars=minimum)
+                if not check.accepted:
+                    rejection = check.reason
+        elif job.operation == "condense":
+            rejection = _condense_rejection(state, job, strip_generation_markers(candidate))
         elif job.operation == "seam":
             check = run_marked_seam_correction(state.beat_plan, state.working_texts,
                                                lambda prompt: candidate)
             if not check.accepted:
                 rejection = check.reason
+        elif state.contract_fix is not None:
+            # 契約修正は旧稿の字数ではなく Beat の床で長さを保証する（D16b）。
+            beat = next(item for item in state.beat_plan.beats if item.id == beat_id)
+            rejection = validate_contract_fix(
+                state.working_texts[beat_id], strip_generation_markers(candidate),
+                floor=beat.budget.chars_hint)
         else:
             original = state.working_texts[beat_id]
             clean = strip_generation_markers(candidate)
@@ -207,9 +271,36 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
     state.pending = None
 
 
+def _condense_rejection(state: RepairSession, job: RepairJob, candidate: str) -> str | None:
+    """収束候補の形と、畳んだあとも実効の下限と場面の床を割らないことを確かめる。"""
+
+    if state.length is None:
+        return "condense requires a length adjustment session"
+    episode = next((item for item in state.length.episodes if item.id == job.episode_id), None)
+    if episode is None or job.beat_id != episode.beat_id:
+        return "condense job does not match a registered child episode"
+    text = state.working_texts[episode.beat_id]
+    try:
+        start, end = locate_span(text, episode)
+    except EpisodeError as error:
+        return str(error)
+    check = validate_condense(text[start:end], candidate)
+    if not check.accepted:
+        return check.reason
+    texts = dict(state.working_texts)
+    texts[episode.beat_id] = splice(text, episode, candidate)
+    bounds = resolve_bounds(state.length.target, state.beat_plan)
+    if measured_chars(state.length.target, state.beat_plan, texts) < bounds.effective_lower:
+        return "condensing falls below the effective lower bound"
+    if assembled_chars(state.beat_plan, texts) < bounds.scene_floor:
+        return "condensing falls below the scene floor"
+    return None
+
+
 def history_summary(state: RepairSession) -> list[dict]:
     return [{"job_id": item.job.job_id, "operation": item.job.operation,
-             "beat_id": item.job.beat_id, "attempt": item.job.attempt,
+             "beat_id": item.job.beat_id, "episode_id": item.job.episode_id,
+             "attempt": item.job.attempt,
              "model": item.job.model, "prompt_hash": item.job.prompt_hash,
              "candidate_hash": digest(item.candidate), "review": item.review,
              "error": item.error, "rejection": item.rejection} for item in state.history]

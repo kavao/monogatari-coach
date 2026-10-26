@@ -33,7 +33,7 @@ REFERENCES_README = """# 本作品の NovelAI ポーション
 
 `.naiv4vibebundle` をこのフォルダに置き、`_meta.yaml` の `novelai.portions` で `path` を指す。
 
-横断既定は `_how_to/image_refs/novelai/`（`_meta.yaml` の `cross_flat` など）。
+横断ポーションは `_how_to/image_refs/novelai/`。既定の生成は `_meta.yaml` の `portion_default: none`（NovelAI V5）。Vibe は `cross_flat` などを明示したときだけ。
 """
 
 

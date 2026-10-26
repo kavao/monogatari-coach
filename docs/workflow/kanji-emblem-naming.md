@@ -32,4 +32,4 @@ Monogatari Coach は、指定された読みや残す漢字を優先し、字ご
 
 「族系の当て字を3案」のように名前だけを求める場合、ヤンキー美学の資料は適用しません。人物や集団の帰属・価値観・装飾の意味まで設計するときは、[ヤンキー美学](yankee-aesthetics.md)も使います。
 
-詳しい命名手順は [漢字エンブレム命名スキル](../../.rulesync/skills/kanji-emblem-naming/SKILL.md) を参照してください。
+生成法・系統・検品の基準と命名例を見たいときは [漢字エンブレム命名の技法](../../_how_to.example/naming_kanji_emblem.md) を、Monogatari Coach の手順を確かめたいときは [漢字エンブレム命名スキル](../../.rulesync/skills/kanji-emblem-naming/SKILL.md) を参照してください。手元で技法を調整したいときは、同じ名前のファイルを `_how_to/` に置くと、そちらが優先されます。

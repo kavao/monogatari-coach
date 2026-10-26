@@ -17,6 +17,7 @@ from .calibrate import ModelCalibration
 from .classify import ClassificationResult, Finding, classify_metrics
 from .models import Beat, BeatPlan, Failure, MetricsDocument, SpansDocument
 from .prompt import build_beat_prompt, current_beat_chars, to_prompt_budget
+from .repetition import frequent_phrases, introduced_repeats, style_rules_text
 from .storage import atomic_write_text
 
 
@@ -32,10 +33,20 @@ SCENE_FLOOR_TOKEN = "__scene_floor__"
 
 
 def split_sentences(text: str) -> list[str]:
-    """日本語の終端記号を優先した、修復検査用の軽量な文分割。"""
+    """日本語の終端記号を優先した、修復検査用の軽量な文分割。
+
+    改行も文の境界にする。「」」で終わる台詞の行や区切り行が次の段落と
+    一文に結合されると、段落を挟んだだけの Deepen 候補が元文を失ったと
+    判定されるため。
+    """
 
     normalized = unicodedata.normalize("NFC", text)
-    return [part.strip() for part in _SENTENCE_RE.findall(normalized) if part.strip()]
+    return [
+        part.strip()
+        for line in normalized.splitlines()
+        for part in _SENTENCE_RE.findall(line)
+        if part.strip()
+    ]
 
 
 def sentence_tail(text: str, count: int = 5) -> str:
@@ -49,7 +60,7 @@ def build_beat_continuation_context(text: str, count: int = 5) -> str:
     return "直前 Beat の末尾文脈（この続きとして書く）:\n" + tail if tail else ""
 
 
-def build_expand_prompt(beat: Beat, current_text: str) -> str:
+def build_expand_prompt(beat: Beat, current_text: str, avoid: tuple[str, ...] = ()) -> str:
     """既存部分の書き直しを誘発しない Deepen / Expand 指示を組み立てる。"""
 
     budget = to_prompt_budget(beat.budget)
@@ -58,7 +69,7 @@ def build_expand_prompt(beat: Beat, current_text: str) -> str:
     dlg_low, dlg_high = beat.budget.dialogue_turns
     observed_para, observed_dlg = _axis_observed(current_text)
     return (
-        build_beat_prompt(beat)
+        build_beat_prompt(beat, include_new_facts=False)
         + "\n現在の Beat 本文:\n"
         + current_text
         + "\n\nDeepen 指示:\n"
@@ -67,10 +78,13 @@ def build_expand_prompt(beat: Beat, current_text: str) -> str:
         + f"段落の残余裕 {_axis_room_label(observed_para, (para_low, para_high))}、"
         + f"会話の残余裕 {_axis_room_label(observed_dlg, (dlg_low, dlg_high))}。"
         + "現在の出来事・結末・視点を変更せず、現在の本文を残したまま、"
-        + "不足している手順・制度・選択、感情の変化と身体の変化、感覚・内面・会話を、言い換えではなく固有の情報で深めて下限を超えること。"
+        + "既にある出来事の解像度（動作の分解・感覚・心理の迷いと判断・相手の反応・その人物らしい癖、本文に既にある過去と因果）と、"
+        + "感情の変化と身体の変化、会話を、言い換えではなく固有の情報で深めて下限を超えること。"
+        + "新しい出来事・人物・過去・選択・所持品・事実は足さない。"
         + "字数だけを同一段落へ足しても、段落数・会話往復の不足は解消しない。"
         + "段落が下限未満なら空行で段落を増やし、会話往復が下限未満なら往復を足す。"
-        + "同じ内容の反復や埋草は禁止。書き直し、要約、既存文の削除は禁止する。"
+        + "同じ内容の反復や埋草は禁止。書き直し、要約、既存文の削除は禁止する。\n"
+        + style_rules_text(avoid)
     )
 
 
@@ -150,6 +164,7 @@ def find_deepen_paraphrase(
     *,
     min_chars: int = DEEPEN_PARAPHRASE_MIN_CHARS,
     threshold: float = DEEPEN_PARAPHRASE_JACCARD,
+    context: tuple[str, ...] = (),
 ) -> ParaphraseHit | None:
     """新規文が既存文または他の新規文と高類似なら、最初の衝突を返す。"""
 
@@ -169,9 +184,10 @@ def find_deepen_paraphrase(
             seen_new.append(sentence)
             continue
         # 短い反応は新規文として見ない。参照側は n-gram が取れる文なら対象にする。
+        # 他の Beat の文（context）も参照し、Beat をまたぐ同じ心理のループを拾う（D18）。
         references = [
             item
-            for item in [*original_sentences, *seen_new]
+            for item in [*original_sentences, *seen_new, *context]
             if len(_compact_for_ngram(item)) >= DEEPEN_PARAPHRASE_NGRAM
         ]
         for reference in references:
@@ -194,6 +210,8 @@ def validate_expansion(
     candidate: str,
     *,
     retention_threshold: float,
+    others: tuple[str, ...] = (),
+    allowed_repeats: tuple[str, ...] = (),
 ) -> ExpansionCheck:
     if not 0 <= retention_threshold <= 1:
         raise ValueError("retention_threshold must be between 0 and 1")
@@ -219,6 +237,17 @@ def validate_expansion(
             ratio,
             "new sentence paraphrases existing or added text",
         )
+    if others:
+        context = tuple(sentence for text in others for sentence in split_sentences(text))
+        if find_deepen_paraphrase(original_n, candidate_n, context=context) is not None:
+            return ExpansionCheck(False, ratio, "new sentence paraphrases another beat")
+    new_sentences = unmatched_sentences(split_sentences(original_n), split_sentences(candidate_n))
+    repeats = introduced_repeats([*others, original_n], [*others, candidate_n], new_sentences,
+                                 allowed=allowed_repeats)
+    if repeats:
+        phrase, count = repeats[0]
+        return ExpansionCheck(
+            False, ratio, f"phrase repeats across the scene: {phrase} x{count}")
     return ExpansionCheck(True, ratio, "accepted")
 
 
@@ -283,6 +312,8 @@ def run_expand_loop(
     *,
     retention_threshold: float,
     max_attempts: int = 2,
+    others: tuple[str, ...] = (),
+    allowed_repeats: tuple[str, ...] = (),
 ) -> RepairResult:
     """provider を直接知らない Expand ループ。
 
@@ -295,13 +326,16 @@ def run_expand_loop(
     original = unicodedata.normalize("NFC", current_text)
     while state.can_expand:
         state.record_attempt()
+        avoid = tuple(frequent_phrases([*others, original], allowed=allowed_repeats))
         candidate = strip_generation_markers(
-            unicodedata.normalize("NFC", expander(build_expand_prompt(beat, original)))
+            unicodedata.normalize("NFC", expander(build_expand_prompt(beat, original, avoid)))
         )
         check = validate_expansion(
             original,
             candidate,
             retention_threshold=retention_threshold,
+            others=others,
+            allowed_repeats=allowed_repeats,
         )
         checks.append(check)
         if check.accepted:
@@ -340,6 +374,11 @@ def _text_by_beat(
         else:
             texts[beat.id] = ""
     return texts
+
+
+def _other_texts(beat_plan: BeatPlan, texts: dict[str, str], beat_id: str) -> tuple[str, ...]:
+    """場面単位の反復検査（D18）に使う、対象以外の Beat の本文（BeatPlan 順）。"""
+    return tuple(texts.get(beat.id, "") for beat in beat_plan.beats if beat.id != beat_id)
 
 
 def _previous_text(beat_index: int, beat_plan: BeatPlan, texts: dict[str, str]) -> str:
@@ -462,6 +501,7 @@ def _repair_scene_impl(
     force_deepen_ids: list[str] | None = None,
     force_ending_rush: bool = False,
     restrict_beat_ids: list[str] | None = None,
+    allowed_repeats: tuple[str, ...] = (),
 ) -> SceneRepairResult:
     """判定結果に応じて局所修復を適用する。
 
@@ -587,6 +627,8 @@ def _repair_scene_impl(
             beat_texts[beat_id],
             (lambda prompt: dispatch("deepen", beat_id, prompt)) if dispatch else expander,
             retention_threshold=_retention_threshold(calibration),
+            others=_other_texts(beat_plan, beat_texts, beat_id),
+            allowed_repeats=allowed_repeats,
         )
         expansions[beat_id] = result
         if result.accepted:
@@ -594,6 +636,11 @@ def _repair_scene_impl(
         else:
             escalated.add(beat_id)
 
+    if (ending and not force_ending_rush and not truncated
+            and _scene_chars(beat_plan, beat_texts) >= scene_floor):
+        # D16: 床に届いたあとの EndingRush は末尾を作り直さず、報告に残す（章末の状態を変えやすいため）。
+        ending = False
+        notes.append("ENDING_RUSH_ADVISORY: scene floor is met; the ending was not regenerated")
     if ending and ending_beat_id not in missing_set:
         final_beat = beat_plan.beats[-1]
         generator = regenerator or expander
@@ -640,6 +687,8 @@ def _repair_scene_impl(
             beat, beat_texts[beat_id],
             (lambda prompt: dispatch("deepen", beat_id, prompt)) if dispatch else expander,
             retention_threshold=_retention_threshold(calibration), max_attempts=remaining,
+            others=_other_texts(beat_plan, beat_texts, beat_id),
+            allowed_repeats=allowed_repeats,
         )
         if result.accepted:
             beat_texts[beat_id] = result.final_text

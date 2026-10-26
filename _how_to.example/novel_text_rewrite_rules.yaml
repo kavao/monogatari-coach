@@ -19,6 +19,7 @@ defaults:
     - "^\\*\\*"    # Markdown 太字見出し（**ボディーの変化・経験ログ** 等）
     - "^>"         # Markdown ブロック引用
     - "^\\|"       # Markdown テーブル行
+    - "^\\s*<!--"  # HTML コメント（METRON の Beat / fact 印。--fix で壊さない）
 
 # ────────────────────────────────────────────
 # B. 三点リーダー（rewrite §1 文体）
@@ -150,6 +151,118 @@ rules:
       - "　　"
     message: "全角スペースが連続しています。段落インデントは全角1字で統一"
 
+  # ── F. 冗長化（OP-P）の候補（length_ops「冗長化の候補抽出」CHK-P1）────────
+  # すべて候補の抽出であり違反の確定ではない（level: info・自動修正なし）。
+  # 修辞的反復・意図的な繰り返し・台詞の口癖は残してよい。default / full には含めない。
+  - id: padding_circumlocution
+    level: info
+    patterns:
+      - "ことができ(た|る|ない|なかった)"
+      - "という(状況|状態|形|こと)に(なった|なる)"
+      - "という行動を"
+      - "を行うことに"
+    message: "迂言の候補（〜することができた／〜という状況になった等）。意味が変わらなければ引き締める"
+
+  - id: padding_meta_preface
+    level: info
+    patterns:
+      - "言うまでもな(く|い)"
+      - "ここで少し説明"
+      - "改めて言うまでもな"
+      - "説明しておくと"
+      - "前置きはさておき"
+    message: "メタ前置きの候補。語り口として意図していなければ削る"
+
+  - id: padding_abstract
+    level: info
+    patterns:
+      - "言葉にできない(ほど|くらい)"
+      - "筆舌に尽くし(がた|難)"
+      - "何とも言えない"
+      - "言い表せない(ほど|くらい)"
+    message: "抽象への逃げの候補。本文に既にある具体（感覚・動作）へ寄せる"
+
+  - id: padding_redundant_modifier
+    level: info
+    patterns:
+      - "まず最初に"
+      - "一番最初"
+      - "非常にとても"
+      - "とても非常に"
+      - "頭痛が痛"
+      - "後で後悔"
+    message: "重複語の候補（まず最初に・非常にとても等）。一語に統合する"
+
+  - id: padding_measurement
+    level: info
+    patterns:
+      - "数[十百]?センチ"
+      - "[0-9０-９一二三四五六七八九十]+センチ(もない|ほど|しかない|先)"
+      - "[0-9０-９一二三四五六七八九十数]+メートル(もない|ほど|しかない|先)"
+    message: "数値による計測の候補（「数十センチもない」等）。息遣い・手触りなど身体の実感で書けないか見る"
+
+  # 場面単位の語句反復（length_ops「冗長化」・計画 D18）。patterns は空で Python 側が数える。
+  # 同じ10字の語句が1ファイルで3回以上出たら、3回目の行に1件だけ候補を出す。意図した反復は残してよい。
+  - id: padding_repeated_phrase
+    level: info
+    patterns: []
+    message: "同じ語句が3回以上出ています（枕詞・修飾句の連打、葛藤のやり直し、定型の情景の候補）。要所の1〜2回に絞れないか見る"
+
+  # ── G. 低品質文（スロップ）の候補（slop_patterns.md 系列 C・E）───────────
+  # 機械で拾える定型句と記号だけを候補として出す（level: info・自動修正なし）。
+  # 系列 A（意味破綻）・B（過剰圧縮）は機械では拾えない。slop_patterns.md「出す前の検査」で読む。
+  # 一度なら問題のない言い回しも含む。同じ場面で重なっていないかを見る。
+  - id: slop_em_dash
+    level: info
+    patterns:
+      - "—"
+    message: "EM DASH（U+2014）。日本語のダッシュは「――」（U+2015 × 2）にする（slop_patterns.md 系列 E）"
+
+  - id: slop_contrast_frame
+    level: info
+    patterns:
+      - "単なる[^。」]{0,20}ではなく"
+      - "単なる[^。」]{1,20}では(ありません|ない)"
+      - "単なる[^。」]{1,20}を(超え|越え)て"
+      - "ではなく、[^。」]{0,20}(だった|なのだ|である)。"
+    message: "「A ではなく B」の対比の候補。重なっていれば対比をやめ、B を具体で書く（slop_patterns.md 系列 C）"
+
+  - id: slop_hedge_close
+    level: info
+    patterns:
+      - "と言えるでしょう"
+      - "と言えるだろう"
+      - "と言っても過言ではない"
+      - "ではないでしょうか"
+    message: "推量・問いかけの締めの候補。言い切るか、根拠を書く（slop_patterns.md 系列 C）"
+
+  - id: slop_both_sides
+    level: info
+    patterns:
+      - "どちらが正解というわけで"
+      - "正解は(ひとつ|一つ)ではない"
+      - "一概には言えない"
+      - "一概には言えません"
+      - "場合によります"
+      - "ケースバイケース(です|だ|である)"
+    message: "両論併記・判断保留の候補。後続文の条件や判断基準、台詞の役割を確認し、不足していれば補う（slop_patterns.md 系列 C・D）。出現だけで削除しない"
+
+  - id: slop_invitation
+    level: info
+    patterns:
+      - "ぜひ[^。」]{0,20}(みて|ください)"
+      - "いかがでしょうか"
+    message: "読者への呼びかけの候補。本文・あらすじでは削る（slop_patterns.md 系列 C）"
+
+  - id: slop_stock_emotion
+    level: info
+    patterns:
+      - "胸の奥が(じんわり|温か|あたたか|熱く|きゅっと|ざわ)"
+      - "胸の奥に[^。」]{0,8}(温か|あたたか|灯)"
+      - "言葉にならない"
+      - "どこか[^。」]{0,15}ような"
+    message: "感情の定型・ぼかしの候補。感情を生んだ動作・台詞・対象を書く（slop_patterns.md 系列 C）"
+
   # ── D. 段落インデント（rewrite §1）── stateful ──────────────────────────
   # patterns は空。Python 側の _check_paragraph_indent() が状態付きチェックを行う。
   # 除外条件（Python 実装済み）:
@@ -190,7 +303,7 @@ profiles:
       - fullwidth_space_double
 
   full:
-    description: "執筆後の総合チェック（default + grammar）。清書前に一度走らせる"
+    description: "執筆後の総合チェック（default + grammar + slop）。清書前に一度走らせる"
     extends: default
     rules:
       - dialogue_leading_indent
@@ -200,6 +313,32 @@ profiles:
       - empty_dialogue
       - duplicate_particle
       - fullwidth_space_double
+      - slop_em_dash
+      - slop_contrast_frame
+      - slop_hedge_close
+      - slop_both_sides
+      - slop_invitation
+      - slop_stock_emotion
+
+  padding:
+    description: "冗長化（OP-P）の候補抽出（CHK-P1）。清書・規定量調整の前に候補を見る。info のみで --strict を落とさない"
+    rules:
+      - padding_circumlocution
+      - padding_meta_preface
+      - padding_abstract
+      - padding_redundant_modifier
+      - padding_measurement
+      - padding_repeated_phrase
+
+  slop:
+    description: "低品質文（スロップ）の定型句・記号の候補抽出（slop_patterns.md 系列 C・E）。info のみで --strict を落とさない"
+    rules:
+      - slop_em_dash
+      - slop_contrast_frame
+      - slop_hedge_close
+      - slop_both_sides
+      - slop_invitation
+      - slop_stock_emotion
 
   minimal:
     description: "章メタ未整備の旧稿向け。句読点のみ確認したいとき（ルール B + C）"

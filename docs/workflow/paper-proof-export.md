@@ -44,7 +44,7 @@ novels/NNN_作品名/_publication_output/<build-id>/
 └─ preflight.json    # 出力検査の結果
 ```
 
-`_publication_output/` は再生成できる派生物であり、Git の追跡対象外です。出版の正本は引き続き `book.yaml`、`rights.yaml`、`_novel_text/`、`book_matter/`、`illustrations/` です。
+`_publication_output/` は再生成できる派生物であり、Git の追跡対象外です。出版の正本は引き続き `book.yaml`、`rights.yaml`、`_novel_text/`（付属原稿の `_novel_text/matter/` を含む。以前の作品は `book_matter/`）、`illustrations/` です。
 
 ## 成果物と用途
 

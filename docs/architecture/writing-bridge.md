@@ -4,13 +4,13 @@
 
 ## このドキュメントを使う場面
 
-1. **どんな場面で使うか** — 作品の `config.md` で METRON と CHRONOS が ON のとき、続きの執筆・場面の Deepen・当該場面の正本保存をチャットで依頼する。2つのフラグは連動し、両方 ON か両方 OFF にします。両方 OFF の作品では接続 run を作りません。
+1. **どんな場面で使うか** — 作品の `config.md` で METRON が ON のとき（CHRONOS は ON でも OFF でもよい）、続きの執筆・場面の Deepen・当該場面の正本保存をチャットで依頼する。CHRONOS は休止中（再設計予定）で、OFF の作品では観測と C1 の手順を飛ばします。CHRONOS だけ ON（METRON は OFF）は設定エラーです。METRON が OFF の作品では接続 run を作りません。
 2. **チャットへの指示文** — これだけで動きます。
    - `第1章を執筆してください。`
    - `この場面をDeepenしてください。`
    - `当該場面を保存してください。`（METRON ON では省略できます）
 3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら、第1章の初稿や単一章の依頼でも、契約と Beat を先に置いて `prepare` → 候補の `receive` / `inspect` に進みます。`_novel_text` へ直接書いてから測る流れにはしません。CHRONOS ON では inspect の前に observations を書きます。初稿は指示目標以上を1回で狙います（助言。未達でも床到達なら保存を止めません）。シーン床に届いていれば修復を始めず、`--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。未作成または空の正本には selector を付けません。床未達のとき、または「この場面をDeepen」と明示したときだけ `repair-*` します。修復を始めたら、今の CLI ではジョブを完走してから保存します。止めたいときはその旨を書いてください。保存のあと `_meta.md` のストーリー反映は別スキルです。場面に CHRONOS イベントが無い場合は、反映のあとに「未登録」と報告し、次回タスクへ登録を追記します（章の次回タスクは消しません）。
-4. **ユーザーが確認できるもの** — `_writing/<scene>/<run>/` の `report.json`、`jobs/` のプロンプト、`_metron/<scene>/` の計測、反映後の `_novel_text` と `_novel_text_backup`。
+4. **ユーザーが確認できるもの** — `_work/writing/<scene>/<run>/`（以前の作品は `_writing/<scene>/<run>/`）の `report.json`、`jobs/` のプロンプト、`_work/metron/<scene>/` の計測、反映後の `_novel_text` と `_novel_text_backup`。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 清書（rewrite.md）は従来どおり別手順です。明示した `metron_cli.py` / `chronos_cli.py` はフラグ OFF でも拒否しません。
 
@@ -18,7 +18,7 @@
 
 「この場面をDeepenしてください」と対象を指定すると、Monogatari Coach は依頼範囲を確認し、契約・Beat・人物状態を修復文脈へ渡します。現在の生成モデルに承認済みのMETRON校正がある場合に利用できます。校正のないモデルはV0計測までとし、別モデルの校正を借りません。
 
-ユーザーは `_writing/<scene>/<run>/jobs/` のプロンプト、`repair_state.json` の試行履歴、`report.json` の計測・C1結果を確認できます。作業稿と計測結果は `_metron/<scene>/` に残ります。CHRONOS ON でも対象場面のイベントが無い場合、`report.json` は `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残します。この警告は本文保存を止めませんが、`chronos_registered: success` とイベント検査済みを同一視しません。CLIは外部APIを呼びません。
+ユーザーは `_work/writing/<scene>/<run>/jobs/`（以前の作品は `_writing/…`）のプロンプト、`repair_state.json` の試行履歴、`report.json` の計測・C1結果を確認できます。作業稿と計測結果は `_work/metron/<scene>/` に残ります。CHRONOS ON でも対象場面のイベントが無い場合、`report.json` は `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残します。この警告は本文保存を止めませんが、`chronos_registered: success` とイベント検査済みを同一視しません。CLIは外部APIを呼びません。
 
 ## 操作手順
 
@@ -107,6 +107,26 @@ python tools/writing_bridge_cli.py locate-quote novels/NNN_作品名 --scene-id 
 
 未作成または空のファイルへ新章を書くときは、selector を付けません。未作成の本文に heading を付けると、`publish --dry-run` が `UNKNOWN_REF` になります。
 
+**第1章など新章の初稿（起草 run から）**
+
+「第1章を執筆してください。」と入力すると、Monogatari Coach は run を2本使います。先に正本へ書けない**起草 run**（`--allow-publish` なし）で候補を受けて測り、床に届いて必須修復が無いときだけ、正本へ書ける**保存用 run**（レシピ1）へ移ります。起草 run を分けるのは、測る前の候補が正本へ書かれないようにするためです。
+
+起草 run の前に、Monogatari Coach は `_work/metron/<scene>/` に `contract.yaml`（場面の始まりと終わり・禁止事項）と `beats.yaml`（Beat ごとの意図と字数目安）を置きます。章の出来事を項数どおりの Beat にはせず、目的の塊で 5〜8 Beat 程度にまとめます。どちらのファイルにも決められた項目以外は書けないので、設計の項と Beat の対応を残すときは `beats.yaml` の `#` コメントにします。
+
+次は起草 run の手順です。`run-0001` は本番の `prepare` が返した id に置き換えます。
+
+```powershell
+# 起草 run: 未作成または空の正本。selector なし、--allow-publish なし（正本へは書けない）。
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --dry-run --repo-root .
+python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --repo-root .
+# マーカー付き候補を受ける。正本はまだ空のまま。
+python tools/writing_bridge_cli.py receive novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --candidate path/to/marked.md
+# CHRONOS ON: 候補を読んで書いた observations を渡して測る。CHRONOS OFF では --observations は不要。
+python tools/writing_bridge_cli.py inspect novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --observations path/to/observations.json
+```
+
+`inspect` のあと、`_work/writing/ch01-001/run-0001/report.json`（以前の作品は `_writing/ch01-001/run-0001/report.json`）でシーン床への到達と必須修復の有無を確認できます。届いていればレシピ1へ進み、同じ候補を保存用 run で受け直します。レシピ1の `--from-run run-0001` は、この起草 run を指します。床未達や必須修復が残るときは、起草 run のまま修復（`repair-*`）へ進みます。
+
 ```powershell
 # レシピ1: 未作成または空の正本。selector なし。
 python tools/writing_bridge_cli.py prepare novels/NNN_作品名 --scene-id ch01-001 --text-path _novel_text/novel_text01.md --request-kind new --allow-publish --dry-run --repo-root .
@@ -135,7 +155,7 @@ python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-
 python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-001 --run-id run-XXXX --authorization "ユーザー依頼: 第1章の当該場面を保存" --repo-root .
 ```
 
-実行後、Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書きます。マーカー行のあいだに残った連続空行は、段落1つ分（空行1つ）まで畳みます。対象外の場面は残します。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_metron/<scene>/adopted.<run_id>.md` に残ります。見出しだけの stub を先に正本へ置くと `STALE_EVIDENCE` になりえます。
+実行後、Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書きます。マーカー行のあいだに残った連続空行は、段落1つ分（空行1つ）まで畳みます。対象外の場面は残します。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_work/metron/<scene>/adopted.<run_id>.md` に残ります。見出しだけの stub を先に正本へ置くと `STALE_EVIDENCE` になりえます。
 
 保存直後に同じ run で再計測します。`report.json` の `text_save` は `success`、`target_text_sha256` は保存本文です。METRON と C1 は採用した場面稿で測り、保存ファイルとハッシュが違うときは findings に残します。文字数と句読点ゲートも findings に記録します。句読点の失敗で本文は戻しません。`_meta.md` のストーリー反映と rewrite 清書は既存スキルの手順です。同じターンで `_novel_text` の手編集と `publish` は重ねません。
 
@@ -156,6 +176,131 @@ flowchart TD
 ```
 
 途中で失敗したときは候補と旧稿を残します。同じ `--authorization` で再開すると、本文が書けていれば検査から続け、二重退避しません。`publish_state.json` を書いたあとで正本が外部作成・削除・改変された場合は上書きせず `STALE_EVIDENCE` です。反映後に正本が変わっても同様です。修復が active のままでは publish できません。publish を始めた run へ別候補を `receive` することはできず、新しい run が必要です。`inspect --marked` は受領済み候補と同じ内容のパスだけを測ります。別内容を指定すると `STALE_EVIDENCE` です。
+
+## 規定量調整（既にある本文を目標字数に合わせる）
+
+METRON / CHRONOS が ON の作品で、既にある本文を目標字数へ伸縮するときの経路です。チャットでは次の一言で動きます。
+
+```text
+第3章を4000字に合わせてください。
+```
+
+Monogatari Coach は次の順に進めます。
+
+1. `prepare --request-kind refine` の run で今の本文を `receive` → `inspect` する。
+2. 当該場面に CHRONOS イベントがあれば、`canon-precheck` のイベント一覧と本文を Monogatari Coach が照合し、`--by agent` で記録する。ユーザーには尋ねない。食い違いの疑いがあるときだけ、始める前に相談する。イベントが無い場面では照合を省き、調整前の本文をそのまま基準にする。
+3. `repair-begin --intent length --finish-target N` で始める。ユーザーの字数 N は、清書後の仕上がり目標として扱う。清書で削る分の余地（既定 +8%）を足した字数を増量の目標にし、許容帯（既定は目標の ±3%）を決める。許容帯の上限が場面の下限（床）より小さい指定は `LENGTH_CONFIG` で止まる。すでに許容帯に入っていれば `REPAIR_NOT_NEEDED` で止まる。増量の目標（余地込み）に対して本文が10%以上足りないときは、Deepen を始めず `DESIGN_DENSITY` で止まる（`repair_state.json` は作らない）。足す子エピソードを提案し、承認後に設計書と `_work/metron/<scene_id>/episodes.yaml`（`span_pending: true`）へ足してから加筆する。欠落 Beat があるときは止めずに先に埋め、埋めたあとの字数でもう一度不足率を見る。まだ10%以上足りなければ、Deepen へ進まず `DESIGN_DENSITY` で `escalated` になる。
+4. `repair-next` が出す1件ずつのジョブに候補を作る。足りないときは増量（`deepen`）、超えているときは引き締め（`tighten`）だけを出し、増量と減量を往復しない。増量で上限を超えたときに限り、引き締めで戻す。
+5. 増量と欠落 Beat の埋めは、機械検査（元文残存率・同義反復・短縮の棄却など）を通れば採用する。ユーザーに JOB ごとの「採用／否認」を尋ねない。差分は `canon_review.json` に証跡として残り、`length-review` でいつでも見られる。引き締めと収束は、消えた文をユーザーに見せ、出来事の欠落が無いと確認できたものだけを `--canon-authorization` 付きで採用する。欠落 Beat があっても開始でき、調整の最初に埋める。
+6. 許容帯に入れば `repair: completed` になる。出力された作業稿（Beat マーカー付き）を続けて清書し（`rewrite.md`。床を割らないところで止める。仕上がり目標との数%（5%以内）の差は合わせ直さない）、`repair-summary --refined <清書稿>` で（清書稿は Beat の順序・Beat の間・章見出しなど Beat の外を作業稿のまま保つこと。変わっていれば `RANGE_MISMATCH` で受け付けない。Beat 指定の調整では、対象 Beat の仕上がりと床を、場面全体の床とは別に確かめる）、調整前 → 増量後 → 清書後の字数、清書で消えた文、場面内で3回以上に増えた語句の推移を含めて報告する。主要な変化（字数の前後、採用した JOB、新しい文と消えた文、順序が変わった文、補助の印、イベント照合の根拠、場面契約の終了状態と次章の書き出し）を一度だけ見せ、「この内容で保存してよいか」を尋ねる。ユーザーへの確認はこの1回だけで、返答は `repair-summary --accept --authorization` で記録する。そのあと保存用の新しい run で `publish` する。試行回数の上限（既定3回。却下した候補も数える）に達したときや、届かないときは `repair: escalated` で止まり、不足・超過の字数を `LENGTH_MAX_PASSES` / `LENGTH_ESCALATE_ADD`（出来事を足す加筆の提案）/ `LENGTH_ESCALATE_REVISE`（畳む・削る改稿の提案）として報告する。加筆・改稿は承認を得てから別の作業として行う。`repair-finish` で途中で止めた場合も、許容帯に入っていなければ `escalated` になる。
+
+字数は Beat 本文の合計で数えます（Beat の外にある章見出しなどは含みません）。ユーザーが確認できるのは、run の `repair_state.json`（状態と報告）、`canon_review.json`（照合と候補ごとの確認の記録）、`jobs/` のジョブです。
+
+```powershell
+# イベントがある場面: 照合の材料を表示する（何も書かない）
+uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001
+# ユーザーの返答を記録する（食い違いがあれば --result conflict）
+uv run python tools/writing_bridge_cli.py canon-precheck novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --result no_conflict --authorization "著者: 本文とイベントに矛盾なし"
+# 規定量調整を始める。4000 は清書後の仕上がり目標で、増量は余地 +8% の 4320 を目標にする
+# （--finish-margin / --tolerance 0.97,1.03 / --length-scope beat --length-beat-id ID / --max-passes 3 は任意。余地なしは --target-chars）
+uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --model MODEL_ID --authorization "ユーザー依頼: 第3章を4000字に" --intent length --finish-target 4000 --repo-root .
+uv run python tools/writing_bridge_cli.py repair-next novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --repo-root .
+# 候補の差分を見る（何も書かない。引き締め・収束の確認や、後からの指摘に使う）
+uv run python tools/writing_bridge_cli.py length-review novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --repo-root .
+# 増量の候補を採用する（機械検査で採否が決まる）
+uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --model MODEL_ID --candidate path/to/candidate.md --review confirmed --repo-root .
+# 引き締め・収束の候補は、ユーザーの確認を得てから出典を付けて採用する
+uv run python tools/writing_bridge_cli.py repair-submit novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0004 --model MODEL_ID --candidate path/to/tighten.md --review confirmed --canon-authorization "著者: 出来事の欠落なし" --repo-root .
+# 続けて清書した稿（Beat マーカー付き）を渡し、保存前に主要な変化を一度だけ見せる → 返答を記録する
+uv run python tools/writing_bridge_cli.py repair-summary novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --refined novels/NNN_作品名/_work/metron/ch03-001/refined.run-0001.md --repo-root .
+uv run python tools/writing_bridge_cli.py repair-summary novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --refined novels/NNN_作品名/_work/metron/ch03-001/refined.run-0001.md --accept --authorization "著者: この内容で保存してよい" --repo-root .
+# 章末を契約に合わせて書き直す（規定量調整とは別。Beat の床で長さを判定し、ユーザーの確認を要する）
+uv run python tools/writing_bridge_cli.py repair-begin novels/NNN_作品名 --scene-id ch03-001 --run-id run-0002 --model MODEL_ID --authorization "ユーザー依頼: 章末を設計どおりに" --intent contract_fix --scope beats --beat-ids rest_hint --instruction "湯船から上がらず、休憩室を思い出すところで終える" --repo-root .
+```
+
+目標字数は beats.yaml の `length_target`（`target_chars` / `tolerance` / `scope` / `beat_id` / `max_passes`）にも書けます。CLI の指定と食い違うときは `JOB_CONFLICT` です。章単位の指定は受け付けないので、場面ごとに調整します。技法の基準は `_how_to.example/length_ops.md` です。
+
+### 不足率の記録（`shortage_log.jsonl`）
+
+`repair-begin` は規定量調整（`--intent length`）と自動修復（`auto` / `explicit_deepen`）のどちらでも、開始時の不足率を `_work/metron/<scene_id>/shortage_log.jsonl` に1行ずつ追記します（`at`、`run_id`、`intent`、`scope`、`target`、`chars`、`shortage`、`over_limit`、`stopped`）。`target` は規定量調整では余地込みの増量の目標、自動修復では場面の床です。自動修復は10%以上でも止めず、`DESIGN_DENSITY` を `repair_state.json` の notes に残して Deepen を続けます。止めるように切り替えるかは、この記録の頻度を見てから決めます。
+
+### 収束・CANON 検査・改稿工程
+
+収束対象があり、`max_passes` が2以上なら、引き締めに使う回数を全体上限の1回手前までに抑え、収束用に1回を残します。既定3回なら引き締めを最大2回、そのあと収束を試します。上限1回では引き締めだけを試します。増量後の上限超過には、この予約を適用しません。
+
+- **収束**: 減量で引き締めが届かないとき、`_work/metron/<scene_id>/episodes.yaml` に登録した子エピソードを要約へ畳むジョブ（`condense`）が出ます。候補ファイルには、畳んだ文だけを書きます。`length-review` は、畳んだあとの Beat 全体で差分を見せます。登録が無い場面では収束しません。
+- **CANON 検査**: 候補ごとに、別のモデル呼び出しで事実の照合を行えます。不合格の候補は、ユーザーの確認が無い限り採用されません。合格を確認の代わりにするのは、ユーザーが明示して `--check-replaces-author` で始めたときだけです。
+- **改稿工程**: 減量が届かず `LENGTH_ESCALATE_REVISE` で止まったときは、削りたい部分ごとに `strip-check` で参照を確かめます。持ち帰り・他のイベントからの参照・後の本文に現れる語があれば終了コード 1 で、削らずに収束へ戻します。参照が無く、ユーザーが承認したときだけ `strip-record` で `_work/metron/<scene_id>/canon_deletions.yaml` に記録し、本文は refine run の `publish` で削ります。CHRONOS イベントは CHRONOS の承認手順で直します。
+
+```powershell
+# CANON 検査の指示を jobs/JOB-0001.canon_check.prompt.md に書く
+uv run python tools/writing_bridge_cli.py canon-check novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --repo-root .
+# 別の呼び出しで得た JSON を判定して記録する（完了印と入力ハッシュを含む。不合格なら終了コード 1）
+uv run python tools/writing_bridge_cli.py canon-check novels/NNN_作品名 --scene-id ch03-001 --run-id run-0001 --job-id JOB-0001 --candidate path/to/candidate.md --result path/to/check.json --checker-model CHECKER_ID --repo-root .
+# 改稿工程: 削る前の参照チェック（参照があれば終了コード 1。何も書かない）
+uv run python tools/writing_bridge_cli.py strip-check novels/NNN_作品名 --scene-id ch03-001 --quote "削りたい一文。"
+# ユーザーが承認したあとに削除を記録する
+uv run python tools/writing_bridge_cli.py strip-record novels/NNN_作品名 --scene-id ch03-001 --quote "削りたい一文。" --reason "山場の前を軽くする" --authorization "ユーザー承認: 改稿"
+```
+
+検査結果は、指示に記載された `input_sha256` をそのまま返し、`completed: true` と事実一覧・指摘一覧をすべて含める必要があります。候補検査では `facts_before` / `facts_after` にそれぞれ最低一文の事実を書き、`findings` / `condense` も省略しません。開始前照合では `facts` に最低一文を記録し、`conflicts` も省略しません。空のJSON・未完了・項目不足は `SCHEMA_UNSUPPORTED` です。
+
+検査依頼は `jobs/JOB-xxxx.canon_check.request.json`、開始前照合は `canon_precheck.request.json` に保存されます。依頼前の結果読込は `UNKNOWN_REF`、依頼後に本文・候補・イベントなどが変わった結果の読込は `STALE_EVIDENCE` です。変更した場合は指示を再出力し、検査をやり直してください。別runの結果も流用できません。従来形式の検査結果も、この形式で検査し直す必要があります。
+
+開始前の照合材料には、イベントの題名・人物だけでなく、因果参照（`causes` / `effects`）、時刻・場所・人物状態（`effects_on`）を含めます。改稿の引用指定でも、重なる登録済み子エピソードの持ち帰りを確認します。保護する契約の範囲を一意に特定できない場合は、契約の引用を修正してから再確認してください。
+
+## OFF で下書きし、あとで ON にして洗練する
+
+このガイドの手順は、METRON と CHRONOS が ON の作品で使います。新規作品は標準で OFF なので、まず OFF のまま下書きし、書き終えた章から ON にして洗練できます。従量課金の API を使うクライアント（Cursor で Gemini を使う場合など）で、使う量を抑えるための進め方です。
+
+### どこで使う量が増えるか
+
+writing_bridge・METRON・CHRONOS のツールは、どれも API を呼びません。量が増えるのは、ON のときに Monogatari Coach が書くものです。
+
+| 工程 | ON のときに増えるもの |
+|------|------------------------|
+| 起草前 | 場面の契約（`contract.yaml`）と Beat の計画（`beats.yaml`） |
+| 起草 | Beat マーカー付きの候補本文 |
+| 検査 | CHRONOS の観察記録（引用の位置） |
+| 修復 | Deepen などの書き直し候補 |
+| CHRONOS | 章ごとの出来事（イベント）の登録 |
+
+OFF のあいだは、本文を書く分だけになります。
+
+### ON にするときの流れ
+
+1. 作品の `_meta.md` の「検査レイヤの予定」に、ON にする時期と、どの章から測るかを書きます。
+2. `config.md` の基本情報表で、`METRON` と `CHRONOS` を両方 `ON` にします。
+3. 下書きの章を当面測らないときは、同じ表に `| METRON_FROM | 5 |` のように書きます。第5章より前は「計測対象外（下書き期）」になり、次の章へ進む前の後追い計測を求められません。
+4. 次のコマンドで、保存先の準備と、測っていない章の一覧を確かめます。
+
+```powershell
+# CHRONOS の保存先を用意する（既にあれば何もしない）
+uv run python tools/chronos_cli.py init novels/NNN_作品名
+# 未計測・計測が古い・計測対象外の章を一覧する
+uv run python tools/novel_project_check.py novels/NNN_作品名 --check-inspection-layers
+```
+
+5. チャットで「第3章を計測して洗練して」のように頼むと、Monogatari Coach は、本文の出来事を変えずに契約と Beat を起こし、上の「レシピ2」（既存の非空本文を heading で置き換える）の流れで計測・修復・反映します。反映のあとはストーリー反映も行います。
+6. CHRONOS の出来事は、洗練する章から順に登録します。全章を一度に登録しません。
+
+### 計測が古い章
+
+計測のあとに本文を書き換えた章は、`--check-inspection-layers` で「計測が古い」と表示されます。OFF に戻していたあいだの直接の書き換えや、rewrite.md の清書が当てはまります。Monogatari Coach は、run が測った本文のハッシュと今の本文を比べて判定します（改行コードの違いと Beat マーカーは無視します）。計測が古い章は、もう一度後追い計測をかけると新しくなります。
+
+清書そのものは、今までどおり計測を起動しません。ON の作品で清書した章は「計測が古い」になるので、洗練の段階でその章を計測し直してください。
+
+### 後追い計測の作業稿で気をつけること
+
+既稿に Beat マーカーを付けた作業稿を作るときと、修復の候補を書くときは、次の3点を守ります。パイロット作品（119）で実際につまずいた点です。
+
+- 場面の区切り（`---`）は、Beat と Beat のあいだに置かず、次の Beat の先頭に入れます。Beat の外に本文が残ると、修復を始めるときに `RANGE_MISMATCH` で止まります。
+- Deepen の候補では、元の文を消さず、足す文は文や段落の切れ目に置きます。一つの文の途中に文を割り込ませると、元の文が残っていないと判定され、元文残存率の不足で却下されます。台詞の行の直後に段落を挟むのは問題ありません（METRON は改行も文の切れ目として数えます）。
+- 段落数や会話の往復が上限に達している Beat（修復指示の「残余裕 0」）では、新しい段落を作らず、既存の段落の末尾に文を足します。
+
+### OFF に戻すとき
+
+途中の修復（`repair-*`）や作業中の run が残っていると、次に ON にしたときに止まります。OFF に戻す前に、`repair-finish` などで閉じてください。閉じられないときは、Monogatari Coach は OFF にせずに理由を報告します。
 
 ## 中断と再開
 

@@ -2705,7 +2705,7 @@ def iter_yaml_manga_jobs(
                 try:
                     panel_frames = frame_sizes_for_page(
                         geometry,
-                        [int(panel.get("panel_id")) for panel in panels],
+                        [int(panel.get("panel_id") or 0) for panel in panels],
                         panel_frame_policy,
                     )
                 except (FrameAspectError, TypeError, ValueError) as exc:
@@ -3243,7 +3243,9 @@ def main(argv: list[str] | None = None) -> int:
             ("strength", "novelai_reference_strength"),
             ("information_extracted", "novelai_reference_information_extracted"),
             ("provider", "provider"),
+            ("model", "model"),
             ("aspect_ratio", "aspect_ratio"),
+            ("panel_aspect", "panel_aspect"),
         ):
             if getattr(args, attr) is None and wf_key in wf:
                 val = wf[wf_key]

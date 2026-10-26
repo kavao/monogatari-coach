@@ -10,7 +10,7 @@
 
 ## 設計の進め方
 
-創作技法 [_how_to.example/yankee_aesthetics.md](../../_how_to.example/yankee_aesthetics.md) は、次の見方をまとめています。
+創作技法 [_how_to.example/tropes/yankee_aesthetics.md](../../_how_to.example/tropes/yankee_aesthetics.md) は、次の見方をまとめています。
 
 - 作品が理想とする姿（L1）、作中集団の実践（L2）、外部からの解釈（L3）を区別します。
 - 様式、倫理、社会的な関係をつなげ、必要な要素だけを選びます。
@@ -26,6 +26,6 @@
 
 このモデルは創作上の整理です。ヤンキー文化の歴史や特定の地域・集団を事実として説明する場合は、この資料の要約だけで断定せず、個々の主張を別途確認してください。
 
-作品資料の選定条件と詳細は [ヤンキー美学の創作技法](../../_how_to.example/yankee_aesthetics.md) を参照してください。
+作品資料の選定条件と詳細は [ヤンキー美学の創作技法](../../_how_to.example/tropes/yankee_aesthetics.md) を参照してください。
 
-プロジェクトに作業用 `_how_to/_index.md` がある場合は、標準資料を `_how_to/yankee_aesthetics.md` にコピーし、作業用索引へ追加してから作品で選定します。コピー前の標準新葉は、作業用索引がある環境ではまだ選定対象になりません。[_how_to/ のガイド](../project-structure/how-to-area.md) に手順があります。
+プロジェクトに作業用 `_how_to/_index.md` がある場合は、標準資料を `_how_to/tropes/yankee_aesthetics.md` にコピーし、作業用索引へ追加してから作品で選定します。コピー前の標準新葉は、作業用索引がある環境ではまだ選定対象になりません。[_how_to/ のガイド](../project-structure/how-to-area.md) に手順があります。

@@ -13,8 +13,11 @@
    - 一般的な小説の文法
 1.5. ethos.md
    - 倫理的な決断、規範の差、忠義と恩義、共同体と個人の衝突を設計するときに選ぶ。既定では読まない。
-1.6. yankee_aesthetics.md
-   - 「ヤンキー美学」の適用を明示された場合、または不良文化の筋・意地・仲間・地元・過剰装飾が人物・集団の主要な軸となる場合に選ぶ（既定では読まない。「友情」「義理」「派手」だけでは選ばない）。
+1.6. [`tropes/`](tropes/README.md)（物語の型とあるある。人物・設定）
+   - 葉は既定では読まない。各行の条件に当たるときだけ選ぶ。
+   - [`tropes/yankee_aesthetics.md`](tropes/yankee_aesthetics.md) … 「ヤンキー美学」の適用を明示された場合、または不良文化の筋・意地・仲間・地元・過剰装飾が人物・集団の主要な軸となる場合に選ぶ（「友情」「義理」「派手」だけでは選ばない）。
+   - [`tropes/zero_sum_mindset.md`](tropes/zero_sum_mindset.md) … ゼロサム思考・ハルピュイア型。盗賊・山賊・略奪者・ただ乗りする人物や集団が主要な軸となる場合、または奪う側と作る側の価値観の衝突を物語の推進力にする場合に選ぶ（「悪役」「強欲」だけでは選ばない）。
+   - [`tropes/foreign_element.md`](tropes/foreign_element.md) … 異物導入。作品独自の要素（能力・技術・存在・知識・ルール改変）を既存の世界に持ち込み、その性質・制約・副作用の掘り下げ自体が物語の進行になる場合に選ぶ（魔法や異能が当たり前にある世界を背景にするだけでは選ばない）。
 3. novel_structure.md
    - 一般的な小説構造のデータベース
 3.5. episode/（エピソード技法・雛形）
@@ -25,7 +28,10 @@
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
    - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
-   - general（友人・偽味方・敵対者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
+   - general（子エピソードによる増量。加筆工程で出来事を足して増やすときだけ読む。削減上限到達後の追加削減分も含む）: [episode/general/episode_sub_episode.md](episode/general/episode_sub_episode.md)
+   - general（友人・偽味方・敵対者・敵の顔の庇護者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_enend.md](episode/general/episode_enend.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
+   - general（物語の山と転）: [episode/general/episode_flow_peak_payoff.md](episode/general/episode_flow_peak_payoff.md)（流れ・山・オチの構造論。山・オチ・後味を設計するとき、読後に平坦さや約束の回収漏れを診断するとき）, [episode/general/episode_flow_break.md](episode/general/episode_flow_break.md)（流れ破壊と転の設計。転・中盤の反転・どん底を設計するとき、展開が予測どおりで単調なとき）。既定では読まない。ただし「平板なのでアレンジして」「プロットを変えて」などのプロットのアレンジの作業では、selected に無くても読む工程正本とする。
+   - general（黄金律）: [episode/general/episode_golden_structure.md](episode/general/episode_golden_structure.md) … 三幕構成・ヒーローズ・ジャーニー・Save the Cat。作者が型を意識して選んだときだけ使う。既定の構造方針にしない（指定が無ければ型の位置は確率で揺らす）。
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
@@ -33,13 +39,25 @@
    - 清書稿は `_novel_text_backup/` に旧版を退避したうえで `_novel_text/` を直接更新する
    - 旧版は `_novel_text_backup/` に **`<元ファイル名>_vNNN.md`** 形式で退避する
    - 清書稿の保存先・バックアップ・`_novel_text` への反映はスキル **novel-refinement-output**（`.rulesync/skills/novel-refinement-output/SKILL.md`）と **`.rulesync/rules/overview.md` §2.5** を参照
+5.1. length_ops.md
+   - 文章の伸縮操作規定。清書・規定量調整（目標字数への伸縮）・加筆／改稿工程へのエスカレーションのときだけ読む。出来事（CANON）を変えない操作と、加筆・改稿工程に属する操作の境界、検査と停止条件。削減上限到達後は冗長を残さず、追加削減と子エピソード案へ振る（承認後）
+5.2. slop_patterns.md
+   - 低品質文（スロップ）の反面教師の文例集。意味破綻・過剰圧縮・頻度型の定型・構成・記号の5系列。**本文の起草・清書と、あらすじ・案・章題・ログラインを出す前に必ず読む**（`rewrite.md` と同じ工程正本で、selected に無くても読む）。定型句の機械候補は `novel_text_rewrite_lint.py --profile slop`
 6. name_creature.json
    - 人名、クリーチャー名を考えるときの参考にする
    - 人物命名時は、原則としてスキル **character-naming**（`.rulesync/skills/character-naming/SKILL.md`）と **weighted-pick** を併用し、`tools/json_weighted_pick.py` で候補抽出する
 6.5. naming.md
    - 小説のタイトル命名、コンセプトに沿った名前の付け方などの技法まとめ
+6.6. naming_kanji_emblem.md
+   - 漢字エンブレム命名（当て字・義訓・既存名の読みを保った漢字改修）の生成法・系統・検品の基準と命名例。**既定では読まない。** 漢字の当て字・義訓・漢字エンブレム風の表記、または既存名の読みを保った漢字改修を求められたときだけ読む（「和風の名前」「漢字の人物名」だけでは読まない）。スキル **kanji-emblem-naming** の工程正本なので、そのときは selected に無くても読む。
+6.7. synopsis_presentation.md
+   - 物語案・`proposal.md` のログライン・あらすじ・キャラクター紹介・チャットモードのあらすじと選択肢、および `design_specification.md` の章構成を書くときは、出す前に必ず読む。Gate B4 の口語化と、設計の章出来事の因果検査（Gate B4・単独起動・プロットのアレンジの反映のあと）でも使う（それ以外では読まない）。型名・ジャンル葉の名前・ID・カタログ短縮（葉のあだ名）を案に出さず、人物・出来事・選択で見せる基準。型名は出さない。体位・体勢は伏せない（「型名と体位・体勢」）。章項は「誰が何をした」口語1文で、なぜ動いたかが同じ項か直前の項で指せる（因果検査・反パターン A8）。決まりを概念や比喩でまとめない（反パターン A9）。反パターン、合格例、出す前の検査。本文・清書で型名遮断を体勢伏せと誤読しそうなときは該当節だけ読む。
+6.8. showing_axes.md
+   - 見せ方軸（人物の見せ方）。人物と筋は変えずに、内心をどこまで語るか、強さを誰に評価させるか、作品の構えなどで作風の時代・ジャンル臭を決める軸と時代プリセット。**既定では読まない。** 企画（Gate B）で作者が作風・時代感・見せ方を指定したとき、selected のジャンル葉に既定プリセットがあるとき、既存作品で作者が見せ方の指定を求めたとき（限定更新）だけ読み、作品 `_meta.md` の「見せ方軸」節を埋める。採ったら selected に入れる。指定が無ければ読まずに「指定なし」と記録する。執筆・清書は `_meta.md` の節を正とする。手順はスキル **novel-planning**。
 7. world_wear.md
    - 世界の色彩や、人物デザインを考えるときの参考にする
+7.1. world_glossary.md
+   - `world.md` の用語集（`## 用語` / `## 用語（承認待ち）`）の書式、作品固有の新しい名前・仕組みを書くときの宣言、用語照合の判定と報告の雛形。既定では読まない。`world.md` を作る・用語を足すとき、起草・清書で新しい名前や仕組みを書きたくなったとき、用語照合を行うときだけ読む。工程正本なので selected に無くても読む。
 7.5. [`genre/`](genre/README.md)（ジャンル別・横断創作リファレンス）
    - **発動条件**: Plan Mode のジャンル軸（依頼文・`config.md` のジャンル・キーワード）が次のいずれかに該当するとき、その葉を必読とする。該当しないときは読まない。
    - [`genre/inshu_mura.md`](genre/inshu_mura.md) … 因習村・閉鎖的村落。地理、共同体、禁忌、儀礼、排除、秘密、物語構造、配慮。
@@ -51,6 +69,7 @@
    - [`genre/human_drama.md`](genre/human_drama.md) … 現代日常・家族・ヒューマンドラマ（非事件型）。家族再生、共同生活、介護、喪失、居場所、仕事と人生、差分の設計、結末の型。
    - [`genre/romcom.md`](genre/romcom.md) … ラブコメ・恋愛主軸。実関係と認知関係のずれ、装置、関係類型、進行段階、両片思い、恋愛群像。
    - [`genre/taisho_roman.md`](genre/taisho_roman.md) … 大正ロマン（物語様式）。新旧の同居、家制度、境界人、参照系統、年代レイヤー、時代が踏みに来る結末。
+   - [`genre/sekaikei.md`](genre/sekaikei.md) … セカイ系。ぼくときみの関係と世界危機の直結、中景の希薄化・機能不全、拡大写像、連動の強度、距離・通信・記憶、終幕の型、偽セカイ系の失敗例。
 8. reader.md
    - 小説の書評・下読みを行うときに使うレビュアープロンプト
    - 評価観点（キャラクター、プロットの完成度、文章力、わかりやすさ、独創性など）と、5段階評価・読後感の期待値・改善サイクルといった出力フォーマットを定義する
@@ -66,6 +85,8 @@
 10.5. character_checklist.yaml, character.md.example
    - `character.md` の必須ラベル・任意ラベル・条件付き子項目を宣言するチェックリスト雛形。運用時は `_how_to/character_checklist.yaml` にコピーして調整する
    - `tools/novel_character_md_check.py` とスキル **novel-character-profile** で参照する
+10.6. character_profile_prose.md
+   - 人物プロフィールの圧縮句をほぐす（欄の層分け）。性格などの短句を、気質（性格に残す）・この話での決め方（目標・倫理観）・一度の出来事（設計の章項へ戻す）・知らないことの処理（倫理観・口調）に分ける。いつ・誰に・何をする／しない・なぜは句の意味を資料で確かめる観点で、性格欄の記載条件ではない。資料から取れない句は推測で埋めず要確認。**既定では読まない。** `character.md` を作る・直すとき（B4 の掘り下げを含む）、「性格欄をほぐして」と頼まれたとき、本文・あらすじ・章項を書く前に性格欄の意味の取れない短句に当たったときだけ読む。全件必読にしない。手順はスキル **novel-character-profile**。
 11. （執筆前チェック）スキル **novel-project-readiness** … `tools/novel_project_check.py` で必須資料・`_novel_text` / `_reader` 等を確認（`.rulesync/rules/overview.md` と併用）
 11.5. （エピソード抽選）スキル **content-pick-registry**
    - 命名・口調・フック・進行の入口を `list_id` で宣言。

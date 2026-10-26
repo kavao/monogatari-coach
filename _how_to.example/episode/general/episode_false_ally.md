@@ -5,6 +5,7 @@
 **役割固定型の偽味方**。表面は味方、好意の条件が「相手が自分より下にいること」に固定されている人物。
 [episode_antagonist.md](episode_antagonist.md)（MALITIA：格下げ装置）の姉妹編。あちらが敵対者の格下げ、こちらは**味方の席を保ったままの格下げ**を扱う。
 対になる真の友人類型は [episode_friendship.md](episode_friendship.md)（SODALITAS）。
+裏返し（敵の顔で守る）は [episode_enend.md](episode_enend.md)（INIMICUS）。
 
 前提三則:
 

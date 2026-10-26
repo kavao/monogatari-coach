@@ -19,12 +19,17 @@ general の設計技法（抽選 JSON の対象外）:
 - [友人類型設計（SODALITAS）](general/episode_friendship.md)
 - [偽味方類型設計（AMICITIA）](general/episode_false_ally.md)
 - [敵対者類型設計（MALITIA）](general/episode_antagonist.md)
+- [敵の顔の庇護者類型設計（INIMICUS・エネンド）](general/episode_enend.md)
+- [流れ・山・オチの構造論（PEAK）](general/episode_flow_peak_payoff.md)（主に事後の診断。プロットのアレンジでは selected に無くても読む）
+- [流れ破壊と転の設計（FRACTIO）](general/episode_flow_break.md)（プロットのアレンジでは selected に無くても読む）
+- [黄金律の構造（三幕構成・ヒーローズ・ジャーニー・Save the Cat）](general/episode_golden_structure.md)（作者が型を選んだときだけ。既定にしない）
 - [危機脱出構成（EXITUS）](general/episode_crisis_escape.md)
 - [恩義設計論（ON）](general/episode_obligation.md)
 - [責任移行の人物類型設計（ONUS）](general/episode_responsibility_shift.md)
 - [部活ラブコメ構成（CLUBROM）](general/episode_club_romcom.md)
 - [大学サークルラブコメ類型（CIRCLEROM）](general/episode_circle_romcom.md)
 - [人の心を震わせるもの／揺らぎと作者性の設計（FLUCTUATION）](general/episode_fluctuation.md)
+- [子エピソードによる増量](general/episode_sub_episode.md)（加筆工程で出来事を足して分量を増やすときだけ読む。清書の削減上限到達後の追加削減分も含む。清書・規定量調整の作業中には使わない）
 
 初回セットアップ例:
 

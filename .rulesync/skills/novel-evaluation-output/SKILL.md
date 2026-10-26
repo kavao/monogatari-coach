@@ -1,10 +1,10 @@
 ---
 name: novel-evaluation-output
 description: >-
-  Editor Score・Consistency Audit（design / text）・Synopsis の評価結果を novels/.../_reader/ に保存し、
+  Editor Score・Consistency Audit（design / text）・用語照合・Synopsis の評価結果を novels/.../_reader/ に保存し、
   チャットには要約だけを返す。novel-reader-output（足切り）とは別スキルとして分離し、
   保存先ファイル名・前処理手順・設定鮮度チェック・完了条件を固定する。
-  Consistency Audit は足切りを前提にしない。
+  Consistency Audit と用語照合は足切りを前提にしない。
 targets: ["*"]
 ---
 
@@ -27,6 +27,7 @@ First Reader（足切り）通過後の深掘り評価モード（Editor Score /
 | Editor Score | `_how_to/editor_score.md` | `novels/<作品>/_reader/score_YYYYMMDD_HHMM.md` |
 | Consistency Audit | `_how_to/consistency_audit.md` | `novels/<作品>/_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`） |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md` | `novels/<作品>/_reader/synopsis_YYYYMMDD.md` |
+| 用語照合 | `_how_to/world_glossary.md` | `novels/<作品>/_reader/terminology_YYYYMMDD_HHMM.md` |
 
 - `_reader/` が無ければ作成する。
 - 日付だけの旧 `consistency_YYYYMMDD.md` は読み取りだけ互換とし、上書きしない。scope が分からないので鮮度チェックの基準にしない。
@@ -82,12 +83,13 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 
 1. `_how_to/consistency_audit.md`（無ければ `_how_to.example/consistency_audit.md`）を Read する。
 2. `character.md` / `world.md` / `design_specification.md` を Read で読み直す。書いたときの記憶ではなく、ファイルの内容を入力にする。
-3. 指摘の表と **確認した組み合わせの一覧**（組み合わせごとの確認項目数と指摘数）を作る。件数0件でも書く。一覧が無い監査は未完了とする。
-4. 各指摘には食い違う二つの記述の出典を両方書く。矛盾を要確認へ下げるときは、読み替えの余地を行に書く。
-5. 保存名は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。冒頭に種別・scope・起動・日時・対象パス・CHRONOS 添付・件数を書く。ファイル名と冒頭の scope を一致させる。件数は記憶で書かず、指摘表の判定列を数えて書く。前回指摘の解消確認など件数に含めない表では、判定欄を「前回: 矛盾」のように書く。
-6. 保存後に `python tools/novel_consistency_audit_lint.py <監査ファイル>` を実行する。終了コード 0 になるまで冒頭の件数・組み合わせ表を直す（指摘の判定は変えない）。終了コード 0 になる前に完了報告しない。
-7. 作品 `_meta.md` の評価履歴表へ Audit 行を追記する（「`_meta.md` 更新」節）。件数は lint を通した冒頭の件数を写す。
-8. 完了印の語は「監査済み」。「検査済み」「計測済み」（CHRONOS / METRON の語）は使わない。
+3. 任意: `python tools/novel_proper_noun_lint.py novels/<作品>` を実行してよい。見出し・Mermaid・読み付き・姓名の分かちだけを照合する。終了コード 1 でも監査は止めない。Gate A の必須にはしない。
+4. 指摘の表と **確認した組み合わせの一覧**（組み合わせごとの確認項目数と指摘数）を作る。件数0件でも書く。一覧が無い監査は未完了とする。
+5. 各指摘には食い違う二つの記述の出典を両方書く。矛盾を要確認へ下げるときは、読み替えの余地を行に書く。
+6. 保存名は `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`。冒頭に種別・scope・起動・日時・対象パス・CHRONOS 添付・件数を書く。ファイル名と冒頭の scope を一致させる。件数は記憶で書かず、指摘表の判定列を数えて書く。前回指摘の解消確認など件数に含めない表では、判定欄を「前回: 矛盾」のように書く。
+7. 保存後に `python tools/novel_consistency_audit_lint.py <監査ファイル>` を実行する。終了コード 0 になるまで冒頭の件数・組み合わせ表を直す（指摘の判定は変えない）。終了コード 0 になる前に完了報告しない。
+8. 作品 `_meta.md` の評価履歴表へ Audit 行を追記する（「`_meta.md` 更新」節）。件数は lint を通した冒頭の件数を写す。
+9. 完了印の語は「監査済み」。「検査済み」「計測済み」（CHRONOS / METRON の語）は使わない。
 
 ### design
 
@@ -102,10 +104,27 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 2. 開始前に「評価前の設定鮮度チェック」を行う。
 3. 指定範囲の `_novel_text/`（省略時は全章）を Read し、`python tools/novel_char_count.py` で文字数を取る。
 4. 「本文と設定の照合」を書く。本文と設計書の照合は、対象章の確定出来事を番号ごとに本文と突き合わせ、照合した番号の範囲を組み合わせ表に書く（拾い読みで済ませない）。第2章以降があれば「章をまたぐ観点」も書く。第1章だけのときは章横断の節に「対象外（1章のみ）」と書く。
+4.5. **見せ方軸**: 作品 `_meta.md` の「見せ方軸」節を Read する。「指定なし」「保留」以外なら、本文が節の実効方針と合っているか（周りの反応と語りの2点）と、章をまたいで揺れていないかを見て、組み合わせ表に「本文 × 見せ方軸」の行を置く。基準は `_meta.md` の節で、葉を読み直して値を足さない。食い違いは要確認とする。節が無い・「指定なし」「保留」の作品では、組み合わせ表に「見せ方軸: 対象外（指定なし）」と書く。
 5. **CHRONOS 添付**: `config.md` が `CHRONOS | ON` で有効イベントがあるときだけ `python tools/chronos_cli.py check novels/<作品>` の結果を読み、時系列の節へ添付する。失敗しても監査は続ける。OFF または `chronos/` 無しは `なし`、イベント0件は `未登録`（矛盾にしない）。本文とイベントの前後が食い違うときは要確認とする。イベント YAML は書かない。`writing_bridge` / `metron_cli.py analyze` は呼ばない。
 6. 本文も設定も直さない。
 
 チャットへは「scope・起動・矛盾件数（矛盾/要確認/軽微の内訳）・保存先パス」と、要確認の一覧を返す。
+
+## 用語照合の手順
+
+「用語を照合して」「造語を検査して」などで起動する。足切りを前提にせず、点数は付けない。執筆完了・publish の条件にしない。Consistency Audit を置き換えない（重なる指摘は両方に出てよい）。判定と報告の雛形は `_how_to/world_glossary.md`（無ければ `_how_to.example/world_glossary.md`）の §5・§6。
+
+1. `world_glossary.md` を Read する。
+2. `python tools/novel_glossary.py novels/<作品> --json --katakana` を実行し、用語集の形式・構造・避ける表記・承認待ちの語の使用・ハッシュを取る。`未整備` なら「未実施／用語集未整備」として報告して止める（検出0件と扱わない）。構造の error は報告に写し、照合は続ける。
+3. 対象を Read する。順は `world.md` → `character.md` → `design_specification.md` → `proposal.md` → 指定範囲の `_novel_text/`（省略時は全章）。設計書・企画書を本文より先に読む。読めなかった範囲は冒頭の「未確認の範囲」に書く。
+4. 文脈を読んで、機械が拾えない区分を拾う: 未登録の名前、名前のない仕組み・規則・由来、癖の規則への格上げ（`character.md` と照合）、登録語の意味の逸脱、定義の種別と使い方のずれ、初出の説明不足（本文・ログライン・あらすじで独自の語が初めて出るとき、その文か同じ場面の近くで意味が取れるか。登録の有無とは別に見る。説明があっても、用語集の定義文の写しや、視点人物が知りえない知識の地の文での言い切りは、説明の書き方の不備として指摘する）、一字の語の略用（一字の漢語と動詞から作った名詞を、一般の意味とずれる作中の物事の名詞として使っているか。語だけでなく述語と合わせて読む。直し方は普通の語への置き換え）、定義の手順・条件と描き方のずれ（種別が技術・制度・現象の語は、定義の手順・条件を一つずつ本文・設計の描き方と台詞に照らし合わせる。許容表記が正式名称と同じ種別の物事を指しているかも見る）。書いた役と照合する役が同じ（自己検査）のときは、一般の意味を持つ字と動詞から作った名詞の見落としが出やすいことを報告の冒頭に注記する。人物の誤解・嘘・俗称・意図した謎は作品の事実と分ける。既存の用語の描写を細かくしただけのものは対象にしない（同葉 §3 の線引き）。
+5. 各指摘を「抑える／拾い上げる／保留」に振り分ける（同葉 §4・§5）。拾い上げは、§2 の表に貼れる登録案を書く。
+6. 保存名は `_reader/terminology_YYYYMMDD_HHMM.md`。冒頭に、書いた役と検査した役を書く。同じなら「自己検査」と注記する。件数は記憶で書かず、指摘表の列を数えて書く。
+7. 本文も `world.md` も直さない。拾い上げも報告に登録案として書くだけにし、自動で登録・削除しない。修正を頼まれたときは、清書（`novel-refinement-output`）や設定改稿の手順で、作者が選んだ指摘だけを直す。
+8. 作品 `_meta.md` の評価履歴表へ行を追記する（「`_meta.md` 更新」節）。
+9. 完了印の語は「用語照合済み」。「検査済み」「計測済み」「監査済み」は使わない。
+
+チャットへは「用語集の形式・振り分け別の件数（抑える/拾い上げる/保留）・保存先パス」と、拾い上げの登録案と保留の一覧を返す。
 
 ## Synopsis の手順
 
@@ -118,14 +137,16 @@ Editor Score と Synopsis では、評価を開始する前に次の順序で確
 
 ## 長文多段パイプライン（合計30,000字超 / 章8,000字超）
 
-横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_reader/_work/`）」および「長文評価の閾値と前処理」。
+横断正本は **`.rulesync/rules/workflow-specification.md`** の「評価作業一時領域（`_work/reader/`）」および「長文評価の閾値と前処理」。
 
 ### 作業領域の構造
 
 ```
 novels/<作品>/_reader/
   synopsis_YYYYMMDD.md          ← 最終成果物（Step A）
-  _work/<YYYYMMDD>/             ← 評価セッション作業フォルダ
+  score_YYYYMMDD_HHMM.md        ← 最終成果物（Step D）
+novels/<作品>/_work/reader/
+  <YYYYMMDD>/                   ← 評価セッション作業フォルダ（同じ日のフォルダが古い _reader/_work/<YYYYMMDD>/ にあればそちら）
     ch01_eval.md                ← 章1 スコアノート
     ch02_eval.md
     ...
@@ -133,7 +154,6 @@ novels/<作品>/_reader/
     step_b.md                   ← 構造・プロット中間分析
     step_c.md                   ← 文体・描写中間分析
     aggregate.md                ← 加重平均計算メモ
-  score_YYYYMMDD_HHMM.md        ← 最終成果物（Step D）
 ```
 
 ### 手順
@@ -147,8 +167,9 @@ novels/<作品>/_reader/
 3. `config.md` / `character.md` / `world.md` / `design_specification.md` を Read する。
 4. 前回の `_reader/` に評価ファイルが存在する場合、パスと判定を確認する。
    - **旧形式（5段階）の扱い**: 旧評価は変更せず残す。引用時は「旧形式(5段階 X.X/5.0 ≈換算 XX/100 相当・参考値)」と明示する。
-5. 作業フォルダ `_reader/_work/<今日の YYYYMMDD>/` を作成する（`_reader/` が無ければ先に作成）。
-   - Windows (PowerShell): `New-Item -ItemType Directory -Force "novels/<作品>/_reader/_work/<YYYYMMDD>"`
+5. **作業フォルダを一つに決める**（以下 `<作業フォルダ>`）。今日の日付のフォルダが古い置き場 `_reader/_work/<今日の YYYYMMDD>/` に既にあれば、それを `<作業フォルダ>` とする。無ければ `_work/reader/<今日の YYYYMMDD>/` を作り、それを `<作業フォルダ>` とする。決めたあとは、Step B〜D の保存と完了確認をすべて `<作業フォルダ>` で行い、途中で別の置き場に作らない（`_reader/` が無ければ先に作成）。
+   - 決め方を機械で確かめるとき: `uv run python tools/novel_evaluation_prepare.py novels/<作品> --mode editor-score` の「算出根拠」に出る `…/aggregate.md` の親フォルダが `<作業フォルダ>`。
+   - 新しく作る場合（PowerShell）: `New-Item -ItemType Directory -Force "novels/<作品>/_work/reader/<YYYYMMDD>"`
 
 **Step A: Synopsis（前処理）**
 
@@ -158,24 +179,24 @@ novels/<作品>/_reader/
 **Step B: 構造・プロット・テーマ分析（あらすじから）**
 
 1. Step A の Synopsis のみを入力として、物語構造・伏線・テーマ一貫性を分析する。
-2. 分析結果を `_reader/_work/<YYYYMMDD>/step_b.md` に保存する（作業ファイル）。
+2. 分析結果を `<作業フォルダ>/step_b.md` に保存する（作業ファイル）。
 
 **Step C: 文体・描写分析（章サンプルから）**
 
 1. 序盤・中盤・終盤から代表章を1〜2章ずつ抜粋して Read する（全文一括が困難な場合）。
 2. 語彙・リズム・描写密度・ジャンル適合を評価する。
-3. 分析結果を `_reader/_work/<YYYYMMDD>/step_c.md` に保存する（作業ファイル）。
+3. 分析結果を `<作業フォルダ>/step_c.md` に保存する（作業ファイル）。
 
 **Step D: 章分割スコア + 加重平均 → 統合**
 
 1. 各章グループ（例: `novel_text01_*` をまとめて「第1章」）に対してスコアを付ける。
-2. 各章スコアを `ch01_eval.md`〜`chNN_eval.md` に保存する（作業ファイル）。
-3. `aggregate.md` に加重平均を記録する:
+2. 各章スコアを `<作業フォルダ>/ch01_eval.md`〜`chNN_eval.md` に保存する（作業ファイル）。
+3. `<作業フォルダ>/aggregate.md` に加重平均を記録する:
    ```
    最終総合点 = Σ(章スコア × 章文字数) ÷ 合計文字数
    ```
 4. Step B・Step C・各章スコアを統合し、`_how_to/editor_score.md` の出力形式で `score_YYYYMMDD_HHMM.md` を作成する（最終成果物）。
-   - **フロントマター要件**: `score_*.md` の冒頭には次を含める: 種別（Editor Score）・作品名・日時・対象範囲（章とファイル数と文字数）・ゲート前提（足切り済みの根拠）・算出根拠（長文時は `_reader/_work/<YYYYMMDD>/aggregate.md` のパス）。
+   - **フロントマター要件**: `score_*.md` の冒頭には次を含める: 種別（Editor Score）・作品名・日時・対象範囲（章とファイル数と文字数）・ゲート前提（足切り済みの根拠）・算出根拠（長文時は `<作業フォルダ>/aggregate.md` のパス）。
 5. 作品 `_meta.md` の「評価・足切り履歴」節を更新する。
 
 チャットへは「Editor Score 総合点・致命的弱点の件数・`synopsis`・`score` の保存先パス」を返す。
@@ -184,7 +205,7 @@ novels/<作品>/_reader/
 
 以下が **全て** 揃ってから「Editor Score 完了」と報告する:
 
-1. `_reader/_work/<YYYYMMDD>/` に `step_b.md` / `step_c.md` / 各 `ch*_eval.md` / `aggregate.md` が存在する
+1. Step 0 で決めた `<作業フォルダ>` に `step_b.md` / `step_c.md` / 各 `ch*_eval.md` / `aggregate.md` がそろって存在する（ほかの置き場に分かれていない）
 2. `_reader/synopsis_YYYYMMDD.md` が存在する
 3. `_reader/score_YYYYMMDD_HHMM.md` が存在する（PowerShell の `Test-Path` または `Read` で確認）
 4. 作品 `_meta.md` の「評価・足切り履歴」節を更新した
@@ -194,17 +215,20 @@ novels/<作品>/_reader/
 ### 作業ファイルと最終成果物の区別
 
 - `_reader/` 直下のファイルのみが最終成果物。点数・判定の根拠はここを参照する。
-- `_reader/_work/<YYYYMMDD>/` のファイルは過程の記録。複数回の評価で上書きしない（日付フォルダで分離）。
+- 作業フォルダのファイルは過程の記録。複数回の評価で上書きしない（日付フォルダで分離）。
 - 「保存した」と報告してよいのは `_reader/` 直下の最終成果物が存在し `Read` で確認した後。
 
-## `_meta.md` 更新（Editor Score / Consistency Audit 後）
+## `_meta.md` 更新（Editor Score / Consistency Audit / 用語照合の後）
 
-Editor Score と Consistency Audit の実施後は、作品 `_meta.md` の「評価・足切り履歴」節を更新する。
+Editor Score・Consistency Audit・用語照合の実施後は、作品 `_meta.md` の「評価・足切り履歴」節を更新する。
+
+- 評価履歴の表が無い作品では、`uv run python tools/novel_meta_check.py ensure-section novels/<作品> evaluation-history` で節を足してから追記する（手で節を作らない。古い構成でも評価では移行を勧めない。`novel_work_migrate.py --advise evaluate`）。
 
 - **評価履歴表**に行を追記する（既存行は削除しない）。
 - 例: `| 20260608_1400 | Editor Score | 82 / 100 | — | _reader/score_20260608_1400.md |`
 - 例: `| 20261004_1030 | Consistency Audit (design) | — | 矛盾0 / 要確認2 / 軽微1 | _reader/consistency_design_20261004_1030.md |`
 - 例: `| 20261004_1100 | Consistency Audit (text) | — | 矛盾1 / 要確認0 / 軽微3 | _reader/consistency_text_20261004_1100.md |`
+- 例: `| 20261024_1000 | 用語照合 | — | 抑える3 / 拾い上げる2 / 保留1 | _reader/terminology_20261024_1000.md |`
 - Gate B で再監査した design は判定欄を「矛盾2→0」のように書く。
 - 「足切りステータス」は足切り専用とし、Audit の結果を混ぜない。
 - `_meta.md` に「評価・足切り履歴」節がまだない場合は、`_how_to/meta.md`（無ければ `_how_to.example/meta.md`）の「評価・足切り履歴」節を参照してテンプレートを挿入する。挿入位置は内部メタの直後・外部メタの直前。
@@ -236,6 +260,8 @@ Editor Score と Consistency Audit の実施後は、作品 `_meta.md` の「評
 - 読み進み感想: `.rulesync/skills/novel-reader-walk/SKILL.md`
 - 詳細仕様: `.rulesync/rules/workflow-specification.md`（Editor Score / Consistency Audit）
 - 企画の設定監査（B4.5）: `.rulesync/skills/novel-planning/SKILL.md`
+- 用語集の書式と用語照合の判定: `_how_to.example/world_glossary.md`、`tools/novel_glossary.py`
 - 設定鮮度チェック: `tools/novel_audit_freshness.py`
 - 監査ファイルの体裁検査: `tools/novel_consistency_audit_lint.py`
+- 固有名詞の機械照合（任意）: `tools/novel_proper_noun_lint.py`
 - 操作説明: `docs/workflow/reader-output.md`、`docs/workflow/instruction-driven.md`

@@ -94,7 +94,8 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 |---------|-----------|------|
 | `default`（未指定時） | A（章メタ）+ B（三点）+ C（セリフ句点） | 通常の清書後 lint |
 | `grammar` | C（セリフ行頭インデント）+ D（段落インデント）+ E（句読点重複・空括弧・助詞・全角スペース） | 執筆直後の誤打・書きかけ検出 |
-| `full` | default + grammar（A〜E 全部） | 清書前の総合チェック |
+| `full` | default + grammar + slop（A〜E・G） | 清書前の総合チェック |
+| `slop` | G（低品質文の定型句・記号。info のみ） | 起草・清書の前後に定型句の重なりを見る |
 | `minimal` | B + C | 章メタ未整備の旧稿を体裁のみ確認 |
 | `strict_all` | default + D（段落インデント） | 体裁総仕上げ |
 
@@ -122,6 +123,16 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 - `empty_dialogue`: 空のカギ括弧 `「」`（warning）
 - `duplicate_particle`: 助詞の重複 `をを` `がが` `にに`（info）
 - `fullwidth_space_double`: 全角スペース連続（info）
+
+### G. 低品質文（スロップ）の候補（すべて info）
+- `slop_em_dash`: EM DASH `—`（U+2014）
+- `slop_contrast_frame`: 「単なる〜ではなく」「〜ではなく、〜だった。」
+- `slop_hedge_close`: 「と言えるでしょう」「ではないでしょうか」など
+- `slop_both_sides`: 「どちらが正解というわけで」「一概には言えない」など
+- `slop_invitation`: 「ぜひ〜みて」「いかがでしょうか」
+- `slop_stock_emotion`: 「胸の奥がじんわり」「言葉にならない」「どこか〜ような」
+
+系列 A（意味破綻）・B（過剰圧縮）は機械で拾えない。`_how_to.example/slop_patterns.md`「出す前の検査」で読む。
 
 ## YAML 設定（3層マージ）
 

@@ -35,8 +35,10 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 --list-wor
 | 領域 | 案 | 状態 |
 |------|-----|------|
 | 出版・題字ヒント | `novel_status --next` が book.yaml / cover / lock / proof を見る | **実装済**（2026-07-26） |
-| セッション再開 | `novel_status --next` の出力を `_meta.md` 次タスクと自動突合 | 検討中 |
+| セッション再開 | 章の状態と `_meta.md` 次タスクの突合 | **実装済**（`goal_status.py` と `novel_status` の「goal の状況」欄） |
 | レシピ | `workflows` の dry-run 一覧を `novel_status` に統合表示 | 検討中 |
+| goal モード | 場面単位の状態判定・達成判定・`_meta.md` への反映 | **実装済**（`goal_status.py`、[goal モード](goal-mode.md)） |
+| goal モード | 承認待ちの検出、承認内容の goal 単位の記録 | 検討中 |
 | ドキュメント | 指示出しテンプレと `docs/tools/index.md` の相互リンク強化 | 進行中 |
 
 関連: [ワークフロー索引](index.md)、[指示出しベースのワークフロー](instruction-driven.md)、[トラブルシューティング](troubleshooting.md)

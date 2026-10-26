@@ -1,4 +1,4 @@
-"""作品単位の METRON / CHRONOS / AUDIT_LOG フラグを読む。"""
+"""作品単位の METRON / CHRONOS / AUDIT_LOG フラグと、計測の開始章（METRON_FROM）を読む。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ class InspectionFlag(str, Enum):
 DEFAULT_OFF_KEYS = ("METRON", "CHRONOS")
 DEFAULT_ON_KEYS = ("AUDIT_LOG",)
 FLAG_KEYS = DEFAULT_OFF_KEYS + DEFAULT_ON_KEYS
+MEASURE_FROM_KEY = "METRON_FROM"
+"""計測の開始章。この章より前の本文は、下書き期として未計測ゲートの対象から外す。"""
 _BASIC_INFO_HEADING_RE = re.compile(r"^##[ \t]+基本情報[ \t]*$")
 _ANY_HEADING_RE = re.compile(r"^#{1,6}(?:[ \t]+|$)")
 _SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
@@ -32,6 +34,7 @@ class InspectionFlags:
     metron: InspectionFlag = InspectionFlag.OFF
     chronos: InspectionFlag = InspectionFlag.OFF
     audit_log: InspectionFlag = InspectionFlag.ON
+    measure_from: int | None = None
     explicit: frozenset[str] = field(default_factory=frozenset)
     source: str = "implicit"
 
@@ -52,21 +55,24 @@ class InspectionFlags:
             "METRON": self.metron.value,
             "CHRONOS": self.chronos.value,
             "AUDIT_LOG": self.audit_log.value,
+            "METRON_FROM": self.measure_from,
             "explicit": sorted(self.explicit),
             "source": self.source,
         }
 
 
 def require_linked_inspection_flags(flags: InspectionFlags) -> None:
-    """自動ワークフロー用に METRON と CHRONOS の実効値が一致することを要求する。
+    """自動ワークフロー用に、METRON と CHRONOS の組み合わせを確かめる。
 
+    認めるのは「両方 ON」「METRON だけ ON」「両方 OFF」。CHRONOS だけ ON（METRON は OFF）は
+    設定エラー。CHRONOS は休止中（計画 _workingspace/plans/20261025_chronos-off-redesign.md）で、
+    以前の「両方同じ値」の連動はやめた。関数名は呼び出し元との互換のため残す。
     パーサ自体は各値を独立に読む（明示 CLI は片方だけ ON でも動く）。
-    食い違いは作品の起動判定でだけ設定エラーにする。
     """
 
-    if flags.metron is not flags.chronos:
+    if flags.chronos is InspectionFlag.ON and flags.metron is InspectionFlag.OFF:
         raise InspectionConfigError(
-            "METRON and CHRONOS must be both ON or both OFF: "
+            "CHRONOS ON requires METRON ON: "
             f"METRON={flags.metron.value}, CHRONOS={flags.chronos.value}"
         )
 
@@ -98,11 +104,30 @@ def parse_inspection_flags(text: str, *, source: str = "config.md") -> Inspectio
     lines = text.splitlines()
     table_rows = _basic_info_table_rows(lines)
     values: dict[str, InspectionFlag] = {}
+    measure_from: int | None = None
     for cells in table_rows:
         if not cells:
             continue
         key = cells[0]
         normalized_key = key.upper()
+        if normalized_key == MEASURE_FROM_KEY:
+            if key != normalized_key:
+                raise InspectionConfigError(
+                    f"inspection flag key must be uppercase {normalized_key}: {key!r}"
+                )
+            if len(cells) != 2:
+                raise InspectionConfigError(
+                    f"inspection flag row must have exactly 2 columns: {key}"
+                )
+            if measure_from is not None:
+                raise InspectionConfigError(f"duplicate inspection flag: {key}")
+            raw = cells[1].strip()
+            if not raw.isdigit() or int(raw) < 1:
+                raise InspectionConfigError(
+                    f"unknown value for {key}: {raw!r} (expected a chapter number >= 1)"
+                )
+            measure_from = int(raw)
+            continue
         if normalized_key not in FLAG_KEYS:
             continue
         if key != normalized_key:
@@ -126,8 +151,9 @@ def parse_inspection_flags(text: str, *, source: str = "config.md") -> Inspectio
         metron=values.get("METRON", InspectionFlag.OFF),
         chronos=values.get("CHRONOS", InspectionFlag.OFF),
         audit_log=values.get("AUDIT_LOG", InspectionFlag.ON),
-        explicit=frozenset(values),
-        source=source if values else "implicit:no-flag-row",
+        measure_from=measure_from,
+        explicit=frozenset(values) | ({MEASURE_FROM_KEY} if measure_from is not None else frozenset()),
+        source=source if values or measure_from is not None else "implicit:no-flag-row",
     )
 
 

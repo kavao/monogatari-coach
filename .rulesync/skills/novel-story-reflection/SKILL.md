@@ -26,8 +26,10 @@ journal / lock / 設計書 / `_meta.md` の原子更新は手編集しない。`
 
 ## 同期プロトコル（手順）
 
+書く前に `uv run python tools/novel_work_migrate.py novels/<作品> --advise edit` を見る。`_meta.md` に「執筆フェーズ・ステータス」の節が無ければ `uv run python tools/novel_meta_check.py ensure-section novels/<作品> phase-status` で足してから intended_meta を作る（手で節を書き足さない）。移行の勧めは本文の作業の側で一度だけ行い、ストーリー反映で重ねて勧めない。
+
 ### 1. 定量情報の更新（_meta.md）
-- **文字数**: `python tools/novel_char_count.py` を実行し、最新の数値を `_meta.md` の「現在の章・項」節へ反映する。
+- **文字数**: `python tools/novel_char_count.py` を実行し、最新の数値を `_meta.md` の「現在の章・項」節へ反映する。`### 章別文字数` 表がある作品だけ、`python tools/novel_meta_char_table.py render novels/<作品>` の出力を intended_meta の同節へ写す。表が無い作品には作らない。
 - **進捗率**: 全体の章立てに対する現在の到達度を更新する。
 
 ### 2. 定性情報の反映（_meta.md）
@@ -103,6 +105,10 @@ novel_text(\d+)(?:_(\d+))?\.md
 
 手の Read → 判定 → 置換は禁止する。ロック無しの更新は未完了とする。本文は同期失敗でも戻さない。各コマンドは読込から全書込み完了まで OS 排他（`flock` / `msvcrt.locking`）を保持する。lock ファイルの存在だけでは並列コマンドを止めない。新規 lock は staging に書いて OS ロックを取ってから正式名へ公開する。POSIX は `link`、Windows は staging の `rename`（宛先が無いときだけ）。既存正式名があれば `LOCK_HELD` とし、既存を置換しない。削除は正式名が消えるまで排他を保持し、fd が同一ファイルと operation id を所有しているときだけ行う。削除 API が失敗したら正式名は残し `LOCK_HELD` とする（`.dead` へ rename しない）。`resume` は active だけを対象にし、三系統ハッシュを再照合してから current を写す。
 
+**置き場（固定。新しく作らない）**:
+- current / journal / lock の置き場は CLI が決める（新しい作品は `_work/story_reflection/op.json`・`op.jsonl`・`op.lock`、作品直下に `_story_reflection_op.*` がある古い作品はそのまま作品直下）。手でパスを決めたり、ファイルを動かしたりしない。両方の置き場にあるときは `CONFLICT`、移行中は `MIGRATING` で止まる。止まったら作者に報告し、手で片付けない。コマンドの途中で置き場が変わった（実行中に移行が終わった）ときは `STALE_LOCATION` で止まり、ロックは残らない。同じコマンドをもう一度実行する。
+- `begin` に渡す材料（`evidence.json`）と、`apply-design` / `apply-meta` に渡す意図した全文（`intended_design.md`・`intended_meta.md`）は、`novels/<作品>/_work/story_reflection/staging/<YYYYMMDD_HHMM>_<対象>/`（例 `20261024_1830_ch05/`）に置く。`_story_work/`・`_reader/_sr_staging/`・`_reader/_work/` など、ほかの場所を作らない。staging は操作の材料で正本ではない。`done` のあとも消さずに残してよい（消すのは作者が求めたときだけ）。
+
 1. `inspect` で current / 最後の状態遷移 / lock を見る。孤児（`ORPHAN`）なら新規同期も自動完了もしない。ユーザーが明示したときだけ `resume`（active のみ）または `close-orphan`（active の孤児のみ）。`done` / `failed` は `resume` しない。
 2. 入力ハッシュと意図ハッシュを `hash` で取る。対象本文は項作業なら第N章の全項ファイルを含める。
 3. `begin` で新規 `prepared(transition_seq=1)` だけを追加する。既存の `done` / `failed` は検証するだけで、状態遷移として再追記しない。`journal_seq` は継続する。active 中は `JOB_CONFLICT` / `未完了（同期中の operation あり）`。lock 取得不能は `未完了（同期ロック取得不能）`。lock を盗まない。
@@ -116,9 +122,9 @@ novel_text(\d+)(?:_(\d+))?\.md
 python tools/story_reflection_op.py inspect novels/<作品>
 python tools/story_reflection_op.py resolve novels/<作品> --text novel_text18.md
 python tools/story_reflection_op.py hash novels/<作品>/design_specification.md
-python tools/story_reflection_op.py begin novels/<作品> --evidence evidence.json
-python tools/story_reflection_op.py apply-design novels/<作品> --file intended_design.md
-python tools/story_reflection_op.py apply-meta novels/<作品> --file intended_meta.md
+python tools/story_reflection_op.py begin novels/<作品> --evidence novels/<作品>/_work/story_reflection/staging/<日時>_<対象>/evidence.json
+python tools/story_reflection_op.py apply-design novels/<作品> --file novels/<作品>/_work/story_reflection/staging/<日時>_<対象>/intended_design.md
+python tools/story_reflection_op.py apply-meta novels/<作品> --file novels/<作品>/_work/story_reflection/staging/<日時>_<対象>/intended_meta.md
 python tools/story_reflection_op.py fail novels/<作品> --reason STALE_EVIDENCE
 python tools/story_reflection_op.py lock-inspect novels/<作品>
 python tools/story_reflection_op.py lock-release novels/<作品>
@@ -126,11 +132,11 @@ python tools/story_reflection_op.py lock-release novels/<作品>
 
 CLI の終了コード 0 以外は未完了。`確認済み` だけでは完了にしない。
 
-実文字数・状態は、設計書に「執筆スケジュール」等の表があるとき、`novel_char_count.py` の計測で該当章と合計を更新する（空欄のままにしない）。章分割ファイルを足したときは章立て・スケジュールへ反映する。機械的なズレ検出には `python tools/novel_project_check.py <作品> --check-story-sync` を補助に使える。意味一致の正本にはしない。
+実文字数・状態は、`_meta.md` に「章別文字数」表があるときそれを在庫の正本とし、`novel_meta_char_table.py render` で該当章と合計を更新する。状態列は引き継ぎ、反映する章だけ次の基準で決める。`初稿`は清書（`novel-refinement-output`）を一度も当てていない章、`清書済`はその章の最後の本文変更が清書である章、`清書中`は清書のあとに加筆・手直しをした章（もう一度の清書が要る）。`render` は既存の状態を引き継ぐだけで、`清書済` へは自動で変えない。設計書に「執筆スケジュール」等の表があるときは副本として同じ計測で更新してよい（空欄のままにしない）。章分割ファイルを足したときは章立て・スケジュールへ反映する。機械的なズレ検出には `python tools/novel_meta_char_table.py check novels/<作品>` と `python tools/novel_project_check.py <作品> --check-story-sync` を補助に使える。意味一致の正本にはしない。
 
 ### 4. 査証ログへの記録
 - 対象作品の `config.md` に `AUDIT_LOG | OFF` があるときは追記しない。行なしまたは ON のときだけ、文字数と同期内容を `_workingspace/log/YYYYMM.md` に追記する（スキル **`workspace-audit-log`**）。`--novel novels/<作品>` を付ける。
-- 作品が OFF でも journal（`_story_reflection_op.json` / `.jsonl`）は省略しない。
+- 作品が OFF でも journal（current / journal。置き場は上の「置き場」）は省略しない。
 
 ### 5. 挿絵・表紙・出版メタの同期（該当時）
 

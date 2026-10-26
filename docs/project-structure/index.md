@@ -48,11 +48,14 @@ Monogatari Coach の主要ディレクトリと、どこを正本として扱う
 - `config.md`
 - `character.md`
 - `world.md`
-- `_novel_text/`
+- `_novel_text/`（付属原稿は `_novel_text/matter/`）
 - `_reader/`
 - `tag/`
 - `manga/`
 - `_meta.md`
+- `_work/`（機械の記録。普段は読まない）
+
+正本・機械の記録・一時作業の3つの層と、以前の構成から移す方法は [作品フォルダの構成](work-folder.md) を参照してください。
 
 詳細なファイル規約は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) を参照してください。
 

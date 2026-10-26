@@ -116,9 +116,7 @@ def test_inspection_layers_read_flags_and_warn_only_for_missing_enabled_dirs(
 @pytest.mark.parametrize(
     "rows",
     [
-        "| METRON | ON |\n| CHRONOS | OFF |\n",
         "| METRON | OFF |\n| CHRONOS | ON |\n",
-        "| METRON | ON |\n",
         "| CHRONOS | ON |\n",
     ],
 )
@@ -144,8 +142,33 @@ def test_inspection_layer_unlinked_flags_are_a_config_error(
 
     inspection = result["optional"]["inspection_layers"]
     assert inspection["ok"] is False
-    assert "both ON or both OFF" in inspection["error"]
+    assert "CHRONOS ON requires METRON ON" in inspection["error"]
     assert any("検査レイヤ設定" in issue for issue in result["issues"])
+
+
+def test_inspection_layer_metron_only_is_accepted(tmp_path: Path) -> None:
+    """CHRONOS は休止中。METRON だけ ON は設定エラーにしない。"""
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n| CHRONOS | OFF |\n",
+        encoding="utf-8",
+    )
+    (work / "_work" / "metron").mkdir(parents=True)
+
+    result = check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )
+
+    inspection = result["optional"]["inspection_layers"]
+    assert inspection.get("error") is None
+    assert not any("検査レイヤ設定" in issue for issue in result["issues"])
 
 
 def test_inspection_layer_single_off_row_stays_linked(tmp_path: Path) -> None:
@@ -266,11 +289,7 @@ def test_inspection_layers_do_not_mark_chapter_with_contract_beats_and_run(
     (work / "_novel_text" / "novel_text01.md").write_text(
         "# 第一章\n\n本文があります。\n", encoding="utf-8"
     )
-    scene = work / "_metron" / "ch01-001"
-    scene.mkdir(parents=True)
-    (scene / "contract.yaml").write_text("scene: {}\n", encoding="utf-8")
-    (scene / "beats.yaml").write_text("beats: []\n", encoding="utf-8")
-    (work / "_writing" / "ch01-001" / "run-0001").mkdir(parents=True)
+    _measure(work, 1, "_novel_text/novel_text01.md")
     (work / "chronos").mkdir()
 
     result = check_novel_project(
@@ -331,17 +350,18 @@ def test_require_meta_yaml_passes_when_present(tmp_path: Path) -> None:
 
 
 def test_bootstrap_new_project_uses_inspection_defaults(tmp_path: Path) -> None:
-    """未作成フォルダの --bootstrap は ON を config と保存先へ反映する。"""
+    """未作成フォルダの --bootstrap は、省略時に METRON 未応答・既定 ON、CHRONOS 休止中・既定 OFF を記録する。"""
     work = tmp_path / "123_新規"
 
     assert main([str(work), "--bootstrap", "--no-character-structure"]) == 1
 
     config = (work / "config.md").read_text(encoding="utf-8")
-    assert "未応答・既定 ON" in config
+    assert "METRON=未応答・既定 ON" in config
+    assert "CHRONOS=休止中・既定 OFF" in config
     assert "| METRON | ON |" in config
-    assert "| CHRONOS | ON |" in config
-    assert (work / "_metron").is_dir()
-    assert (work / "chronos").is_dir()
+    assert "| CHRONOS | OFF |" in config
+    assert (work / "_work" / "metron").is_dir()
+    assert not (work / "chronos").exists()
 
 
 def test_bootstrap_new_project_accepts_explicit_inspection_off(tmp_path: Path) -> None:
@@ -364,7 +384,7 @@ def test_bootstrap_new_project_accepts_explicit_inspection_off(tmp_path: Path) -
 
     config = (work / "config.md").read_text(encoding="utf-8")
     assert "METRON=ユーザー明示 OFF" in config
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -380,15 +400,15 @@ def test_bootstrap_rejects_unlinked_inspection_flags(
                 "--bootstrap",
                 "--no-character-structure",
                 "--metron",
-                "ON",
-                "--chronos",
                 "OFF",
+                "--chronos",
+                "ON",
             ]
         )
         == 2
     )
 
-    assert "同じ値" in capsys.readouterr().err
+    assert "METRON も ON" in capsys.readouterr().err
     assert not work.exists()
 
 
@@ -599,3 +619,172 @@ def test_story_sync_skipped_when_no_text_files(tmp_path: Path) -> None:
     )
     assert result["warnings"] == []
     assert result["optional"]["story_sync"]["ok"] is True
+
+
+def _measure(work: Path, chapter: int, text_rel: str, *, text: str | None = None) -> None:
+    """章の契約・Beat と、report.json に今の本文ハッシュを持つ run を置く。"""
+    import json
+
+    from writing_bridge.hashes import text_sha256
+
+    scene = work / "_metron" / f"ch{chapter:02d}-001"
+    scene.mkdir(parents=True, exist_ok=True)
+    (scene / "contract.yaml").write_text("scene: {}\n", encoding="utf-8")
+    (scene / "beats.yaml").write_text("beats: []\n", encoding="utf-8")
+    run = work / "_writing" / f"ch{chapter:02d}-001" / "run-0001"
+    run.mkdir(parents=True, exist_ok=True)
+    body = text if text is not None else (work / text_rel).read_text(encoding="utf-8")
+    (run / "request.yaml").write_text(f"target:\n  text_path: {text_rel}\n", encoding="utf-8")
+    (run / "report.json").write_text(
+        json.dumps({"target_text_sha256": text_sha256(body)}), encoding="utf-8"
+    )
+
+
+def _on_config(work: Path, extra: str = "") -> None:
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n| CHRONOS | ON |\n" + extra,
+        encoding="utf-8",
+    )
+    (work / "_metron").mkdir(exist_ok=True)
+    (work / "chronos").mkdir(exist_ok=True)
+
+
+def _inspect(work: Path) -> dict:
+    return check_novel_project(
+        work,
+        min_file_bytes=_MIN_BYTES,
+        require_tag_md=False,
+        require_manga_dir=False,
+        require_character_structure=False,
+        check_inspection_layers=True,
+    )["optional"]["inspection_layers"]
+
+
+def test_inspection_layers_mark_chapter_stale_after_text_edit(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    _on_config(work)
+    text = work / "_novel_text" / "novel_text01.md"
+    text.write_text("# 第一章\n\n計測した本文。\n", encoding="utf-8")
+    _measure(work, 1, "_novel_text/novel_text01.md")
+    assert _inspect(work)["unmeasured_chapters"] == []
+
+    text.write_text("# 第一章\n\n清書で直した本文。\n", encoding="utf-8")
+    rows = _inspect(work)["unmeasured_chapters"]
+    assert [row["chapter"] for row in rows] == [1]
+    assert rows[0]["missing"] == ["最新本文の計測"]
+    assert rows[0]["stale"] is True
+
+
+def test_inspection_layers_ignore_line_endings(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    _on_config(work)
+    text = work / "_novel_text" / "novel_text01.md"
+    text.write_bytes("# 第一章\r\n\r\n本文。\r\n".encode("utf-8"))
+    _measure(work, 1, "_novel_text/novel_text01.md", text="# 第一章\n\n本文。\n")
+    assert _inspect(work)["unmeasured_chapters"] == []
+
+
+def test_inspection_layers_check_every_section_file(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    _on_config(work)
+    (work / "_novel_text" / "novel_text01_1.md").write_text("前半。\n", encoding="utf-8")
+    (work / "_novel_text" / "novel_text01_2.md").write_text("後半。\n", encoding="utf-8")
+    _measure(work, 1, "_novel_text/novel_text01_1.md")
+    rows = _inspect(work)["unmeasured_chapters"]
+    assert rows and rows[0]["stale_files"] == ["novel_text01_2.md"]
+
+
+def test_metron_from_excludes_draft_chapters(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    _on_config(work, "| METRON_FROM | 3 |\n")
+    for chapter in (1, 2, 3):
+        (work / "_novel_text" / f"novel_text{chapter:02d}.md").write_text(
+            f"第{chapter}章。\n", encoding="utf-8"
+        )
+    inspection = _inspect(work)
+    assert inspection["excluded_chapters"] == [1, 2]
+    assert [row["chapter"] for row in inspection["unmeasured_chapters"]] == [3]
+    assert inspection["flags"]["METRON_FROM"] == 3
+
+
+def test_metron_from_rejects_invalid_value(tmp_path: Path) -> None:
+    work = _make_valid_project(tmp_path)
+    _on_config(work, "| METRON_FROM | 第3章 |\n")
+    inspection = _inspect(work)
+    assert inspection["ok"] is False
+    assert "METRON_FROM" in inspection["error"]
+
+
+def test_bootstrap_new_project_accepts_explicit_inspection_on(tmp_path: Path) -> None:
+    work = tmp_path / "125_検査"
+
+    assert (
+        main([str(work), "--bootstrap", "--no-character-structure", "--metron", "ON", "--chronos", "ON"])
+        == 1
+    )
+
+    config = (work / "config.md").read_text(encoding="utf-8")
+    assert "ユーザー明示 ON" in config
+    assert "| METRON | ON |" in config
+    assert (work / "_work" / "metron").is_dir()
+    assert (work / "chronos").is_dir()
+
+
+def _write_off_config(work: Path) -> None:
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n| novel_ID | 001 |\n",
+        encoding="utf-8",
+    )
+
+
+def test_next_steps_without_text_suggests_first_draft(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    _write_off_config(work)
+
+    assert main([str(work), "--no-character-structure"]) == 0
+    output = capsys.readouterr().out
+    assert "novel_text01.md（または novel_text01_1.md）の初稿執筆" in output
+
+
+def test_next_steps_with_text_suggests_next_chapter(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    _write_off_config(work)
+    for chapter in (1, 2):
+        (work / "_novel_text" / f"novel_text0{chapter}.md").write_text(
+            f"# 第{chapter}章\n\n本文があります。\n", encoding="utf-8"
+        )
+
+    assert main([str(work), "--no-character-structure"]) == 0
+    output = capsys.readouterr().out
+    assert "初稿執筆" not in output
+    assert "第3章（novel_text03.md）の執筆" in output
+
+
+def test_next_steps_with_unmeasured_chapter_suggests_measurement(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _make_valid_project(tmp_path)
+    (work / "config.md").write_text(
+        "# config.md\n\n## 基本情報\n\n"
+        "| 項目 | 内容 |\n|------|------|\n"
+        "| novel_ID | 001 |\n| METRON | ON |\n| CHRONOS | ON |\n",
+        encoding="utf-8",
+    )
+    (work / "_novel_text" / "novel_text01.md").write_text(
+        "# 第1章\n\n本文があります。\n", encoding="utf-8"
+    )
+
+    assert (
+        main([str(work), "--no-character-structure", "--check-inspection-layers"])
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "初稿執筆" not in output
+    assert "第1章（未計測）の後追い計測" in output

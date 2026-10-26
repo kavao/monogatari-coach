@@ -21,7 +21,42 @@ class InspectionBootstrapError(ValueError):
     """新規作品の検査レイヤ初期化に必要な値が不正。"""
 
 
-def _flag(value: InspectionFlag | str, *, name: str) -> InspectionFlag:
+DEFAULT_NEW_LAYER = InspectionFlag.ON
+"""新規作品の METRON の既定（未応答のとき）。
+
+新規作品は ON で起こし、計測しながら書く。OFF は作成時の確認で明示した
+ときだけ。行なしの既存作品は inspection_flags 側で従来どおり OFF。
+"""
+
+DEFAULT_NEW_CHRONOS = InspectionFlag.OFF
+"""新規作品の CHRONOS の既定。CHRONOS は休止中（再設計予定）なので OFF。
+
+計画: _workingspace/plans/20261025_chronos-off-redesign.md。ON にできるのは
+METRON も ON のときだけ（CHRONOS だけ ON は設定エラー）。既存作品の値は変えない。
+"""
+
+
+def default_for(name: str) -> InspectionFlag:
+    """未応答のときに書く既定値。CHRONOS は OFF、それ以外（METRON）は ON。"""
+
+    return DEFAULT_NEW_CHRONOS if name == "CHRONOS" else DEFAULT_NEW_LAYER
+
+
+def validate_layer_pair(metron: InspectionFlag | str | None, chronos: InspectionFlag | str | None) -> None:
+    """新規作品の組み合わせを確かめる。CHRONOS だけ ON（METRON は OFF）は認めない。"""
+
+    metron_flag = _flag(metron, name="METRON")
+    chronos_flag = _flag(chronos, name="CHRONOS")
+    if chronos_flag is InspectionFlag.ON and metron_flag is InspectionFlag.OFF:
+        raise InspectionBootstrapError(
+            "CHRONOS を ON にするときは METRON も ON にしてください"
+            f"（METRON={metron_flag.value}, CHRONOS={chronos_flag.value}）"
+        )
+
+
+def _flag(value: InspectionFlag | str | None, *, name: str) -> InspectionFlag:
+    if value is None:
+        return default_for(name)
     if isinstance(value, InspectionFlag):
         return value
     try:
@@ -38,34 +73,44 @@ def _cell(value: str) -> str:
     return value.replace("|", "／").replace("\r", " ").replace("\n", " ").strip()
 
 
+def decision_label(value: InspectionFlag | str | None, *, name: str = "METRON") -> str:
+    """作成時の確認の記録語。None は未応答（METRON は既定 ON、CHRONOS は休止中で既定 OFF）。"""
+
+    if value is None:
+        if name == "CHRONOS":
+            return f"休止中・既定 {DEFAULT_NEW_CHRONOS.value}"
+        return f"未応答・既定 {DEFAULT_NEW_LAYER.value}"
+    return f"ユーザー明示 {_flag(value, name='flag').value}"
+
+
 def initial_config_text(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> str:
     """新規作品用の最小 ``config.md`` を返す。
 
     ``confirmation`` はチャットで確認できなかった場合などの記録で、設定値
-    そのものとは分けて保存する。通常の新規起こしでは「未応答・既定 ON」と
-    なる。
+    そのものとは分けて保存する。``metron`` が ``None`` のときは未応答として既定（ON）を書き、
+    「未応答・既定 ON」と記録する。``chronos`` が ``None`` のときは休止中の既定（OFF）を書く。
+    CHRONOS だけ ON は ``InspectionBootstrapError``。
     """
 
+    validate_layer_pair(metron, chronos)
     metron_value = _flag(metron, name="METRON").value
     chronos_value = _flag(chronos, name="CHRONOS").value
     audit_value = _flag(audit_log, name="AUDIT_LOG").value
     if confirmation is None:
-        decisions = []
-        decisions.append(
-            f"METRON={'ユーザー明示 OFF' if metron_value == 'OFF' else '未応答・既定 ON'}"
+        confirmation = "; ".join(
+            [
+                f"METRON={decision_label(metron)}",
+                f"CHRONOS={decision_label(chronos, name='CHRONOS')}",
+            ]
         )
-        decisions.append(
-            f"CHRONOS={'ユーザー明示 OFF' if chronos_value == 'OFF' else '未応答・既定 ON'}"
-        )
-        confirmation = "; ".join(decisions)
 
     safe_title = _cell(title)
     safe_confirmation = _cell(confirmation)
@@ -95,8 +140,8 @@ def create_initial_config(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> tuple[Path, str]:
@@ -144,23 +189,23 @@ def initialize_new_layers(
     novel_code: int,
     title: str,
     *,
-    metron: InspectionFlag | str = InspectionFlag.ON,
-    chronos: InspectionFlag | str = InspectionFlag.ON,
+    metron: InspectionFlag | str | None = None,
+    chronos: InspectionFlag | str | None = None,
     audit_log: InspectionFlag | str = InspectionFlag.ON,
     confirmation: str | None = None,
 ) -> list[tuple[str, str]]:
     """新規作品の config と ON レイヤ保存先を準備する。"""
 
     # 値の検証を先に済ませてから、config.md の実値を正として扱う。
+    validate_layer_pair(metron, chronos)
     requested_metron = _flag(metron, name="METRON")
     requested_chronos = _flag(chronos, name="CHRONOS")
-    if requested_metron is not requested_chronos:
-        raise InspectionBootstrapError(
-            "METRON と CHRONOS は同じ値にしてください: "
-            f"METRON={requested_metron.value}, CHRONOS={requested_chronos.value}"
-        )
     actions: list[tuple[str, str]] = []
 
+    if confirmation is None:
+        confirmation = "; ".join(
+            [f"METRON={decision_label(metron)}", f"CHRONOS={decision_label(chronos, name='CHRONOS')}"]
+        )
     config, status = create_initial_config(
         novel_dir,
         novel_code,
@@ -182,16 +227,20 @@ def initialize_new_layers(
     chronos_flag = actual_flags.chronos
 
     if metron_flag is InspectionFlag.ON:
-        metron_dir = novel_dir / "_metron"
-        if metron_dir.exists():
-            if not metron_dir.is_dir():
-                raise InspectionBootstrapError(
-                    f"_metron is not a directory: {metron_dir}"
-                )
+        # METRON の場面の置き場は、新しい作品では _work/metron/。以前からある _metron/ はそのまま使う
+        # （場面ごとの置き場は tools/work_paths.py が決める）。
+        legacy_dir = novel_dir / "_metron"
+        new_dir = novel_dir / "_work" / "metron"
+        for label, existing in (("_metron/", legacy_dir), ("_work/metron/", new_dir)):
+            if existing.exists() and not existing.is_dir():
+                raise InspectionBootstrapError(f"{label} is not a directory: {existing}")
+        if legacy_dir.is_dir():
             actions.append(("_metron/", "skip (exists)"))
+        elif new_dir.is_dir():
+            actions.append(("_work/metron/", "skip (exists)"))
         else:
-            metron_dir.mkdir(parents=True)
-            actions.append(("_metron/", "created (METRON ON)"))
+            new_dir.mkdir(parents=True)
+            actions.append(("_work/metron/", "created (METRON ON)"))
 
     if chronos_flag is InspectionFlag.ON:
         from chronos.scaffold import init_chronos

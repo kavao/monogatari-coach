@@ -150,7 +150,7 @@ def test_publish_dry_run_does_not_write(tmp_path: Path) -> None:
     assert "intended_text_sha256=" in message
     assert "intended_raw_sha256=" in message
     assert (work / "_novel_text" / "novel_text01.md").read_bytes() == before
-    assert not (work / "_writing" / "ch01-001" / "run-0001" / "publish_state.json").exists()
+    assert not (work / "_work" / "writing" / "ch01-001" / "run-0001" / "publish_state.json").exists()
 
 
 def _dense_marked() -> str:
@@ -207,7 +207,7 @@ def test_c_dry_run_punctuation_fail_keeps_missing_target(tmp_path: Path) -> None
     assert "intended_raw_sha256=" in message
     assert "not published" in message
     assert not target.exists()
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     assert not (run / "publish_state.json").exists()
     assert not (work / "_novel_text_backup").exists()
 
@@ -237,7 +237,7 @@ def test_c_dry_run_punctuation_fail_keeps_old_bytes(tmp_path: Path) -> None:
     assert "punctuation_gate=fail" in message
     assert "scope=full_text" in message
     assert original.read_bytes() == before
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     assert not (run / "publish_state.json").exists()
     backup = work / "_novel_text_backup"
     assert not backup.exists() or not list(backup.glob("novel_text01_v*.md"))
@@ -281,7 +281,7 @@ def test_c_live_publish_still_writes_on_punctuation_fail(tmp_path: Path) -> None
     assert code == 1
     assert "published with punctuation findings" in message
     assert "あ、あ、あ。" in original.read_text(encoding="utf-8")
-    state = read_publish_state(work / "_writing" / "ch01-001" / "run-0001" / "publish_state.json")
+    state = read_publish_state(work / "_work" / "writing" / "ch01-001" / "run-0001" / "publish_state.json")
     assert state.status == "completed"
     assert state.punctuation_status == "fail"
 
@@ -317,7 +317,7 @@ def test_publish_writes_canonical_and_backup(tmp_path: Path) -> None:
     assert not (work / "_metron" / "ch01-001" / "FINAL.md").exists()
     adopted = work / "_metron" / "ch01-001" / "adopted.run-0001.md"
     assert adopted.is_file()
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     report = load_json_model(run / "report.json", ReportDocument)
     assert report.text_save.value == "success"
     assert report.target_text_sha256 == text_sha256(body)
@@ -489,6 +489,40 @@ def test_cli_publish_permission_and_status(tmp_path: Path) -> None:
     assert "text_save: success" in status.stdout
 
 
+def test_compose_refuses_candidate_with_scene_anchor() -> None:
+    text = "<!-- scene: ch01-001 -->\n# 第1章\n\n　旧本文。\n"
+    with pytest.raises(BridgeError) as caught:
+        compose_published(
+            text,
+            "<!-- scene: ch01-001 -->\n# 第1章\n\n　新本文。\n",
+            scene_id="ch01-001",
+            selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+            request_kind=RequestKind.REFINE,
+        )
+    assert caught.value.code == "JOB_CONFLICT"
+    composed, _, _ = compose_published(
+        text,
+        "# 第1章\n\n　新本文。\n",
+        scene_id="ch01-001",
+        selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+        request_kind=RequestKind.REFINE,
+    )
+    assert composed == "<!-- scene: ch01-001 -->\n# 第1章\n\n　新本文。\n"
+
+
+def test_replacement_span_refuses_duplicate_scene_anchor() -> None:
+    text = "<!-- scene: ch01-001 -->\n　一つ目。\n<!-- scene: ch01-001 -->\n　二つ目。\n"
+    with pytest.raises(BridgeError) as caught:
+        replacement_span(
+            text,
+            scene_id="ch01-001",
+            selector=Selector(kind=SelectorKind.HTML_COMMENT, value="scene: ch01-001"),
+            request_kind=RequestKind.REFINE,
+        )
+    assert caught.value.code == "UNKNOWN_REF"
+    assert caught.value.refs["count"] == 2
+
+
 def test_new_without_selector_does_not_replace_other_scenes(tmp_path: Path) -> None:
     work = _copy_ok(tmp_path)
     text = work / "_novel_text" / "novel_text01.md"
@@ -609,7 +643,7 @@ def test_receive_after_publish_does_not_mix_editions(tmp_path: Path) -> None:
             request_id=None,
         )
     assert caught.value.code == "JOB_CONFLICT"
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     refs = load_json_model(run / "artifact_refs.json", ArtifactRefsDocument)
     stored = work / refs.candidate.path
     stored.write_text(other.read_text(encoding="utf-8"), encoding="utf-8")
@@ -640,7 +674,7 @@ def test_inspect_marked_must_match_received_candidate(tmp_path: Path) -> None:
         repo_root=ROOT,
         observations_path=OBS,
     )
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     refs = load_json_model(run / "artifact_refs.json", ArtifactRefsDocument)
     received = work / refs.candidate.path
     other = tmp_path / "other.md"
@@ -688,7 +722,7 @@ def test_publish_refuses_unverified_c1(tmp_path: Path) -> None:
         )
     assert caught.value.code == "TEXT_STATE_UNVERIFIED"
     assert (work / "_novel_text" / "novel_text01.md").read_bytes() == original
-    run = work / "_writing" / "ch01-001" / "run-0001"
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
     state_path = run / "publish_state.json"
     if state_path.is_file():
         assert read_publish_state(state_path).status != "completed"

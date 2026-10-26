@@ -16,20 +16,35 @@ from inspection_bootstrap import (  # noqa: E402
 from inspection_flags import InspectionFlag, load_inspection_flags  # noqa: E402
 
 
-def test_new_defaults_record_unanswered_and_prepare_layers(tmp_path: Path) -> None:
+def test_new_defaults_record_unanswered_on_and_prepare_layers(tmp_path: Path) -> None:
     work = tmp_path / "001_旅"
 
     actions = initialize_new_layers(work, 1, "旅")
 
     config = (work / "config.md").read_text(encoding="utf-8")
-    assert "未応答・既定 ON" in config
+    assert "METRON=未応答・既定 ON" in config
+    assert "CHRONOS=休止中・既定 OFF" in config
+    flags = load_inspection_flags(work / "config.md")
+    assert flags.metron is InspectionFlag.ON
+    assert flags.chronos is InspectionFlag.OFF
+    assert (work / "_work" / "metron").is_dir()
+    assert not (work / "chronos").exists()
+    assert any(rel == "_work/metron/" for rel, _ in actions)
+
+
+def test_explicit_on_is_recorded_and_prepares_layers(tmp_path: Path) -> None:
+    work = tmp_path / "003_明示ON"
+
+    actions = initialize_new_layers(work, 3, "明示ON", metron="ON", chronos="ON")
+
+    config = (work / "config.md").read_text(encoding="utf-8")
+    assert "METRON=ユーザー明示 ON" in config
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.ON
     assert flags.chronos is InspectionFlag.ON
-    assert (work / "_metron").is_dir()
+    assert (work / "_work" / "metron").is_dir()
     assert (work / "chronos").is_dir()
-    assert any(rel == "_metron/" for rel, _ in actions)
-    assert any(rel == "chronos/" for rel, _ in actions)
+    assert any(rel == "_work/metron/" for rel, _ in actions)
 
 
 def test_explicit_off_is_recorded_and_does_not_prepare_layer_dirs(tmp_path: Path) -> None:
@@ -43,7 +58,7 @@ def test_explicit_off_is_recorded_and_does_not_prepare_layer_dirs(tmp_path: Path
     flags = load_inspection_flags(work / "config.md")
     assert flags.metron is InspectionFlag.OFF
     assert flags.chronos is InspectionFlag.OFF
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
 
 
@@ -51,11 +66,11 @@ def test_unlinked_flags_are_rejected_before_writing(tmp_path: Path) -> None:
     work = tmp_path / "005_片側"
     work.mkdir()
 
-    with pytest.raises(InspectionBootstrapError, match="同じ値"):
-        initialize_new_layers(work, 5, "片側", metron="ON", chronos="OFF")
+    with pytest.raises(InspectionBootstrapError, match="METRON も ON"):
+        initialize_new_layers(work, 5, "片側", metron="OFF", chronos="ON")
 
     assert not (work / "config.md").exists()
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
 
 
 def test_existing_config_is_never_overwritten(tmp_path: Path) -> None:
@@ -68,7 +83,7 @@ def test_existing_config_is_never_overwritten(tmp_path: Path) -> None:
     actions = initialize_new_layers(work, 3, "既存")
 
     assert config.read_text(encoding="utf-8") == original
-    assert not (work / "_metron").exists()
+    assert not (work / "_metron").exists() and not (work / "_work" / "metron").exists()
     assert not (work / "chronos").exists()
     assert actions == [("config.md", "skip (exists)")]
 

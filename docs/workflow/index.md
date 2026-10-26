@@ -22,15 +22,18 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **詰まったとき**: [トラブルシューティング](troubleshooting.md) — 検証エラー・生成失敗・ファイルが見つからないときの次の一手
 - **表層 UX・扱いやすさ（改善計画）**: [表層 UX 改善計画](surface-layer-ux.md) — 作品ステータス・名前付きレシピ（`workflows`）など、入口を薄くする設計
 - **チャットモード（対話型・TRPG）**: [チャットモード](chat-writing-mode.md) — ゲートを刻みながら進める対話型執筆／TRPG セッション形式でパラメータを追跡しながら小説を作る
+- **goal モード**: [goal モードで依頼する](goal-mode.md) — 完了条件つきで任せる goal 文の書き方・実装例・承認で止まる箇所（Claude / Codex / Cursor 共通）
 - **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
+- **プロットのアレンジ**: [転と山の当て方](plot-arrange.md) — 平板・先が読める展開を診断し、型（三幕構成など）を使う／使わないを選んで転の案を出す
 - **漢字エンブレム命名**: [漢字の当て字・既存名の改修](kanji-emblem-naming.md)
 - **ヤンキー美学**: [人物・集団・装飾を設計する](yankee-aesthetics.md)
 - **出版準備（Phase 1）**: [Publishing Package](publishing-package.md) — 本文・付属原稿・挿絵・権利・奥付を点検し、入稿入力を lockfile で凍結する
 - **表紙合成・題字（Phase 1.5）**: [表紙合成・題字ロゴ](cover-composition.md) — 題字方針（組版／logo_asset）→ `cover.yaml` → review → proof へ
 - **紙書籍 proof（Phase 2A）**: [紙書籍 proof PDF](paper-proof-export.md) — lock済み入力から縦書き本文PDF（`bunko` / `jis_b5`）を生成・検査する
 - **評価（足切り・読み進み・Editor Score・一貫性監査）**: [Reader Output](reader-output.md) — 下読み・足切り・Reader Walk・Editor Score・Consistency Audit・Synopsis の保存先・操作ツール一覧
+- **作品固有の用語・造語**: [作品固有の用語と用語照合](terminology-audit.md) — `world.md` の用語集の書き方、本文に紛れた造語や決まりごとの書き足しを「抑える／拾い上げる」に振り分ける照合
 - **運用の骨格**: [自己発展型ルールガバナンス](self-evolving-governance.md)
 
 運用上の正本（仕様・詳細）は [`/.rulesync/rules/overview.md`](../../.rulesync/rules/overview.md) です。
@@ -53,7 +56,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
    - 清書（文章校正）: `_novel_text_backup/` に旧版を退避してから `_novel_text/` を更新して、と指示する
    - 足切り（First Reader）: G1→G2→G3 の順で「第○章を足切り判定してください」と指示する
    - 完稿後の深掘り（Editor Score）: 足切り通過後に「Editor Score で採点してください」と指示する
-   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint）・`novel_audit_freshness.py`（設定監査の鮮度）・`novel_consistency_audit_lint.py`（監査ファイルの件数チェック） — 詳細は [Reader Output](reader-output.md)
+   - 評価ツール: `novel_evaluation_prepare.py`（準備）・`novel_evaluation_diff.py`（推移表）・`novel_slush_gate_lint.py`（lint）・`novel_audit_freshness.py`（設定監査の鮮度）・`novel_consistency_audit_lint.py`（監査ファイルの件数チェック）・`novel_proper_noun_lint.py`（固有名詞の任意照合） — 詳細は [Reader Output](reader-output.md)
 
 ## Monogatari Coach の約束（ユーザー視点）
 

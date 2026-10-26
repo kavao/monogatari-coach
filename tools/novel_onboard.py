@@ -32,7 +32,10 @@ from novel_code_allocate import scan_novels  # noqa: E402
 from novel_scaffold import bootstrap_novel   # noqa: E402
 from inspection_bootstrap import (          # noqa: E402
     InspectionBootstrapError,
+    decision_label,
+    default_for,
     initialize_new_layers,
+    validate_layer_pair,
 )
 from novel_status import (                  # noqa: E402
     _run_project_check,
@@ -111,22 +114,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--metron",
         choices=("ON", "OFF"),
-        default="ON",
-        help="新規作品の METRON（既定: ON。OFF は明示指定）",
+        default=None,
+        help="新規作品の METRON（省略時: 未応答・既定 ON。OFF は明示指定）",
     )
     p.add_argument(
         "--chronos",
         choices=("ON", "OFF"),
-        default="ON",
-        help="新規作品の CHRONOS（既定: ON。OFF は明示指定）",
+        default=None,
+        help="新規作品の CHRONOS（省略時: 休止中・既定 OFF。ON は METRON も ON のときだけ）",
     )
     args = p.parse_args(argv)
-    if args.metron != args.chronos:
-        print(
-            "error: METRON と CHRONOS は同じ値にしてください"
-            f"（METRON={args.metron}, CHRONOS={args.chronos}）",
-            file=sys.stderr,
-        )
+    metron_value = args.metron or default_for("METRON").value
+    chronos_value = args.chronos or default_for("CHRONOS").value
+    try:
+        validate_layer_pair(args.metron, args.chronos)
+    except InspectionBootstrapError as error:
+        print(f"error: {error}", file=sys.stderr)
         return 2
 
     root = repo_root()
@@ -148,19 +151,19 @@ def main(argv: list[str] | None = None) -> int:
     if is_new_target:
         inspection_decision = (
             "（"
-            f"METRON={'未応答・既定 ON' if args.metron == 'ON' else 'ユーザー明示 OFF'}、"
-            f"CHRONOS={'未応答・既定 ON' if args.chronos == 'ON' else 'ユーザー明示 OFF'}"
+            f"METRON={decision_label(args.metron)}、"
+            f"CHRONOS={decision_label(args.chronos, name='CHRONOS')}"
             "）"
         )
     print(
         "  検査レイヤ : "
-        f"METRON={args.metron}, CHRONOS={args.chronos}"
+        f"METRON={metron_value}, CHRONOS={chronos_value}"
         + inspection_decision
     )
 
     if args.dry_run:
         if is_new_target:
-            print("  作成予定: config.md（検査レイヤ設定）、_metron/・chronos/（ON の場合）")
+            print("  作成予定: config.md（検査レイヤ設定）、_work/metron/・chronos/（ON の場合）")
         else:
             print("  既存フォルダ: config.md と検査レイヤ設定は変更しません。")
         print(f"\n  [dry-run] 上記フォルダを作成して scaffold を実行します。")

@@ -118,7 +118,7 @@ def _bridge(tmp_path, *, calibrated=True):
             selector=None, links_path=None, repo_root=repo)
     receive(work, scene_id="ch01-001", run_id="run-0001",
             candidate=work / "_metron/ch01-001/marked.md", request_id=None)
-    return work, repo, work / "_writing/ch01-001/run-0001"
+    return work, repo, work / "_work/writing/ch01-001/run-0001"
 
 
 def _begin(work, repo):
@@ -738,7 +738,7 @@ def test_escalated_scene_floor_does_not_issue_jobs(tmp_path):
         candidate=work / "_metron/ch01-001/marked.md",
         request_id=None,
     )
-    run = work / "_writing/ch01-001/run-0001"
+    run = work / "_work/writing/ch01-001/run-0001"
     _begin(work, repo)
     code, message = _next(work, repo)
     state = read_state(run / "repair_state.json")

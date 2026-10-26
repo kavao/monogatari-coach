@@ -15,11 +15,11 @@ globs: ["novels/**", "_how_to/**", "_how_to.example/**"]
 
 METRON の V1 自動修復を使うときは、次の順序を守る。
 
-1. `SceneContract`、`BeatPlan`、本文アンカーと `_metron/<scene_id>/` の対応を確認する。
+1. `SceneContract`、`BeatPlan`、本文アンカーと `<METRON 場面>/` の対応を確認する。
 2. `config/metron_models.yaml` の対象モデルが `calibrated: true` で、`span_ratios` と `budget_ratios` を分離した承認済み閾値を持つことを確認する。未承認の設定で V1 判定へ進まない。
 3. マーカー付き draft を `analyze` し、`metrics` / `spans` / `regression` を保存してから `classify` する。`GenerationTruncated` は自動修復しない。`TooShort` は分量バー（シーン `chars_floor`、Beat `chars_hint`）の未達であり、Deepen のみで自動修復する。
 4. provider を接続する場合は、ユーザー承認済みのコールバックだけを `repair_scene()` へ注入する。METRON が認証情報を読み込んだり、承認なしに外部送信したりしない。
-5. `BeatMissing` は単独再生成、計画下限未達の `BeatThin` と `TooShort` は Expand / Deepen、`EndingRush` は末尾 Beat の単独再生成とする。校正典型値だけの `BeatThin` は自動修復しない。EndingRush の末尾へ先に Expand を適用しない。`TooShort` を末尾再生成の根拠にしない。指示目標は床以上に出す。
+5. `BeatMissing` は単独再生成、計画下限未達の `BeatThin` と `TooShort` は Expand / Deepen、`EndingRush` は末尾 Beat の単独再生成とする（修復の途中で床に届いたら末尾は作り直さず `ENDING_RUSH_ADVISORY` として報告する。明示指定は除く）。校正典型値だけの `BeatThin` は自動修復しない。EndingRush の末尾へ先に Expand を適用しない。`TooShort` を末尾再生成の根拠にしない。指示目標は床以上に出す。
 6. 修復後は Beat マーカーを保持した連結校正を1回だけ行い、校正後の正規化本文を再計測する。元文残存率未達、校正による短縮、マーカー破損、Beat 順の入れ替え、同一本文の Deepen、新規文の同義反復は適用せず著者提示へ戻す。シーン `TooShort` は床に届くまで複数 Beat を Deepen する。
 7. 採用稿を `FINAL.md` へ保存するときは Beat / fact マーカーを除去し、既存の `FINAL.md` を上書きしない。`FINAL.md` だけでは本文完了にしない。本文正本へ反映する場合、writing_bridge 経路は `publish`、従来経路は本文出力スキルの完了条件を満たす。
 
@@ -39,22 +39,105 @@ CHRONOS の順序検査を使うときは、次を守る。
 
 ## 作品単位の METRON / CHRONOS / AUDIT_LOG フラグ
 
-作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。METRON と CHRONOS は連動させ、両方 ON か両方 OFF にする。実効値が食い違う config.md は自動ワークフローでは設定エラーとし（`novel_project_check --check-inspection-layers` が検出）、片方に合わせて進めない。新規起こしで行を書くときの既定は両方 ON。作成時に1回確認して両方に同じ値を書き、返答がない場合は **「未応答・既定 ON」** と記録する。OFF はユーザー明示または清書中の一時停止などに限り、両方同時に切り替える。
+作品の config.md の「## 基本情報」表に METRON / CHRONOS / AUDIT_LOG 行を置き、値は大文字の ON / OFF だけにする。METRON / CHRONOS の行なしは OFF。AUDIT_LOG の行なしは ON。未知値・重複・読込失敗は設定エラーとする。CHRONOS は休止中（再設計予定。計画 `_workingspace/plans/20261025_chronos-off-redesign.md`）。認める組み合わせは「両方 ON」「METRON だけ ON」「両方 OFF」で、CHRONOS だけ ON（METRON は OFF）は自動ワークフローでは設定エラーとする（`novel_project_check --check-inspection-layers` が検出）。新規起こしで行を書くときの既定は METRON ON・CHRONOS OFF。METRON は作成時に1回確認し、返答がない場合は **「未応答・既定 ON」** と記録する。METRON の OFF はユーザー明示に限る。CHRONOS は「休止中・既定 OFF」と記録する。既存作品の値は変えない（ON の作品は ON のまま使える）。
+
+**OFF で下書き → ON で洗練**: OFF の作品は従来経路で書き、書き終えた章（または洗練する章）から ON にして後追い計測で洗練する。手順は次のとおり。
+
+1. `_meta.md` の「検査レイヤの予定」に、今の値・ON にする時期・計測対象の開始章を書く。
+2. ON にするときは config.md の METRON を ON にし（CHRONOS は休止中なので OFF のままでよい。ON にするなら `chronos/` を `chronos_cli.py init` で用意する）、`_work/metron/`（以前の作品は `_metron/`）を用意して `novel_project_check --check-inspection-layers` を実行する。
+3. 下書き期の章を当面計測しないときは、基本情報表に `| METRON_FROM | N |`（N は1以上の章番号）を置く。第N章より前は「計測対象外（下書き期）」として未計測ゲートから外れる。洗練の対象を広げるときは N を下げるか行を消す。値が整数でない・重複するときは設定エラー。
+4. 後追い計測: 既稿から章の出来事を変えずに契約・Beat を起こし（指示目標は既稿の分量を基準にする）、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側にマーカー付きの作業稿を作って `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`（既存の非空本文は heading で当該章を置き換える）。`_novel_text` にマーカーを後付けしない。`publish` 後はストーリー反映を行う。
+5. CHRONOS のイベントは、洗練する章から順に登録する（全章を一度に登録しない）。未登録の章は従来どおり「未確認」で、矛盾にしない。
+6. ON → OFF に戻すときは、active な run・修復を `repair-finish` などで閉じてから切り替える。閉じられないときは OFF にせず報告する。
+
+**計測の鮮度**: `novel_project_check --check-inspection-layers` は、章の契約・Beat・run の有無に加え、run の `report.json` の `target_text_sha256` が今の本文（writing_bridge と同じ正規化のハッシュ）と一致するかを見る。一致する run が無い章は「計測が古い」として未計測と同じく扱う（OFF の期間や rewrite.md の清書で書き換えた章）。
 
 フラグは自動ワークフローの起動判定にだけ使う。明示された metron_cli.py / chronos_cli.py / 査証ログ追記は config.md を見ず、OFFでも実行する。ONの検査結果は本文保存と分け、欠落・CLI失敗・CHR001を理由に既にある本文の完了を取り消さない（適用範囲は `concepts.md` のフラグ節）。
 
 ON の新規場面は「執筆接続の起動判定」に従い `prepare` から始める。以下の METRON / CHRONOS 手順は、既稿の欠落表示と後追い計測に使う。METRON: ON では、既稿は契約・Beat・マーカー不足を「未計測／要対応」として残し、後追いは契約・Beat を補ってから `prepare` → `receive` → `inspect` で計測する。マーカーを `_novel_text` に後付けしない。CHRONOS: ON では、無ければ chronos/ を初期化し、既存イベントを check する。`extract_gate` を設定した作品は、provider を呼ばない `chronos extract` で外部作成済み候補文書を検証・照合し、作者承認後にイベントへ反映できる。ゲート未設定作品は従来どおり原稿から抽出しない。当該章のイベント手入力も引き続き使える。対象場面に有効イベントが無いまま writing_bridge を inspect した場合は、`CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として report に残し、`chronos_registered: success` とみなさない。ゲート設定時に順序比較できないイベント対がある場合は、`CHRONOS_ORDER_UNCONFIRMED` と辺数を report に記録するが、inspect を失敗させない。AUDIT_LOG: OFF では `_workingspace/log/` への自動追記を行わない。日記は対象外である。ハッシュ一致の active run がある場面では、同じ版の analyze / check を重ねず `writing_bridge` の inspect に任せる。
 
+## 作品フォルダの機械の記録
+
+計画: `_workingspace/plans/20261024_work-folder-layout.md`。
+
+- 機械が書く記録（ストーリー反映・執筆接続・METRON・評価の中間）は、新しい作品では `_work/` の下に置く（`_work/story_reflection/`・`_work/writing/<scene_id>/`・`_work/metron/<scene_id>/`・`_work/reader/<YYYYMMDD>/`）。以前からある記録は元の置き場（作品直下の `_story_reflection_op.*`・`_writing/`・`_metron/`・`_reader/_work/`）のまま使う。
+- 置き場は組（ストーリー反映の3ファイル、執筆接続の場面、METRON の場面、評価の1日分）ごとに一か所。古い置き場だけにあれば古い置き場、新しい置き場だけにあれば新しい置き場、どちらにも無ければ新しい置き場で始め、両方にあれば `CONFLICT` で止まる。判定は `tools/work_paths.py` に一か所で持ち、各ツールはそれを使う。手でパスを推測したり、ファイルを動かしたりしない。
+- `<METRON 場面>` は `uv run python tools/work_paths.py resolve novels/<作品> metron <scene_id>` が返すフォルダ（新しい場面は `_work/metron/<scene_id>/`、以前からある場面は `_metron/<scene_id>/`）。契約・Beat（`contract.yaml`・`beats.yaml`）はこの中に置いたまま、作者が合意する正本として扱う。
+- 保存済みの記録の中のパス（`_writing/…`・`_metron/…`）は書き換えない。読むときに参照先の組を解決し、照合では置き場によらない形にそろえて比べる。
+- `CONFLICT`（同じ組が両方の置き場にある）・`MIGRATING`（移行中）で止まったら、手で片付けずに作者へ報告する。`STALE_LOCATION`（実行中に置き場が変わった）は同じコマンドを再実行する。
+- **作業の前の判定**: 作品に手を入れる・評価する前に `uv run python tools/novel_work_migrate.py novels/<作品> --advise <edit|evaluate|read>` を実行し、その結果に従う。依頼の種類は、続きの執筆・清書・設定の改稿・ストーリー反映が `edit`、用語照合・一貫性監査・下読み・採点が `evaluate`、質問や確認だけが `read`。
+
+  | 依頼の種類 | 古い構成（機械の記録の古い置き場、`_meta.md` の古い形・一部だけの形） | `_meta.md` に書く節が無い |
+  |------------|------------------------------------------------------------------------|---------------------------|
+  | edit | 作業の前に一度だけ移行を勧める（`novel_work_migrate.py --dry-run` と `novel_meta_check.py migrate --dry-run` の要約を見せる）。承認なら移してから作業、断られたら `--decline` を記録して読み取り互換で続ける | `novel_meta_check.py ensure-section novels/<作品> phase-status` で足して続ける |
+  | evaluate | 勧めない | `ensure-section … evaluation-history` で足して評価履歴へ追記する |
+  | read | 勧めない | 何も書かない |
+
+  - 移行を断った記録（`_work/migration.json`）がある作品と、進行中の操作（執筆接続の修復・保存、ストーリー反映）がある作品では勧めない。
+  - 中断した移行が残っていれば、`read` 以外は作業の前に `novel_work_migrate.py --recover` を実行する。
+  - 「止めて手で書き足す」はしない。`_meta.md` の節を足すのは `ensure-section` だけ。用語集の旧形式から新しい書式への移行の提案（`_how_to.example/world_glossary.md` §2）は、この勧めと同じ回にまとめて一度だけ行う。
+  - 移すときは、`novel_work_migrate.py`（機械の記録）と `novel_meta_check.py migrate`（`_meta.md`）を、どちらも `--dry-run` で見せてから実行する。
+
 ## 執筆接続の起動判定
 
 通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。複数章依頼の章境界は `concepts.md` の「完了扱い条件」と本文スキル（清書は `novel-refinement-output` の参照）に従い、経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」に従う。
 
-- 両方 OFF: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
-- 片方だけ ON（実効値の食い違い）: 設定エラーとして報告し、本文作業を始めない。
-- 両方 ON: 対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。単一章・複数章・場面追記のどれでも同じで、active run が無いことを理由に従来経路へ落ちない。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- 両方 OFF（METRON OFF）: writing_bridge run を作らない。本文は従来の `_novel_text` 直接更新。明示 CLI は拒否しない。
+- CHRONOS だけ ON（METRON は OFF）: 設定エラーとして報告し、本文作業を始めない。
+- METRON ON（CHRONOS は ON でも OFF でも）: CHRONOS が OFF なら観測と C1 は skipped（`--from-run` を付けない）。対象場面を確定し、ハッシュ一致の active run が無ければ `prepare`。単一章・複数章・場面追記のどれでも同じで、active run が無いことを理由に従来経路へ落ちない。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。検査は `receive` → `inspect`。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
 - Deepen / 局所修復: METRON ON かつ校正済みモデル。シーン床未達、必須修復残り、または `--intent explicit_deepen` のときだけ `repair-begin` → `repair-next` → 候補作成 → `repair-submit`。床到達かつ必須なしの `auto` は `REPAIR_NOT_NEEDED`。`--scope beats` は指定 Beat だけを Deepen する（`BeatMissing` は範囲外でも必須）。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。この間は正本を触らない。修復が active のあいだ C1 未記録は報告して続け、完了後は未記録で止める。速度運用の詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 - 正本反映: `--allow-publish` の run だけ `publish --dry-run` のあと `publish`。起草用 run へ後付けしない。ON の場面作業では追加の保存依頼を待たず、修復が terminal になったあと保存用の新 run へ進める。止めの明示があるときだけ止める。保存用は新 run で receive する。未作成または空の正本は selector なし。既存の非空本文だけ heading / scene アンカー / `append`。`inspect --from-run` は CHRONOS ON かつ起草 run に observations があり本文 hash が一致するときだけ。欠落は UNKNOWN_REF。CHRONOS OFF は `--from-run` を付けず C1 は skipped。CHRONOS ON は初回 inspect の前に observations を書き、C1 成功前に正本を書かない。引用座標の下書きは `locate-quote`。inspect と同じ版検証のあと一意一致だけを出し、重複は推測しない。ずれは `STALE_EVIDENCE`。手編集で置換しない。正本ではマーカー除去後の連続空行を段落1つ分に畳む。完了後は `novel-story-reflection`。`publish --dry-run` の句読点 fail は正本を書かない。dry-run の測定対象は `compose_published()` の保存予定全文。本番の句読点は結合後全文を `report.json` に記録し、失敗でも本文は戻さない。未達なら完了報告しない。`inspect` の required と advisory は分けて読む。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。
-- 清書: `novel-refinement-output`。`publish` と重ねない。自動の再計測・イベント更新はしない。
+- 清書: `novel-refinement-output`。`publish` と重ねない。自動の再計測・イベント更新はしない。ON の作品で清書した章は「計測が古い」になるため、洗練の段階で後追い計測（上の手順4）に載せ直す。
+- 規定量調整（既にある本文を目標字数へ伸縮する。`novel-text-file-output`「規定量調整」）: 清書の直接更新の例外には含めない。両方 OFF は旧版退避のうえ直接更新。両方 ON は場面作業として `prepare --request-kind refine` の run で現行本文を `receive` → `inspect` し、当該場面に CHRONOS イベントがあれば、エージェントが `canon-precheck` の材料を照合して `--by agent` で記録し（矛盾の疑いがあるときだけ著者に相談する）、`repair-begin --intent length --finish-target N`（ユーザーの字数 N は清書後の仕上がり目標。増量は余地 +8% を足した字数を目標にする。`--target-chars` は余地なしの直接指定）。欠落 Beat は調整の中で先に埋める。Deepen は、新しい文が持ち込んだ10字の語句が場面全体で3回目以上になる候補と、他の Beat の文の言い換えを棄却する（意図した反復は `contract.yaml` の `scene.allowed_repeats`）。`repair-next` のジョブごとに候補を作り、増量（`deepen`）と欠落の埋め（`regenerate`）は機械検査で採用する（JOB ごとに承認を求めない）。引き締め（`tighten`）・収束（`condense`）は事実の追加・変更・欠落なしの著者確認を得て `--canon-authorization` を付ける。`completed` のあと、作業稿（Beat マーカー付き）を続けて清書する（`rewrite.md`。床を割らないところで止め（床はルールで厳守）、仕上がり目標との数%（5%以内）の差は合わせ直さず、増量へ戻らない）。そのうえで `repair-summary --refined <清書稿>` で、調整前 → 増量後 → 清書後の字数、清書で消えた文、反復語句の推移を含む主要な変化を1回だけ報告し、返答を `--accept` で記録する。この1回を保存の確認とし、保存用 run には清書稿を渡す。記録は run の `canon_review.json`。章末などを契約に合わせて書き直すときは `--intent contract_fix`（Beat の床で長さを判定、著者確認あり）。`canon-check` で別呼び出しの CANON 検査を記録でき、不合格の候補は著者の確認が無い限り採用しない。合格を著者確認の代わりにするのは、ユーザーが明示して `--check-replaces-author` で始めたときだけ。減量は引き締めのあと、作者が `<METRON 場面>/episodes.yaml` に登録した子エピソードだけを収束（`condense`）で畳む。出来事を削る改稿工程は `strip-check`（参照があれば不可）とユーザー承認のあと `strip-record` で記録し、本文は同じ refine run の経路で反映する。`completed` なら保存用の `--allow-publish` 新 run で採用稿を `receive` → `inspect` → `publish` する。`escalated`（`LENGTH_MAX_PASSES` / `LENGTH_ESCALATE_ADD` / `LENGTH_ESCALATE_REVISE`）は不足・超過の字数と区間を報告して止め、加筆・改稿工程を提案する。手編集で置換しない。完了は上の「正本反映」と同じ条件（`publish` 後の `report.json` と句読点記録、ストーリー反映）。
+
+## 概念の詳細（concepts.md から移設）
+
+`concepts.md` は常時読み込む最小の判断だけを置くため、次の節は要点を `concepts.md` に残し、移設前の全文をここに置く。食い違うときは `concepts.md` の要点を優先し、ここを追随させる。ただし METRON V1 修復不変条件と CHRONOS の不変条件は、2026-10-25 に `concepts.md` を参照だけにしたので、ここが正本である。
+
+### METRON V1 修復不変条件の詳細
+
+- METRON の `BeatMissing` はマーカー／coverage 異常または承認済みの `missing_span_ratio`（文字数比の極端な短さ）、`BeatThin` は別統計の `beat_thin_ratio`（段落・会話の充足率）と構造予算で判定する。両方の閾値を同じ値にしない。`BeatThin` の自動修復は計画の段落下限または会話下限の未達に限る。校正典型値だけの未達は指摘を残し、自動修復しない。
+- 分量バーは構造バーと別に置く。シーンは `generation.chars_floor`（既定 4000字）、Beat は `chars_hint` を床とする。未達は `TooShort` とし、Deepen（ニュアンス深化）のみで自動修復する。末尾再生成には使わない。writing_bridge の context は下限（検査）と指示目標（助言）を出す。指示目標未達だけでは `TooShort` にしない。
+- Writer / Deepen 指示は床以上の指示目標を出す（既定 1.4 倍。極小床では丸めで床と同じになりうる）。水増しは禁止する。深化の対象は既にある出来事の解像度（動作の分解・感覚・心理・相手の反応・癖）と感情・身体の変化・会話とし、新しい出来事・選択・事実は足さない。すでに書いた内容の言い換えは対象にしない。
+- Expand / Deepen は現在の出来事・結末・視点を変更せず、元文残存率が `expand_retention_threshold` 未満の候補、同一本文、文字数が増えていない候補、新規文が既存文または他の新規文と高類似の候補（同義反復）、場面単位で同じ語句を繰り返す候補（新しい文が持ち込んだ語句が場面全体で3回目以上になるもの。意図した反復は `contract.yaml` の `scene.allowed_repeats`）を適用しない。同一 Beat の試行は2回を上限とする。
+- 必須修復または適格な追加候補があるときだけ、Beat マーカーを保持した結合校正を最大1回行い、BeatPlan 順を変えた候補は棄却する。校正後は正規化済み本文で再計測し、シーン床未達なら適格Beatだけを追加で Deepen する。必須修復も追加候補も無いときは結合校正を出さず、適格が無ければ `__scene_floor__` で止め、同一runへ新しい稿は受けない。既存の `FINAL.md` は上書きせず、採用稿から Beat / fact マーカーを除去して保存する。
+
+### CHRONOS P0 不変条件の詳細
+
+- 時刻は制約であり、日付は任意である。`after` / `before` だけで検査できる。
+- 検査は決定的コード（P0 は CHR001、人物状態は CHR010〜013）で行い、LLM に判定を委ねない。
+- `chronos check` は LLM / provider を呼ばず、`_novel_text` を読まず、`world.md` や原稿を書き換えない。`extract_gate` がある作品だけ、provider を呼ばない `extract` CLI が候補文書を検証して出典照合する。ゲート未設定作品は抽出せず、従来の検査を保つ。候補は承認まで `events/` に入れず、承認済み内容の更新は差分提案と作者承認を要する。更新候補の却下は元イベントの承認状態を変えず、ロック欄は作者が承認時に `--lock` で指定する。承認後の順序グラフで候補自身が CHR001 の循環に参加する場合は拒否する。
+- 執筆完了ゲートにはしない。フラグ OFF / P0 単体では METRON の本文計測とも自動接続しない。執筆工程への接続は `writing_bridge` が行う。
+- Consistency Audit（`text`）は `chronos check` の結果を読んで時系列の節に添付するだけで、ゲートにしない。イベント未登録を矛盾にせず、イベントを書かない。
+- 人物状態（P0.5）は、作品が `character_state.dimensions` で `enum` / `bool` / `loc_ref` を宣言したときだけ有効になる。コアはジャンル語を持たない。
+- 循環または同一人物の未確定順序では、状態を捏造しない。CHR012 は `rules.CHR012` と bind が揃った作品だけの opt-in である。
+- 人物状態の検査は挿絵・タグ YAML を読み取り専用とし、本文や挿絵を書き換えない。執筆完了ゲートにはしない。
+- CHRONOS は休止中（再設計予定。計画 `_workingspace/plans/20261025_chronos-off-redesign.md`）。上の不変条件は、CHRONOS が ON の既存作品に当てる。
+
+### 作品単位の METRON / CHRONOS / AUDIT_LOG フラグの詳細
+
+- 人間向け正本は対象作品の config.md にある「## 基本情報」表。METRON と CHRONOS と AUDIT_LOG は ON / OFF 値として読む。
+- CHRONOS は休止中。認める組み合わせは「両方 ON」「METRON だけ ON」「両方 OFF」。CHRONOS だけ ON（実効値。行なしは OFF）は、自動ワークフローでは設定エラーとする。
+- METRON / CHRONOS は、config.md または対象行がない場合は OFF。AUDIT_LOG は対象行がない場合、および config.md 未作成の場合は ON（従来の追記を維持する）。壊れた既存 config.md は設定エラーとする。
+- 新規作品の初回作成では、config.md に METRON / CHRONOS 行を書く。METRON の既定は ON で、作成時に確認し、ユーザーが OFF を明示したときだけ OFF にする（返答がない場合は **「未応答・既定 ON」**）。CHRONOS の既定は OFF（「休止中・既定 OFF」と記録）。行なしの既存作品は従来どおり OFF。既存作品の値は変えない。
+- **OFF で下書き → ON で洗練**は、明示 OFF した作品の経路として残す。OFF の期間は従来経路で書き、ON にした章から後追い計測（既稿から契約・Beat を起こし、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側のマーカー付き作業稿を `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`）で洗練する。`_novel_text` にマーカーを書かない。config.md の基本情報表の `METRON_FROM | N` で、第N章より前を下書き期として未計測ゲートの対象から外せる。いつ ON にするかは `_meta.md` の「検査レイヤの予定」に書く。ON → OFF に戻すときは、active な run・修復を閉じてから切り替える。
+- 未知値・重複キー・既存 config.md の読込失敗は設定エラーとし、黙って既定値にしない。
+- フラグはエージェントの自動ワークフロー起動判定にだけ使う。ユーザーが明示した metron_cli.py / chronos_cli.py / 査証ログ追記はフラグで拒否しない。
+- ON の検査結果は本文保存の完了と分けて報告し、METRON / CHRONOS の欠落や失敗で**既にある本文**の完了を取り消さない。これから書く新規場面には使わず、`prepare` 前に `_novel_text` を増やす根拠にしない。
+- ON は当該作品の writing_bridge 場面作業（修復と正本反映）を承認済みと扱う。止めの明示があるときだけ publish しない。課金生成・イベント上書き・画像は対象外。
+
+### 執筆接続（writing_bridge）の詳細
+
+- METRON / CHRONOS が ON で、対象場面にハッシュ一致の active run があるときは `writing_bridge_cli.py` が検査責任を持つ。同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。
+- CHRONOS ON の対象場面に有効イベントが無いときは、writing_bridge の `report.json` に `CHRONOS_NO_SCENE_EVENTS` を非ブロッキング警告として残す。ゲート設定時に順序比較できないイベント対があれば、辺数つき `CHRONOS_ORDER_UNCONFIRMED` を非ブロッキング note として残す。イベント未登録を `chronos_registered: success` とみなさない。ゲート未設定作品からは原稿を抽出しない。
+- 同一受領候補の inspect は既存の metrics / spans を再利用する。保存用 run は `inspect --from-run` で本文 hash が一致する observations を流用する。`--from-run` は `run-\d{4,}` に限り、observations 欠落は UNKNOWN_REF、不一致は STALE とする。
+- 修復が active のあいだ、C1 未記録は report に残すが inspect を失敗にしない。完了後と保存前は従来どおり未記録で止める。CHRONOS ON の初回 inspect の前に observations を書く（現行は未記録で exit 1）。座標下書きは `locate-quote`。inspect と同じ版検証のあと、一意一致だけを出し、重複は推測しない。`publish` は C1 成功前に正本を書かない。
+- 正本反映は `permissions.publish` がある run の `publish` だけを使う。ON の場面作業では反映依頼済みとみなし、CLI の `--allow-publish` は技術ゲートとして残す。未作成または空の正本へ `new` するときは selector を付けない。既存の非空本文だけ heading / scene アンカー / `append` を使う。手編集で `_novel_text` を置換しない。`FINAL.md` だけでは完了にしない。
+- 清書（rewrite.md）の既定は従来どおり自動計測しない。フラグ OFF と明示 CLI は従来動作を保つ。ON の作品で清書した章は本文ハッシュの照合で「計測が古い」になり、洗練の段階で後追い計測の手順に載せ直して `publish` で戻す。
+- `_meta.md` のストーリー反映は CLI の外で `novel-story-reflection` が行う。
+- ON の新規場面（既存章への場面追記を含む）は、単一章でも複数章でも、ハッシュ一致の active run が無ければ従来経路へ落ちず、契約と Beat を置いて `prepare` する。`prepare` まで進めないターンは `_novel_text` を増やさず「未計測／要対応」で止める。初稿は指示目標以上を1回で書く。CHRONOS 先行 publish からのリテイクをしない。
+- **セッション開始ゲート**: 本文作業のターンで作品フラグが ON のときは、そのターンの本文書込み前に `novel_project_check <作品> --check-inspection-layers` を実行する。`未計測章` 警告（計測後に本文が書き換わった「計測が古い」章を含む。`METRON_FROM` より前の章は対象外）が出ている作品では新規章の起草を始めず、最初の未計測章の後追い計測（契約・Beat 補完 → `prepare` → `receive` → `inspect`）と CHRONOS イベント登録を先に完了する。警告なしの exit 0 は未計測の免除にならない（METRON の保存先（`_work/metron/`・以前の作品の `_metron/`）が空の作品では本文を書かない）。
+- シーン床到達かつ必須修復なしなら `repair-begin` しない（`REPAIR_NOT_NEEDED`）。必須修復が残れば `auto` でも begin する。明示 Deepen は `--intent explicit_deepen`。`--scope beats` は指定外の助言 Deepen を出さない。発行不能な必須、および適格候補ゼロの `escalated` は `repair-next` のあと `author_stop` で証跡を付けられる。pending job JSON 欠落は `STALE_EVIDENCE`。pending の破棄は `repair-finish`。`--from-run` は CHRONOS ON かつ observations があるときだけ。`inspect` の `status` / `report.md` は required と advisory を分ける。保存案内は床到達・必須なしに加え、C1 が success または skipped、repair が active でないときに限る。詳細は `_workingspace/plans/20260912_metron-ops-speed.md`。
 
 ## 自己発展型ルールガバナンス
 
@@ -712,7 +795,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 - **NovelAI** の先は T1 の `generate` のまま。`しない` ならモデル字を残す。`する` ならモデル字を仮として写植。
 - 未設定の既存作品は横断既定どおり **しない**（Grok / GPT Image も NovelAI も省略時 `generate`。生成後の写植は自動ではかけない）。
 - CLI とページ YAML の明示 `text_mode` はフラグで変えない。
-- スタイル（方向・フォントサイズ）は従来どおりページ YAML の `manga.lettering` が正本。
+- スタイル（方向・フォントサイズ）は従来どおりページ YAML の `manga.lettering` が正本。既定は縦書き・基準サイズ30・矩形中央寄せ・必要時のみ縮小。個別の `writing_direction` は明示時だけ上書きする。縦書きの約物は縦組みの字形へ変換するが、`？` は通常の字形のまま（IR の本文は変えない）。
 
 禁止:
 
@@ -798,6 +881,7 @@ dry-run 承認は、その provider と設定で実行する承認であり、�
 | Consistency Audit | `_how_to/consistency_audit.md` | `_reader/consistency_<scope>_YYYYMMDD_HHMM.md`（`<scope>` は `design` / `text`。旧 `consistency_YYYYMMDD.md` は読取互換） | なし（表形式） | design: 企画 Gate B の B4.5・評価前の鮮度チェック・ユーザー明示 / text: 本文保存後の次手・ユーザー明示 |
 | Synopsis（前処理） | `_how_to/novel_synopsis_for_review.md`（予定） | `_reader/synopsis_YYYYMMDD.md` | なし | 長文G3/Editor Score前 |
 | Reader Walk（読み進み） | `_how_to/reader_walk.md` | `_reader/walk/<session_id>/journal.md`（状態は同じセッションディレクトリの `state.md`） | なし（感想＋任意の反応メタデータ。作品評価点なし） | 既定は未読の残り全部。要望があれば指定範囲 |
+| 用語照合 | `_how_to/world_glossary.md` | `_reader/terminology_YYYYMMDD_HHMM.md` | なし（抑える／拾い上げる／保留の振り分け） | ユーザー明示。生成モデルが造語や設定の書き足しをしやすいときの起草後 |
 
 必須:
 
@@ -849,14 +933,14 @@ First Reader（足切り）と Editor Score（深掘り）は配点・目的が�
 - 長文パイプライン手順: `.rulesync/skills/novel-evaluation-output/SKILL.md`「長文多段パイプライン」
 - 設計根拠: `_workingspace/plans/20260608_novel-evaluation-enhancement.md` Phase 2
 
-## 評価作業一時領域（`_reader/_work/`）
+## 評価作業一時領域（`_work/reader/`）
 
 定義:
 30,000字超の長文評価や章分割評価で生じる中間作業ファイル（章別スコアノート・集計メモ等）を置く一時領域。`_reader/` 直下の最終成果物と混在させない。
 
 必須:
 
-- `_reader/_work/<YYYYMMDD>/` を評価セッションの作業フォルダとする（`YYYYMMDD` は評価実施日）。
+- `_work/reader/<YYYYMMDD>/` を評価セッションの作業フォルダとする（`YYYYMMDD` は評価実施日）。同じ日の作業フォルダが古い置き場 `_reader/_work/<YYYYMMDD>/` に既にあるときだけ、そちらを使い続ける（同じ日のフォルダを二か所に分けない）。古い置き場の過去の日付フォルダは読み取りだけ互換とする。置き場の判定は `tools/work_paths.py`（種類 `reader`）。
 - **最終成果物のみ** `_reader/` 直下に置く（命名は「評価ファイル命名と役割」の表に従う）。
 - 作業フォルダ内の標準ファイル:
   - `ch01_eval.md`〜`chNN_eval.md`: 章ごとのスコアノート
@@ -867,7 +951,7 @@ First Reader（足切り）と Editor Score（深掘り）は配点・目的が�
 
 禁止:
 
-- `_reader/_work/` 内のファイルを最終成果物として参照しない。最終点数・判定は `_reader/` 直下のファイルを根拠にする。
+- 作業フォルダ（`_work/reader/`・古い `_reader/_work/`）内のファイルを最終成果物として参照しない。最終点数・判定は `_reader/` 直下のファイルを根拠にする。
 - `_reader/` 直下に `ch01_eval.md` 等の章別ノートを直接置かない。
 
 参照:
@@ -1171,7 +1255,7 @@ Plan Mode では **Gate A（骨格）のあと Gate B（知識・厚さ・洗練
 
 Gate B では作品経路（新規 / 資料取り込み / 既存洗練）と作品プロファイル（一般 / `mature` / `body_therapy` 等・複数可）を分けて判定する。`character.md` 作成・特殊プロフィール・投稿変換・個人ワークフローが関わる場合は、**`_how_to/skills/_index.md`** を確認し、該当するユーザスキルだけを読む（全件必読ではない。発動条件は本ファイル「公式スキルとユーザスキルの接続」）。
 
-設計の厚さ（章ごと具体出来事の最低項目数、洗練後の倍増、Mermaid 相関図、必須構成要素）は **`novel-planning` の Gate B** を正とする。小説ファイル節の「1章5項目以上」等と矛盾するときは、スキル側の判定可能な基準を優先し、必要なら本ファイルを短く追随させる。
+設計の厚さ（章ごと具体出来事の件数、Mermaid 相関図、必須構成要素）は **`novel-planning` の Gate B** を正とする。章の目標字数があるときは件数を目標から出し（1項あたり 500〜800字。`tools/design_density.py`）、無いときは初回5項目以上・洗練後は原則2倍かつ最低10項目とする。小説ファイル節の「1章5項目以上」等と矛盾するときは、スキル側の判定可能な基準を優先し、必要なら本ファイルを短く追随させる。
 
 Feedback として、既存作品の `judge_result.md` や `impression.md` から再利用できる文体・作風の学びがあれば、該当する作家の `writer_profile.md` へ反映する。
 
@@ -1274,6 +1358,7 @@ novel_prompt_ir_export_md.py --novelai-pipe-tags で tag/<romaji>.md を出力�
 #### 画像生成（txt2img）の事前確認
 - 承認・dry-run の横断正本は本ファイルの「画像生成: dry-run から本番まで」。
 - 完了扱いの横断正本は **`.rulesync/rules/concepts.md`** の「完了扱い条件」。
+- NovelAI の描画は既定で **NovelAI 5**（`nai-diffusion-5-full` / alias `v5` / `novelai5`）を選ぶ。V4.5 は Vibe Transfer があるジョブだけ。
 - 画像生成は必ず **`.env` / `config/image_generation.json` 確認 → `--dry-run` → ユーザー承認 → 本番 → 保存先のファイル確認** の順に進める。
 - `--dry-run` の結果を提示した時点では本番を実行しない。承認なしに `--dry-run` なしのコマンドへ進まない。
 - 運用の詳細・Flux 特有のパラメータ・例コマンドはスキル **`image-provider`（旧 `forge-txt2img`）**（`.rulesync/skills/forge-txt2img/SKILL.md`）および `docs/image-generation/` を参照する。

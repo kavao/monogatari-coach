@@ -23,7 +23,10 @@ from pathlib import Path
 from typing import Any
 
 from console_io import configure_stdio_utf8
+from work_paths import UnitLocation, WorkPathError, ensure_not_migrating, resolve_unit
 
+# 古い置き場（作品直下）のファイル名。新しい置き場は `_work/story_reflection/op.*`。
+# どちらを使うかは work_paths.resolve_unit が組（current・journal・lock の3つ）単位で決める。
 CURRENT_NAME = "_story_reflection_op.json"
 JOURNAL_NAME = "_story_reflection_op.jsonl"
 LOCK_NAME = "_story_reflection_op.lock"
@@ -481,19 +484,28 @@ def classify_state(
 
 @dataclass
 class NovelPaths:
+    """作品のパス。current・journal・lock は組として一度だけ解決し、操作の途中で置き場を変えない。"""
+
     novel_dir: Path
+    unit: UnitLocation = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        try:
+            self.unit = resolve_unit(self.novel_dir, "story_reflection")
+        except WorkPathError as exc:
+            raise OpError(exc.code, f"未完了（置き場を解決できない）: {exc}", payload=dict(exc.refs)) from exc
 
     @property
     def current(self) -> Path:
-        return self.novel_dir / CURRENT_NAME
+        return self.unit.file("current")
 
     @property
     def journal(self) -> Path:
-        return self.novel_dir / JOURNAL_NAME
+        return self.unit.file("journal")
 
     @property
     def lock(self) -> Path:
-        return self.novel_dir / LOCK_NAME
+        return self.unit.file("lock")
 
     @property
     def design(self) -> Path:
@@ -725,7 +737,8 @@ def acquire_lock(paths: NovelPaths, operation_id: str) -> LockHeld:
         "created_at": utc_now(),
         "lock_token": token,
     }
-    staging = paths.lock.with_name(f".{LOCK_NAME}.{os.getpid()}.{token[:8]}.creating")
+    paths.lock.parent.mkdir(parents=True, exist_ok=True)
+    staging = paths.lock.with_name(f".{paths.lock.name}.{os.getpid()}.{token[:8]}.creating")
     try:
         fd = open_lock_fd(staging, create_excl=True)
     except FileExistsError as exc:
@@ -748,7 +761,9 @@ def acquire_lock(paths: NovelPaths, operation_id: str) -> LockHeld:
                 pass
         raise OpError("LOCK_HELD", "未完了（同期ロック取得不能）") from None
     _hold_sleep_for_tests()
-    return LockHeld(paths, operation_id, fd, created=True, payload=payload)
+    held = LockHeld(paths, operation_id, fd, created=True, payload=payload)
+    _refuse_if_migrating(held)
+    return held
 
 
 def hold_existing_lock(paths: NovelPaths) -> LockHeld:
@@ -769,7 +784,48 @@ def hold_existing_lock(paths: NovelPaths) -> LockHeld:
         os.close(fd)
         raise OpError("LOCK_HELD", "未完了（同期ロック取得不能）: lock 内容が不完全")
     _hold_sleep_for_tests()
-    return LockHeld(paths, str(op_id), fd, created=False, payload=meta)
+    held = LockHeld(paths, str(op_id), fd, created=False, payload=meta)
+    _refuse_if_migrating(held)
+    return held
+
+
+def _refuse_if_migrating(held: LockHeld) -> None:
+    """排他を取ったあとに、置き場がまだ有効かをもう一度確かめる。
+
+    - 移行中の印がある（印を作る前に解決を済ませていた操作との競合）。
+    - 解決したあとに移行が終わり、組が別の置き場へ移っていた（古い置き場にロックを作り直すと、
+      新しい置き場の履歴と共存して CONFLICT になる）。
+    どちらも、自分で作ったロックは消し、既存のロックは手放すだけにして、もう一度実行するよう促す。
+    """
+    novel_dir = held.paths.novel_dir
+    try:
+        ensure_not_migrating(novel_dir, "story_reflection")
+    except WorkPathError as exc:
+        _drop_lock(held)
+        raise OpError("MIGRATING", f"未完了（移行中）: {exc}", payload=dict(exc.refs)) from exc
+    expected = held.paths.unit.base
+    try:
+        current = resolve_unit(novel_dir, "story_reflection").base
+    except WorkPathError as exc:
+        _drop_lock(held)
+        raise OpError(
+            "STALE_LOCATION",
+            f"未完了（置き場が変わった。もう一度実行する）: {exc}",
+            payload={"expected": expected.as_posix(), **dict(exc.refs)},
+        ) from exc
+    if current != expected:
+        _drop_lock(held)
+        raise OpError(
+            "STALE_LOCATION",
+            "未完了（置き場が変わった。もう一度実行する）",
+            payload={"expected": expected.as_posix(), "current": current.as_posix()},
+        )
+
+
+def _drop_lock(held: LockHeld) -> None:
+    if held.created:
+        unlink_owned_lock(held)
+    held.close_fd()
 
 
 def hold_or_create_lock(paths: NovelPaths, operation_id: str) -> LockHeld:
