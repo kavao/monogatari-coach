@@ -41,7 +41,7 @@ Monogatari Coach のルールを増やすときは、本文を足す前に「何
 
 `_how_to.example/` に葉ファイルを足す作業は、ルール追加と同じく完了条件を持つ。創作技法の本文ではなく、カタログ入口の手順である。
 
-1. `_how_to.example/_index.md` に入口を1行置く。該当サブカタログに README または `_index.md` がある場合はそこにも1行置く（`episode/`、`genre/`、`skills/`、`publishing/`、`image_refs/` など。ルート直下の葉は `_index.md` だけで足りる）。
+1. `_how_to.example/_index.md` に入口を1行置く。該当サブカタログに README または `_index.md` がある場合はそこにも1行置く（`episode/`、`genre/`、`tropes/`、`literacy/`、`skills/`、`publishing/`、`image_refs/` など。ルート直下の葉は `_index.md` だけで足りる）。
 2. **既定で読まない** か発動条件（作品プロファイル / ジャンル / pick `list_id`）を、次のいずれか（または複数）に書く。索引の当該行、該当 README、カタログ全体の冒頭注記。全件必読にしない。
 3. 既存 `novels/*/_meta.md` の selected は更新しない。ユーザーが Gate B 再実施を指示した作品だけ新形式へ移す。
 4. 公式ルールの完了条件に、そのファイルの見出し番号を埋め込まない。
