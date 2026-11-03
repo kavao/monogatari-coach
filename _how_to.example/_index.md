@@ -38,6 +38,7 @@
    - general（物語の山と転）: [episode/general/episode_flow_peak_payoff.md](episode/general/episode_flow_peak_payoff.md)（流れ・山・オチの構造論。山・オチ・後味を設計するとき、読後に平坦さや約束の回収漏れを診断するとき）, [episode/general/episode_flow_break.md](episode/general/episode_flow_break.md)（流れ破壊と転の設計。転・中盤の反転・どん底を設計するとき、展開が予測どおりで単調なとき）。既定では読まない。ただし「平板なのでアレンジして」「プロットを変えて」などのプロットのアレンジの作業では、selected に無くても読む工程正本とする。
    - general（黄金律）: [episode/general/episode_golden_structure.md](episode/general/episode_golden_structure.md) … 三幕構成・ヒーローズ・ジャーニー・Save the Cat。作者が型を意識して選んだときだけ使う。既定の構造方針にしない（指定が無ければ型の位置は確率で揺らす）。
    - general（親密さのスロープ）: [episode/general/episode_intimacy_slope.md](episode/general/episode_intimacy_slope.md) … 二人の恋愛的な親密さが段階的に高まっていく過程（呼び方・距離・接触・自己開示・特別扱いなどの境界がどう解禁されていくか）を設計する場合、または恋愛関係の進み方が単調・唐突で直したい場合に選ぶ（既定では読まない。恋愛が背景にあるだけ、友情や家族の関係の深まりだけでは選ばない。友情の深まりは `episode/general/episode_friendship.md`、ラブコメのジャンルの約束と装置は `genre/romcom.md`、具体的な場面の候補は `episode/common/` の親愛系）。
+   - general（婚約からの離脱）: [episode/general/episode_engagement_departure.md](episode/general/episode_engagement_departure.md) … 家や周囲が決めた婚約から主人公が離れる、または婚約の中身を組み直して自分で選ぶ立場へ移る物語（婚約破棄・婚約解消・許嫁や政略結婚からの離脱・契約婚の組み直し・選び直し・非婚・別の家や土地への移籍）の流れを設計する場合に選ぶ（既定では読まない。婚約が背景の設定にあるだけでは選ばない。悪役令嬢の破滅回避・断罪・ざまぁのジャンルの約束は `genre/akuyaku_reijo.md`）。
    - common: [episode/common/epsode_common.md](episode/common/epsode_common.md)
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
