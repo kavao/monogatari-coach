@@ -53,8 +53,22 @@ def catalog_link_targets(text: str) -> list[str]:
     return targets
 
 
+def is_inside_standard(target: str, catalog: Path, src: Path) -> bool:
+    """True when a catalog link points into the standard tree (a leaf), not outside it."""
+    resolved = (catalog.parent / target).resolve()
+    try:
+        resolved.relative_to(src.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def find_stale_catalog_entries(src: Path, dst: Path) -> list[tuple[Path, list[str]]]:
-    """Return working catalogs that lack link targets present in the standard catalog."""
+    """Return working catalogs that lack link targets present in the standard catalog.
+
+    Links that leave the standard tree (for example a pointer to the working
+    ``_how_to/skills/_index.md`` itself) are not leaves and are ignored.
+    """
     stale: list[tuple[Path, list[str]]] = []
     for standard in sorted(src.rglob("*"), key=lambda item: item.as_posix().lower()):
         if standard.name not in CATALOG_NAMES or not standard.is_file():
@@ -68,7 +82,11 @@ def find_stale_catalog_entries(src: Path, dst: Path) -> list[tuple[Path, list[st
         working_text = working.read_text(encoding="utf-8")
         if standard_text == working_text:
             continue
-        missing = [t for t in catalog_link_targets(standard_text) if t not in working_text]
+        missing = [
+            t
+            for t in catalog_link_targets(standard_text)
+            if t not in working_text and is_inside_standard(t, standard, src)
+        ]
         if missing:
             stale.append((working, missing))
     return stale

@@ -93,6 +93,20 @@ def test_howto_init_warns_about_stale_working_catalog(tmp_path: Path, capsys) ->
     assert "genre/dungeon.md" in out
 
 
+def test_stale_check_ignores_links_outside_standard_tree(tmp_path: Path) -> None:
+    example = tmp_path / "_how_to.example"
+    _write(
+        example / "skills" / "_index.md",
+        "- working: [`_how_to/skills/_index.md`](../../_how_to/skills/_index.md)\n"
+        "- [tpl](tpl/SKILL.md)\n",
+    )
+    _write(tmp_path / "_how_to" / "skills" / "_index.md", "- mine\n")
+
+    stale = howto_init.find_stale_catalog_entries(example, tmp_path / "_how_to")
+
+    assert stale == [(tmp_path / "_how_to" / "skills" / "_index.md", ["tpl/SKILL.md"])]
+
+
 def test_howto_init_reports_up_to_date_catalogs(tmp_path: Path, capsys) -> None:
     _write(tmp_path / "_how_to.example" / "_index.md", "- [a](a.md)\n")
     _write(tmp_path / "_how_to" / "_index.md", "- [a](a.md)\n- [mine](mine.md)\n")
