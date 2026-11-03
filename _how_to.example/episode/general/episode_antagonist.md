@@ -4,7 +4,7 @@
 
 主人公を「格下げ」することで機能する敵対者の設計セット。
 属性（性別・職業・階層）には紐づけない。**装置**として分解し、任意の人物に一部だけ載せる。
-姉妹編として味方の席を保ったまま格下げする [episode_false_ally.md](episode_false_ally.md)（AMICITIA：偽味方）がある。
+姉妹編として味方の席を保ったまま格下げする [episode_false_ally.md](episode_false_ally.md)（AMICITIA：偽味方）がある。海賊が敵役として出るだけの作品はこの葉が主で、海賊ものが作品の主軸なら [海賊もの](../../genre/pirate.md) を選ぶ。
 
 前提二則:
 
