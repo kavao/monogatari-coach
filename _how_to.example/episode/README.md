@@ -28,6 +28,7 @@ general の設計技法（抽選 JSON の対象外）:
 - [責任移行の人物類型設計（ONUS）](general/episode_responsibility_shift.md)
 - [部活ラブコメ構成（CLUBROM）](general/episode_club_romcom.md)
 - [大学サークルラブコメ類型（CIRCLEROM）](general/episode_circle_romcom.md)
+- [親密さのスロープ（七つの境界軸×越境の四段階）](general/episode_intimacy_slope.md)
 - [人の心を震わせるもの／揺らぎと作者性の設計（FLUCTUATION）](general/episode_fluctuation.md)
 - [子エピソードによる増量](general/episode_sub_episode.md)（加筆工程で出来事を足して分量を増やすときだけ読む。清書の削減上限到達後の追加削減分も含む。清書・規定量調整の作業中には使わない）
 
