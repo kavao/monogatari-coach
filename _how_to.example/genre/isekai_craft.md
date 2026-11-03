@@ -8,7 +8,7 @@
 
 「異世界クラフト」「ものづくり」「生産職」「辺境開拓」「技術・内政チート」を扱う作品の Plan Mode で参照する。
 発明一覧を順番に消化する資料ではなく、読者へ供給する快感、技術ツリーの因果、主人公の限界、現地社会への波及を一体で設計するためのリファレンスである。
-知識の出所・解説の演出・現地社会に受容される段階を主に設計するときは、関連資料 [isekai_modern_knowledge.md](isekai_modern_knowledge.md) も併読する。
+知識の出所・解説の演出・現地社会に受容される段階を主に設計するときは、関連資料 [isekai_modern_knowledge.md](isekai_modern_knowledge.md) も併読する。魔道具が社会にもたらす摩擦の型は [tropes/narou_magic.md](../tropes/narou_magic.md) を併用する。
 
 **見せ方軸の既定プリセット**: `web_reward_style`。発明の仕組みを細かく見せ、現地の人々の驚きで価値を示す型が、Web 小説期の束と重なる（出発点として作者に示し、採るかは作者が決める。軸とプリセットは `_how_to.example/showing_axes.md`、作品の決定は `_meta.md` の「見せ方軸」節）
 
