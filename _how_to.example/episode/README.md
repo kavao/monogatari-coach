@@ -16,6 +16,7 @@ general の設計技法（抽選 JSON の対象外）:
 - [リアリティの設計](general/episode_reality.md)
 - [足を引っ張るキャラクターの設計](general/episode_hindrance.md)
 - [地の文モノローグの設計](general/episode_monolog.md)
+- [会話の少ない場面の本文化](general/episode_sparse_dialogue.md)（口調が短い・沈黙指定・EXPRESSION が低い、会話を足さずに場面の下限へ届かせたいときだけ読む。沈黙を話題で埋める葉とは逆。既定では読まない）
 - [友人類型設計（SODALITAS）](general/episode_friendship.md)
 - [偽味方類型設計（AMICITIA）](general/episode_false_ally.md)
 - [敵対者類型設計（MALITIA）](general/episode_antagonist.md)

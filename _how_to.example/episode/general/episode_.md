@@ -31,6 +31,7 @@
 | X | [episode_golden_structure.md](episode_golden_structure.md) | 黄金律の構造（三幕構成・ヒーローズ・ジャーニー・Save the Cat）。作者が型を選んだときだけ使い、既定にしない |
 | Y | [episode_intimacy_slope.md](episode_intimacy_slope.md) | 親密さのスロープ（七つの境界軸×越境の四段階、触媒と制動、自覚のトリガー、フェーズ P1〜P9、スロープの法則、一線の手前の処理） |
 | Z | [episode_engagement_departure.md](episode_engagement_departure.md) | 婚約からの離脱（二つの帳簿・旧配置・内的確証と外的確証・上昇と下降、Phase 1〜10、組み合わせ例、最小構成、閉じられた帳簿） |
+| AA | [episode_sparse_dialogue.md](episode_sparse_dialogue.md) | 会話の少ない場面の本文化（演出の層・7媒体。沈黙を話題で埋めない。ビートは既存 `beats.yaml`）。口調が短い・沈黙指定・会話を足さずに分量を足すときだけ読む |
 
 関連: [../common/epsode_common.md](../common/epsode_common.md)（恋愛・描写）
 

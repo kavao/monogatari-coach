@@ -10,7 +10,7 @@
    - リポジトリに同梱する**雛形**の一覧。初回はここを **`_how_to/skills/<名前>/` にコピー**してから編集する（正本と副本の扱いは **`.rulesync/rules/concepts.md`**「正本と副本」）。
    - 既にコピー済みの**作業用**一覧は **`_how_to/skills/_index.md`** を正とする（雛形にないスキルが列挙されることもある）。
 1. novelcore.md
-   - 一般的な小説の文法
+   - 一般的な小説の文法。述語の無い一言のセリフは二文に開く（述語のある一文・相づち・名前呼びなどを除く）。会話が少ない場面の本文化は `episode/general/episode_sparse_dialogue.md`（既定では読まない）
 1.5. ethos.md
    - 倫理的な決断、規範の差、忠義と恩義、共同体と個人の衝突を設計するときに選ぶ。既定では読まない。
 1.6. [`tropes/`](tropes/README.md)（物語の型とあるある。人物・設定）
@@ -33,6 +33,7 @@
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)
    - general（足を引っ張る人物）: [episode/general/episode_hindrance.md](episode/general/episode_hindrance.md)
    - general（地の文モノローグ）: [episode/general/episode_monolog.md](episode/general/episode_monolog.md)
+   - general（会話の少ない場面の本文化）: [episode/general/episode_sparse_dialogue.md](episode/general/episode_sparse_dialogue.md) … 口調が短い、沈黙指定、EXPRESSION が低い、会話を足さずに場面の下限へ届かせたいとき。既定では読まない。沈黙を話題で埋めるのは `episode/general/episode_dialogue.md`。内心モノローグが快楽の作品は `episode/general/episode_monolog.md`。
    - general（子エピソードによる増量。加筆工程で出来事を足して増やすときだけ読む。削減上限到達後の追加削減分も含む）: [episode/general/episode_sub_episode.md](episode/general/episode_sub_episode.md)
    - general（友人・偽味方・敵対者・敵の顔の庇護者・危機脱出・恩義・責任移行・部活／サークル・揺らぎ）: [episode/general/episode_friendship.md](episode/general/episode_friendship.md), [episode/general/episode_false_ally.md](episode/general/episode_false_ally.md), [episode/general/episode_antagonist.md](episode/general/episode_antagonist.md), [episode/general/episode_enend.md](episode/general/episode_enend.md), [episode/general/episode_crisis_escape.md](episode/general/episode_crisis_escape.md), [episode/general/episode_obligation.md](episode/general/episode_obligation.md), [episode/general/episode_responsibility_shift.md](episode/general/episode_responsibility_shift.md), [episode/general/episode_club_romcom.md](episode/general/episode_club_romcom.md), [episode/general/episode_circle_romcom.md](episode/general/episode_circle_romcom.md), [episode/general/episode_fluctuation.md](episode/general/episode_fluctuation.md)
    - general（物語の山と転）: [episode/general/episode_flow_peak_payoff.md](episode/general/episode_flow_peak_payoff.md)（流れ・山・オチの構造論。山・オチ・後味を設計するとき、読後に平坦さや約束の回収漏れを診断するとき）, [episode/general/episode_flow_break.md](episode/general/episode_flow_break.md)（流れ破壊と転の設計。転・中盤の反転・どん底を設計するとき、展開が予測どおりで単調なとき）。既定では読まない。ただし「平板なのでアレンジして」「プロットを変えて」などのプロットのアレンジの作業では、selected に無くても読む工程正本とする。
@@ -43,11 +44,12 @@
 4. （旧 epsode_common.md は episode/common/ へ移動）
 5. rewrite.md, word_change.md
    - 文章校正の時に使う
+   - 述語の無い一言セリフを既にある意味の範囲で二文に開くのは清書。新しい往復は加筆（`novelcore.md` 会話）
    - 清書稿は `_novel_text_backup/` に旧版を退避したうえで `_novel_text/` を直接更新する
    - 旧版は `_novel_text_backup/` に **`<元ファイル名>_vNNN.md`** 形式で退避する
    - 清書稿の保存先・バックアップ・`_novel_text` への反映はスキル **novel-refinement-output**（`.rulesync/skills/novel-refinement-output/SKILL.md`）と **`.rulesync/rules/overview.md` §2.5** を参照
 5.1. length_ops.md
-   - 文章の伸縮操作規定。清書・規定量調整（目標字数への伸縮）・加筆／改稿工程へのエスカレーションのときだけ読む。出来事（CANON）を変えない操作と、加筆・改稿工程に属する操作の境界、検査と停止条件。削減上限到達後は冗長を残さず、追加削減と子エピソード案へ振る（承認後）
+   - 文章の伸縮操作規定。清書・規定量調整（目標字数への伸縮）・加筆／改稿工程へのエスカレーションのときだけ読む。出来事（CANON）を変えない操作と、加筆・改稿工程に属する操作の境界、検査と停止条件。削減上限到達後は冗長を残さず、追加削減と子エピソード案へ振る（承認後）。報告では場面の下限（`chars_floor`）と言い、章の目標字数と混ぜない。会話の少ない場面で同一物の再計測で下限を埋めない（`episode/general/episode_sparse_dialogue.md`）
 5.2. slop_patterns.md
    - 低品質文（スロップ）の反面教師の文例集。意味破綻・過剰圧縮・頻度型の定型・構成・記号の5系列。**本文の起草・清書と、あらすじ・案・章題・ログラインを出す前に必ず読む**（`rewrite.md` と同じ工程正本で、selected に無くても読む）。定型句の機械候補は `novel_text_rewrite_lint.py --profile slop`
 6. name_creature.json
@@ -58,7 +60,7 @@
 6.6. naming_kanji_emblem.md
    - 漢字エンブレム命名（当て字・義訓・既存名の読みを保った漢字改修）の生成法・系統・検品の基準と命名例。**既定では読まない。** 漢字の当て字・義訓・漢字エンブレム風の表記、または既存名の読みを保った漢字改修を求められたときだけ読む（「和風の名前」「漢字の人物名」だけでは読まない）。スキル **kanji-emblem-naming** の工程正本なので、そのときは selected に無くても読む。
 6.7. synopsis_presentation.md
-   - 物語案・`proposal.md` のログライン・あらすじ・キャラクター紹介・チャットモードのあらすじと選択肢、および `design_specification.md` の章構成を書くときは、出す前に必ず読む。Gate B4 の口語化と、設計の章出来事の因果検査（Gate B4・単独起動・プロットのアレンジの反映のあと）でも使う（それ以外では読まない）。型名・ジャンル葉の名前・ID・カタログ短縮（葉のあだ名）を案に出さず、人物・出来事・選択で見せる基準。型名は出さない。体位・体勢は伏せない（「型名と体位・体勢」）。章項は「誰が何をした」口語1文で、なぜ動いたかが同じ項か直前の項で指せる（因果検査・反パターン A8）。決まりを概念や比喩でまとめない（反パターン A9）。反パターン、合格例、出す前の検査。本文・清書で型名遮断を体勢伏せと誤読しそうなときは該当節だけ読む。
+   - 物語案・`proposal.md` のログライン・あらすじ・キャラクター紹介・チャットモードのあらすじと選択肢、および `design_specification.md` の章構成を書くときは、出す前に必ず読む。Gate B4 の口語化と、設計の章出来事の因果検査（Gate B4・単独起動・プロットのアレンジの反映のあと）でも使う（それ以外では読まない）。型名・ジャンル葉の名前・ID・カタログ短縮（葉のあだ名）を案に出さず、人物・出来事・選択で見せる基準。型名は出さない。体位・体勢は伏せない（「型名と体位・体勢」）。章項は「誰が何をした」口語1文で、なぜ動いたかが同じ項か直前の項で指せる（因果検査・反パターン A8）。決まりを概念や比喩でまとめない（反パターン A9）。一般語の作者略号（苗字・呼び捨て等）は誰が誰を何と呼んだかへ開く。反パターン、合格例、出す前の検査。本文・清書で型名遮断を体勢伏せと誤読しそうなときは該当節だけ読む。
 6.8. showing_axes.md
    - 見せ方軸（人物の見せ方）。人物と筋は変えずに、内心をどこまで語るか、強さを誰に評価させるか、作品の構えなどで作風の時代・ジャンル臭を決める軸と時代プリセット。**既定では読まない。** 企画（Gate B）で作者が作風・時代感・見せ方を指定したとき、selected のジャンル葉に既定プリセットがあるとき、既存作品で作者が見せ方の指定を求めたとき（限定更新）だけ読み、作品 `_meta.md` の「見せ方軸」節を埋める。採ったら selected に入れる。指定が無ければ読まずに「指定なし」と記録する。執筆・清書は `_meta.md` の節を正とする。手順はスキル **novel-planning**。
 7. world_wear.md
