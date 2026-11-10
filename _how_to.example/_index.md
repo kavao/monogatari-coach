@@ -28,6 +28,10 @@
 3.5. episode/（エピソード技法・雛形）
    - [episode/README.md](episode/README.md) … general（型・職業・対話・設計診断）と common（恋愛・描写・抜粋）の入口。
    - general: [episode/general/episode_.md](episode/general/episode_.md)
+   - general（キャラクター・関係性）: [episode/general/episode_character.md](episode/general/episode_character.md) … 人物の描き分け（外見・性格・話し方）、バディー、乙女ゲーム心理、気安い関係を設計するとき。既定では読まない。
+   - general（物語構造・ジャンル型）: [episode/general/episode_structure.md](episode/general/episode_structure.md) … 敵対する力・価値観の対立・軽重の混在などの構成原則、伝奇・村ホラー・なろう型の骨格を組むとき。既定では読まない。
+   - general（世界観・職業・階層）: [episode/general/episode_world.md](episode/general/episode_world.md) … 奴隷の区分、貴族の使用人・商人・職人・ギルド・冒険者／狩人など、職業と階層の人物像を決めるとき。既定では読まない。
+   - general（社会心理参照）: [episode/general/episode_social.md](episode/general/episode_social.md) … 人物の振る舞いに場の力（同調・内と外・借り・自分の選択の正当化・理由の取り違え・肩書き・居合わせた人の多さ・面子）を効かせたいとき。正しいことが言えない・止められない場面、身内びいき、全員が動かない場面など。属性の傾向（旧版の男女差）と追試の注意も含む。既定では読まない。恩義の通しの設計は `episode/general/episode_obligation.md`。
    - general（序盤／中盤／終盤／多人数テンポ）: [episode/general/episode_tempo_ensemble.md](episode/general/episode_tempo_ensemble.md)
    - general（展開エンジン／運用カード／勢い展開）: [episode/general/episode_engine_map.md](episode/general/episode_engine_map.md)
    - general（リアリティ）: [episode/general/episode_reality.md](episode/general/episode_reality.md)

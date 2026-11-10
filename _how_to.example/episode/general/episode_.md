@@ -9,7 +9,7 @@
 | C | [episode_world.md](episode_world.md) | 奴隷・職業・ギルド・冒険者／狩人 |
 | D | [episode_dialogue.md](episode_dialogue.md) | 話題生成・フード理論 |
 | D2 | [episode_hooks.md](episode_hooks.md) | **冒頭フック具体シチュエーション**（MD 正本 → sync → `episode_general.json`） |
-| E | [episode_social.md](episode_social.md) | 社会心理参照（ステレオタイプ注意付き） |
+| E | [episode_social.md](episode_social.md) | 社会心理参照（同調・内と外・返報と借り・正当化・帰属のずれ・権威と役割・傍観・面子、属性の傾向、追試の注意、組み合わせ例、診断） |
 | F | [episode_tempo_ensemble.md](episode_tempo_ensemble.md) | 序盤／中盤／終盤／多人数テンポ（密度の対になる指針） |
 | G | [episode_engine_map.md](episode_engine_map.md) | 展開エンジン表・運用カード・昭和的勢い展開（E2） |
 | H | [episode_reality.md](episode_reality.md) | リアリティの設計（説得力の配分・帰結払い・力み検出） |

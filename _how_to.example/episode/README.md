@@ -11,6 +11,11 @@
 
 general の設計技法（抽選 JSON の対象外）:
 
+- [キャラクター・関係性](general/episode_character.md)（人物の描き分け（外見・性格・話し方）、バディー、乙女ゲーム心理、気安い関係を設計するとき）
+- [物語構造・ジャンル型](general/episode_structure.md)（敵対する力・価値観の対立・軽い読み味と重いテーマの混在などの構成原則、伝奇・村ホラー・なろう型の骨格を組むとき）
+- [世界観・職業・階層](general/episode_world.md)（奴隷の区分、貴族の使用人・商人・職人・ギルド・冒険者／狩人など、職業と階層の人物像を決めるとき）
+- [対話・場面装置](general/episode_dialogue.md)（食事の描写で人物を見せるフード理論、途切れた会話を広げる話題生成。設計が会話を少なくしている場面では使わない）
+- [社会心理参照](general/episode_social.md)（人物の振る舞いに場の力（同調・内と外・借り・正当化・理由の取り違え・肩書き・傍観・面子）を効かせたいとき。属性の傾向と追試の注意も含む。既定では読まない）
 - [序盤／中盤／終盤／多人数テンポ](general/episode_tempo_ensemble.md)
 - [展開エンジン／運用カード](general/episode_engine_map.md)
 - [リアリティの設計](general/episode_reality.md)
@@ -64,6 +69,8 @@ python tools/novel_pick_registry.py validate
 ```
 
 **相対確率**: 既定は各候補 `確率: 1.0`（均等）。作品別の重み付けは `_how_to/pick_registry/episode.yaml` で list_id を上書き（雛形: [pick_registry/episode.yaml.example](../pick_registry/episode.yaml.example)）。
+
+プロットのアレンジの確率表 [general/episode_structure_dosing.json](general/episode_structure_dosing.json) は上の表とは別系統で、MD 正本も sync も無い（JSON が正本。数値を変えたら `_meta.version` を上げる）。スキル **novel-plot-arrange** が構造方針 rolled で読む。技法は [流れ破壊と転の設計](general/episode_flow_break.md) と [流れ・山・オチの構造論](general/episode_flow_peak_payoff.md)。
 
 抽選は `tools/novel_pick_registry.py`（スキル **content-pick-registry**）。拡充計画: [`../../_workingspace/plans/20260705_episode-hook-json-expansion.md`](../../_workingspace/plans/20260705_episode-hook-json-expansion.md)
 
