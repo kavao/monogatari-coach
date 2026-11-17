@@ -25,6 +25,9 @@ novels/_import/*
 !novels/000_old_man_next_door's_cake/
 !novels/000_old_man_next_door's_cake/*
 !novels/000_old_man_next_door's_cake/**   # サブフォルダまで許可
+!novels/138_湯は最後に/
+!novels/138_湯は最後に/*
+!novels/138_湯は最後に/**
 progress.md
 **/unused
 .claude/*
