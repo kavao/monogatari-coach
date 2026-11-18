@@ -162,3 +162,39 @@ def test_cli_gate_fails_on_short_high_density(tmp_path: Path, monkeypatch) -> No
 
     monkeypatch.chdir(tmp_path)
     assert main() == 1
+
+
+def test_no_chain_rate_counts_narration_sentences_only() -> None:
+    from novel_punctuation_metrics import NO_CHAIN_MIN
+
+    chained = "村の" * NO_CHAIN_MIN + "端に立った。"
+    plain = "悠希は桶を運んだ。"
+    metrics = measure_text("# 第1章\n\n" + chained + plain + "「村の村の村の村の村の話です」\n")
+
+    assert metrics["no_chain_sentence_count"] == 1
+    assert metrics["no_chain_sentence_rate"] == 0.5
+
+
+def test_no_chain_advisory_does_not_touch_gate() -> None:
+    from novel_punctuation_metrics import NO_CHAIN_MIN, NO_CHAIN_MIN_SENTENCES, evaluate_no_chain
+
+    chained = "村の" * NO_CHAIN_MIN + "端に長いあいだ立ったまま動かなかった。"
+    text = "# 第1章\n\n" + chained * NO_CHAIN_MIN_SENTENCES
+    metrics = measure_text(text)
+
+    advice = evaluate_no_chain(metrics)
+    gate = evaluate_gate(metrics)
+    assert advice["status"] == "advise"
+    assert "no_chain_sentence_rate" not in gate  # 合否の記録は変えない
+    assert gate["status"] in {"pass", "skip"}
+
+
+def test_no_chain_advisory_skips_short_text_and_merges() -> None:
+    from novel_punctuation_metrics import evaluate_no_chain
+
+    metrics = measure_text("# 第1章\n\n悠希は桶を運んだ。\n")
+    assert evaluate_no_chain(metrics)["status"] == "skip"
+
+    merged = merge_metrics([metrics, metrics], label="合計")
+    assert merged["no_chain_sentence_count"] == 0
+    assert merged["no_chain_sentence_rate"] == 0.0

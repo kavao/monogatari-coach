@@ -158,3 +158,50 @@ samples:
     head_tail_ratio: 1.0423052171162426
     scene_ratio: 2.42675
     finish_reason: null
+  # strata-qwen3.8（ローカルの Qwen3.8、Beat ごとに書いて選ぶ novel_beat_draft.py の作業稿。2026-11-18 作者承認）。
+  # span_ratios は chars/chars_hint、budget_ratios は min(段落下限比, 会話下限比)（会話下限0の Beat は段落比）。
+  # 140 第1章 run-0002（3063字）
+  - model: strata-qwen3.8
+    chars_hint: 2600
+    observed_chars: 3063
+    span_ratios: [0.958, 1.623, 1.014, 0.785, 0.868, 0.852]
+    budget_ratios: [0.5, 2.0, 0.0, 0.0, 0.0, 0.0]
+    head_tail_ratio: 1.0645686380900705
+    scene_ratio: 1.17808
+    finish_reason: null
+  # 140 第1章 run-0006（3010字）
+  - model: strata-qwen3.8
+    chars_hint: 2600
+    observed_chars: 3010
+    span_ratios: [0.711, 0.628, 1.064, 1.009, 0.639, 1.123, 0.555, 0.776]
+    budget_ratios: [1.0, 1.333, 1.5, 1.0, 0.5, 0.667, 0.5, 1.0]
+    head_tail_ratio: 0.9653401797175867
+    scene_ratio: 1.15769
+    finish_reason: null
+  # 140 第2章 run-0001（1600字）
+  - model: strata-qwen3.8
+    chars_hint: 2600
+    observed_chars: 1600
+    span_ratios: [0.423, 0.466, 0.275, 0.44, 0.361, 0.671]
+    budget_ratios: [0.5, 0.5, 0.333, 0.0, 0.333, 0.75]
+    head_tail_ratio: 1.1753994360902256
+    scene_ratio: 0.61538
+    finish_reason: null
+  # 140 第3章 run-0001（2047字）
+  - model: strata-qwen3.8
+    chars_hint: 2600
+    observed_chars: 2047
+    span_ratios: [0.504, 0.596, 0.73, 0.743, 0.597, 0.32]
+    budget_ratios: [0.333, 0.0, 0.0, 0.0, 0.0, 0.333]
+    head_tail_ratio: 0.8297258297258296
+    scene_ratio: 0.78731
+    finish_reason: null
+  # 140 第4章 run-0001（2666字）
+  - model: strata-qwen3.8
+    chars_hint: 2600
+    observed_chars: 2666
+    span_ratios: [1.093, 1.387, 0.041, 0.709, 0.439, 0.869]
+    budget_ratios: [0.0, 0.667, 0.4, 0.333, 0.0, 0.0]
+    head_tail_ratio: 0.5298776097912168
+    scene_ratio: 1.02538
+    finish_reason: null

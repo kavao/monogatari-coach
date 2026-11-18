@@ -4,7 +4,8 @@
 world.md の用語集（`## 用語` / `## 用語（承認待ち）`）を読み、構造と表記を照合する。
 
 LLM / provider は呼ばず、作品ファイルを書き換えない。
-照合するのは、用語集の構造（必須列・ID・名前の衝突）と、正式名称・許容表記・避ける表記の出現だけ。
+照合するのは、用語集の構造（必須列・ID・名前の衝突）と、正式名称・許容表記・避ける表記の出現、
+備考に初出の章（「初出: 第N章」「第N章で初出」）がある用語の正式名称が、それより前の章の本文に出ていないか（助言）。
 名前のない規則、癖の規則への格上げ、定義の型と使い方のずれは機械では拾えない。
 検出0件を「未定義概念なし」と報告しない（書き方と判定は _how_to.example/world_glossary.md）。
 
@@ -61,6 +62,16 @@ _RE_FORMAL_ID = re.compile(r"^term_\d+$")
 _RE_PENDING_ID = re.compile(r"^term_p\d+$")
 _EMPTY = frozenset({"", "―", "-", "—", "ー", "なし"})
 _PENDING_TITLES = frozenset({"用語（承認待ち）", "用語(承認待ち)"})
+_RE_FIRST_CHAPTER = re.compile(r"初出\s*[:：]\s*第\s*(\d+)\s*章|第\s*(\d+)\s*章で初出")
+_RE_TEXT_CHAPTER = re.compile(r"^novel_text(\d+)(?:_\d+)?\.md$")
+
+def first_chapter_in(text: str) -> int | None:
+    """文の中の初出の章（「初出: 第N章」「第N章で初出」。無ければ None）。起草の資料の絞り込みでも使う。"""
+    match = _RE_FIRST_CHAPTER.search(text)
+    if not match:
+        return None
+    return int(match.group(1) or match.group(2))
+
 
 NOT_PROOF = (
     "機械の照合が0件でも、未定義概念が無いとは言えません。名前のない規則・癖の格上げ・定義の型のずれは"
@@ -83,6 +94,11 @@ class Term:
     @property
     def surfaces(self) -> list[str]:
         return [self.name, *self.allowed]
+
+    @property
+    def first_chapter(self) -> int | None:
+        """備考に書いた初出の章（無ければ None）。"""
+        return first_chapter_in(self.note)
 
 
 @dataclass
@@ -138,6 +154,19 @@ class Hit:
 
 
 @dataclass
+class EarlyHit:
+    """初出の章より前の章の本文に、正式名称が出た箇所（助言）。"""
+
+    file: str
+    line: int
+    chapter: int
+    first_chapter: int
+    term_id: str
+    term_name: str
+    context: str
+
+
+@dataclass
 class Candidate:
     file: str
     line: int
@@ -155,6 +184,8 @@ class Report:
     usage: dict[str, dict[str, int]] = field(default_factory=dict)
     katakana: list[Candidate] = field(default_factory=list)
     hashes: dict[str, str] = field(default_factory=dict)
+    early_hits: list[EarlyHit] = field(default_factory=list)
+    first_chapter_terms: int = 0
 
     def exit_code(self, strict: bool = False) -> int:
         if self.error:
@@ -436,6 +467,38 @@ def scan_file(glossary: Glossary, rel: str, text: str, usage: dict[str, dict[str
     return hits
 
 
+def text_chapter(rel: str) -> int | None:
+    """`_novel_text/novel_text02.md`・`novel_text02_1.md` の章番号。本文以外は None。"""
+    if not rel.startswith("_novel_text/"):
+        return None
+    match = _RE_TEXT_CHAPTER.match(rel.split("/", 1)[1])
+    return int(match.group(1)) if match else None
+
+
+def early_appearances(glossary: Glossary, rel: str, text: str) -> list[EarlyHit]:
+    """初出の章より前の章に、正式名称が出た箇所。許容表記（一般の語を含む）は照合しない。"""
+    chapter = text_chapter(rel)
+    if chapter is None:
+        return []
+    hits: list[EarlyHit] = []
+    terms = [t for t in glossary.terms if t.first_chapter is not None and chapter < t.first_chapter]
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        for term in terms:
+            if term.name and term.name in line:
+                hits.append(
+                    EarlyHit(rel, line_no, chapter, term.first_chapter or 0, term.term_id, term.name, line.strip()[:80])
+                )
+    return hits
+
+
+def terms_for_chapter(glossary: Glossary, chapter: int) -> tuple[list[Term], list[Term]]:
+    """第 chapter 章で使ってよい語と、まだ使わない語（初出の章が書かれた語だけ）。"""
+    dated = [t for t in glossary.terms if t.first_chapter is not None]
+    usable = [t for t in dated if (t.first_chapter or 0) <= chapter]
+    later = [t for t in dated if (t.first_chapter or 0) > chapter]
+    return usable, later
+
+
 def katakana_candidates(glossary: Glossary, rel: str, text: str, setting_text: str) -> list[Candidate]:
     """カタカナの未登録候補（確度低）。ai_writer.entities の規則を流用する。"""
     from ai_writer.entities import extract_candidates
@@ -477,6 +540,7 @@ def check_novel(work: Path, files: list[str] | None = None, *, katakana: bool = 
     world_text = world.read_text(encoding="utf-8")
     glossary = parse_glossary(world_text)
     report.glossary = glossary
+    report.first_chapter_terms = sum(1 for t in glossary.terms if t.first_chapter is not None)
     report.hashes["world.md#用語"] = _sha256(glossary.section_text())
     setting_text = world_text + "".join(
         (work / n).read_text(encoding="utf-8") for n in ("character.md",) if (work / n).is_file()
@@ -491,6 +555,7 @@ def check_novel(work: Path, files: list[str] | None = None, *, katakana: bool = 
         if glossary.form == MISSING:
             continue
         report.avoid_hits.extend(scan_file(glossary, rel, text, report.usage))
+        report.early_hits.extend(early_appearances(glossary, rel, text))
         if katakana and rel.startswith("_novel_text/"):
             report.katakana.extend(katakana_candidates(glossary, rel, text, setting_text))
     return report
@@ -527,6 +592,20 @@ def render_text(report: Report) -> str:
         target = f"{hit.term_name}（{hit.term_id}）" if hit.term_id else hit.term_name
         lines.append(f"  - {hit.file}:{hit.line} 「{hit.text}」→ {target}｜{hit.context}")
 
+    if glossary.form != MISSING:
+        if report.first_chapter_terms:
+            lines.append(
+                f"初出の章より前の出現（助言・正式名称だけ照合）: {len(report.early_hits)} 件"
+                f"（初出の章がある用語 {report.first_chapter_terms} 語）"
+            )
+            for early in report.early_hits:
+                target = f"{early.term_name}（{early.term_id}）" if early.term_id else early.term_name
+                lines.append(
+                    f"  - {early.file}:{early.line} {target} 初出 第{early.first_chapter}章 → 第{early.chapter}章に出現｜{early.context}"
+                )
+        else:
+            lines.append("初出の章より前の出現: 照合なし（備考に初出の章を書いた用語がない）")
+
     pending = [t for t in glossary.by_section(PENDING) if t.term_id in report.usage or t.name in report.usage]
     if pending:
         lines.append("承認待ちの語の使用（宣言した新語）:")
@@ -558,10 +637,36 @@ def to_payload(report: Report, strict: bool = False) -> dict:
         "avoid_hits": [asdict(h) for h in report.avoid_hits],
         "usage": report.usage,
         "katakana": [asdict(c) for c in report.katakana],
+        "early_hits": [asdict(e) for e in report.early_hits],
+        "first_chapter_terms": report.first_chapter_terms,
         "hashes": report.hashes,
         "note": NOT_PROOF,
         "exit_code": report.exit_code(strict),
     }
+
+
+def print_chapter_terms(work: Path, chapter: int, *, as_json: bool = False) -> int:
+    world = work / "world.md"
+    if not world.is_file():
+        print(f"[ERROR] world.md がない: {work}")
+        return 2
+    glossary = parse_glossary(world.read_text(encoding="utf-8"))
+    usable, later = terms_for_chapter(glossary, chapter)
+    if as_json:
+        payload = {
+            "chapter": chapter,
+            "usable": [{"term_id": t.term_id, "name": t.name, "first_chapter": t.first_chapter} for t in usable],
+            "later": [{"term_id": t.term_id, "name": t.name, "first_chapter": t.first_chapter} for t in later],
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    print(f"第{chapter}章で使ってよい語: " + ("、".join(t.name for t in usable) or "（なし）"))
+    print(
+        f"第{chapter}章ではまだ使わない語: "
+        + ("、".join(f"{t.name}（第{t.first_chapter}章が初出）" for t in later) or "（なし）")
+    )
+    print("初出の章が備考に無い語は、この一覧に入らない。")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -574,7 +679,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--katakana", action="store_true", help="本文のカタカナの未登録候補も出す（確度低）")
     parser.add_argument("--strict", action="store_true", help="避ける表記の出現も終了コード 1 にする")
     parser.add_argument("--json", action="store_true", help="JSON で出す")
+    parser.add_argument(
+        "--chapter",
+        type=int,
+        help="第N章で使ってよい語と、まだ使わない語（初出の章が書かれた語）の一覧だけを出す。起草の入力に使う",
+    )
     args = parser.parse_args(argv)
+
+    if args.chapter is not None:
+        return print_chapter_terms(args.novel, args.chapter, as_json=args.json)
 
     report = check_novel(args.novel, args.files, katakana=args.katakana)
     if args.json:

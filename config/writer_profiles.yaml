@@ -1,0 +1,28 @@
+# 書き手のモデルの段（計画 _workingspace/plans/20261114_model-adaptive-writing-support.md §23・§24）。
+# METRON の校正（config/metron_models.yaml）とは別の設定。キーは run の request.yaml の model.id と同じにする。
+#
+# tier:
+#   low_context  ローカルの LLM や、文脈量が 256k 前後のモデル。渡した文を地の文へ写しやすい。
+#                tools/novel_beat_draft.py（Beat ごとの続き書き＋候補からの機械選択）を使う。
+#   standard     現行の手順のまま（章を一度に書く）。
+# backend:
+#   local_openai パソコンの中の OpenAI 互換サーバー（strata など）。tools/local_writer_cli.py で呼ぶ。
+#   grok_cli     Grok CLI。外部への送信になるため、novel_beat_draft.py からはまだ呼ばない（未接続）。
+#
+# 段はモデル名から自動で決めない。作者が決めた値だけをここに書く。
+# local-writer は載せない。writing_bridge の prepare が --model を省いたときに記録する既定の名前で、
+# 書き手を表さない（METRON の校正の名前でもある）。段を使う書き手は、ここの名前で prepare --model に渡す。
+
+writers:
+  strata-qwen3.8:
+    tier: low_context
+    backend: local_openai
+    model: gyro-gyro-s
+    label: Qwen3.8-Flash-Next Gyro-S（strata）
+    context_tokens: 262144
+  grok-4.6:
+    tier: low_context
+    backend: grok_cli
+    model: grok-4.6
+    label: Grok 4.6（Grok CLI）
+    context_tokens: null

@@ -209,3 +209,54 @@ def test_proper_noun_lint_reads_names_not_ids_and_skips_pending() -> None:
 
     assert {"火継ぎ", "炉札"} <= aliases
     assert not {"term_001", "用語ID", "火見"} & aliases
+
+
+# ── 初出の章（助言） ─────────────────────────────────────────────
+
+
+def test_first_chapter_read_from_both_note_forms() -> None:
+    glossary = ng.parse_glossary(
+        WORLD.replace("| 火魔法、点火術 | |", "| 火魔法、点火術 | 初出: 第3章 |")
+    )
+    by_name = {t.name: t for t in glossary.terms}
+
+    assert by_name["火継ぎ"].first_chapter == 3
+    assert by_name["火見"].first_chapter == 2  # 「第2章で初出」
+    assert by_name["炉札"].first_chapter is None
+
+
+def test_early_appearance_flags_formal_name_before_first_chapter(tmp_path: Path) -> None:
+    world = WORLD.replace("| 火魔法、点火術 | |", "| 火魔法、点火術 | 初出: 第2章 |")
+    work = _work(tmp_path, world=world, text="# 第1章\n\n　親方は火継ぎの支度をした。\n")
+    (work / "_novel_text" / "novel_text02_1.md").write_text("# 第2章\n\n　火継ぎを終えた。\n", encoding="utf-8")
+
+    report = ng.check_novel(work)
+
+    assert [(h.file, h.chapter, h.first_chapter, h.term_name) for h in report.early_hits] == [
+        ("_novel_text/novel_text01.md", 1, 2, "火継ぎ")
+    ]
+    assert report.exit_code() == 0  # 助言なので終了コードを変えない
+    assert "初出の章より前の出現" in ng.render_text(report)
+
+
+def test_early_appearance_ignores_allowed_surfaces_and_setting_files(tmp_path: Path) -> None:
+    world = WORLD.replace("| 札（炉札と分かるとき） | 免許、火継 | |", "| 札（炉札と分かるとき） | 免許、火継 | 初出: 第2章 |")
+    work = _work(tmp_path, world=world, text="# 第1章\n\n　札を下げた。\n")
+    (work / "design_specification.md").write_text("第1章で炉札を見せる。\n", encoding="utf-8")
+
+    report = ng.check_novel(work)
+
+    assert report.early_hits == []
+
+
+def test_chapter_terms_lists_usable_and_later(tmp_path: Path, capsys) -> None:
+    world = WORLD.replace("| 火魔法、点火術 | |", "| 火魔法、点火術 | 初出: 第1章 |")
+    work = _work(tmp_path, world=world)
+
+    usable, later = ng.terms_for_chapter(ng.parse_glossary(world), 1)
+    assert [t.name for t in usable] == ["火継ぎ"]
+    assert [t.name for t in later] == ["火見"]
+
+    assert ng.main([str(work), "--chapter", "1", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [t["name"] for t in payload["later"]] == ["火見"]

@@ -422,6 +422,8 @@ python tools/novel_punctuation_metrics.py novels/NNN_作品名/_novel_text/novel
 
 実行後、コンソールに読点密度（地の文1000字あたり）と一文あたり読点の分布が出ます。`--gate` を付けたときは、続けて各ファイルの pass / fail / skip が出ます。
 
+要約と同時に、「の」の連鎖の助言も出ます。地の文で「の」を5個以上含む文の割合が、章ごとに15%を超えると `advise` と表示されます。読点を打たずに「の」で語をつなぐと、ゲートは通っても読みにくい文になるためです。助言は合否と終了コードに使いません。`--json` では `no_chain_advisory` に出ます。
+
 ---
 
 ### `novel_project_check.py` — 必須ファイル確認
@@ -945,9 +947,157 @@ uv run python tools/novel_glossary.py novels/NNN_作品名 --strict
 uv run python tools/novel_glossary.py novels/NNN_作品名 --json
 ```
 
+用語の備考に初出の章（`初出: 第2章` または `第2章で初出`）を書いておくと、その章より前の章の本文に正式名称が出た箇所も「初出の章より前の出現（助言）」として表示されます。許容表記は一般の語（「村」「林」など）を含むので照合しません。この助言は終了コードを変えません。
+
+起草の前に、その章で使ってよい語と、まだ使わない語の一覧を出せます。
+
+```powershell
+# 第2章で使ってよい語と、まだ使わない語を表示する（初出の章を書いた語だけ）
+uv run python tools/novel_glossary.py novels/NNN_作品名 --chapter 2
+```
+
 終了コードが 0 なら構造のエラーはありません。1 なら構造のエラー（`--strict` では避ける表記の出現も）があり、2 なら作品フォルダや `world.md` がありません。用語集が無い作品は「未整備」と表示され、照合は行いません。`## 用語集` や箇条書きで書いた既存の用語集は「旧形式（読取互換）」として名前と定義だけを読みます。
 
 この照合が 0 件でも、造語や名前のない決まりごとが無いとは限りません。文脈を読む照合の依頼方法は [作品固有の用語と用語照合](../workflow/terminology-audit.md) を参照してください。
+
+---
+
+### `novel_beat_intent_check.py` — Beat の意図の認識の動詞（助言）
+
+METRON の場面ごとの `beats.yaml` を読み、Beat の `intent`（その Beat で起きること）が「知る」「気づく」「認める」「分かる」「口にする」「理解する」「悟る」で結果をまとめていないかを調べます。intent の「〜と知る」は、本文の「〜と知った」という説明の文に写りやすいためです。LLM は呼ばず、作品ファイルも書き換えません。場面の置き場は `tools/work_paths.py` で解決します。
+
+Beat を書いたあと、`prepare` の前に実行します。
+
+```powershell
+# METRON の全場面の intent を調べる
+uv run python tools/novel_beat_intent_check.py novels/NNN_作品名
+
+# 場面を絞る
+uv run python tools/novel_beat_intent_check.py novels/NNN_作品名 --scene ch01-001
+
+# 意図して使う Beat を外す（beat_id または scene_id/beat_id）
+uv run python tools/novel_beat_intent_check.py novels/NNN_作品名 --ignore ch02-001/bucket_shortage_bath_gap
+```
+
+実行後、見つかった Beat と語、intent の全文、直し方（何を見て・数えて・触って知るのかを書く。口にするなら台詞の中身を書く）が表示されます。助言なので、見つかっても終了コードは 0 です。作品フォルダが無いときは 2 です。
+
+---
+
+### `local_writer_cli.py` — ローカルの書き手（strata など）を呼ぶ
+
+パソコンの中で動く OpenAI 互換のサーバー（strata など）に、用意したプロンプトのファイルを送り、書き手の出力をファイルに保存します。Kilo Code を手で操作せずに、Monogatari Coach から書き手だけをローカルのモデルに任せるときに使います。送り先はパソコンの中のサーバーだけで、外部への送信や課金はありません。
+
+送り先とモデルは、環境変数で変えられます（どれも任意）。
+
+- `MONOCRI_LOCAL_LLM_BASE_URL`：既定は `http://127.0.0.1:47831/v1`（strata の接続先）
+- `MONOCRI_LOCAL_LLM_MODEL`：既定は `gyro-gyro-s`
+- `MONOCRI_LOCAL_LLM_API_KEY`：サーバーがキーを求めるときだけ設定します。strata は不要です
+
+まず、サーバーが読み込んでいるモデルを確認します。
+
+```powershell
+# サーバーのモデル一覧（ID・表示名・別名）を表示する
+uv run python tools/local_writer_cli.py models
+```
+
+プロンプトを送って、出力を保存します。
+
+```powershell
+# prompt.md を送り、out.md に保存する（--condition は比較の条件名で、記録に残る）
+uv run python tools/local_writer_cli.py generate --prompt prompt.md --out out.md --condition tier0
+
+# 思考（reasoning）を有効にし、思考の文も残す
+uv run python tools/local_writer_cli.py generate --prompt prompt.md --out out.md --thinking --keep-reasoning
+```
+
+実行後、`out.md` に本文が、同じ名前の `out.json` に記録（サーバーが返すモデル名、プロンプトのハッシュ、生成の設定、トークン数、かかった時間）が保存されます。思考は既定で無効です。`_novel_text/` の下には書き込めません。本文の正本へは、執筆接続（writing_bridge）の `receive` → `inspect` → `publish` で反映します。
+
+---
+
+### `novel_beat_draft.py` — 低コンテキストの書き手で、Beat ごとに書いて候補から選ぶ
+
+ローカルの LLM のように、渡した資料や自分の前の文を地の文へ写しやすい書き手（低コンテキストの書き手）で章を書くときに使います。章を一度に書かせず、Beat（場面の中の出来事の単位）ごとに続きを書かせ、候補を3本ずつ出させて、Monogatari Coach がスクリプトで1本を選びます。選ぶのはスクリプトで、モデルに判断させません。
+
+#### このツールを使う場面
+
+- 作品の書き手に、`config/writer_profiles.yaml` で `tier: low_context` と登録されたモデルを指定したとき（今はローカルの strata Qwen3.8 の `strata-qwen3.8` と、`grok-4.6` が該当します）。
+- METRON が ON の作品で、執筆接続の `prepare` に `--model <書き手の名前>` を付けて run（執筆の作業単位）を作ったあと。
+
+「strata で第2章の続きを書いて」のように低コンテキストの書き手を指定して執筆を頼むと、Monogatari Coach はこの節の手順を自動で使います（スキル `novel-text-file-output` の「書き手が低コンテキストの段のとき」）。コマンドを自分で打つ必要はありません。書き手を指定しない執筆依頼では、これまでどおり章を一度に書きます。
+
+`prepare` は `--model` を省くと `local-writer` を記録します。これは既定の名前で、どの書き手で書いても同じになるため、段の表には載せられません。`novel_beat_draft.py` も `local-writer` の run では止まり、`--model` を付けて run を作り直すよう表示します。
+
+段（`low_context` / `standard`）はモデル名から自動で決まりません。作者が決めた値だけを `config/writer_profiles.yaml` に書きます。`grok-4.6` も `low_context` で登録してありますが、Grok CLI は外部への送信になるため、このツールからはまだ呼べません。
+
+#### Monogatari Coach が行うこと
+
+1. run の `request.yaml` の書き手で `config/writer_profiles.yaml` を引き、`low_context` でなければ止まります。
+2. 資料を章に要る量で組みます（禁止事項、執筆方針、設計書のテーマ・コンセプトと当該章、人物資料、当該章までの用語）。人物の外見の行は、その人物が初めて出る Beat にだけ入れます。見せ方軸は渡しません（書き手が見せ方軸の言い回しを地の文へ写すためです）。
+3. Beat ごとに、これまでの本文の全文と、次に書く出来事の一文と、字数の指示目標を添えて、候補を3本書かせます。
+4. 次の候補を外し、残りから写しの少ない候補を選びます。
+   - これまでの本文と12字以上同じ文を含む候補
+   - すでに出た人物の外見を描き直した候補
+   - 後の Beat の出来事を先に書いた候補（後の Beat の出来事の文と8字以上同じで、今の Beat の出来事には無い言い回しを含むもの）。設計の一つの項目を何 Beat かに分けたとき、書き手が最初の Beat で項目の残りまで書いてしまうのを防ぎます。
+   - 場面の決まり（`contract.yaml` の `forbidden`）で「〇〇という語を書くこと」と禁じた語を含む候補
+   - 同じ形の台詞が、場面で3回目以上になる候補（口癖の繰り返し）。同じ形とは、同じ台詞の丸写し（前に呼びかけが付いた形を含む）と、頭の3字と結びの4字が同じ型（「別に、見ただけです」と「別に、布を折っただけです」）です。人物の口調の例は毎回の資料に入るので、書き手は各 Beat の締めに同じ口癖を使いがちです。2回目までは残します。
+   - 会話の行の頭に付いた空白は、選ぶ前に外します（字は変えません）。依頼文でも、会話の行は空白を付けずに「から始めるよう伝えます。
+5. 3本とも外れたとき（全落ち）は、外れの理由の少ない候補を採り、その文だけで理由に当たる文（台詞は「」の一続き）を削ります。削って足りなくなった字数は、言い換えで埋めません。字数より読める文を優先するためです。
+6. Beat マーカー付きの作業稿を組み立て、床（場面と Beat の最低字数）までの不足を画面と記録に出します。本文の正本（`_novel_text/`）には書きません。
+7. 指示目標（床に余地を足した、書き手に渡した字数）に対して、場面か Beat が10%以上足りないときは、`DESIGN_DENSITY` と表示します。この大きさの不足は Deepen で埋めず、章に出来事（子エピソード）を足す案を作者へ出す合図です。知らせるだけで、設計も本文も変えません。表示には、案を作る手順が続きます。
+   - 足りない Beat を親として「目的・障害・結果・変化」に分け、薄いところにだけ子エピソードを挿します。挿し方は [子エピソードによる増量](../../_how_to.example/episode/general/episode_sub_episode.md) の §2〜§3 です（`A → B` を `A → a1 → a2 → B` にする考え方）。
+   - 案は、状態の変化・親とのつながり・後で使うものか具体的な効果があるかを確かめてから作者へ出します（METRON の子エピソード契約と同じ条件です）。
+   - 承認されたら、設計と `episodes.yaml` へ足してから、その Beat を書き直します（[文章の伸縮操作規定](../../_how_to.example/length_ops.md) §4.7「設計追加の手順」）。
+
+```mermaid
+flowchart LR
+  P[prepare で run を作る] --> B[Beat ごとに候補3本]
+  B --> S[スクリプトが1本を選ぶ]
+  S --> B
+  S --> D[beat_draft/draft.md]
+  D --> R[receive → inspect → publish]
+```
+
+#### コマンド
+
+まず、書き手を呼ばずに、資料の量と Beat ごとの外見の渡し方を確認します。
+
+```powershell
+# 資料の字数、Beat ごとの字数の指示と、外見を渡す人物を表示する（書き手は呼ばない）
+uv run python tools/novel_beat_draft.py plan novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001
+```
+
+確認できたら、候補を書かせて作業稿を組み立てます。
+
+```powershell
+# Beat ごとに候補3本を書かせ、選んで組み立てる（--leaf は起草で渡す葉。複数可）
+uv run python tools/novel_beat_draft.py run novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --leaf _how_to.example/genre/isekai_craft.md
+```
+
+実行後、run のフォルダ（`_work/writing/<場面>/<run>/beat_draft/`）に次のファイルができます。
+
+- `draft.md`：組み立てた作業稿（Beat マーカー付き）
+- `selection.json`：Beat ごとに、どの候補を採ったか、外した理由、指標の値、全落ちの Beat と削った文、床までの不足（`shortfall`）、指示目標に対する不足率（`design_density`）
+- `beatN.prompt.md`・`beatN.cK.md`・`beatN.cK.json`：Beat ごとのプロンプト、候補、書き手の記録
+
+画面の最後に、続けて実行する `receive` のコマンドが表示されます。本文の正本へは、執筆接続の `receive` → `inspect` → `publish` で反映します。床に届かない分は、`inspect` のあと、出来事を足す加筆工程（作者の承認が要ります）か Deepen（既にある出来事を細かく書く修復）へ回します。途中で止まったときは、同じコマンドをもう一度実行すると、保存済みの候補を使って続きから進みます。
+
+#### Cursor など別の道具で候補を作る（`--relay`）
+
+ツールから呼べない書き手（たとえば Cursor で動かす Grok 4.6）を使うときは、`--relay` を付けます。Monogatari Coach は書き手を呼ばず、外部へも送りません。
+
+1. ユーザーが `prepare` の `--model` に書き手の ID（`grok-4.6` など。`config/writer_profiles.yaml` に登録したもの）を付けて run を作ります。
+2. `--relay` 付きで `run` を実行すると、Monogatari Coach は次の Beat のプロンプト（`beatN.prompt.md`）を書き、候補の置き場（`beatN.c1.md` など）を表示して止まります（終了コード 3）。
+3. ユーザーが、候補1本ごとに新しい会話でプロンプトの全文だけを渡し、返った本文だけを置き場のファイルへ保存します。
+4. 同じコマンドをもう一度実行すると、候補を選んで次の Beat のプロンプトを書き、また止まります。最後の Beat まで進むと `draft.md` ができます。
+
+```powershell
+# 候補待ちで止まるたびに、候補を置いてから同じコマンドを再実行する
+uv run python tools/novel_beat_draft.py run novels/NNN_作品名 --scene-id ch01-001 --run-id run-0007 --relay
+```
+
+候補を1本ごとに新しい会話で作るのは、前の候補や前の Beat のやりとりが書き手に見えると、候補どうしが似て選ぶ意味が薄れるためです。Cursor でこの作品のフォルダを開いた会話では、プロジェクトのルールも書き手へ渡ります。書き手に渡す資料をプロンプトだけにするには、空のフォルダを開いた別のウィンドウで書かせます。
+
+判定の閾値（12字・6字）と選び方の重みは、試験作品の第1章で決めた仮の値です。背景と試行の記録は `_workingspace/plans/20261114_model-adaptive-writing-support.md` の §21〜§24 にあります。
 
 ---
 

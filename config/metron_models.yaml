@@ -32,3 +32,13 @@ models:
     too_short_ratio: 1.1565
     expand_retention_threshold: 0.8
     samples: 13
+  strata-qwen3.8:
+    calibrated: true
+    calibrated_at: '2026-11-18'
+    reliable_span_chars: 2600
+    missing_span_ratio: 0.35
+    beat_thin_ratio: 0.0
+    ending_rush_threshold: 0.8297258297258296
+    too_short_ratio: 0.78731
+    expand_retention_threshold: 0.8
+    samples: 5

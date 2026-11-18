@@ -6,6 +6,10 @@
 地の文と会話文を分離し、読点密度・一文あたり読点数・平均文長・
 接続助詞後読点率・句点誤配置を出す。既定は計測のみ。
 --gate を付けたときだけ、短文かつ高密度の合否を終了コードで返す。
+
+「の」の連鎖（地の文で「の」を NO_CHAIN_MIN 個以上含む文の割合）は助言だけを出し、合否と終了コードに使わない。
+読点を打たずに「の」をつないで文を長くすると、ゲートは通っても読みにくくなる（計画
+_workingspace/plans/20261114_model-adaptive-writing-support.md §12 R2・§14.4。126作品の中央値 3.6%、上位1割の境 11.5%）。
 """
 
 from __future__ import annotations
@@ -38,6 +42,12 @@ HEADING_OR_META = re.compile(r"^\s*(?:#|<!--|---)")
 GATE_DENSITY_MAX = 36.0
 GATE_MEAN_LEN_MIN = 28.0
 GATE_MIN_NARRATION_CHARS = 800
+
+# 「の」の連鎖の助言（合否に使わない）。
+NO_PARTICLE = "の"
+NO_CHAIN_MIN = 5
+NO_CHAIN_ADVISORY_RATE = 0.15
+NO_CHAIN_MIN_SENTENCES = 20
 
 
 def extract_body(text: str) -> str:
@@ -139,6 +149,7 @@ def measure_text(text: str) -> dict[str, Any]:
     sentence_lens = [len(s) for s in sentences]
     commas_per_sentence = [float(s.count(COMMA)) for s in sentences]
 
+    no_chain_count = sum(1 for s in sentences if s.count(NO_PARTICLE) >= NO_CHAIN_MIN)
     conj_count = len(CONJ_AFTER_COMMA.findall(body))
     period_before_close = body.count("。」")
     period_inside_dialogue = sum(d.count("。") for d in dialogues)
@@ -167,6 +178,8 @@ def measure_text(text: str) -> dict[str, Any]:
         "conjunction_after_comma_rate": _ratio(conj_count, comma_total),
         "period_before_close": period_before_close,
         "period_inside_dialogue": period_inside_dialogue,
+        "no_chain_sentence_count": no_chain_count,
+        "no_chain_sentence_rate": _ratio(no_chain_count, len(sentences)),
         "_sentence_lens": sentence_lens,
         "_commas_per_sentence": commas_per_sentence,
     }
@@ -232,6 +245,31 @@ def evaluate_gate(metrics: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def evaluate_no_chain(metrics: dict[str, Any]) -> dict[str, Any]:
+    """「の」の連鎖の助言。合否ではない（status は advise / ok / skip）。"""
+    rate = metrics.get("no_chain_sentence_rate")
+    count = metrics.get("sentence_count_narration") or 0
+    label = metrics.get("path") or metrics.get("label") or metrics.get("novel") or ""
+    result: dict[str, Any] = {
+        "label": label,
+        "no_chain_sentence_count": metrics.get("no_chain_sentence_count"),
+        "sentence_count_narration": count,
+        "no_chain_sentence_rate": rate,
+        "rule": f"「{NO_PARTICLE}」を{NO_CHAIN_MIN}個以上含む地の文の割合 > {NO_CHAIN_ADVISORY_RATE:.0%}",
+    }
+    if count < NO_CHAIN_MIN_SENTENCES or rate is None:
+        result["status"] = "skip"
+        result["reason"] = f"地の文の文が {NO_CHAIN_MIN_SENTENCES} 未満"
+        return result
+    if rate > NO_CHAIN_ADVISORY_RATE:
+        result["status"] = "advise"
+        result["reason"] = "「の」でつないだ長い文が多い。文を分けるか、動詞で書く"
+        return result
+    result["status"] = "ok"
+    result["reason"] = "目安内"
+    return result
+
+
 def evaluate_gates(rows: list[dict[str, Any]]) -> dict[str, Any]:
     results = [evaluate_gate(row) for row in rows]
     failed = [row for row in results if row["status"] == "fail"]
@@ -253,6 +291,7 @@ def merge_metrics(rows: list[dict[str, Any]], *, label: str) -> dict[str, Any]:
     comma_dialogue = sum(r["comma_dialogue"] for r in rows)
     sentence_count = sum(r["sentence_count_narration"] for r in rows)
     conj_count = sum(r["conjunction_after_comma_count"] for r in rows)
+    no_chain_count = sum(r.get("no_chain_sentence_count", 0) for r in rows)
     sentence_lens: list[int] = []
     commas_per_sentence: list[float] = []
     for row in rows:
@@ -284,6 +323,8 @@ def merge_metrics(rows: list[dict[str, Any]], *, label: str) -> dict[str, Any]:
         "conjunction_after_comma_rate": _ratio(conj_count, comma_total),
         "period_before_close": sum(r["period_before_close"] for r in rows),
         "period_inside_dialogue": sum(r["period_inside_dialogue"] for r in rows),
+        "no_chain_sentence_count": no_chain_count,
+        "no_chain_sentence_rate": _ratio(no_chain_count, sentence_count),
     }
 
 
@@ -358,6 +399,10 @@ def print_summary(merged: dict[str, Any]) -> None:
         f"  句点誤配置: 閉じ括弧直前 {merged['period_before_close']} / "
         f"セリフ内 {merged['period_inside_dialogue']}"
     )
+    print(
+        f"  「{NO_PARTICLE}」{NO_CHAIN_MIN}個以上の文: {merged.get('no_chain_sentence_count', 0)}"
+        f"（{_fmt_pct(merged.get('no_chain_sentence_rate'))}）"
+    )
 
 
 def _print_gate(report: dict[str, Any]) -> None:
@@ -375,6 +420,15 @@ def _print_gate(report: dict[str, Any]) -> None:
             f"密度 {density} / 文長 {mean_len} / {row['reason']}"
         )
     print(f"  合計: {report['status']}（fail {report['fail_count']}）")
+
+
+def _print_no_chain(rows: list[dict[str, Any]]) -> None:
+    advised = [evaluate_no_chain(row) for row in rows]
+    advised = [row for row in advised if row["status"] == "advise"]
+    print("")
+    print(f"「{NO_PARTICLE}」の連鎖（助言・合否に使わない）: 目安 {NO_CHAIN_ADVISORY_RATE:.0%} 超が {len(advised)} 件")
+    for row in advised:
+        print(f"  advise: {row['label'] or '（無題）'} {_fmt_pct(row['no_chain_sentence_rate'])}｜{row['reason']}")
 
 
 def main() -> int:
@@ -468,6 +522,7 @@ def main() -> int:
     }
     if gate_report is not None:
         payload["gate"] = gate_report
+    payload["no_chain_advisory"] = [evaluate_no_chain(row) for row in files]
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -480,6 +535,7 @@ def main() -> int:
     else:
         print_table(files, title_key="path")
     print_summary(totals)
+    _print_no_chain(files)
     if gate_report is not None:
         _print_gate(gate_report)
         if gate_report["status"] == "fail":
