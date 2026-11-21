@@ -1,0 +1,13 @@
+schema_version: "1"
+# 横断の既定重み。合計 1.0 必須ではない。解決時に正規化して帯（低 / 中 / 高）にする。
+weights:
+  action: 1.0
+  sensory: 1.0
+  interiority: 1.0
+  dialogue: 1.0
+  gesture: 1.0
+  sound: 1.0
+  environment: 1.0
+  process: 1.0
+  daily: 1.0
+  metaphor: 0.5

@@ -33,6 +33,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 - 既存作品について設計の洗練または Gate B 再実施を明示された。
 - 章出来事・あらすじの抽象を「誰が何をしたか分かる文に」直すよう頼まれた。Gate B 再実施にはしない（「章出来事の口語化」節）。
 - 既存作品で、作者が作風・時代感・人物の見せ方の指定を求めた（「昭和の劇画っぽく」「Web 小説らしく見せたい」など）。Gate B 再実施にはしない（「見せ方軸の限定更新」節）。
+- 既存作品で、作者が表現ミックス（何を厚く書くか）の指定を求めた。Gate B 再実施にはしない（「表現ミックスの限定更新」節）。
 
 企画作業を再開する場合は対象作品を特定する。「続きを頼む」「企画をそろえて」だけでも、文脈が企画作業なら6つの必須企画ファイルを確認する。チャットで案だけを出す依頼では作品フォルダを作らず、リポジトリ全体の一括巡回もしない。本文の続き・清書・追記はこの入口に含めない。必須ファイルが揃っている作品の一行修正や指定箇所だけの改稿はこの入口の対象外とし、依頼範囲を超えて一式を作り直さない。
 
@@ -45,7 +46,7 @@ Plan Mode で、執筆前に必要な Monogatari Coach ファイルを揃え、�
 | `config.md` | novel_ID、writer_code、作品名、作者名、ジャンル、キーワード、METRON / CHRONOS / AUDIT_LOG の ON / OFF |
 | `character.md` | 登場人物のプロフィール、課題、目的、口調、関係 |
 | `world.md` | 世界観、地理、歴史、社会、技術、組織。作品固有の名前は `## 用語` の表に置く（書式は `_how_to.example/world_glossary.md`。作るときと用語を足すときに読む） |
-| `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録**、**見せ方軸**、外部投稿用情報 |
+| `_meta.md` | 進捗、伏線、次回タスク、**Gate B 記録**、**見せ方軸**、**表現ミックス**、外部投稿用情報 |
 | `_meta.yaml` | 画像生成の機械可読設定（現行: NovelAI ポーション）。雛形は `_how_to.example/_meta.yaml.example` |
 | `_novel_text/`, `_reader/` | 本文と評価の保存先ディレクトリ |
 
@@ -127,6 +128,7 @@ Gate B を行うときは分類軸を分けて判定し、チャットまたは 
    - 筋・設定に触れる軸（同葉の区分「筋」）は、B3 で章出来事を作る前なら設計の材料にしてよい。設計を作ったあとは章出来事・`character.md` と照らし、食い違う値は当てはめず「設計との衝突」に書く（設計を優先する）。
    - 実効方針の要点を、軸の ID を書かない口語にして `config.md` の執筆方針に置く。
    - 作業用索引があり、`showing_axes.md` に追随していないときは選定対象外とし、選定補助に列挙して追随を案内する。節には「プリセット: 保留（作業用索引が未追随）」と書く。
+8. **表現ミックス**（新規企画では **状態** を必ず記録する。既定は `OFF`。短い正本は `concepts.md`「表現ミックス」。完了ゲートにしない）: `_meta.md` に「表現ミックス」節が無ければ `uv run python tools/novel_meta_check.py ensure-section novels/<作品> expression-mix` で足す（filler は `状態: OFF`）。ジャンル軸のあと `uv run python tools/novel_expression_mix.py novels/<作品> resolve` を見せる。作者が採ったら **状態: ON** と指定（ジャンル既定 / custom）を書き、resolve の weights を節の **重み** へカタログの ID 全部書く（ジャンル既定でも凍結。欠け・空欄は `validate` 失敗。カタログが増えたら重みを足して再採用）。採らなければ **状態: OFF**。書いたら `uv run python tools/novel_expression_mix.py novels/<作品> validate` で ON/OFF が読めることを確かめる（`ON` / `OFF` 以外は失敗。指定だけでは ON にしない）。`expression.md` は状態 ON のときだけ selected に入れる（`relative_id: expression.md`、role: 表現ミックス、why、`standard_path` / `working_path` / `effective_path`、`bound_at`）。OFF にしたら selected から外す。作業用索引があり `expression.md` に追随していなければ選定対象外とし、選定補助に列挙して追随を案内する。節には「状態: OFF」と「指定: 保留（作業用索引が未追随）」と書く。重み表は `_meta.md` と YAML に閉じ、あらすじ・本文にカテゴリ ID を書かない。
 
 ### B2. タイトル命名ゲート
 
@@ -208,6 +210,7 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 - 提示層での現れ: selected のジャンル葉で採った型・決定ごとに、`proposal.md` のログライン・あらすじ・キャラクター紹介のどの一文（人物・出来事）として現れたかを1行ずつ。設計書の章出来事だけを指して済ませない。指せない決定があれば、それらの欄を直してから Gate B を完了する。ジャンル軸が「なし」なら「なし（ジャンル軸なし）」と書く
 - Gate A で許容した WARN（あれば）
 - 見せ方軸: `_meta.md` の「見せ方軸」節を書いた（プリセット / custom / 指定なし / 保留）。葉を採ったときは selected に入っていること
+- 表現ミックス: `_meta.md` の「表現ミックス」節に **状態: ON または OFF** を書いた。ON のときだけ selected に `expression.md`。`novel_expression_mix.py … validate` が通る。本文保存の完了ゲートにはしない
 - 検査レイヤ: 標準 ON で確認済み（`_work/metron/`（以前の作品は `_metron/`）と `chronos/` を用意）/ ユーザー明示の OFF（ON にする予定を `_meta.md` に記載）/ 確認未応答で標準 ON
 
 旧形式（`how_to/` プレフィックス、リポジトリ根からの相対だけ、索引を読んだ一覧に含む）は、第3段の実在チェックで WARN にする。第1段では正規化規則を守って新形式を書き、既存行は触らない。
@@ -281,6 +284,15 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
    - 実効方針の要点を、軸の ID を書かない口語にして `config.md` の執筆方針に置く。
 4. 書いた節と Gate B 記録を Read で読み直してから完了と報告する。既にある本文は書き換えない。本文を寄せたいときは清書（表現だけ）か、加筆・改稿の候補として返す。
 
+### 表現ミックスの限定更新（Gate B の外・既存作品）
+
+既存作品で、作者が「何を厚く書くか」の指定を求めたとき。Gate B 全体は再実施しない。Gate B 再実施を求められたときは、この節ではなく B1 の8で書く。
+
+1. 作業用索引があり、`expression.md` に追随していなければ、選定補助として列挙し追随を案内する。`_meta.md` の「表現ミックス」節（無ければ `novel_meta_check.py ensure-section novels/<作品> expression-mix` で足す）に「状態: OFF」「指定: 保留（作業用索引が未追随）」と書いて止める。
+2. `uv run python tools/novel_expression_mix.py novels/<作品> resolve` を見せ、作者が採ったら **状態: ON** と指定を書き、resolve の weights を節の **重み** へカタログの ID 全部書く（ジャンル既定でも凍結。欠け・空欄は `validate` 失敗）。「採用時点」に「限定更新」と書く。採らなければ **状態: OFF** にし、selected から `expression.md` を外す。`validate` で ON/OFF が読めることを確かめる（`ON` / `OFF` 以外は失敗）。
+3. 更新するのは節と、採ったときの selected レコードだけ。ほかの selected・設計は触らない。既にある `beats.yaml` は自動で書き換えない。作者が「ミックスを beats に載せ直して」と言ったときだけ差分を示す。
+4. 書いた節を Read で読み直してから完了と報告する。完了ゲートにしない。
+
 ## 執筆・清書での契約再読
 
 スキル **`novel-text-file-output`** / **`novel-refinement-output`** が適用する。評価の既定は契約外（各評価スキル）。
@@ -290,6 +302,7 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 3. 完了報告に、使った葉ごとに拠り所を1句書く。査証ログへ要約する（`AUDIT_LOG | OFF` ならログ省略）。
 4. selected（旧形式では一覧の葉）に無い how_to を創作判断に使う場合は、先に契約を更新するか、使わずに進む。黙ってカタログへ広げない。`rewrite.md` など清書手順ファイルは本スキル群の工程正本であり、selected に無くても読んでよい。
 5. `_meta.md` の「見せ方軸」節が「指定なし」「保留」以外なら、起草・清書の前に読む。この節だけで方針が分かる形なので、執筆・清書の判断はこの節に従う。`showing_axes.md` は selected に入っているときだけ再読し、値が食い違えば節を正とする。節が無い作品・「指定なし」の作品は `writer_profile.md` と設計に従う。
+6. `_meta.md` の「表現ミックス」節の **状態が ON** のときだけ、起草の前に読む。新しい `beats.yaml` を書くときだけ `sensory` / `interiority` / `dialogue_turns` の既定を実効ミックスに合わせる。OFF・節なしは写さない。`expression.md` が selected に残っていても、OFF なら使い方を context / `novel_beat_draft` に載せない。既存の beats は自動で書き換えない。`expression.md` は状態 ON かつ selected のときだけ再読する。完了条件にはしない。
 
 ## Feedback の扱い
 

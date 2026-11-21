@@ -1,0 +1,9 @@
+schema_version: "1"
+genre_id: human_drama
+# default.yaml からの差だけ。書いていない ID は既定のまま。
+weights:
+  daily: 2.0
+  gesture: 2.0
+  dialogue: 1.2
+  sound: 0.4
+  metaphor: 0.4

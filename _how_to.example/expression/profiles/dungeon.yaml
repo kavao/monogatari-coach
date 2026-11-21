@@ -1,0 +1,8 @@
+schema_version: "1"
+genre_id: dungeon
+weights:
+  sensory: 2.0
+  sound: 2.0
+  process: 1.8
+  daily: 0.4
+  gesture: 0.7

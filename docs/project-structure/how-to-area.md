@@ -21,6 +21,7 @@
 | `rewrite.md` | 文章校正・清書の作法 |
 | `world_glossary.md` | `world.md` の用語集（`## 用語` / `## 用語（承認待ち）`）の書式、新しい名前・仕組みを書くときの宣言、用語照合の判定と報告の雛形。雛形は `_how_to.example/world_glossary.md`。使い方は [作品固有の用語と用語照合](../workflow/terminology-audit.md) |
 | `showing_axes.md` | 見せ方軸（人物の見せ方）。内心の語り方・評価の経路・作品の構えなどの軸と、時代プリセット（劇画期〜王道回帰期）。既定では読みません。作風を指定したときだけ読み、作品の決定は `_meta.md` の「見せ方軸」節に残ります。雛形は `_how_to.example/showing_axes.md`。使い方は [企画・設計](../workflow/planning.md#作風人物の見せ方を決める見せ方軸) |
+| `expression.md` | 表現ミックス（文章のウェイト）。通常小説の本文で何を厚く書くかの相対重み。既定では読みません。作品の決定は `_meta.md` の「表現ミックス」節（**状態: ON / OFF**。新規の既定は OFF）に残ります。ON のときだけ起草に使います。検証は `tools/novel_expression_mix.py … validate`。完了ゲートではありません。使い方は [企画・設計](../workflow/planning.md#文章の厚みを決める表現ミックス) |
 | `length_ops.md` | 文章の伸縮操作規定（清書・字数合わせで出来事を変えない操作と、加筆・改稿工程に回す操作の境界）。雛形は `_how_to.example/length_ops.md` |
 | `episode/general/episode_sub_episode.md` | 子エピソードによる増量（加筆工程で出来事を足して分量を増やす技法）。雛形は `_how_to.example/episode/general/episode_sub_episode.md` |
 | `reader.md` | 下読み・書評の評価観点（6項目100点・足切り閾値 70/55/54・G1/G2/G3 段階ゲート。詳細は [`docs/workflow/reader-output.md`](../workflow/reader-output.md)） |

@@ -614,7 +614,7 @@ uv run python tools/novel_meta_check.py ensure-section novels/NNN_作品名 eval
   - 本文の行が失われない。
   - もう一度移しても差分が出ない。
 - 「章別文字数」の表は、雛形の決まりに従って自動では足しません。
-- `ensure-section` で足せる節は `phase-status`・`goal-status`・`context`・`evaluation-history`・`inspection-plan`・`gate-b` です。
+- `ensure-section` で足せる節は `phase-status`・`goal-status`・`context`・`evaluation-history`・`inspection-plan`・`gate-b`・`showing-axes`・`expression-mix` です。`showing-axes` と `expression-mix` は移行では自動追加しません。
 
 ---
 
@@ -1509,6 +1509,25 @@ python tools/novel_pick_registry.py list --prefix mature_
 ```
 
 `--novel novels/NNN_作品名` で作品別 `pick_registry/` を merge に載せられる（任意。サブコマンドより前に置く: `python tools/novel_pick_registry.py --novel novels/NNN_作品名 show <list_id>`）。作品別の定義は、標準・作業用の同じ `list_id` より後勝ちになる。
+
+---
+
+### `novel_expression_mix.py` — 表現ミックス（文章のウェイト）
+
+通常小説で、動作・五感・内面・会話などの相対重みをジャンルと作品から解決します。核カタログは `_how_to.example/expression/`、作業用 `_how_to/expression/` に同名があればその1ファイルだけを使います（合成しません）。完了ゲートではありません。既存の `beats.yaml` は書き換えません。
+
+```bash
+# カタログとプロファイルを検証する（作品フォルダは不要）
+uv run python tools/novel_expression_mix.py validate
+
+# 作品の実効ミックスと、新規 beats.yaml 向けの既定を表示する
+uv run python tools/novel_expression_mix.py novels/NNN_作品名 resolve
+
+# 検証したうえで実効値も出す
+uv run python tools/novel_expression_mix.py novels/NNN_作品名 validate
+```
+
+`--json` で機械可読に出せます（`flag` は `ON` / `OFF`、`enabled` は起草に使うか）。作品の `_meta.md`「表現ミックス」節の **状態** が行全体として `ON` と `OFF` 以外、未知のカテゴリ ID、負の重みや数でない重み・空欄、状態 ON なのにカタログの重みが欠けている、写し先の欠落では終了コード 1 です。節が無い作品は `OFF`（implicit）です。指定欄だけでは ON になりません。状態 ON のときは節の重みだけを採用時の値として使い、いまのプロファイルで補いません。使い方は [企画・設計](../workflow/planning.md#文章の厚みを決める表現ミックス) です。
 
 ---
 

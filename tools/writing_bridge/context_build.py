@@ -202,6 +202,25 @@ def extract_usage_notes(text: str) -> list[str]:
     return notes
 
 
+def _is_expression_leaf(relative_id: str, path: Path) -> bool:
+    name = relative_id.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return name == "expression.md" or path.name.lower() == "expression.md"
+
+
+def _expression_mix_on(work_root: Path) -> bool:
+    meta = work_root / "_meta.md"
+    if not meta.is_file():
+        return False
+    try:
+        from novel_expression_mix import mix_is_enabled
+    except ImportError:
+        return False
+    try:
+        return mix_is_enabled(meta.read_text(encoding="utf-8"))
+    except OSError:
+        return False
+
+
 def load_selected_usage(work_root: Path) -> list[str]:
     """契約の selected 葉から、使い方段落を集める。"""
     meta = work_root / "_meta.md"
@@ -216,10 +235,13 @@ def load_selected_usage(work_root: Path) -> list[str]:
         result = check_novel(work_root, root)
     except (OSError, ValueError):
         return []
+    mix_on = _expression_mix_on(work_root)
     notes: list[str] = []
     for item in result.selected:
         path, errors = resolve_effective(item, root, new_format=result.format == "new")
         if errors or path is None or not path.is_file():
+            continue
+        if _is_expression_leaf(item.relative_id, path) and not mix_on:
             continue
         try:
             notes.extend(extract_usage_notes(path.read_text(encoding="utf-8")))
@@ -463,6 +485,8 @@ def _beat_context_entry(beat: Beat) -> dict[str, Any]:
         "chars_instruction": instruction_target_chars(hint),
         "paragraphs": _budget_bounds(beat.budget.paragraphs),
         "dialogue_turns": _budget_bounds(beat.budget.dialogue_turns),
+        "sensory": beat.budget.sensory,
+        "interiority": beat.budget.interiority,
         "advisory": True,
         "expandable": beat.expandable,
     }
@@ -499,9 +523,15 @@ def render_context_md(context: ContextDocument) -> str:
         target = beat.get("chars_instruction")
         paragraphs = _range_text(beat["paragraphs"]) if beat.get("paragraphs") else "-"
         dialogue = _range_text(beat["dialogue_turns"]) if beat.get("dialogue_turns") else "-"
+        extras = [f"段落{paragraphs}", f"会話{dialogue}"]
+        if beat.get("sensory") is not None:
+            extras.append(f"感覚{beat['sensory']}")
+        if beat.get("interiority") is not None:
+            extras.append(f"内面{beat['interiority']}")
+        extra = " / ".join(extras)
         if target is not None:
             lines.append(
-                f"- beat {beat.get('id')}: {intent} / 下限{floor} / 目標{target}（助言） / 段落{paragraphs} / 会話{dialogue}"
+                f"- beat {beat.get('id')}: {intent} / 下限{floor} / 目標{target}（助言） / {extra}"
             )
         else:
             lines.append(f"- beat {beat.get('id')}: {intent}")

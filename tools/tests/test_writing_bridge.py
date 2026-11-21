@@ -1187,10 +1187,14 @@ def test_prepare_context_shows_advisory_targets(tmp_path: Path) -> None:
     assert pack["chars_instruction"] == instruction_target_chars(40) == 56
     assert pack["paragraphs"] == [1, 2]
     assert pack["advisory"] is True
+    assert pack["sensory"] == 1
+    assert pack["interiority"] == 0
     assert by_id["say_goodbye"]["dialogue_turns"] == [1, 2]
     assert "助言" in md
     assert "下限40" in md
     assert "目標56（助言）" in md
+    assert "感覚1" in md
+    assert "内面0" in md
     assert "床ちょうどは狙わない" in md
     beats_hash = next(
         item.raw_sha256 for item in context.input_hashes if item.path.endswith("beats.yaml")
@@ -1630,6 +1634,44 @@ def test_prepare_injects_usage_notes_when_marked_leaf_selected(
     assert "出した拍" in md
     assert "例の見出し" not in md
     assert "チュ、チュ" not in md
+
+
+def test_prepare_skips_expression_notes_when_mix_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs)
+    expr = catalogs / "_how_to" / "expression.md"
+    expr.write_text(
+        "# expression\n"
+        "context_usage:\n"
+        "状態が ON のとき、実効の表現ミックスに従う。\n",
+        encoding="utf-8",
+    )
+    (catalogs / "_how_to.example").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = _copy_ok(tmp_path)
+    (work / "_meta.md").write_text(
+        "## 3.5 Plan Mode Gate B 記録\n"
+        "- **創作技法契約**:\n"
+        "  - **selected**:\n"
+        f"    - relative_id: {USAGE_LEAF_REL}\n"
+        f"      - working_path: _how_to/{USAGE_LEAF_REL}\n"
+        f"      - effective_path: _how_to/{USAGE_LEAF_REL}\n"
+        "    - relative_id: expression.md\n"
+        "      - working_path: _how_to/expression.md\n"
+        "      - effective_path: _how_to/expression.md\n"
+        "## 3.8 表現ミックス\n"
+        "- **状態**: OFF\n",
+        encoding="utf-8",
+    )
+    run = _prepare_ok(work)
+    context = load_json_model(run / "context.json", ContextDocument)
+    md = (run / "context.md").read_text(encoding="utf-8")
+    assert any("出した拍" in item for item in context.craft_notes)
+    assert not any("表現ミックス" in item for item in context.craft_notes)
+    assert "出した拍" in md
+    assert "実効の表現ミックス" not in md
 
 
 def test_prepare_without_marked_usage_does_not_inject(

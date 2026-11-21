@@ -69,6 +69,7 @@ targets: ["*"]
 - **禁止**: 設計書のただし書き（何ではないか、どの呼称でもないか等）を地の文や Beat `intent` に写す。`intent` は動作だけにする。ただし書きは `contract.yaml` の forbidden へ置く。
 - **不足時**: 出来事を増やさず、`character.md` の固定外見・身体から、今の距離で見える点を1つ足す。同一章で同じ点を説明し直さない。数値やカルテ語の連呼はしない。
 - **会話の少ない場面**: 口調が短い、沈黙指定、EXPRESSION が低い、会話を足さずに場面の下限へ届かせたいときは、同一物の再計測や身体の一点の連打で埋めない。観察→判断→行動の転換は設計か加筆。技法は `_how_to.example/episode/general/episode_sparse_dialogue.md`（完了条件にはしない）。
+- **表現ミックス**: `_meta.md` の「表現ミックス」節の **状態が ON** のときだけ、実効ミックスに従い、新しい `beats.yaml` の `sensory` / `interiority` / `dialogue_turns` に写す。OFF・節なしは写さない。既存の beats は自動で書き換えない。`prepare` の context と `novel_beat_draft.py` のプロンプトへ、その欄と `expression.md` の使い方を載せる（OFF なら `expression.md` が selected に残っていても載せない）。第二のビート表は作らない。完了条件にはしない。CLI は `tools/novel_expression_mix.py`（`validate` で ON/OFF を検査できる。ON の重み欠落は失敗）。
 - **人物欄の圧縮句**: 起草の前に `character.md` の性格などを読んで、意味の取れない短句（章の出来事の要約、この話での決め方）が残っていたら、いつ・誰に・何をする／しない・なぜを資料（設計の項・ほかの欄・`world.md`）で確かめてから書き、その場面で演じる。資料から意味が取れなければ推測で演じず、書く前に作者へ確かめる。欄の句を地の文へ写さない。開いた結果で `character.md` を直すのは本文の作業ではない（直すなら `novel-character-profile` の層分けとして作者に返す）。基準は `_how_to.example/character_profile_prose.md`。
 - **セリフの長さ**: 独立したセリフを述語の無い一言（名詞・短句）で止めず、同じ発話の中で二文にする。述語のある一文は対象外。相づち・名前呼び・問い返しや叫び・一度だけの決め台詞・沈黙指定は例外。画面・メールは鍵括弧にしない。正本は `_how_to.example/novelcore.md`「会話」。新しい会話の往復は設計にある範囲だけ。
 - 読点をゲート回避のために地の文から抜かない。合否は句読点ゲートだけを正とする。

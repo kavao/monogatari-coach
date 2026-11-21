@@ -1,0 +1,58 @@
+schema_version: "1"
+# 核カテゴリ。作業用 _how_to/expression/catalog.yaml があるときはそちらを自己完結として使う（標準と合成しない）。
+categories:
+  action:
+    label: 動作
+    description: 動作の分解を厚くする
+    metron:
+      type: action
+  sensory:
+    label: 五感
+    description: 視覚以外を含む感覚
+    metron:
+      budget: sensory
+  interiority:
+    label: 内面
+    description: 独白・動機・自己観察
+    metron:
+      budget: interiority
+  dialogue:
+    label: 会話往復
+    description: 台詞のやり取り
+    metron:
+      type: dialogue
+      budget: dialogue_turns
+  gesture:
+    label: 所作
+    description: 身体言語。会話を増やさずに距離と反応を見せる
+    metron:
+      type: action
+      dialogue_turns: low
+  sound:
+    label: 現場音
+    description: 剣戟・足音・道具などの地の文の音。独立 Beat にしない
+    metron:
+      budget: sensory
+      independent_beat: false
+  environment:
+    label: 情景
+    description: 場所と背景の見え方
+    metron:
+      budget: sensory
+  process:
+    label: 時間の伸び
+    description: 手順と過程を細かく書く。出来事は足さない
+    metron:
+      chars_hint: up
+      paragraphs: up
+  daily:
+    label: 生活行動
+    description: 食卓・家事・通いなどの差分
+    metron:
+      type: action
+      chars_hint: up
+      paragraphs: up
+  metaphor:
+    label: 比喩
+    description: 比喩を厚くする。崩れる文は書かない。METRON には写さない
+    metron: null

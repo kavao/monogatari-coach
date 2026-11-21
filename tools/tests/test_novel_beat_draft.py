@@ -427,6 +427,30 @@ def test_prompt_uses_instruction_target_not_floor(tmp_path: Path) -> None:
     assert "およそ280字" in writer.prompts[0] and "およそ200字" not in writer.prompts[0]
 
 
+def test_prompt_carries_budget_and_craft_notes(tmp_path: Path) -> None:
+    work = _work(tmp_path)
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
+    context = json.loads((run / "context.json").read_text(encoding="utf-8"))
+    context["beats"] = [
+        dict(
+            context["beats"][0],
+            dialogue_turns=[1, 4],
+            sensory=4,
+            interiority=1,
+        )
+    ]
+    context["craft_notes"] = ["実効の表現ミックスに従う。厚くする種類の文を先に書く。"]
+    (run / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    writer = FakeWriter(["　悠希は目を開けた。"] * 3)
+    nbd.draft(work, "ch01-001", "run-0001", writer=writer, log=lambda _: None)
+    prompt = writer.prompts[0]
+    assert "会話の往復数: 1〜4" in prompt
+    assert "感覚描写: 少なくとも 4 箇所" in prompt
+    assert "内面描写: 少なくとも 1 箇所" in prompt
+    assert "技法の使い方:" in prompt
+    assert "実効の表現ミックス" in prompt
+
+
 def test_draft_resumes_from_saved_candidates(tmp_path: Path) -> None:
     work = _work(tmp_path)
     out = work / "_work" / "writing" / "ch01-001" / "run-0001" / nbd.OUT_DIR
@@ -556,6 +580,67 @@ def test_all_truncated_candidates_stop_instead_of_completing(tmp_path: Path) -> 
     # 保存済みの打切り候補で再開しても、作業稿は完成しない
     with pytest.raises(nbd.BeatDraftError, match="GENERATION_TRUNCATED"):
         nbd.draft(work, "ch01-001", "run-0001", writer=FakeWriter([]), log=lambda _: None)
+
+
+def test_resume_keeps_old_prompt_when_only_budget_lines_added(tmp_path: Path) -> None:
+    work = _work(tmp_path)
+    beat1 = "　悠希は石倉庫の跡で目を開け、ノラから井戸の話を聞いた。"
+    with pytest.raises(nbd.BeatDraftError):
+        nbd.draft(work, "ch01-001", "run-0001", writer=FakeWriter([beat1] * 3), log=lambda _: None)
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
+    context = json.loads((run / "context.json").read_text(encoding="utf-8"))
+    context["beats"] = [
+        dict(context["beats"][0], dialogue_turns=[1, 4], sensory=4, interiority=1),
+        *context["beats"][1:],
+    ]
+    (run / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    writer = FakeWriter(["　悠希は水を二本の桶に分けた。"] * 3 + ["　ノラが桶を貸した。"] * 3)
+    final = nbd.draft(work, "ch01-001", "run-0001", writer=writer, log=lambda _: None)
+    prompt = (run / nbd.OUT_DIR / "beat1.prompt.md").read_text(encoding="utf-8")
+    assert "会話の往復数" not in prompt
+    assert "ノラが桶を貸した。" in final.read_text(encoding="utf-8")
+
+
+def test_resume_keeps_old_prompt_when_context_notes_were_not_in_prompt(tmp_path: Path) -> None:
+    work = _work(tmp_path)
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
+    context = json.loads((run / "context.json").read_text(encoding="utf-8"))
+    notes = ["実効の表現ミックスに従う。厚くする種類の文を先に書く。"]
+    context["craft_notes"] = notes
+    (run / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    materials = nbd.build_materials(work, "ch01-001", list(context.get("forbidden") or []), [])
+    beats = list(context["beats"])
+    first = nbd.first_beats(beats, materials.names)
+    show = {name for name, at in first.items() if at == 0}
+    hint = int(beats[0].get("chars_hint") or 500)
+    old = nbd.beat_prompt(materials, show, "", beats[0], hint, True, craft_notes=[])
+    out = run / nbd.OUT_DIR
+    out.mkdir()
+    (out / "beat1.prompt.md").write_text(old, encoding="utf-8", newline="\n")
+    (out / "beat1.c1.md").write_text("　悠希は石倉庫の跡で目を開けた。\n", encoding="utf-8")
+    with pytest.raises(nbd.BeatDraftError) as wait:
+        nbd.draft(work, "ch01-001", "run-0001", candidates=2, relay=True, log=lambda _: None)
+    assert wait.value.code == 3
+    kept = (out / "beat1.prompt.md").read_text(encoding="utf-8")
+    assert "技法の使い方" not in kept
+    assert "実効の表現ミックス" not in kept
+
+
+def test_resume_refuses_when_craft_notes_change(tmp_path: Path) -> None:
+    work = _work(tmp_path)
+    run = work / "_work" / "writing" / "ch01-001" / "run-0001"
+    context = json.loads((run / "context.json").read_text(encoding="utf-8"))
+    context["craft_notes"] = ["旧い助言。会話往復を増やさない。"]
+    (run / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    out = run / nbd.OUT_DIR
+    with pytest.raises(nbd.BeatDraftError) as wait:
+        nbd.draft(work, "ch01-001", "run-0001", candidates=2, relay=True, log=lambda _: None)
+    assert wait.value.code == 3
+    (out / "beat1.c1.md").write_text("　悠希は石倉庫の跡で目を開けた。\n", encoding="utf-8")
+    context["craft_notes"] = ["新しい助言。現場音を先に書く。"]
+    (run / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(nbd.BeatDraftError, match="STALE_CANDIDATES"):
+        nbd.draft(work, "ch01-001", "run-0001", candidates=2, relay=True, log=lambda _: None)
 
 
 def test_resume_refuses_candidates_written_from_another_prompt(tmp_path: Path) -> None:

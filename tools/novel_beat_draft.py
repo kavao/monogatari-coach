@@ -222,15 +222,91 @@ def first_beats(beats: list[dict[str, Any]], names: list[str]) -> dict[str, int]
     return first
 
 
-def beat_prompt(materials: Materials, show: set[str], prior: str, intent: str, hint: int, first: bool) -> str:
+_REQUEST_MARK = "\n---\n\n# 依頼\n\n"
+_BUDGET_LINE_RE = re.compile(
+    r"^(会話の往復数: .+|感覚描写: 少なくとも \d+ 箇所|内面描写: 少なくとも \d+ 箇所)\n",
+    re.M,
+)
+_CRAFT_BLOCK_RE = re.compile(r"^技法の使い方:\n(?:- .+\n)*\n?", re.M)
+
+
+def _prompt_head_tail(prompt: str) -> tuple[str, str]:
+    text = prompt.replace("\r\n", "\n")
+    index = text.find(_REQUEST_MARK)
+    if index < 0:
+        return text, ""
+    split = index + len(_REQUEST_MARK)
+    return text[:split], text[split:]
+
+
+def _strip_budget_lines(tail: str) -> str:
+    return _BUDGET_LINE_RE.sub("", tail)
+
+
+def prompt_for_stale_compare(prompt: str) -> str:
+    """資料比較用。予算行と技法メモは除く。"""
+    head, tail = _prompt_head_tail(prompt)
+    tail = _CRAFT_BLOCK_RE.sub("", _strip_budget_lines(tail))
+    return head + re.sub(r"\n{3,}", "\n\n", tail)
+
+
+def _prompt_craft_block(prompt: str) -> str | None:
+    _, tail = _prompt_head_tail(prompt)
+    match = _CRAFT_BLOCK_RE.search(_strip_budget_lines(tail))
+    if match is None:
+        return None
+    return match.group(0)
+
+
+def is_stale_saved_prompt(saved: str, new: str) -> bool:
+    """旧版は技法メモをプロンプトへ出していなかった。メモが無かった旧稿へ新版が同じメモを足す差は資料変更にしない。"""
+    if prompt_for_stale_compare(saved) != prompt_for_stale_compare(new):
+        return True
+    saved_notes = _prompt_craft_block(saved)
+    if saved_notes is None:
+        return False
+    return saved_notes != _prompt_craft_block(new)
+
+
+def _range_ja(bounds: Any) -> str | None:
+    if not isinstance(bounds, (list, tuple)) or len(bounds) < 2:
+        return None
+    lower, upper = bounds[0], bounds[1]
+    return f"{lower}〜{upper if upper is not None else '上限なし'}"
+
+
+def beat_prompt(
+    materials: Materials,
+    show: set[str],
+    prior: str,
+    beat: dict[str, Any],
+    hint: int,
+    first: bool,
+    *,
+    craft_notes: list[str] | None = None,
+) -> str:
     story = f"（まだない。第{materials.chapter}章の書き出しから書く）" if first else prior
+    extras: list[str] = []
+    turns = _range_ja(beat.get("dialogue_turns"))
+    if turns:
+        extras.append(f"会話の往復数: {turns}")
+    if beat.get("sensory") is not None:
+        extras.append(f"感覚描写: 少なくとも {beat['sensory']} 箇所")
+    if beat.get("interiority") is not None:
+        extras.append(f"内面描写: 少なくとも {beat['interiority']} 箇所")
+    extra_block = ("\n".join(extras) + "\n\n") if extras else ""
+    notes_block = ""
+    if craft_notes:
+        notes_block = "技法の使い方:\n" + "\n".join(f"- {note}" for note in craft_notes) + "\n\n"
     return (
         materials.background(show)
         + "\n\n---\n\n# これまでの本文\n\n"
         + story
         + "\n\n---\n\n# 依頼\n\n"
         + "あなたは小説の書き手です。「これまでの本文」の続きを書いてください。\n\n"
-        + f"次に書く出来事：{intent}\n\n"
+        + f"次に書く出来事：{beat.get('intent')}\n\n"
+        + extra_block
+        + notes_block
         + f"この出来事だけを書き、その先の出来事へ進まない。およそ{hint}字。"
         + "地の文の段落は頭を全角空白で始める。会話の行は空白を付けず「から始める。本文だけを出力する。\n"
     )
@@ -475,19 +551,32 @@ def draft(
         # 書き手には床より上の指示目標（chars_instruction）を出す。短さの減点は床（chars_hint）で測る。
         hint = int(beat.get("chars_hint") or beat.get("chars_floor") or 500)
         target = int(beat.get("chars_instruction") or hint)
-        prompt = beat_prompt(materials, show, prior, str(beat["intent"]), target, i == 0)
+        prompt = beat_prompt(
+            materials,
+            show,
+            prior,
+            beat,
+            target,
+            i == 0,
+            craft_notes=list(context.get("craft_notes") or []),
+        )
         # 先取りの比べ先: 後の Beat の intent（設計の同じ項を分けた Beat でも、残りの出来事を先に書かせない）
         later = "".join(str(b.get("intent", "")) for b in beats[i + 1 :])
         current = str(beat["intent"])
         prompt_path = out_dir / f"beat{i + 1}.prompt.md"
         saved = [out_dir / f"beat{i + 1}.c{c + 1}.md" for c in range(candidates)]
-        if (prompt_path.exists() and any(p.exists() for p in saved)
-                and prompt_path.read_text(encoding="utf-8") != prompt):
-            # 中断のあとで資料（--leaf・設計・人物など）が変わった。古い候補と新しい候補を混ぜない
-            raise BeatDraftError(
-                f"STALE_CANDIDATES: Beat {i + 1} の保存済みの候補は、今と違うプロンプトで書かれている"
-                f"（{prompt_path}）。新しい run で prepare するか、{OUT_DIR}/ の Beat {i + 1} 以降の候補を退避する", code=1)
-        prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
+        saved_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else None
+        if saved_prompt is not None and any(path.exists() for path in saved):
+            if is_stale_saved_prompt(saved_prompt, prompt):
+                # 中断のあとで資料（--leaf・設計・人物など）が変わった。古い候補と新しい候補を混ぜない
+                raise BeatDraftError(
+                    f"STALE_CANDIDATES: Beat {i + 1} の保存済みの候補は、今と違うプロンプトで書かれている"
+                    f"（{prompt_path}）。新しい run で prepare するか、{OUT_DIR}/ の Beat {i + 1} 以降の候補を退避する",
+                    code=1,
+                )
+            prompt = saved_prompt
+        else:
+            prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         if writer is None:
             waiting = [out_dir / f"beat{i + 1}.c{c + 1}.md" for c in range(candidates)
                        if not (out_dir / f"beat{i + 1}.c{c + 1}.md").exists()]

@@ -85,6 +85,15 @@ SLOTS: list[Slot] = [
         False,
         "- **プリセット**: （未記入。スキル `novel-planning` の見せ方軸の手順で書く）",
     ),
+    # 既存作品へ移行で足さない（作者の指定か Gate B のときだけ ensure-section で足す）。
+    Slot(
+        "I.3.8",
+        "I",
+        "## 3.8 表現ミックス",
+        ("表現ミックス",),
+        False,
+        "- **状態**: OFF",
+    ),
     Slot(
         "II.1",
         "II",
@@ -128,7 +137,7 @@ SLOTS: list[Slot] = [
 SLOT_BY_KEY = {slot.key: slot for slot in SLOTS}
 # 雛形の中での並び（照合の順とは別）。
 TEMPLATE_ORDER = [
-    "I.1", "I.1.5", "I.2", "I.3", "I.3.5", "I.3.6", "I.3.7",
+    "I.1", "I.1.5", "I.2", "I.3", "I.3.5", "I.3.6", "I.3.7", "I.3.8",
     "II.1", "II.2",
     "III.0", "III.1", "III.2", "III.2.1", "III.3", "III.3.1", "III.3.2", "III.4", "III.6", "III.5", "III.7", "III.x",
     "IV.1", "IV.2", "IV.3", "IV.3b", "IV.4",
@@ -142,6 +151,7 @@ ENSURE_NAMES = {
     "evaluation-history": "IV.4",
     "inspection-plan": "I.3.6",
     "showing-axes": "I.3.7",
+    "expression-mix": "I.3.8",
     "gate-b": "I.3.5",
 }
 
