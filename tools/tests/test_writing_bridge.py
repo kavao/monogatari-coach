@@ -16,7 +16,9 @@ FIXTURE = ROOT / "tools" / "fixtures" / "writing_bridge"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+from writing_bridge import context_build
 from writing_bridge.commands import inspect, prepare, receive, status
+from writing_bridge.context_build import extract_usage_notes, load_selected_usage
 from writing_bridge.errors import BridgeError
 from writing_bridge.hashes import EMPTY_RAW_SHA256, read_normalized, text_sha256, raw_sha256
 from writing_bridge.models import ItemStatus, RequestKind, Selector, SelectorKind
@@ -1312,3 +1314,333 @@ def test_extract_gate_order_note_is_reported_without_blocking_inspect(tmp_path: 
     assert len(notes) == 1
     assert "1 confirmed order edge(s)" in notes[0].note
     assert not any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
+
+
+USAGE_LEAF_REL = "episode/general/sample_usage.md"
+
+
+def _write_usage_leaf(root: Path, *, marked: bool = True) -> None:
+    leaf = root.joinpath("_how_to", *USAGE_LEAF_REL.split("/"))
+    leaf.parent.mkdir(parents=True, exist_ok=True)
+    mark = "context_usage:\n" if marked else ""
+    leaf.write_text(
+        "# 拍の置き方\n"
+        f"{mark}"
+        "主: 地の文に織り交ぜる。\n"
+        "出した拍では着地と吹き出しの例を開く。\n"
+        "- 例の見出し\n"
+        "\tチュ、チュ\n",
+        encoding="utf-8",
+    )
+    (root / "_how_to.example").mkdir(parents=True, exist_ok=True)
+
+
+def _write_usage_meta(work: Path) -> None:
+    (work / "_meta.md").write_text(
+        "## 3.5 Plan Mode Gate B 記録\n"
+        "- **創作技法契約**:\n"
+        "  - **selected**:\n"
+        f"    - relative_id: {USAGE_LEAF_REL}\n"
+        f"      - working_path: _how_to/{USAGE_LEAF_REL}\n"
+        f"      - effective_path: _how_to/{USAGE_LEAF_REL}\n",
+        encoding="utf-8",
+    )
+
+
+def test_extract_usage_notes_stops_before_examples() -> None:
+    text = (
+        "# 拍の置き方\n"
+        "context_usage:\n"
+        "主: 地の文に織り交ぜる。\n"
+        "従: 独立行。\n"
+        "出した拍では着地と吹き出しの例を開く。\n"
+        "\n"
+        "- 例の見出し\n"
+        "\tチュ、チュ\n"
+        "\tくちゅくちゅ\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == [
+        "主: 地の文に織り交ぜる。",
+        "従: 独立行。",
+        "出した拍では着地と吹き出しの例を開く。",
+    ]
+    assert "チュ、チュ" not in notes
+    assert not any(item.startswith("-") for item in notes)
+
+
+def test_extract_usage_notes_skips_old_name_line() -> None:
+    text = "# 拍の置き方\ncontext_usage:\n旧称: 別名。\n主: 地の文に織り交ぜる。\n"
+    assert extract_usage_notes(text) == ["主: 地の文に織り交ぜる。"]
+
+
+def test_extract_usage_notes_keeps_bullets_before_examples() -> None:
+    text = (
+        "# 拍の置き方\n"
+        "context_usage:\n"
+        "主: 地の文に織り交ぜる。\n"
+        "- 出した拍では着地と吹き出しの例を開く。\n"
+        "- 口・掌だけの出すは吹き出しを開かない。\n"
+        "- 例の見出し\n"
+        "\tチュ、チュ\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == [
+        "主: 地の文に織り交ぜる。",
+        "- 出した拍では着地と吹き出しの例を開く。",
+        "- 口・掌だけの出すは吹き出しを開かない。",
+    ]
+
+
+def test_extract_usage_notes_rewrites_leaf_relative_reference() -> None:
+    text = "# 拍の置き方\ncontext_usage:\n下の例から、その拍のラベルに合う語を選ぶ。\n"
+    notes = extract_usage_notes(text)
+    assert notes == ["技法葉の「拍の置き方」の例から、その拍のラベルに合う語を選ぶ。"]
+
+
+def test_extract_usage_notes_uses_marked_subheading_not_title() -> None:
+    text = (
+        "# 地の文の現場音\n"
+        "導入。\n"
+        "\n"
+        "## 0. 住み分け\n"
+        "見出しの直後の `context_usage:` は印である。\n"
+        "\n"
+        "## 1. 置き方\n"
+        "context_usage:\n"
+        "既定は独立行である。\n"
+        "\n"
+        "## 2. 剣戟\n"
+        "- 剣戟の例\n"
+        "\tキンッ\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["既定は独立行である。"]
+    assert "導入。" not in notes
+    assert "キンッ" not in notes
+
+
+def test_extract_usage_notes_strips_links_and_fences() -> None:
+    text = (
+        "# 拍の置き方\n"
+        "context_usage:\n"
+        "既定は独立行である。[novelcore.md](../../novelcore.md) の「擬音」に従う。\n"
+        "```text\n"
+        "コード例\n"
+        "```\n"
+        "音のあとに当たった先を返す。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == [
+        "既定は独立行である。novelcore.md の「擬音」に従う。",
+        "音のあとに当たった先を返す。",
+    ]
+
+
+def test_extract_usage_notes_ignores_heading_and_mark_inside_fence() -> None:
+    text = (
+        "# 本物\n"
+        "context_usage:\n"
+        "本物の使い方。\n"
+        "\n"
+        "## 説明\n"
+        "次のコード例:\n"
+        "```md\n"
+        "# 偽見出し\n"
+        "context_usage:\n"
+        "コード例の中の使い方。\n"
+        "```\n"
+        "説明の続き。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["本物の使い方。"]
+    assert "コード例の中の使い方。" not in notes
+
+
+def test_extract_usage_notes_unmarked_heading_does_not_take_fence_mark() -> None:
+    text = (
+        "## 0. 住み分け\n"
+        "見出しの直後の `context_usage:` は印である。\n"
+        "\n"
+        "```md\n"
+        "# 偽見出し\n"
+        "context_usage:\n"
+        "コード例の中の使い方。\n"
+        "```\n"
+    )
+    assert extract_usage_notes(text) == []
+
+
+def test_extract_usage_notes_skips_multiline_html_comment() -> None:
+    text = (
+        "# 本物\n"
+        "context_usage:\n"
+        "本物の使い方。\n"
+        "<!--\n"
+        "コメント内の行。\n"
+        "context_usage:\n"
+        "コメント内の使い方。\n"
+        "-->\n"
+        "本物の続き。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["本物の使い方。", "本物の続き。"]
+    assert "コメント内の行。" not in notes
+    assert "コメント内の使い方。" not in notes
+    assert "-->" not in notes
+
+
+def test_extract_usage_notes_ignores_heading_inside_tilde_fence() -> None:
+    text = (
+        "# 本物\n"
+        "context_usage:\n"
+        "本物の使い方。\n"
+        "~~~md\n"
+        "# 偽見出し\n"
+        "context_usage:\n"
+        "コード例の中の使い方。\n"
+        "~~~\n"
+        "本物の続き。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["本物の使い方。", "本物の続き。"]
+    assert "コード例の中の使い方。" not in notes
+
+
+def test_extract_usage_notes_inner_shorter_backticks_do_not_close_fence() -> None:
+    text = (
+        "# 本物\n"
+        "context_usage:\n"
+        "本物の使い方。\n"
+        "````md\n"
+        "```\n"
+        "# 偽見出し\n"
+        "context_usage:\n"
+        "コード例の中の使い方。\n"
+        "```\n"
+        "````\n"
+        "本物の続き。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["本物の使い方。", "本物の続き。"]
+    assert "コード例の中の使い方。" not in notes
+
+
+def test_extract_usage_notes_skips_comment_starting_mid_line() -> None:
+    text = (
+        "# 本物\n"
+        "context_usage:\n"
+        "本物の使い方。<!--\n"
+        "コメント内の行。\n"
+        "context_usage:\n"
+        "コメント内の使い方。\n"
+        "-->\n"
+        "本物の続き。\n"
+    )
+    notes = extract_usage_notes(text)
+    assert notes == ["本物の使い方。", "本物の続き。"]
+    assert "コメント内の行。" not in notes
+    assert "コメント内の使い方。" not in notes
+
+
+def test_extract_usage_notes_without_mark_is_empty() -> None:
+    text = (
+        "# 接触音と声\n"
+        "主: 地の文に織り交ぜる。\n"
+        "- 例の見出し\n"
+        "\tチュ、チュ\n"
+    )
+    assert extract_usage_notes(text) == []
+    assert extract_usage_notes("# ほかの節\n本文。\n") == []
+
+
+def test_load_selected_usage_when_marked_leaf_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = tmp_path / "work"
+    work.mkdir()
+    _write_usage_meta(work)
+    notes = load_selected_usage(work)
+    joined = "\n".join(notes)
+    assert "出した拍" in joined
+    assert "例の見出し" not in joined
+    assert not any(item.startswith("-") for item in notes)
+
+
+def test_load_selected_usage_without_selected_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "_meta.md").write_text(
+        "## 3.5 Plan Mode Gate B 記録\n"
+        "- **創作技法契約**:\n"
+        "  - **selected**:\n"
+        "    - relative_id: naming.md\n"
+        "      - working_path: _how_to/naming.md\n",
+        encoding="utf-8",
+    )
+    assert load_selected_usage(work) == []
+
+
+def test_load_selected_usage_without_leaf_file_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    (catalogs / "_how_to.example").mkdir(parents=True)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = tmp_path / "work"
+    work.mkdir()
+    _write_usage_meta(work)
+    assert load_selected_usage(work) == []
+
+
+def test_load_selected_usage_unmarked_selected_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs, marked=False)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = tmp_path / "work"
+    work.mkdir()
+    _write_usage_meta(work)
+    assert load_selected_usage(work) == []
+
+
+def test_prepare_injects_usage_notes_when_marked_leaf_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = _copy_ok(tmp_path)
+    _write_usage_meta(work)
+    run = _prepare_ok(work)
+    context = load_json_model(run / "context.json", ContextDocument)
+    md = (run / "context.md").read_text(encoding="utf-8")
+    assert context.craft_notes
+    assert any("出した拍" in item for item in context.craft_notes)
+    assert "技法の使い方:" in md
+    assert "出した拍" in md
+    assert "例の見出し" not in md
+    assert "チュ、チュ" not in md
+
+
+def test_prepare_without_marked_usage_does_not_inject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalogs = tmp_path / "repo"
+    _write_usage_leaf(catalogs)
+    monkeypatch.setattr(context_build, "howto_root", lambda: catalogs)
+    work = _copy_ok(tmp_path)
+    run = _prepare_ok(work)
+    context = load_json_model(run / "context.json", ContextDocument)
+    md = (run / "context.md").read_text(encoding="utf-8")
+    assert context.craft_notes == []
+    assert "技法の使い方:" not in md

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,204 @@ from .models import (
     StateAt,
 )
 from .paths import resolve_work_path, unit_rel
+
+CONTEXT_USAGE_MARK = "context_usage:"
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_LEADING_NUMBER = re.compile(r"^[0-9０-９]+[.．)）]?\s*")
+
+
+def howto_root() -> Path:
+    """技法葉のルート。テストから差し替えられるよう関数にしておく。"""
+    return Path(__file__).resolve().parents[2]
+
+
+def _heading_level(line: str) -> int | None:
+    stripped = line.strip()
+    if not stripped.startswith("#"):
+        return None
+    marks = 0
+    for char in stripped:
+        if char != "#":
+            break
+        marks += 1
+    if marks < 1 or marks > 6:
+        return None
+    if marks < len(stripped) and stripped[marks] not in " \t":
+        return None
+    return marks
+
+
+def _starts_example_block(lines: list[str], index: int) -> bool:
+    """箇条書きの見出しの直後が字下げなら、その箇条書きは例の辞書。"""
+    if not lines[index].strip().startswith("-"):
+        return False
+    for line in lines[index + 1 :]:
+        if not line.strip():
+            continue
+        return line.startswith("\t") or line.startswith("    ")
+    return False
+
+
+def _is_usage_mark(line: str) -> bool:
+    stripped = line.strip()
+    return stripped == CONTEXT_USAGE_MARK or stripped.startswith(f"{CONTEXT_USAGE_MARK} ")
+
+
+def _open_fence(line: str) -> tuple[str, int] | None:
+    """CommonMark の開きフェンス。同一文字が3つ以上。バッククォート開きは情報部に ` を含めない。"""
+    stripped = line.strip()
+    if len(stripped) < 3 or stripped[0] not in "`~":
+        return None
+    char = stripped[0]
+    length = 0
+    for item in stripped:
+        if item != char:
+            break
+        length += 1
+    if length < 3:
+        return None
+    rest = stripped[length:]
+    if char == "`" and "`" in rest:
+        return None
+    return char, length
+
+
+def _close_fence(line: str, char: str, length: int) -> bool:
+    stripped = line.strip()
+    run = 0
+    for item in stripped:
+        if item != char:
+            break
+        run += 1
+    if run < length:
+        return False
+    return stripped[run:].strip() == ""
+
+
+def _consume_comments(line: str, in_comment: bool) -> tuple[str, bool]:
+    """HTML コメントを除いた可視部分。文の途中の `<!--` も対象。"""
+    visible: list[str] = []
+    rest = line
+    while True:
+        if in_comment:
+            end = rest.find("-->")
+            if end < 0:
+                return "".join(visible), True
+            rest = rest[end + 3 :]
+            in_comment = False
+            continue
+        start = rest.find("<!--")
+        if start < 0:
+            visible.append(rest)
+            return "".join(visible), False
+        visible.append(rest[:start])
+        rest = rest[start + 4 :]
+        in_comment = True
+
+
+def _inert_mask(lines: list[str]) -> tuple[list[str], list[bool]]:
+    """フェンスと HTML コメントは見出しにも印にもしない。コメント内は行から除く。"""
+    visible = list(lines)
+    inert = [False] * len(lines)
+    fence: tuple[str, int] | None = None
+    in_comment = False
+    for index, raw in enumerate(lines):
+        if fence is not None:
+            inert[index] = True
+            visible[index] = ""
+            if _close_fence(raw, fence[0], fence[1]):
+                fence = None
+            continue
+        text, in_comment = _consume_comments(raw, in_comment)
+        visible[index] = text
+        if not text.strip():
+            if in_comment or "<!--" in raw or "-->" in raw:
+                inert[index] = True
+            continue
+        opened = _open_fence(text)
+        if opened is not None:
+            inert[index] = True
+            fence = opened
+    return visible, inert
+
+
+def _clean_note(text: str, title: str) -> str:
+    """context 単体で読める形へ直す。葉の中だけの相対リンクと番号を落とす。"""
+    text = _MD_LINK.sub(r"\1", text)
+    text = text.replace("下の例から", f"技法葉の「{title}」の例から", 1)
+    return _LEADING_NUMBER.sub("", text, count=1)
+
+
+def _notes_from_usage_block(title: str, block: list[str], inert: list[bool]) -> list[str]:
+    notes: list[str] = []
+    for offset, line in enumerate(block):
+        if inert[offset]:
+            continue
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _is_usage_mark(line) or stripped.startswith("旧称"):
+            continue
+        if stripped in {"---", "***", "___"}:
+            continue
+        if stripped.startswith("#") or line.startswith("\t"):
+            break
+        if _starts_example_block(block, offset):
+            break
+        notes.append(_clean_note(stripped, title))
+    return notes
+
+
+def extract_usage_notes(text: str) -> list[str]:
+    """selected 葉のうち、context_usage 節の使い方段落だけを取る。例の辞書行は含めない。"""
+    lines, inert = _inert_mask(text.splitlines())
+    notes: list[str] = []
+    index = 0
+    while index < len(lines):
+        if inert[index] or _heading_level(lines[index]) is None:
+            index += 1
+            continue
+        title = _LEADING_NUMBER.sub("", lines[index].strip().lstrip("#").strip(), count=1)
+        index += 1
+        start = index
+        while index < len(lines):
+            if not inert[index] and _heading_level(lines[index]) is not None:
+                break
+            index += 1
+        block = lines[start:index]
+        block_inert = inert[start:index]
+        if not any(
+            _is_usage_mark(line) for line, skip in zip(block, block_inert, strict=True) if not skip
+        ):
+            continue
+        notes.extend(_notes_from_usage_block(title, block, block_inert))
+    return notes
+
+
+def load_selected_usage(work_root: Path) -> list[str]:
+    """契約の selected 葉から、使い方段落を集める。"""
+    meta = work_root / "_meta.md"
+    if not meta.is_file():
+        return []
+    try:
+        from novel_howto_contract_check import check_novel, resolve_effective
+    except ImportError:
+        return []
+    root = howto_root()
+    try:
+        result = check_novel(work_root, root)
+    except (OSError, ValueError):
+        return []
+    notes: list[str] = []
+    for item in result.selected:
+        path, errors = resolve_effective(item, root, new_format=result.format == "new")
+        if errors or path is None or not path.is_file():
+            continue
+        try:
+            notes.extend(extract_usage_notes(path.read_text(encoding="utf-8")))
+        except OSError:
+            continue
+    return notes
 
 
 def peek_model_calibrated(config_path: Path, model_id: str) -> bool:
@@ -219,6 +418,7 @@ def build_context(
         forbidden=forbidden,
         instruction_chars=instruction,
         chars_floor=chars_floor,
+        craft_notes=load_selected_usage(work_root),
         states=states,
         unresolved=unresolved,
         prose_start_end=prose,
@@ -287,6 +487,11 @@ def render_context_md(context: ContextDocument) -> str:
     )
     if context.forbidden:
         lines.append("forbidden: " + ", ".join(context.forbidden))
+        lines.append("")
+    if context.craft_notes:
+        lines.append("技法の使い方:")
+        lines.append("- 語の例は技法葉にあり、この context には載せない。")
+        lines.extend(f"- {note}" for note in context.craft_notes)
         lines.append("")
     for beat in context.beats:
         intent = beat.get("intent")

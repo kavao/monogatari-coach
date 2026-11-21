@@ -210,6 +210,7 @@ class ContextDocument(StrictModel):
     forbidden: list[str] = Field(default_factory=list)
     instruction_chars: int | None = None
     chars_floor: int | None = None
+    craft_notes: list[str] = Field(default_factory=list)
     states: list[dict[str, Any]] = Field(default_factory=list)
     unresolved: list[dict[str, Any]] = Field(default_factory=list)
     prose_start_end: dict[str, Any] | None = None
