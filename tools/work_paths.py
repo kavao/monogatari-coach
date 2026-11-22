@@ -37,8 +37,10 @@ DIR_KIND_ROOTS: dict[str, tuple[str, str]] = {
 # 新しい置き場だけを持つ種類: 種類 → `_work/` の下の親フォルダ。古い置き場が無いので組の解決・移行・
 # 古い構成の印の対象にしない（DIR_KIND_ROOTS には入れない）。作品に一つのフォルダとして使う。
 # structure: 構造方針 rolled の抽選の記録（計画 _workingspace/plans/20261025_structure-theory-dosing.md）。
+# status_moves: 分割章で章末ステータスのブロックを移す記録（計画 _workingspace/plans/20261121_chapter-status-display.md）。
 NEW_ONLY_DIRS: dict[str, str] = {
     "structure": "_work/structure",
+    "status_moves": "_work/status_moves",
 }
 
 # まだ無い組（absent）を始める置き場。既定は新しい置き場。書き手のツールがまだ新しい置き場へ

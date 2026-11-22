@@ -15,8 +15,9 @@ description: >-
 
 ## このスキルが指す運用
 
+0. **章末ステータスの印を外す（本文に `<!-- status:` の印がある作品では必須）**: `uv run python tools/novel_web_export.py novels/<作品>` で、印だけを外した稿を `_novel_text_re/` に書き出す（既存は上書きしない。書き直すときは `--overwrite` で旧版を `_novel_text_re/_old/<日時>/` へ退避）。このあとの手順 3 は **`--input-subdir _novel_text_re --output-subdir _novel_text_re`** で実行する。規則は `workflow-specification.md`「章末ステータスの表示（CHAPTER_STATUS）」の「出力」。
 1. **（任意）ミラー**: `novels/<作品>/_novel_text/*.md` を `novels/<作品>/_novel_text_re/` にコピーする。
-   ― スクリプトが **`--input-subdir _novel_text` → `--output-subdir _novel_text_re`** のとき、入力が `_novel_text` なら**ワンステップでルビ付き稿を `_novel_text_re` に書ける**ため、ミラーは必須ではない。
+   ― スクリプトが **`--input-subdir _novel_text` → `--output-subdir _novel_text_re`** のとき、入力が `_novel_text` なら**ワンステップでルビ付き稿を `_novel_text_re` に書ける**ため、ミラーは必須ではない（手順 0 を使った作品では、ミラーの代わりに手順 0 の出力を入力にする）。
 2. **CSV 整備**: 同じ作品フォルダに **`kakuyomu.csv`** を置く（列定義は下記）。
 3. **実行**: `_how_to/tools/kakuyomu_ruby_apply.py` を実行する。
 4. **確認**: `novel_char_count.py` や Read で `_novel_text_re` を確認する。

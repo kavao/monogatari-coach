@@ -127,7 +127,9 @@ def initial_config_text(
         "| 作者名 | Standard Writer（000_default） |\n"
         f"| METRON | {metron_value} |\n"
         f"| CHRONOS | {chronos_value} |\n"
-        f"| AUDIT_LOG | {audit_value} |\n\n"
+        f"| AUDIT_LOG | {audit_value} |\n"
+        # 章末ステータス（CHAPTER_STATUS）。新規作品の既定は SYNOPSIS（設計・あらすじの章末だけ）。
+        "| CHAPTER_STATUS | SYNOPSIS |\n\n"
         "## ステータス\n\n"
         "- 企画書: 未着手\n"
         "- 設計書: 未着手\n"

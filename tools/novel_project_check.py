@@ -471,6 +471,55 @@ def _check_inspection_layers(work: Path) -> dict[str, Any]:
     }
 
 
+def _check_chapter_status(work: Path) -> dict[str, Any]:
+    """章末ステータス（CHAPTER_STATUS）の設定と本文のブロックを確かめる。
+
+    設定エラーは NG。印の壊れ・値と食い違うブロックは WARN。印のない旧形式の章末ブロックは INFO。
+    正本は workflow-specification「章末ステータスの表示（CHAPTER_STATUS）」。
+    """
+
+    import chapter_status as cs
+
+    result: dict[str, Any] = {"ok": True, "warnings": [], "infos": []}
+    try:
+        config = cs.load_chapter_status(work / "config.md")
+    except cs.ChapterStatusConfigError as error:
+        result.update(ok=False, error=str(error))
+        return result
+    result["mode"] = config.mode.value
+    result["style"] = config.style
+    result["explicit"] = bool(config.explicit)
+    legacy: list[str] = []
+    for path in _novel_text_files(work):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        scan = cs.scan(text)
+        for error in scan.errors:
+            result["warnings"].append(f"章末ステータスの印: {path.name}: {error}")
+        if scan.blocks and config.mode is not cs.ChapterStatusMode.TEXT:
+            result["warnings"].append(
+                f"章末ステータス: CHAPTER_STATUS={config.mode.value} ですが {path.name} に章末ブロックがあります"
+            )
+        for line in cs.find_legacy_blocks(text):
+            legacy.append(f"{path.name}:{line}")
+    if config.mode is cs.ChapterStatusMode.TEXT and not (work / cs.STATUS_DISPLAY_NAME).is_file():
+        result["warnings"].append(
+            f"章末ステータス: CHAPTER_STATUS=TEXT ですが {cs.STATUS_DISPLAY_NAME} がありません"
+            "（tools/novel_status_display.py init で作る）"
+        )
+    result["legacy"] = legacy
+    if legacy and config.mode is not cs.ChapterStatusMode.TEXT:
+        result["infos"].append(
+            "旧形式の章末ブロック（印なし）: "
+            + "、".join(legacy)
+            + "。本文に残すなら config.md に CHAPTER_STATUS | TEXT と CHAPTER_STATUS_STYLE | experience_log"
+            " などを足し、作者の指示で印を付け直す。残さないなら設計へ移す（本文は自動で書き換えない）"
+        )
+    return result
+
+
 def check_novel_project(
     work: Path,
     *,
@@ -501,6 +550,7 @@ def check_novel_project(
         "optional": {},
         "issues": [],
         "warnings": [],
+        "infos": [],
     }
 
     if not work.is_dir():
@@ -688,6 +738,14 @@ def check_novel_project(
             )
         if pending:
             out["warnings"].append("中断した移行: " + "、".join(pending) + "（tools/novel_work_migrate.py --recover）")
+
+    chapter_status_result = _check_chapter_status(work)
+    out["optional"]["chapter_status"] = chapter_status_result
+    if not chapter_status_result["ok"]:
+        out["ok"] = False
+        out["issues"].append(f"章末ステータス設定: {chapter_status_result.get('error')}")
+    out["warnings"].extend(chapter_status_result.get("warnings") or [])
+    out["infos"].extend(chapter_status_result.get("infos") or [])
 
     if check_inspection_layers:
         inspection_result = _check_inspection_layers(work)
@@ -1067,10 +1125,21 @@ def main(argv: list[str] | None = None) -> int:
             chapters = "・".join(f"第{c}章" for c in excluded)
             print(f"      - 計測対象外（METRON_FROM より前・下書き期）: {chapters}")
 
+    cs_info = opt.get("chapter_status") or {}
+    if cs_info.get("mode"):
+        style = f"（型: {cs_info['style']}）" if cs_info.get("style") else ""
+        origin = "" if cs_info.get("explicit") else "（行なし・既定）"
+        print(f"    章末ステータス: {cs_info['mode']}{style}{origin}")
+
     if result.get("warnings"):
         print("\n  警告（WARNING・NG ではない）:")
         for line in result["warnings"]:
             print(f"    ! {line}")
+
+    if result.get("infos"):
+        print("\n  情報（INFO）:")
+        for line in result["infos"]:
+            print(f"    i {line}")
 
     if result["ok"] and not result.get("issues"):
         print("\n=== 結果: OK ===")

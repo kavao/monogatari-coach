@@ -56,6 +56,7 @@ _SCENE_ANCHOR = re.compile(
 _HEADING = re.compile(r"(?m)^(#{1,6})[ \t]+.+$")
 _OFFSET = re.compile(r"^(\d+):(\d+)$")
 _BEAT_LEFT = re.compile(r"<!--/?beat:|<!--fact:")
+_STATUS_BLOCK_MARK = re.compile(r"<!--\s*status:(?:begin|end)\s*-->")
 _CANONICAL_WRITTEN = "canonical text written"
 
 
@@ -124,6 +125,13 @@ def _lf(text: str) -> str:
 def _clean_scene_body(marked: str) -> str:
     """マーカーを除き、Beat境界に残った連続空行を段落1つ分へ畳む。"""
 
+    # 章末ステータスのブロックは status_block の run でだけ置く。場面の候補に begin / end の印が
+    # あれば拒む（本文内の通知の status:line は場面の一部なので通す）。
+    if _STATUS_BLOCK_MARK.search(marked):
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "scene candidates must not contain status:begin / status:end; use a status_block run",
+        )
     body = normalize_body(strip_generation_markers(marked))
     if _BEAT_LEFT.search(body):
         raise BridgeError("JOB_CONFLICT", "published body still contains Beat/fact markers")
@@ -211,23 +219,40 @@ def replacement_span(
     selector: Selector | None,
     request_kind: RequestKind,
 ) -> tuple[int, int]:
+    # 章末ステータスのブロック（CHAPTER_STATUS）は本文の外。編集範囲はブロックの手前までにし、
+    # 追記はブロックの直前へ、場面の差し替えはブロックの始まりで切る。ブロックは status_block の
+    # run でだけ置き換える（writing_bridge/status_block.py）。
+    from chapter_status import body_end
+
+    limit = body_end(text)
     if request_kind is RequestKind.APPEND:
-        return len(text), len(text)
+        return limit, limit
     anchored = scene_anchor_span(text, scene_id)
     if anchored is not None:
-        return anchored
+        return _clip_to_body(anchored, limit)
     if selector is None:
-        if text.strip():
+        if text[:limit].strip():
             raise BridgeError(
                 "MISSING_FIELD",
                 "existing text requires a selector, scene anchor, or append",
             )
-        return 0, len(text)
+        return 0, limit
     if selector.kind is SelectorKind.OFFSET:
-        return _offset_span(text, selector.value)
+        return _clip_to_body(_offset_span(text, selector.value), limit)
     if selector.kind is SelectorKind.HEADING:
-        return _heading_span(text, selector.value)
-    return _comment_span(text, selector.value)
+        return _clip_to_body(_heading_span(text, selector.value), limit)
+    return _clip_to_body(_comment_span(text, selector.value), limit)
+
+
+def _clip_to_body(span: tuple[int, int], limit: int) -> tuple[int, int]:
+    start, end = span
+    if start > limit:
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "the target lies inside the chapter status block; use a status_block run",
+            refs={"start": start, "limit": limit},
+        )
+    return start, min(end, limit)
 
 
 def compose_published(
@@ -587,6 +612,10 @@ def publish(
         raise BridgeError("MISSING_FIELD", "record the user's publish authorization source")
     if not request.permissions.publish:
         raise BridgeError("PERMISSION_DENIED", "this run was prepared without publish permission")
+    if request.request_kind is RequestKind.STATUS_BLOCK:
+        from .status_block import publish_status_block
+
+        return publish_status_block(root, dest, request, authorization=authorization, dry_run=dry_run)
     _refuse_active_repair(dest)
     commands._assert_received_candidates_current(root, dest)
     candidate = _candidate(root, dest)
@@ -628,7 +657,7 @@ def publish(
             if raw_sha256(text_file) == state.original_raw_sha256:
                 start = len(state.prefix)
                 end = len(now) - len(state.suffix) if state.suffix else len(now)
-                if request.request_kind is RequestKind.APPEND:
+                if request.request_kind is RequestKind.APPEND and not state.suffix:
                     start = end = len(now)
                 if now[:start] != state.prefix or now[end:] != state.suffix:
                     raise BridgeError("STALE_EVIDENCE", "text outside the target scene changed")

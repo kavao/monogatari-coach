@@ -87,6 +87,8 @@ from .storage import (
     write_text,
 )
 
+_STATUS_BLOCK_MARK = re.compile(r"<!--\s*status:(?:begin|end)\s*-->")
+
 
 def work_root_of(path: Path) -> Path:
     root = path.resolve()
@@ -196,6 +198,18 @@ def _prepare_locked(
     rel_text = work_rel_path(text_path, field="target.text_path")
     text_file = resolve_work_path(root, rel_text, field="target.text_path")
     text_exists = text_file.is_file()
+    if request_kind is RequestKind.STATUS_BLOCK:
+        return _prepare_status_block(
+            root,
+            scene_id=scene_id,
+            rel_text=rel_text,
+            text_file=text_file,
+            model_id=model_id,
+            repo_root=repo_root,
+            flags=flags,
+            dry_run=dry_run,
+            allow_publish=allow_publish,
+        )
     if not text_exists and request_kind is not RequestKind.NEW:
         raise BridgeError(
             "UNKNOWN_REF",
@@ -338,6 +352,77 @@ def _prepare_locked(
     return 0, f"prepared: {dest}"
 
 
+def _prepare_status_block(
+    root: Path,
+    *,
+    scene_id: str,
+    rel_text: str,
+    text_file: Path,
+    model_id: str,
+    repo_root: Path,
+    flags,
+    dry_run: bool,
+    allow_publish: bool,
+) -> tuple[int, str]:
+    """章末ステータスのブロックだけを更新する run。契約・Beat・CHRONOS の入力は使わない。"""
+
+    from .status_block import chapter_of
+
+    if flags.metron is not InspectionFlag.ON:
+        raise BridgeError(
+            "CONFIG_ERROR",
+            "status_block is for METRON ON works; use tools/novel_status_display.py write when METRON is OFF",
+        )
+    if not allow_publish:
+        raise BridgeError("PERMISSION_DENIED", "status_block runs need --allow-publish")
+    if not text_file.is_file():
+        raise BridgeError("UNKNOWN_REF", f"text file not found: {rel_text}", refs={"path": rel_text})
+    chapter_of(scene_id)
+    run_id = allocate_run_id(root, scene_id)
+    request_id = allocate_request_id(root)
+    request = RequestDocument(
+        schema=SCHEMA,
+        request_id=request_id,
+        run_id=run_id,
+        work_rel=root.name,
+        scene_id=scene_id,
+        request_kind=RequestKind.STATUS_BLOCK,
+        target=TargetSpec.model_validate({
+            "text_path": rel_text,
+            "selector": None,
+            "base_raw_sha256": raw_sha256(text_file),
+            "base_text_sha256": text_sha256(text_file.read_text(encoding="utf-8")),
+            "base_exists": True,
+        }),
+        model=ModelRef(
+            id=model_id,
+            calibrated=peek_model_calibrated(repo_root / "config" / "metron_models.yaml", model_id),
+        ),
+        permissions=Permissions(draft=True, repair=False, publish=True, event_patch=False),
+        flags=FlagPair(
+            metron=FlagValue(flags.metron.value),
+            chronos=FlagValue(flags.chronos.value),
+        ),
+    )
+    dest = run_dir(root, scene_id, run_id)
+    if dry_run:
+        return 0, f"would prepare status_block: {dest}"
+    dest.mkdir(parents=True, exist_ok=True)
+    write_model(dest / "request.yaml", request)
+    append_journal(
+        dest / "journal.jsonl",
+        JournalEntry(
+            schema=SCHEMA,
+            at=now_iso(),
+            action=JournalAction.PREPARE,
+            run_id=run_id,
+            request_id=request_id,
+            note="status_block",
+        ),
+    )
+    return 0, f"prepared status_block: {dest}"
+
+
 @locked_scene
 def receive(
     work_root: Path,
@@ -360,6 +445,13 @@ def receive(
     if not candidate.is_file():
         raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
     _refuse_receive_after_publish(dest)
+    if request.request_kind is not RequestKind.STATUS_BLOCK and _STATUS_BLOCK_MARK.search(
+        candidate.read_text(encoding="utf-8")
+    ):
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "scene candidates must not contain status:begin / status:end; use a status_block run",
+        )
     incoming = raw_sha256(candidate)
     _refuse_receive_after_terminal_repair(dest, incoming)
     refs_path = dest / "artifact_refs.json"
@@ -403,7 +495,7 @@ def receive(
             ),
         )
         return 0, f"received (unchanged): {source}"
-    if request.flags.metron is FlagValue.ON:
+    if request.flags.metron is FlagValue.ON and request.request_kind is not RequestKind.STATUS_BLOCK:
         metron = metron_scene_dir(root, request.scene_id)
         metron.mkdir(parents=True, exist_ok=True)
         stored = _next_versioned_path(metron, "marked", ".md")
@@ -450,6 +542,11 @@ def inspect(
     root = work_root_of(work_root)
     dest = run_dir(root, scene_id, run_id)
     request = load_model(dest / "request.yaml", RequestDocument)
+    if request.request_kind is RequestKind.STATUS_BLOCK:
+        raise BridgeError(
+            "JOB_CONFLICT",
+            "status_block runs are not inspected (the block is not a Beat); run publish directly",
+        )
     _assert_base_text_current(root, request)
     _assert_received_candidates_current(root, dest)
     inspect_path, normalized, inspect_sha = _resolve_inspect_edition(
@@ -1129,7 +1226,7 @@ def _remember_metron_sources(
     *,
     marked: ArtifactRef,
 ) -> None:
-    if request.flags.metron is not FlagValue.ON:
+    if request.flags.metron is not FlagValue.ON or request.request_kind is RequestKind.STATUS_BLOCK:
         return
     metron = metron_scene_dir(root, request.scene_id)
     refs.metron = refs.metron or {}

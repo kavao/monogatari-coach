@@ -36,6 +36,8 @@ class RequestKind(str, Enum):
     APPEND = "append"
     LOCAL_EXPAND = "local_expand"
     REFINE = "refine"
+    # 章末ステータスのブロックだけを更新する（CHAPTER_STATUS。writing_bridge/status_block.py）。
+    STATUS_BLOCK = "status_block"
 
 
 class StateAt(str, Enum):

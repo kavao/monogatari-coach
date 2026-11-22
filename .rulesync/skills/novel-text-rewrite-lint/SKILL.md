@@ -94,8 +94,9 @@ python tools/novel_text_rewrite_lint.py novels/NNN_作品名/_novel_text/novel_t
 |---------|-----------|------|
 | `default`（未指定時） | A（章メタ）+ B（三点）+ C（セリフ句点） | 通常の清書後 lint |
 | `grammar` | C（セリフ行頭インデント）+ D（段落インデント）+ E（句読点重複・空括弧・助詞・全角スペース） | 執筆直後の誤打・書きかけ検出 |
-| `full` | default + grammar + slop（A〜E・G） | 清書前の総合チェック |
+| `full` | default + grammar + slop + status（A〜E・G・章末ステータス） | 清書前の総合チェック |
 | `slop` | G（低品質文の定型句・記号。info のみ） | 起草・清書の前後に定型句の重なりを見る |
+| `status` | `status_number_in_prose`（本文に数値のステータス。info のみ） | 章末ステータスの作品で、定義のない数値を見る。章末ブロック・`status:line` の行・作品の `status_display.md` で定義した括弧の中は検査しない |
 | `minimal` | B + C | 章メタ未整備の旧稿を体裁のみ確認 |
 | `strict_all` | default + D（段落インデント） | 体裁総仕上げ |
 

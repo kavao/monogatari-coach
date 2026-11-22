@@ -51,8 +51,12 @@ NO_CHAIN_MIN_SENTENCES = 20
 
 
 def extract_body(text: str) -> str:
+    from chapter_status import strip_for_measure
+
     body = strip_yaml_front_matter(text)
     body = _PUBLISHING_DIRECTIVE.sub("", body)
+    # 章末ステータスのブロックと通知の行は句読点の測定に入れない（CHAPTER_STATUS）。
+    body = strip_for_measure(body)
     kept: list[str] = []
     for line in body.splitlines():
         if HEADING_OR_META.match(line):

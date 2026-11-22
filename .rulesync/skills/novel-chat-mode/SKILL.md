@@ -325,7 +325,7 @@ NPC会話モードを使う作品の `_chat/rulebook.md` には、以下の形�
 
 | パス | 手順 |
 |-----|------|
-| ログそのまま | `[STATE UPDATE]` を除去して `_novel_text/` に保存 |
+| ログそのまま | `[STATE UPDATE]` を除去して `_novel_text/` に保存（`CHAPTER_STATUS | TEXT` の作品は下の「章末ステータス」） |
 | 清書 | セッションログを素材に清書して `_novel_text/` に書き出す（`novel-refinement-output` 準拠） |
 
 ---
@@ -419,6 +419,8 @@ GM（LLM）の地の文のあとに `[STATE UPDATE]` ブロックを挿入し、
 | **ログ → 清書** | 対話的に進めて後で文体を整える場合 | ログを素材にLLMが清書して `_novel_text/` に書き出す |
 
 どちらのパスでも `_novel_text/` への書き込み・確認・パス明示が完了してから「完了」とする。
+
+**章末ステータス**: `config.md` が `CHAPTER_STATUS | TEXT` の作品では、`[STATE UPDATE]` を捨てずに、その章の終わりまでの差分から章末ブロックの値を決め、作品の `status_display.md` の「書式」で章末ブロックにする（置き方・保存は `novel-text-file-output`「章末ステータス」）。値は `_chat/state/*.md` の現在値ではなく、その章に当たるセッションの `[STATE UPDATE]` を章の終わりの位置までたどって決める。たどれない値は「未確認」とし、推測で埋めない。台帳への記録は `novel-story-reflection`。`TEXT` 以外の作品では従来どおり `[STATE UPDATE]` を除去する。
 
 ### ファイル構造とリセット後の永続性
 

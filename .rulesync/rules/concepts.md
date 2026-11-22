@@ -99,6 +99,12 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 - 新規作品は METRON 既定 ON（OFF は明示時だけ。返答なしは「未応答・既定 ON」）、CHRONOS 既定 OFF。既存作品の値は変えない。行なしの既存作品は従来どおり OFF。OFF で下書き → ON で洗練は、明示 OFF した作品の経路として残す。
 - フラグは自動ワークフローの起動判定にだけ使い、明示された CLI は拒否しない。ON の検査結果は本文保存の完了と分け、既にある本文の完了を取り消さない。ON は当該作品の writing_bridge 場面作業を承認済みと扱う（課金生成・イベント上書き・画像は対象外）。詳細は `workflow-specification.md`「作品単位の METRON / CHRONOS / AUDIT_LOG フラグの詳細」。
 
+## 章末ステータス（CHAPTER_STATUS）
+
+- config.md の `CHAPTER_STATUS` は `OFF` / `SYNOPSIS`（行なし・新規の既定）/ `TEXT`。章末にゲーム的なステータスを出す場所を決める。`SYNOPSIS` は設計・あらすじの章末だけ、`TEXT` は本文の章末にも印（`<!-- status:begin -->`〜`end`）で囲んだブロックを一章に一つ置く。
+- 本文の地の文・台詞に数値のステータスを書かない。例外は `TEXT` の章末ブロックと、作品の `status_display.md` で定義した本文内の通知だけ（`CHAPTER_STATUS` の値によらない）。清書は定義どおりの通知を消さない。
+- 章末ブロックと独立した通知の行は字数・句読点の測定に数えない。保存・追記・清書でブロックを消さず、ブロックは明示したときだけ置き換える（METRON ON は `status_block` の run）。詳細は `workflow-specification.md`「章末ステータスの表示（CHAPTER_STATUS）」。
+
 ## 執筆接続（writing_bridge）
 
 - ON で対象場面にハッシュ一致の active run があるときは writing_bridge が検査責任を持ち、同じ版へ `metron_cli.py analyze` / `chronos_cli.py check` を重ねない。

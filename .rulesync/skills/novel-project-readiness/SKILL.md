@@ -40,6 +40,8 @@ python tools/novel_project_check.py novels/NNN_作品タイトル --no-character
 
 終了コード **0** なら「執筆前の必須は満たす」。**1** なら欠けを修正してから執筆する。
 
+- **章末ステータス**: 同じチェックが `config.md` の `CHAPTER_STATUS`（行なしは `SYNOPSIS`）を読む。未知の値・重複・`TEXT` で型なしは設定エラー（終了コード 1）。印の壊れ、値と食い違う章末ブロック、`TEXT` で `status_display.md` が無いことは WARN。印のない旧形式の章末ブロックは INFO で、本文は書き換えず作者に `TEXT` / `experience_log` へ移すか設計へ移すかを尋ねる（`workflow-specification.md`「章末ステータスの表示（CHAPTER_STATUS）」）。
+
 ### オプション
 
 | フラグ | 意味 |

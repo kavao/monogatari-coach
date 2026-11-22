@@ -62,6 +62,17 @@ _PUBLISHING_DIRECTIVE_LINE = re.compile(
 )
 
 
+STATUS_NUMBER_RULE = "status_number_in_prose"
+
+
+def _mask_spans(line: str, spans: list[tuple[int, int]]) -> str:
+    chars = list(line)
+    for start, end in spans:
+        for index in range(start, end):
+            chars[index] = " "
+    return "".join(chars)
+
+
 _FIXERS: dict[str, Any] = {
     "dialogue_leading_indent": lambda line: (
         line[1:] if (line.startswith("　「") or line.startswith("　『")) else line
@@ -352,7 +363,19 @@ def lint_file(
     except OSError as e:
         return [Issue("error", "file_read", str(e), rel_path, 0)]
 
-    lines = text.splitlines()
+    from chapter_status import (
+        bracketed_spans,
+        load_notice_definition,
+        status_line_numbers,
+        work_dir_for,
+    )
+
+    # 章末ステータスのブロック（status:begin〜end）と通知の行（status:line）は本文として検査しない。
+    # 空行に置き換えて行番号を保つ。
+    status_skip = status_line_numbers(text)
+    lines = ["" if number in status_skip else line
+             for number, line in enumerate(text.splitlines(), start=1)]
+    notice = load_notice_definition(work_dir_for(path))
 
     # paragraph_indent と padding_repeated_phrase は stateful なので通常の regex ループから分離する
     stateful = {"paragraph_indent", "padding_repeated_phrase"}
@@ -366,8 +389,12 @@ def lint_file(
         if allowlist_suppresses(raw_line, allowlist):
             continue
         for rule in regex_rules:
+            target_line = raw_line
+            if rule.id == STATUS_NUMBER_RULE and notice.usable and notice.brackets:
+                # 作品の status_display.md で定義した通知の括弧の中は、織り込んだ通知として外す。
+                target_line = _mask_spans(raw_line, bracketed_spans(raw_line, notice.brackets))
             for pat in rule.patterns:
-                m = pat.search(raw_line)
+                m = pat.search(target_line)
                 if m:
                     issues.append(
                         Issue(

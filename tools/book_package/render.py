@@ -202,6 +202,93 @@ class _VerticalProof:
     def rule(self) -> None:
         self._next_column()
 
+    # ── 章末ステータス（CHAPTER_STATUS）────────────────────────
+    # 本文と見分けられるよう、小さめの字で天から2字下げ、ブロックの前後に列に沿った細い罫を引く。
+
+    _STATUS_FONT = 8.5
+    _STATUS_GLYPH = 11.0
+    _STATUS_COLUMN = 12.0
+    _STATUS_INDENT_GLYPHS = 2
+
+    def _with_status_type(self, draw) -> None:
+        previous = (self.font_size, self.glyph_pitch, self.column_pitch, self.top)
+        self.font_size = self._STATUS_FONT
+        self.glyph_pitch = self._STATUS_GLYPH
+        self.column_pitch = self._STATUS_COLUMN
+        self.top = previous[3] - self._STATUS_GLYPH * self._STATUS_INDENT_GLYPHS
+        self.cursor_y = min(self.cursor_y, self.top)
+        self.canvas.setFont(self.font_name, self.font_size)
+        try:
+            draw()
+        finally:
+            self.font_size, self.glyph_pitch, self.column_pitch, self.top = previous
+            self.cursor_y = self.top
+            self.canvas.setFont(self.font_name, self.font_size)
+
+    def _columns_left(self) -> int:
+        """今のページに残っている列の数（今の列を含む）。"""
+
+        if self.column_x < self.left:
+            return 0
+        return int((self.column_x - self.left) // self.column_pitch) + 1
+
+    def _status_rule(self, length: float) -> None:
+        if self.current_page is None:  # pragma: no cover - internal invariant
+            raise RenderError("描画ページが開始されていません。")
+        self.canvas.setLineWidth(0.4)
+        end = max(self.bottom, self.top - length)
+        self.canvas.line(self.column_x, self.top, self.column_x, end)
+        self.current_page["has_visible_content"] = True
+        self._next_column()
+
+    def _status_column(self, chunk: str) -> None:
+        self.cursor_y = self.top
+        for glyph in chunk:
+            self._draw_glyph(glyph)
+        self._next_column()
+
+    def status(self, text: str) -> None:
+        """章末ステータスのブロック。前に一列あけ、罫・中身・罫の順に描く。
+
+        罫だけのページを作らないよう、行を先に列へ割り付け、始まりの罫は最初の列と、終わりの罫は
+        最後の列と同じページに収める（足りなければ改ページしてから描く）。罫の長さはページの下端
+        までではなく、ブロックでいちばん長い列の文字の高さに合わせる。
+        """
+
+        self._next_column()
+
+        def draw() -> None:
+            capacity = max(1, int((self.top - self.bottom) // self.glyph_pitch))
+            chunks: list[str] = []
+            for line in text.splitlines():
+                chunks.extend([line[i : i + capacity] for i in range(0, len(line), capacity)] or [""])
+            if not chunks:
+                return
+            length = max(len(chunk) for chunk in chunks) * self.glyph_pitch
+            # 始まりの罫 ＋ 最初の列（一列だけのブロックは終わりの罫まで）を同じページに置く。
+            if self._columns_left() < (3 if len(chunks) == 1 else 2):
+                self._new_flow_page()
+            self._status_rule(length)
+            for index, chunk in enumerate(chunks):
+                if index == len(chunks) - 1 and self._columns_left() < 2:
+                    # 最後の列のあとに終わりの罫を引く列が残らないときは、最後の列ごと次のページへ。
+                    self._new_flow_page()
+                self._status_column(chunk)
+            self._status_rule(length)
+
+        self._with_status_type(draw)
+
+    def status_line(self, text: str) -> None:
+        """本文内の独立した通知の行。罫は引かず、小さめの字で字下げする。"""
+
+        def draw() -> None:
+            self.cursor_y = self.top
+            for glyph in text:
+                self._draw_glyph(glyph)
+            self._next_column()
+
+        self._with_status_type(draw)
+
     def illustration(self, manifest: dict[str, Any], illustration_id: str) -> None:
         if self.current_page is not None and self.current_page["has_visible_content"]:
             self._finish_page()
@@ -272,6 +359,10 @@ def render_paper_proof(manifest: dict[str, Any], output: Path) -> dict[str, Any]
                     renderer.rule()
                 elif kind == "illustration":
                     renderer.illustration(manifest, block["illustration_id"])
+                elif kind == "status":
+                    renderer.status(block["text"])
+                elif kind == "status_line":
+                    renderer.status_line(block["text"])
                 else:  # pragma: no cover - manifest builder owns the block vocabulary
                     raise RenderError(f"未知の本文ブロックです: {kind}")
     pages = renderer.finish()

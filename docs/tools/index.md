@@ -360,6 +360,26 @@ python tools/novel_char_count.py novels/NNN_作品名
 python tools/novel_char_count.py novels/NNN_作品名/_novel_text/novel_text01.md
 ```
 
+章末ステータスのブロック（`<!-- status:begin -->`〜`end`）と通知の行（`<!-- status:line -->`）は既定で数えません。含めて数えるときは `--include-status-block` を付けます。
+
+---
+
+### `novel_status_display.py` / `novel_web_export.py` — 章末ステータス
+
+作品の `status_display.md` を作り（`init`）、章末ブロックを検査・書込み・移動（`check` / `write` / `move`）します。`novel_web_export.py` は印だけを外した Web 投稿稿を `_novel_text_re/` に書き出します。使い方は [章末ステータスと本文内の通知](../workflow/chapter-status.md) を参照してください。
+
+```bash
+# 作品の status_display.md を作る（既存は上書きしない）
+uv run python tools/novel_status_display.py init novels/NNN_作品名 --style notice_log
+
+# 完成した第3章の章末ブロックを確かめる
+uv run python tools/novel_status_display.py check novels/NNN_作品名 --completed-chapter 3
+
+# Web 投稿稿を書き出す（まず --dry-run で対象を確認）
+uv run python tools/novel_web_export.py novels/NNN_作品名 --dry-run
+uv run python tools/novel_web_export.py novels/NNN_作品名
+```
+
 ---
 
 ### `design_density.py` — 章の設計密度

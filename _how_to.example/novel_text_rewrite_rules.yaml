@@ -277,6 +277,19 @@ rules:
       地の文の行頭に全角スペース（　）がありません。
       rewrite §1: 「／『で始まらない本文行は全角スペース 1 字でインデント（見出し直後の第1行も含む）
 
+  # ── G. 章末ステータス（CHAPTER_STATUS）────────────────────────
+  # 本文の地の文・台詞に数値のステータスを書いた候補（workflow-specification「章末ステータスの表示」）。
+  # 章末ブロック（status:begin〜end）と通知の行（status:line）は検査しない。作品の status_display.md の
+  # 「本文内の通知」で定義した括弧の中も外す。info であり、定義どおりの通知なら残してよい。
+  - id: status_number_in_prose
+    level: info
+    patterns:
+      - "[0-9０-９]+\\s*[/／]\\s*[0-9０-９]+"
+      - "(?i)(Lv|ＬＶ|Ｌｖ)\\s*[.．]?\\s*[0-9０-９]+"
+      - "レベル\\s*[0-9０-９]+"
+      - "(好感度|経験値|HP|MP|ＨＰ|ＭＰ|攻撃力|防御力|魔力値|ステータス)[^。」]{0,6}[0-9０-９]+"
+    message: "本文に数値のステータスの候補。作品で定義した通知でなければ、身体の実感・行動・関係で描けないか見る"
+
 # ────────────────────────────────────────────
 # プロファイル（--profile で選択）
 # ────────────────────────────────────────────
@@ -319,6 +332,12 @@ profiles:
       - slop_both_sides
       - slop_invitation
       - slop_stock_emotion
+      - status_number_in_prose
+
+  status:
+    description: "章末ステータス（CHAPTER_STATUS）の候補抽出。本文に数値のステータスを書いた行。info のみで --strict を落とさない"
+    rules:
+      - status_number_in_prose
 
   padding:
     description: "冗長化（OP-P）の候補抽出（CHK-P1）。清書・規定量調整の前に候補を見る。info のみで --strict を落とさない"

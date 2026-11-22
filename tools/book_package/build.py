@@ -140,9 +140,21 @@ def _ensure_clean_lock(
     return lock
 
 
+_STATUS_BEGIN = re.compile(r"^\s*<!--\s*status:begin\s*-->\s*$")
+_STATUS_END = re.compile(r"^\s*<!--\s*status:end\s*-->\s*$")
+_STATUS_LINE = re.compile(r"^\s*<!--\s*status:line\s*-->\s?")
+
+
 def _blocks_from_text(text: str) -> list[dict[str, str]]:
+    """本文を組版の段落・見出し・罫・挿絵に分ける。
+
+    章末ステータス（CHAPTER_STATUS）の印は外し、ブロックの中身を `kind: status`、
+    独立した通知の行を `kind: status_line` として渡す（render.py が専用の描き方で描く）。
+    """
+
     blocks: list[dict[str, str]] = []
     paragraph: list[str] = []
+    status_lines: list[str] | None = None
 
     def flush_paragraph() -> None:
         if paragraph:
@@ -150,6 +162,26 @@ def _blocks_from_text(text: str) -> list[dict[str, str]]:
             paragraph.clear()
 
     for raw_line in text.splitlines():
+        if status_lines is not None:
+            if _STATUS_END.fullmatch(raw_line):
+                lines = [line.rstrip() for line in status_lines if line.strip()]
+                if lines:
+                    blocks.append({"kind": "status", "text": "\n".join(lines)})
+                status_lines = None
+            else:
+                status_lines.append(raw_line)
+            continue
+        if _STATUS_BEGIN.fullmatch(raw_line):
+            flush_paragraph()
+            status_lines = []
+            continue
+        status_mark = _STATUS_LINE.match(raw_line)
+        if status_mark:
+            flush_paragraph()
+            rest = raw_line[status_mark.end():].rstrip()
+            if rest:
+                blocks.append({"kind": "status_line", "text": rest})
+            continue
         directives = extract_illustration_directives(raw_line)
         if directives:
             flush_paragraph()
@@ -174,6 +206,8 @@ def _blocks_from_text(text: str) -> list[dict[str, str]]:
             blocks.append({"kind": "heading", "text": stripped.lstrip("#").strip()})
             continue
         paragraph.append(raw_line.rstrip())
+    if status_lines is not None:
+        raise BuildError("章末ステータスの印が閉じていません（<!-- status:begin --> に対する <!-- status:end --> がない）")
     flush_paragraph()
     return blocks
 

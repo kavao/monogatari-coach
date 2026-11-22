@@ -48,6 +48,16 @@ targets: ["*"]
 5. **報告の順序**: 上記 0〜4 の **後** に、**更新パス**と契約再読の要約を含めてユーザーへ報告する。確認・反映前に「保存した」「執筆を完了した」と述べ **ない**。
 6. **次手（1行・実行しない）**: 完了報告の末尾に本文監査（Consistency Audit `text`）の指示文を1行出す。第1章の保存では `次手: 本文と設定の照合 → 「第1章の本文一貫性を監査して」`、第2章以降の保存では `次手: 本文の一貫性監査 → 「本文の一貫性を監査して」`。監査は自動で実行せず、執筆完了の条件にもしない。
 
+### 章末ステータス（CHAPTER_STATUS）
+
+規則の正本は `workflow-specification.md`「章末ステータスの表示（CHAPTER_STATUS）」。本スキルでは次だけを行う。
+
+- 起草の前に `config.md` の `CHAPTER_STATUS` と、あれば作品の `status_display.md` を読む。定義のない数値のステータスを地の文・台詞に書かない。本文内の通知は `status_display.md` の「本文内の通知」節が「使う」で項目が埋まっているときだけ、その定義どおりに書く（独立した行は `<!-- status:line -->` を行頭に付ける）。
+- 追記・場面の差し替えは章末ブロックの手前に入れる。ブロックは消さない（writing_bridge の `publish` も同じ範囲で編集する）。
+- `TEXT` の作品では、章が完了したとき（全項・全場面がそろったとき）に、章の最後のファイルの末尾へブロックを置く。METRON ON は `prepare --request-kind status_block` の run（章の最後の場面の組の下）で `publish`、METRON OFF は `uv run python tools/novel_status_display.py write novels/<作品> --chapter N --content-file <中身>`。中身は `status_display.md` の「書式」に従い、値は台帳と一致させる。
+- 章完了の手順の最後で `uv run python tools/novel_status_display.py check novels/<作品> --completed-chapter N` を実行し、終了コード 0 を確かめる（`TEXT` 以外の作品でも、重複・置き場の確認として実行してよい）。
+- 完成した章に項を足して最後のファイルが変わったら、作者に確かめてから `novel_status_display.py move novels/<作品> --chapter N` で移す（止まったら同じコマンドで再開。METRON ON は status_block の run を二回立てる）。
+
 **本文は提示層**（`concepts.md`「設計層と提示層」）。型名・ジャンル葉の名前・ID・カタログ短縮（葉のあだ名）や、「ここで第一の転換点が訪れ」のような設計上の位置の実況を本文に書かない。
 
 ## 執筆前の設計密度（分量は出来事の数で用意する）

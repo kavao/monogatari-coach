@@ -46,9 +46,15 @@ def strip_yaml_front_matter(text: str) -> str:
     return text
 
 
-def count_chars(text: str, *, strip_fm: bool) -> int:
+def count_chars(text: str, *, strip_fm: bool, include_status: bool = False) -> int:
+    """字数を数える。章末ステータスのブロックと通知の行は、既定で数えない（chapter_status）。"""
+
     body = strip_yaml_front_matter(text) if strip_fm else text
     body = _PUBLISHING_DIRECTIVE.sub("", body)
+    if not include_status:
+        from chapter_status import strip_for_measure
+
+        body = strip_for_measure(body)
     normalized = unicodedata.normalize("NFC", body)
     return len(normalized)
 
@@ -133,6 +139,11 @@ def main() -> int:
         action="store_true",
         help="YAML フロントマターを本文に含めて数える（既定は除外）",
     )
+    parser.add_argument(
+        "--include-status-block",
+        action="store_true",
+        help="章末ステータスのブロックと通知の行（status:begin〜end / status:line）も数える（既定は除外）",
+    )
     args = parser.parse_args()
 
     script_dir = Path(__file__).resolve().parent
@@ -166,7 +177,7 @@ def main() -> int:
         except OSError as e:
             print(f"読み込み失敗: {md}: {e}", file=sys.stderr)
             return 1
-        n = count_chars(text, strip_fm=strip_fm)
+        n = count_chars(text, strip_fm=strip_fm, include_status=args.include_status_block)
         grand += n
         try:
             rel = md.relative_to(repo_root)
