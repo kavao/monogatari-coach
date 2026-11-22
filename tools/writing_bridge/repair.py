@@ -427,13 +427,14 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
                           exit_code=1)
     # 不足率は記録だけ残す（D21 の上限で止めるのはやめた。計画 §10.1）。
     current_chars = measured_chars(target, plan, texts)
-    density_notes = _measure_shortage(
+    # 記録だけ残す。古い D21 の案内（不足 10% 以上は設計追加へ）は、始められる稿では矛盾するので
+    # notes に載せず、開始の判定は _deepen_start の文だけを載せる（P4 の試行で見つけた）。
+    _measure_shortage(
         root, request, intent="length", target=target.target_chars,
         chars=current_chars, stop=False,
         scope=f"beat {target.beat_id}" if target.scope == "beat" else "scene")
-    target, start_notes = _deepen_start(target, plan, current_chars,
-                                        blocked="BeatMissing" not in required)
-    density_notes = [*density_notes, *start_notes]
+    target, density_notes = _deepen_start(target, plan, current_chars,
+                                          blocked="BeatMissing" not in required)
     try:
         bounds = resolve_bounds(target, plan)
     except LengthConfigError as error:

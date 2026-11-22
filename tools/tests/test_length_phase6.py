@@ -271,3 +271,16 @@ def test_inner_fences_do_not_close_the_outer_code_block(outer, inner):
               f"{sample}\n{outer}\n\n**分量目安**：8,000字。\n")
     row = chapter_densities(design)[0]
     assert row.items == 6 and row.verdict.startswith("少なすぎ")
+
+
+def test_started_length_run_does_not_carry_the_old_design_routing_note(tmp_path):
+    """始められる稿では、古い「不足 10% 以上は設計追加へ」の案内を notes に載せない（記録は残す）。"""
+    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
+    current = _beat_chars(work)
+    code, _ = _length_begin(work, repo, finish_target(round(current / 0.88)))
+    assert code == 0
+    state = json.loads((run / "repair_state.json").read_text(encoding="utf-8"))
+    assert not any("Deepen is for gaps under" in note for note in state["notes"])
+    entry = json.loads((work / "_metron/ch01-001/shortage_log.jsonl").read_text(
+        encoding="utf-8").splitlines()[-1])
+    assert entry["over_limit"] and not entry["stopped"]
