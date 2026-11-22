@@ -65,7 +65,7 @@ Monogatari Coach の主要ディレクトリと、どこを正本として扱う
 
 | 領域 | 役割 |
 |------|------|
-| `_workingspace/plans/` | これから行う作業予定、改修順、チェックリスト（トピック計画は `YYYYMMDD_<slug>.md`） |
+| `_workingspace/plans/` | これから行う作業予定、改修順、チェックリスト（トピック計画は `YYYYMMDD_<slug>.md`。完了後も同じフォルダに残し、ファイル先頭の `状態:` で未完了と完了側を分けます） |
 | `_workingspace/log/YYYYMM.md` | そのセッションで何をしたかの作業事実 |
 | `_workingspace/diary/YYYYMM.md` | 次回以降も効く判断理由、好み、運用知見 |
 
