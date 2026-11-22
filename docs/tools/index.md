@@ -1289,9 +1289,9 @@ python tools/novel_manga_apply_tag_defaults.py novels/NNN_作品名 --apply --no
 漫画ページ YAML の各コマの `weight` / `beat_type` から、最も重いコマが最大の枠になるコマ割りの型（`tools/manga_prompt_ir/data/panel_layout_templates.yaml`、1〜5コマ・20型）を選び、`layout_geometry`・`manga.layout_template_id`・コマ割りの文章（`manga.panel_layout` と各コマの `composition.layout` / `layout_en`）を書き込みます。同じ章の直前のページと同じ型は避けます。既定は提案の表示だけです。そういう型が無いページは書き込みません（`--allow-mismatch` で当てる）。
 
 ```bash
-# 提案を表示する（YAML は書き換えない）。--name-dir で番号付きネーム画像も出す
+# 提案を表示する（YAML は書き換えない）。作業IDは実際の日時・作品コード・用途に置き換える
 python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 \
-  --name-dir tools_temp/name_check
+  --name-dir _workingspace/tmp/runs/20261122_0947_123_manga_ir/name_check
 
 # 問題なければ書き込む（既に layout_geometry があるページは --overwrite なしでは触らない）
 python tools/novel_manga_layout_apply.py novels/NNN_作品名 --manga-stem manga_01 --apply
@@ -1450,6 +1450,95 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 ---
 
 ## レイアウト・フォルダ管理
+
+### 一時作業の一覧と整理
+
+一時作業の整理候補、保留中の作業、退避した項目を確認できます。新しい中間物は `_workingspace/tmp/runs/<作業ID>/` に置きます。作業ID は `YYYYMMDD_HHMM_<作品コード>_<用途>` で、作品横断の作業には作品コードの代わりに `global` を使います。
+
+一時物の一覧を表示します。JSON 形式では、退避操作に使う `path` と `fingerprint`、確認用の `modified` を確認できます。
+
+```powershell
+uv run python tools/workspace_temp_inventory.py --json
+```
+
+一覧は日本時間で更新日時と期限を表示します。`runs/` の中では、最新更新から30日を経過したものが期限切れになります。旧配置は用途の確認が必要なものとして表示されます。作品フォルダや画像の出力先は一覧対象に含まれません。
+
+継続する作業を保留し、再開後に保留を解除できます。次の作業IDは例なので、実際の名前に置き換えてください。
+
+```powershell
+uv run python tools/workspace_temp_hold.py 20261122_0947_110_ch02_refine --reason "作業を再開する"
+uv run python tools/workspace_temp_hold.py 20261122_0947_110_ch02_refine --release
+```
+
+保留中の理由と経過日数も一覧に表示されます。保留情報の作成や変更で親フォルダの更新日時が変わると、解除後の期限が延びます。
+
+退避するときは一覧で対象を確認し、表示された値を使って一項目ずつ指定します。PowerShell で JSON を読み取る場合は、日時の文字列を維持するため `ConvertFrom-Json -DateKind String` を使います。次の `一覧のpath` は確認した対象に置き換えてください。
+
+```powershell
+$items = @(uv run python tools/workspace_temp_inventory.py --json | ConvertFrom-Json -DateKind String)
+$target = @($items | Where-Object { $_.path -eq '一覧のpath' })
+if ($target.Count -ne 1) { throw '対象を一意に確認できません' }
+$target[0] | Format-List
+```
+
+対象を確認して承認した後、同じ一覧から取得した `fingerprint` を指定して退避します。`--modified` は任意で、指定すると更新日時も照合します。
+
+```powershell
+uv run python tools/workspace_temp_quarantine.py quarantine ($target[0].path) --fingerprint ($target[0].fingerprint)
+if ($LASTEXITCODE -ne 0) { throw '退避に失敗しました' }
+uv run python tools/workspace_temp_quarantine.py list
+```
+
+最初のコマンドが退避IDを表示し、次のコマンドが `_workingspace/tmp/_quarantine/` 内の記録と削除可能日時を表示します。保留、リンク、保護対象、一覧後に変更を検出した項目は退避できません。変更検出値はファイル名・サイズ・更新日時などの属性から作るため、属性を元に戻した変更を検出できない場合があります。旧配置は内容と参照先を確認してから選びます。
+
+退避したものはIDを指定して復元できます。14日が過ぎた項目は完全削除できます。
+
+```powershell
+uv run python tools/workspace_temp_quarantine.py restore '退避ID'
+uv run python tools/workspace_temp_quarantine.py delete '退避ID'
+```
+
+フォルダは元の場所へ保留付きで戻ります。単独ファイルは `runs/restored_<退避ID>/` に保留付きで戻ります。退避後に属性の変更を検出した内容やリンクを含む内容は完全削除できません。退避の移動直後に停止した場合は `recover-move '退避ID'` で記録を確認できます。削除途中で停止し内容が残った場合は、その内容と記録を確認してください。
+
+削除が失敗して `delete_failed` になった場合は、次の一覧でエラーと残ったファイルの件数・容量・`remaining_fingerprint` を確認します。件数と容量には保留情報の `.run.json` を含めません。削除途中に一部が消えている場合があるため、退避先の `payload/` に残った内容も確認してください。
+
+```powershell
+uv run python tools/workspace_temp_quarantine.py list
+```
+
+残存物の削除を承認した後に、一覧の値を指定して再試行できます。退避から14日が経過していない場合、リンクがある場合、一覧の確認後に内容の属性が変わった場合は停止します。
+
+```powershell
+uv run python tools/workspace_temp_quarantine.py retry-delete '退避ID' --fingerprint '一覧のremaining_fingerprint'
+```
+
+残存物がない場合は一覧に `remaining_fingerprint` として `missing` が表示されます。内容が残っていないことを確認したうえで `--fingerprint 'missing'` と指定すると記録を完了にできます。リンクや読み取りエラーがある場合は `remaining_error` が表示され、原因を解消するまで再試行できません。
+
+手動で整理した場合は、件数と記録先を査証ログに記録します。
+
+#### 自動整理の有効化と停止
+
+自動整理は初期状態では無効です。手動の退避・復元・完全削除を試し、動作を確認した後に、作者が `_workingspace/tmp/retention.json` を作成して次の内容を保存すると有効になります。
+
+```json
+{"auto": true}
+```
+
+有効な場合、査証ログの `append` の後、前回の自動整理から24時間以上経過していれば実行します。`runs/` の30日を過ぎた項目を退避し、`runs/` から退避して14日を過ぎた項目を完全削除します。旧配置、作品フォルダ、保留、要確認、リンクを含む項目には触れません。査証ログの `--dry-run` では整理を実行しません。退避した項目は14日の間に上の `restore` で戻せます。
+
+整理の実施内容と失敗は `_workingspace/tmp/_quarantine/.maintenance.jsonl` に記録します。査証ログには処理または失敗があった場合だけ件数を追記します。`AUDIT_LOG` が `OFF` の作品では査証ログを追記せず、整理側の記録に残します。整理が失敗した場合や時間上限に達した場合でも、元の査証ログは追記されます。
+
+停止するときは、同じファイルの `auto` を `false` に変更します。ファイルがない、読めない、不正な場合も自動整理は行われません。
+
+```json
+{"auto": false}
+```
+
+自動整理を単独で実行する場合も、同じ設定と24時間の間隔が適用されます。
+
+```powershell
+uv run python tools/workspace_temp_maintain.py
+```
 
 ### `novel_image_layout.py` — 画像フォルダの一括作成
 

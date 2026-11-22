@@ -276,7 +276,33 @@ def _run_append_cmd(args: argparse.Namespace, *, target: MonthlyTarget) -> int:
 
 
 def cmd_append(args: argparse.Namespace) -> int:
-    return _run_append_cmd(args, target=MonthlyTarget.AUDIT)
+    code = _run_append_cmd(args, target=MonthlyTarget.AUDIT)
+    if code or args.dry_run:
+        return code
+    root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    try:
+        from workspace_temp_maintain import launch
+
+        result = launch(root)
+    except Exception as exc:
+        result = {"quarantined": 0, "deleted": 0, "errors": [str(exc)]}
+    try:
+        if _maybe_skip_audit_log(args, root=root) is not None:
+            return code
+        if result.get("quarantined") or result.get("deleted") or result.get("errors"):
+            now = datetime.now()
+            year, month = parse_year_month(args.year_month) or (now.year, now.month)
+            message = (
+                f"一時物の自動整理: 退避{result.get('quarantined', 0)}件、"
+                f"削除{result.get('deleted', 0)}件、失敗{len(result.get('errors', []))}件。"
+                "記録: _workingspace/tmp/_quarantine/.maintenance.jsonl"
+            )
+            append_entry(message, target=MonthlyTarget.AUDIT, file_year=year,
+                         file_month=month, stamp=args.at or now, root=root)
+    except Exception:
+        # Maintenance never changes the outcome of the requested audit append.
+        pass
+    return code
 
 
 def cmd_diary_append(args: argparse.Namespace) -> int:

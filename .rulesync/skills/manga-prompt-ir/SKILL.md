@@ -405,11 +405,13 @@ python tools/novel_prompt_ir_validate.py novels/<作品フォルダ>
 
 YAML/JSON IR から既存バッチ互換 Markdown を出力（**漫画 `manga_XX.md` 含有時は `--novelai-pipe-tags` を付ける**）:
 
+作業ID `20261122_0947_123_ir_export` は例なので、実際の日時・作品コード・用途に置き換える。
+
 ```bash
 python tools/novel_prompt_ir_export_md.py \
   --character novels/<作品>/tag/characters/<character_id>.yaml \
   --manga-page novels/<作品>/manga/pages/manga_01_p01.yaml \
-  --output-dir tools_temp/ir_export_sample \
+  --output-dir _workingspace/tmp/runs/20261122_0947_123_ir_export/ir_export_sample \
   --manga-stem manga_01 \
   --novelai-pipe-tags
 ```

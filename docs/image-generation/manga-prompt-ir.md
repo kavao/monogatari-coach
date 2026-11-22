@@ -488,12 +488,12 @@ character_snapshots: []
 
 1.0 のページに `layout_geometry` や `text_mode` を直接書くと、検証で落ちます。先に移行ツール `tools/novel_manga_ir_migrate.py` で版を上げてから書き足します。移行ツールが足すのは、版番号と、人物・台詞を区別する ID（`subject_id` / `text_id`）だけです。**コマの矩形と `text_mode` は移行ツールが推測して書くことはない**ので、移行のあとに人（または Monogatari Coach）が書きます。
 
-まず dry-run で移行計画を作ります。ページ YAML は書き換えません。
+まず dry-run で移行計画を作ります。ページ YAML は書き換えません。以下の作業ID `20261122_0947_123_manga_ir` は例です。実際の日時と作品コードに置き換えてください。
 
 ```bash
 # 移行計画を作る（正本は書き換えない）
 uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
-  --dry-run --output tools_temp/migrate_plan.json   # 計画 JSON の保存先
+  --dry-run --output _workingspace/tmp/runs/20261122_0947_123_manga_ir/migrate_plan.json   # 計画 JSON の保存先
 ```
 
 計画 JSON の各ページの `unresolved` に `/render_instruction/text_mode` が出ていれば想定どおりです。内容を確認してから適用します。複数ページは `--only-page` を1ページずつ並べます（作品全体の一括適用はツールが拒否します）。
@@ -501,13 +501,13 @@ uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
 ```bash
 # 計画を適用する（計画作成後にページが変わっていたら止まる）
 uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
-  --apply-plan tools_temp/migrate_plan.json \
+  --apply-plan _workingspace/tmp/runs/20261122_0947_123_manga_ir/migrate_plan.json \
   --only-page manga/pages/manga_01_p01.yaml \
   --only-page manga/pages/manga_01_p02.yaml \
-  --output tools_temp/migrate_apply.json         # 適用結果と復元用 manifest の場所
+  --output novels/NNN_作品名/_manga_ir_backup/results/20261122_0947_123_manga_ir/apply.json  # 適用結果の保存先
 ```
 
-適用すると、ページの `schema_version` が `'1.1'` になり、作品フォルダの `_manga_ir_backup/` に元のファイルと復元用の manifest が残ります。元に戻したいときは、その manifest を `--restore-manifest` に渡します。
+適用すると、ページの `schema_version` が `'1.1'` になり、作品フォルダの `_manga_ir_backup/` に元のファイルと復元用の manifest が残ります。適用結果 JSON の `backup_manifest` に、その manifest の作品内のパスが記録されます。元に戻したいときは、作品内の manifest を `--restore-manifest` に渡します。
 
 そのあと各ページに `layout_geometry`（次節の CLI で起こせます）と `render_instruction.text_mode` を書き（コマの重み `weight`・拍子 `beat_type` などの任意欄を付けるのもこの後です）、`novel_prompt_ir_validate.py --strict-quality` で検証してから、互換 Markdown を出し直します。
 
@@ -529,7 +529,7 @@ uv run python tools/novel_manga_ir_migrate.py novels/NNN_作品名 \
 # 提案を表示し、番号付きネーム画像を書き出す（YAML は書き換えない）
 uv run python tools/novel_manga_layout_apply.py novels/NNN_作品名 \
   --manga-stem manga_01 \
-  --name-dir tools_temp/name_check          # ネーム画像の出力先
+  --name-dir _workingspace/tmp/runs/20261122_0947_123_manga_ir/name_check  # ネーム画像の出力先
 ```
 
 提案に問題がなければ書き込みます。

@@ -47,10 +47,10 @@ targets: ["*"]
 
 ## 検証
 
-Markdown 互換フォーマットの構文確認（バッチ・手作業の整合用）:
+Markdown 互換フォーマットの構文確認（バッチ・手作業の整合用）。作業ID `20261122_0947_123_ir_export` は例なので、実際の日時・作品コード・用途に置き換える。
 
 ```bash
-python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/characters/<id>.yaml --output-dir tools_temp/ir_export_sample
+python tools/novel_prompt_ir_export_md.py --character novels/<作品>/tag/characters/<id>.yaml --output-dir _workingspace/tmp/runs/20261122_0947_123_ir_export/ir_export_sample
 ```
 
 `image_provider_novel_tag_batch.py` は YAML IR を直接読むため、Markdown の Danbooru 行を抽出する検証ステップは不要になった。

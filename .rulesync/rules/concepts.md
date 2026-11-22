@@ -132,9 +132,9 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## ルールとドキュメント
 
-- ルール・スキル更新は `.rulesync/` を主編集先とし、`rule-authoring.md` に従う。
-- 人間向け操作説明は `docs/` に置き、`docs-writing.md` に従う。
-- `tools/` は共有・正規運用の Python ツール、`tools_temp/` は短命な試行に使う。
+- ルール・スキルは `.rulesync/` を主編集先とし、`rule-authoring.md` に従う。
+- 操作説明は `docs/` に置き、`docs-writing.md` に従う。
+- `tools/` は正規ツール、`tools_temp/` は短命の試行コード、中間物は `_workingspace/tmp/runs/` に置く。
 - `_how_to/` の恒久的なルール化・雛形更新は、ユーザーの明示依頼と `_how_to.example/` 側の検討を要する。
 
 ## 詳細仕様の参照先
