@@ -745,18 +745,13 @@ def main(argv: list[str] | None = None) -> int:
     if short["scene_short"] or short["beats_short"]:
         beats = "、".join(f"{b['beat']} {b['chars']}/{b['floor']}" for b in short["beats_short"]) or "なし"
         print(f"床まで: 場面 {short['scene_chars']}/{short['scene_floor']} 字（不足 {short['scene_short']}）・床に届かない Beat: {beats}")
-        print("  不足は言い換えで埋めない。inspect のあと、加筆工程（出来事を足す。作者の承認）か Deepen へ回す")
+        print("  分量は清書で判定する（清書待ち）。言い換えで埋めない")
     density = selection["design_density"]
     if density["over_limit"] or density["beats_over_limit"]:
         beats = "、".join(f"{b['beat']} {b['chars']}/{b['target']}（{b['shortage']:.0%}）" for b in density["beats_over_limit"]) or "なし"
         print(f"DESIGN_DENSITY: 指示目標 {density['scene_target']} 字に対して場面は {density['scene_shortage']:.0%} 不足"
-              f"（Deepen で埋めるのは {density['limit']:.0%} 未満まで）。{density['limit']:.0%} 以上足りない Beat: {beats}")
-        print("  Deepen では埋めない。足りない Beat を親として、子エピソード（出来事）を足す案を作者へ出す:")
-        print(f"  1. 親を目的・障害・結果・変化に分け、薄いところにだけ、位置に合う演算子で子を置く（{SUB_EPISODE_LEAF} §2〜§3）")
-        print("  2. 案は tools/metron/episodes.py の addition_issues と同じ条件（状態の変化・親とのつながり・"
-              "持ち帰りか具体的な効果）で確かめてから出す")
-        print(f"  3. 承認のあと、設計と episodes.yaml（span_pending: true）へ足し、その Beat を書き直す"
-              f"（{LENGTH_OPS} §4.7「設計追加の手順」）")
+              f"（清書で判定）。{density['limit']:.0%} 以上足りない Beat: {beats}")
+        print(f"  清書のあとも許容帯の外なら、子エピソードを足す案を作者へ出す（{SUB_EPISODE_LEAF}、{LENGTH_OPS} §4.7）")
     print("次: uv run python tools/writing_bridge_cli.py receive "
           f"{args.work.as_posix()} --scene-id {args.scene_id} --run-id {args.run_id} --candidate {final.as_posix()}")
     return 0

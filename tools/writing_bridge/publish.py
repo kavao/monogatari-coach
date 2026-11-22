@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Literal
 
+import yaml
+
 from metron.repair import normalize_novel_body, strip_generation_markers
 from metron.repair_steps import StepModel
 from metron.storage import atomic_write_text
@@ -513,6 +515,45 @@ def _refuse_if_c1_not_ready(
     )
 
 
+def _check_metron_before_publish(
+    root: Path, dest: Path, request: RequestDocument, repo_root: Path, marked: Path,
+) -> str:
+    """採用候補の必須指摘を確認する。既存計測があれば同じ版を再利用する。"""
+    if request.flags.metron is not FlagValue.ON:
+        return ""
+    from .repair import required_repair_reasons
+
+    metron = metron_scene_dir(root, request.scene_id)
+    plan = commands.load_beat_plan(metron / "beats.yaml")
+    cached = commands._matching_metron_edition(metron, raw_sha256(marked))
+    if cached is not None and (metron / f"draft.{cached[0]:03d}.md").is_file():
+        edition, metrics, spans = cached
+        clean = (metron / f"draft.{edition:03d}.md").read_text(encoding="utf-8")
+    else:
+        result = commands.analyze_marked_text(marked.read_text(encoding="utf-8"), plan, run=1)
+        metrics, spans, clean = result.metrics, result.spans, result.clean_text
+        finish = commands._edition_finish_reason(root, dest, marked, metrics)
+        if finish:
+            metrics.metrics.finish_reason = finish
+    calibration = None
+    if request.model.calibrated:
+        try:
+            calibration = commands.load_model_calibration(
+                repo_root / "config" / "metron_models.yaml", request.model.id)
+        except commands.CalibrationNotReady:
+            pass
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            # 校正済みのはずのモデルで設定が読めないときは、弱い検査に落とさず止める。
+            raise BridgeError("CONFIG_ERROR", f"cannot load METRON calibration: {error}") from error
+    reasons = required_repair_reasons(metrics, plan, calibration, clean, spans)
+    warning = ("MODEL_UNCALIBRATED: coverage・span_order・unmapped・打ち切りのみ確認"
+               if calibration is None else "")
+    if reasons:
+        raise BridgeError("JOB_CONFLICT", "METRON required findings: " + ", ".join(reasons)
+                          + (f"; {warning}" if warning else ""), refs={"reasons": reasons})
+    return warning
+
+
 def _follow_inspect(
     root: Path,
     dest: Path,
@@ -622,6 +663,7 @@ def publish(
     scene_body = _clean_scene_body(candidate.read_text(encoding="utf-8"))
     text_file = resolve_work_path(root, request.target.text_path)
     state_path = dest / "publish_state.json"
+    prechecked = False
 
     if state_path.is_file():
         state = read_publish_state(state_path)
@@ -634,14 +676,24 @@ def publish(
                 raise BridgeError("STALE_EVIDENCE", "published text changed after save")
             return 0, f"already published: {text_file}"
         if dry_run:
-            return _dry_run_active_state(dest, request, state, scene_body, text_file)
+            warning = _check_metron_before_publish(root, dest, request, repo_root, candidate)
+            code, message = _dry_run_active_state(dest, request, state, scene_body, text_file)
+            return code, message + (f"; {warning}" if warning else "")
     else:
         state = _plan_state(root, request, text_file, candidate, scene_body, authorization)
         if dry_run:
             assembled = _assert_assembled_matches_intended(
                 state, scene_body, request.request_kind
             )
-            return _punctuation_dry_run_result(assembled, text_file)
+            warning = _check_metron_before_publish(root, dest, request, repo_root, candidate)
+            code, message = _punctuation_dry_run_result(assembled, text_file)
+            return code, message + (f"; {warning}" if warning else "")
+        # 必須の指摘や C1 で止まる場合は publish_state.json を作らない。作ってから止まると、
+        # 直した候補を受け取り直しても STALE_EVIDENCE になり、同じ run で再試行できない。
+        # C1（CHRONOS ON のときの inspect）を先にして、METRON の確認はその計測を使い回す。
+        _refuse_if_c1_not_ready(root, dest, request, repo_root, observations_path, candidate)
+        _check_metron_before_publish(root, dest, request, repo_root, candidate)
+        prechecked = True
         _save(dest, state)
         _journal(dest, request, note="publish begun", hashes={"candidate": state.candidate_hash})
 
@@ -651,7 +703,9 @@ def publish(
         state.stage = "inspect"
 
     if action == "write" and state.stage in {"backup", "write"} and state.status != "completed":
-        _refuse_if_c1_not_ready(root, dest, request, repo_root, observations_path, candidate)
+        if not prechecked:  # 再開した publish は、保存の前の確認をここで受け直す
+            _refuse_if_c1_not_ready(root, dest, request, repo_root, observations_path, candidate)
+            _check_metron_before_publish(root, dest, request, repo_root, candidate)
         if text_file.is_file() and state.stage == "backup":
             now = _lf(text_file.read_text(encoding="utf-8"))
             if raw_sha256(text_file) == state.original_raw_sha256:

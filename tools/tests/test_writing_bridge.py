@@ -137,7 +137,7 @@ def test_prepare_inspect_ok_does_not_rewrite_text(tmp_path: Path) -> None:
     report = load_json_model(run / "report.json", ReportDocument)
     assert report.chronos_registered is ItemStatus.SUCCESS
     assert not any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
-    assert report.next_action == "床到達・必須なし → 保存へ"
+    assert report.next_action == "必須なし → 保存へ"
 
 
 def test_stale_hash_is_detected(tmp_path: Path) -> None:
@@ -441,7 +441,7 @@ def test_chronos_without_scene_events_is_nonblocking_finding(tmp_path: Path) -> 
     report = load_json_model(run / "report.json", ReportDocument)
     assert report.chronos_registered is ItemStatus.FINDINGS
     assert any(item.code == "CHRONOS_NO_SCENE_EVENTS" for item in report.findings)
-    assert report.next_action == "床到達・必須なし → 保存へ"
+    assert report.next_action == "必須なし → 保存へ"
     status_code, status_text = status(work, scene_id="ch01-001", run_id="run-0001")
     assert status_code == 0
     assert "chronos_findings: CHRONOS_NO_SCENE_EVENTS" in status_text

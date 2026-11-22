@@ -88,6 +88,7 @@ from .storage import (
 )
 
 _STATUS_BLOCK_MARK = re.compile(r"<!--\s*status:(?:begin|end)\s*-->")
+_UNCALIBRATED_NOTE = "V1 classify skipped; only Beat mapping and truncation checked at publish"
 
 
 def work_root_of(path: Path) -> Path:
@@ -678,6 +679,7 @@ def inspect(
         ],
         open_issues=[item.model_dump(mode="json", by_alias=True) for item in errors],
         next_action=None,
+        length_status=(None if floor_met is None else "ok" if floor_met else "refine_pending"),
     )
     repair_active = False
     repair_path = dest / "repair_state.json"
@@ -734,7 +736,10 @@ def inspect(
         return 1, f"inspect findings: {dest / 'report.json'}"
     if defer_c1 and any(item.code == "TEXT_STATE_UNVERIFIED" for item in errors):
         return 0, f"inspected (C1 deferred while repair active): {dest / 'report.json'}"
-    return 0, f"inspected: {dest / 'report.json'}"
+    pending = next((item.note for item in report.findings if item.code == "LENGTH_REFINE_PENDING"), None)
+    uncalibrated = next((item.note for item in report.findings if item.code == "MODEL_UNCALIBRATED"), None)
+    details = [item for item in (pending, uncalibrated) if item]
+    return 0, f"inspected: {dest / 'report.json'}" + ("; " + "; ".join(details) if details else "")
 
 
 def status(work_root: Path, *, scene_id: str, run_id: str) -> tuple[int, str]:
@@ -847,9 +852,24 @@ def _inspect_metron(
         path = metron / name
         refs.metron[key] = ArtifactRef(path=_rel(root, path), raw_sha256=raw_sha256(path))
     write_model(refs_path, refs, json_format=True)
+    from .repair import required_repair_reasons
+    clean_text = (metron / f"draft.{edition:03d}.md").read_text(encoding="utf-8")
+    # 校正なしで決まる必須（Beat の対応の崩れと打ち切り）。打ち切りは校正済みなら分類の指摘に出るので、
+    # そちらでは重ねない。
+    precheck = required_repair_reasons(metrics, beats, None, clean_text, spans)
+    mapping_notes = [ReportFinding(code=reason, note="Beat mapping requires repair")
+                     for reason in precheck if reason != "GenerationTruncated"]
+    truncation_notes = [ReportFinding(code="GenerationTruncated",
+                                      note=f"finish_reason={metrics.metrics.finish_reason!r}; generation was cut off")
+                        for reason in precheck if reason == "GenerationTruncated"]
     floor_met = metrics.metrics.scene.chars >= beats.generation.chars_floor
+    length_notes = [] if floor_met else [ReportFinding(
+        code="LENGTH_REFINE_PENDING",
+        note=f"分量は清書待ち（場面 {metrics.metrics.scene.chars} / 床 {beats.generation.chars_floor} 字）",
+    )]
     if not request.model.calibrated:
-        return ItemStatus.FINDINGS, [], [], floor_met
+        return ItemStatus.FINDINGS, [], [*mapping_notes, *truncation_notes, *length_notes, ReportFinding(
+            code="MODEL_UNCALIBRATED", note=_UNCALIBRATED_NOTE)], floor_met
     try:
         calibration = load_model_calibration(
             repo_root / "config" / "metron_models.yaml",
@@ -859,7 +879,8 @@ def _inspect_metron(
         return (
             ItemStatus.FINDINGS,
             [],
-            [ReportFinding(code="MODEL_UNCALIBRATED", note="V1 classify skipped; V0 metrics kept")],
+            [*mapping_notes, *truncation_notes, *length_notes,
+             ReportFinding(code="MODEL_UNCALIBRATED", note=_UNCALIBRATED_NOTE)],
             floor_met,
         )
     classified = classify_metrics(metrics, beats, calibration, spans=spans)
@@ -871,7 +892,7 @@ def _inspect_metron(
         )
         for finding in classified.findings
     ]
-    return ItemStatus.FINDINGS if classified.findings else ItemStatus.SUCCESS, [], notes, floor_met
+    return ItemStatus.FINDINGS if classified.findings or mapping_notes else ItemStatus.SUCCESS, [], [*notes, *mapping_notes, *length_notes], floor_met
 
 
 def _refuse_receive_after_terminal_repair(dest: Path, incoming: str) -> None:
@@ -1368,6 +1389,10 @@ def _render_report_md(report: ReportDocument) -> str:
         f"- CHRONOS登録データ検査: {report.chronos_registered.value}",
         f"- 本文状態照合: {report.text_state.value}",
     ]
+    if report.length_status == "refine_pending":
+        pending = next((item.note for item in report.findings if item.code == "LENGTH_REFINE_PENDING"), None)
+        if pending:
+            lines.append(f"- {pending}")
     if repair_label:
         lines.append(f"- 自動修復: {repair_label}")
     if report.next_action:

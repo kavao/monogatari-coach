@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from re import fullmatch
 
@@ -279,6 +279,7 @@ class ReportDocument(StrictModel):
     repair_history: list[dict[str, Any]] = Field(default_factory=list)
     open_issues: list[dict[str, Any]] = Field(default_factory=list)
     next_action: str | None = None
+    length_status: Literal["ok", "reported", "refine_pending"] | None = None
 
     @field_validator("schema_version")
     @classmethod

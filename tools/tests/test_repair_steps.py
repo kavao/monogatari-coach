@@ -26,7 +26,7 @@ from writing_bridge.storage import load_json_model, write_model
 
 
 def _session():
-    plan = _plan(_beat("b1", chars_hint=30), chars_floor=30)
+    plan = _plan(_beat("b1", chars_hint=30, paragraphs=(2, None)), chars_floor=30)
     analyzed = analyze_marked_text(embed_beat_markers([("b1", "出発した。")]), plan, run=1)
     calibration = _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01)
     return begin_repair(analyzed.metrics, plan, calibration, clean_text=analyzed.clean_text,
@@ -112,6 +112,7 @@ def _bridge(tmp_path, *, calibrated=True):
     data["generation"]["chars_floor"] = 500
     for beat in data["beats"]:
         beat["budget"]["chars_hint"] = 200
+    data["beats"][0]["budget"]["paragraphs"] = [2, 2]
     beats.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     prepare(work, scene_id="ch01-001", text_path="_novel_text/novel_text01.md",
             request_kind=RequestKind.NEW, model_id="fixture-writer",
@@ -294,6 +295,234 @@ def test_replay_after_failure_between_confirmation_and_receive(tmp_path, monkeyp
     _next(work, repo)
     assert len(read_state(run / "repair_state.json").session.history) == 1
     assert (run / "report.json").is_file()
+
+
+def test_completed_repair_next_retries_receive_and_inspect_when_report_missing(tmp_path, monkeypatch):
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    state = read_state(run / "repair_state.json")
+    job = state.session.pending
+    assert job is not None
+    candidate = tmp_path / "expanded.md"
+    candidate.write_text(state.session.working_texts[job.beat_id] + "足音が響く。" * 20,
+                         encoding="utf-8")
+    original_receive = bridge.commands.receive
+    original_inspect = bridge.commands.inspect
+
+    def interrupted(*args, **kwargs):
+        raise OSError("simulated receive interruption")
+
+    monkeypatch.setattr(bridge.commands, "receive", interrupted)
+    with pytest.raises(OSError, match="simulated receive interruption"):
+        _submit(work, repo, job, candidate=candidate)
+    interrupted_state = read_state(run / "repair_state.json")
+    assert interrupted_state.status == "completed"
+    assert interrupted_state.session.pending is None
+    assert not (run / "report.json").exists()
+    calls = []
+
+    def receive_again(*args, **kwargs):
+        calls.append("receive")
+        return original_receive(*args, **kwargs)
+
+    def inspect_again(*args, **kwargs):
+        calls.append("inspect")
+        return original_inspect(*args, **kwargs)
+
+    monkeypatch.setattr(bridge.commands, "receive", receive_again)
+    monkeypatch.setattr(bridge.commands, "inspect", inspect_again)
+    _next(work, repo)
+    assert calls == ["receive", "inspect"]
+    resumed = read_state(run / "repair_state.json")
+    assert resumed.status == "completed" and resumed.session.pending is None
+    output = work / resumed.output_path
+    assert resumed.output_hash == raw_sha256(output)
+    refs = load_json_model(run / "artifact_refs.json", ArtifactRefsDocument)
+    assert refs.candidate.raw_sha256 == resumed.output_hash
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert report["target_text_sha256"] == text_sha256(output.read_text(encoding="utf-8"))
+    assert (run / "report.md").is_file()
+
+
+def test_completed_repair_next_does_not_repeat_receive_or_inspect(tmp_path, monkeypatch):
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    state = read_state(run / "repair_state.json")
+    job = state.session.pending
+    assert job is not None
+    candidate = tmp_path / "expanded.md"
+    candidate.write_text(state.session.working_texts[job.beat_id] + "足音が響く。" * 20,
+                         encoding="utf-8")
+    _submit(work, repo, job, candidate=candidate)
+    state = read_state(run / "repair_state.json")
+    assert state.status == "completed" and state.session.pending is None
+    names = ("repair_state.json", "artifact_refs.json", "report.json", "report.md", "journal.jsonl")
+    before = {name: (run / name).read_bytes() for name in names}
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("completed repair must not repeat receive or inspect")
+
+    monkeypatch.setattr(bridge.commands, "receive", unexpected)
+    monkeypatch.setattr(bridge.commands, "inspect", unexpected)
+    code, message = _next(work, repo)
+    assert code == 0 and "repair already completed" in message
+    assert {name: (run / name).read_bytes() for name in names} == before
+
+
+def test_finished_repair_without_history_recovers_interrupted_export(tmp_path, monkeypatch):
+    """履歴の無い終端（repair-finish で止めた run）でも、書き出しの前に止まったら repair_next で戻す。"""
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    assert read_state(run / "repair_state.json").session.pending is not None
+    assert not (run / "report.json").exists()  # 修復の前に検査していない run。報告は終端の書き出しで作られる
+    original_export = bridge._export
+
+    def interrupted(*args, **kwargs):
+        raise OSError("simulated crash before finish export")
+
+    monkeypatch.setattr(bridge, "_export", interrupted)
+    with pytest.raises(OSError, match="simulated crash before finish export"):
+        repair_finish(work, scene_id="ch01-001", run_id="run-0001",
+                      reason="author_stop", authorization="stop", repo_root=repo)
+    monkeypatch.setattr(bridge, "_export", original_export)
+    stopped = read_state(run / "repair_state.json")
+    assert stopped.status in {"completed", "escalated"} and not stopped.session.history
+    assert not (run / "report.json").exists()
+    _next(work, repo)
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert report["target_text_sha256"] == text_sha256(bridge._marked_for_export(stopped))
+    code, message = _next(work, repo)
+    assert code == 0 and "repair already" in message
+
+
+def test_pre_repair_report_does_not_hide_interrupted_finish_export(tmp_path, monkeypatch):
+    """修復前の検査の report.json が元の稿と一致していても、止めた終端の書き出しは repair_next でやり直す。"""
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    inspect(work, scene_id="ch01-001", run_id="run-0001", observations_path=None,
+            marked_path=None, repo_root=repo)
+    assert (run / "report.json").is_file()
+    _begin(work, repo)
+    _next(work, repo)
+    pending = read_state(run / "repair_state.json").session.pending
+    assert pending is not None
+    original_export = bridge._export
+
+    def interrupted(*args, **kwargs):
+        raise OSError("simulated crash before finish export")
+
+    monkeypatch.setattr(bridge, "_export", interrupted)
+    with pytest.raises(OSError, match="simulated crash before finish export"):
+        repair_finish(work, scene_id="ch01-001", run_id="run-0001",
+                      reason="author_stop", authorization="stop", repo_root=repo)
+    monkeypatch.setattr(bridge, "_export", original_export)
+    stopped = read_state(run / "repair_state.json")
+    assert stopped.skipped_jobs and stopped.terminal_export is None
+    stale = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert not any(item.get("status") == "skipped" for item in stale["repair_history"])
+
+    _next(work, repo)
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert any(item.get("status") == "skipped" and item["job_id"] == pending.job_id
+               for item in report["repair_history"])
+    assert read_state(run / "repair_state.json").terminal_export is not None
+    code, message = _next(work, repo)
+    assert code == 0 and "repair already" in message
+
+
+def test_legacy_terminal_run_without_tracking_is_not_reexported(tmp_path, monkeypatch):
+    """印の欄が無い古い run は、report.json が最後の本文を検査していれば書き出し直さない。"""
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    _begin(work, repo)
+    _next(work, repo)
+    state = read_state(run / "repair_state.json")
+    job = state.session.pending
+    candidate = tmp_path / "expanded.md"
+    candidate.write_text(state.session.working_texts[job.beat_id] + "足音が響く。" * 20, encoding="utf-8")
+    _submit(work, repo, job, candidate=candidate)
+    path = run / "repair_state.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["status"] == "completed" and data["terminal_export"]
+    for key in ("export_tracking", "terminal_export"):
+        data.pop(key)  # この変更より前に作られた run の状態を再現する
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    before = path.read_bytes()
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("legacy terminal run must not be re-exported")
+
+    monkeypatch.setattr(bridge.commands, "receive", unexpected)
+    monkeypatch.setattr(bridge.commands, "inspect", unexpected)
+    code, message = _next(work, repo)
+    assert code == 0 and "repair already completed" in message
+    assert path.read_bytes() == before
+
+
+def test_completed_repair_next_exports_final_after_intermediate_export(tmp_path, monkeypatch):
+    """途中の書き出しが受け取り済みでも、最後の書き出しの前に止まったら repair_next で書き出す。"""
+    import writing_bridge.repair as bridge
+
+    work, repo, run = _bridge(tmp_path)
+    beats = work / "_metron/ch01-001/beats.yaml"
+    data = yaml.safe_load(beats.read_text(encoding="utf-8"))
+    # 1つ目の Beat に加えて、段落が1つしかない最後の Beat も計画の下限を割らせ、ジョブを2回出す。
+    data["beats"][2]["budget"]["paragraphs"] = [2, 2]
+    beats.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    receive(work, scene_id="ch01-001", run_id="run-0001",
+            candidate=work / "_metron/ch01-001/marked.md", request_id=None)
+    _begin(work, repo)
+    _next(work, repo)
+    first = read_state(run / "repair_state.json").session.pending
+    assert first is not None
+    candidate = tmp_path / "first.md"
+    candidate.write_text(read_state(run / "repair_state.json").session.working_texts[first.beat_id]
+                         + "\n\n足音が響く。" * 10, encoding="utf-8")
+    _submit(work, repo, first, candidate=candidate)
+    _next(work, repo)
+    state = read_state(run / "repair_state.json")
+    second = state.session.pending
+    assert second is not None and second.job_id != first.job_id
+    intermediate = state.output_hash
+    assert intermediate is not None and (run / "report.json").is_file()
+
+    # 終端の状態を保存したあと、書き出し（_export）そのものに入る前に止まった形にする。
+    # output_hash は途中の版のまま、report.json も途中の版を指している。
+    original_export = bridge._export
+
+    def interrupted(*args, **kwargs):
+        raise OSError("simulated crash before final export")
+
+    monkeypatch.setattr(bridge, "_export", interrupted)
+    candidate = tmp_path / "second.md"
+    candidate.write_text(state.session.working_texts[second.beat_id] + "\n\n風が鳴る。" * 10,
+                         encoding="utf-8")
+    with pytest.raises(OSError, match="simulated crash before final export"):
+        _submit(work, repo, second, candidate=candidate)
+    monkeypatch.setattr(bridge, "_export", original_export)
+    stopped = read_state(run / "repair_state.json")
+    assert stopped.status == "completed" and stopped.session.pending is None
+    assert stopped.output_hash == intermediate
+    final_text = bridge._marked_for_export(stopped)
+
+    _next(work, repo)
+    resumed = read_state(run / "repair_state.json")
+    assert resumed.output_hash != intermediate
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert report["target_text_sha256"] == text_sha256(final_text)
+    code, message = _next(work, repo)
+    assert code == 0 and "repair already completed" in message
 
 
 def test_scene_lock_rejects_other_process(tmp_path):
@@ -739,7 +968,8 @@ def test_escalated_scene_floor_does_not_issue_jobs(tmp_path):
         request_id=None,
     )
     run = work / "_work/writing/ch01-001/run-0001"
-    _begin(work, repo)
+    repair_begin(work, scene_id="ch01-001", run_id="run-0001", model="fixture-writer",
+                 authorization="test-only fixture repair", repo_root=repo, intent="explicit_deepen")
     code, message = _next(work, repo)
     state = read_state(run / "repair_state.json")
     assert state.status == "escalated"

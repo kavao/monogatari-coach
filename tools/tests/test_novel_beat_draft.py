@@ -400,7 +400,8 @@ def test_cli_reports_design_density(tmp_path: Path, monkeypatch, capsys) -> None
     out = capsys.readouterr().out
     assert code == 0
     assert "DESIGN_DENSITY" in out and "子エピソード" in out
-    assert nbd.SUB_EPISODE_LEAF in out and "addition_issues" in out and "設計追加の手順" in out
+    assert "（清書で判定）" in out and "Deepen で埋めるのは" not in out
+    assert "清書のあとも許容帯の外なら、子エピソードを足す案を作者へ出す" in out
     assert (nbd.ROOT / nbd.SUB_EPISODE_LEAF).is_file() and (nbd.ROOT / nbd.LENGTH_OPS).is_file()
     selection = json.loads((work / "_work/writing/ch01-001/run-0001/beat_draft/selection.json").read_text(encoding="utf-8"))
     assert selection["design_density"]["over_limit"]

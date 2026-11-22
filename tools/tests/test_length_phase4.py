@@ -105,7 +105,7 @@ def test_ending_rush_after_floor_is_reported_not_regenerated():
     plan = _plan(*[_beat(beat_id, chars_hint=20) for beat_id in ENDING_TEXTS])
     floor = assembled_chars(plan, ENDING_TEXTS) + 10
     addition = "\n\n　改札の電子音が遠くで鳴り、ホームを渡る風が冷たかった。"
-    result, jobs = _drive(_ending_rush_state(floor=floor),
+    result, jobs = _drive(_ending_rush_state(floor=floor, scene_floor_deepen=True),
                           lambda job, text: (text.rstrip("\n") + addition, None))
     operations = [(job.operation, job.beat_id) for job in jobs]
     assert operations and all(operation == "deepen" for operation, _ in operations)
@@ -331,3 +331,6 @@ def _before_d21_design_routing(monkeypatch):
     import metron.length
 
     monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)
+    # 計画 §10.1 の開始条件（今の字数 × 1.15 が許容帯の下限に届くか）も外し、作業目標を
+    # 仕上がり × 1.08 のままにする。開始条件は test_length_phase6.py で既定値のまま確かめる。
+    monkeypatch.setattr(metron.length, "DEEPEN_MAX_GROWTH", 100.0)

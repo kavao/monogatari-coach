@@ -13,6 +13,8 @@ from .storage import load_yaml
 
 
 _TRUNCATION_REASONS = frozenset({"max_tokens", "length"})
+# 打ち切りの判定は校正値を使わない。校正されていないモデルの保存前検査からも参照する。
+TRUNCATION_REASONS = _TRUNCATION_REASONS
 
 
 class CalibrationNotReady(ValueError):
@@ -205,8 +207,8 @@ def classify_metrics(
                     beat_id=beat.id,
                     observed=float(item.chars),
                     threshold=float(beat.budget.chars_hint),
-                    auto_repair=not scene_floor_met,
-                    reason="beat is below the chars_hint length floor; deepen nuance",
+                    auto_repair=False,
+                    reason="beat is below the chars_hint length floor; recorded for refinement",
                 )
             )
 
@@ -219,8 +221,8 @@ def classify_metrics(
                     failure=Failure.TOO_SHORT,
                     observed=float(payload.scene.chars),
                     threshold=float(scene_floor),
-                    auto_repair=True,
-                    reason="scene is below the chars_floor; deepen nuance without changing events",
+                    auto_repair=False,
+                    reason="scene is below the chars_floor; recorded for refinement",
                 )
             )
         if (

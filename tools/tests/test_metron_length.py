@@ -5,8 +5,9 @@ import pytest
 from test_metron import _beat, _calibration, _plan
 from metron.analyze import analyze_marked_text
 from metron.length import (
-    LENGTH_TOKEN, LengthConfigError, LengthSpec, assembled_chars, band_state,
-    canon_review_digest, resolve_bounds, validate_tightening,
+    FLOOR_SLACK, LENGTH_REPORT_RATIO, LENGTH_TOKEN, LENGTH_TOLERANCE,
+    DESIGN_SHORTAGE_LIMIT, LengthConfigError, LengthSpec, assembled_chars, band_state,
+    canon_review_digest, effective_floor, target_length_status, resolve_bounds, validate_tightening,
 )
 from metron.models import LengthTarget, LengthTolerance
 from metron.repair import build_expand_prompt, marked_text_for_measurement
@@ -65,16 +66,66 @@ def test_bounds_round_endpoints_and_reject_band_below_floor():
 
 
 def test_bounds_raise_lower_to_floor_and_use_beat_hint_for_beat_scope():
-    raised = resolve_bounds(_target(4000), _plan(_beat("a"), chars_floor=4000))
-    assert raised.effective_lower == 4000 and raised.floor_raised
+    # 場面の床は緩めた床（× 0.9）で帯の下限を引き上げる。4000 の床は 3600 なので 3880 のまま。
+    kept = resolve_bounds(_target(4000), _plan(_beat("a"), chars_floor=4000))
+    assert kept.effective_lower == 3880 and not kept.floor_raised
+    raised = resolve_bounds(_target(4000), _plan(_beat("a"), chars_floor=4400))
+    assert raised.effective_lower == 3960 and raised.floor_raised
     plan = _plan(_beat("a", chars_hint=300), _beat("b", chars_hint=10), chars_floor=4000)
     beat = resolve_bounds(_target(320, scope="beat", beat_id="a"), plan)
-    assert beat.floor == 300 and beat.scene_floor == 4000
+    # Beat 指定の床は chars_hint のまま。場面の床は緩めた床（4000 × 0.9）。
+    assert beat.floor == 300 and beat.scene_floor == 3600
     assert beat.effective_lower == 311
     with pytest.raises(LengthConfigError):
         resolve_bounds(_target(200, scope="beat", beat_id="a"), plan)
     with pytest.raises(LengthConfigError):
         resolve_bounds(_target(4000, scope="chapter"), plan)
+
+
+@pytest.mark.parametrize(
+    ("floor", "expected"),
+    [(4000, 3600), (100, 90), (101, 91), (1010, 909)],
+)
+def test_effective_floor_rounds_up_to_whole_characters(floor, expected):
+    result = effective_floor(floor)
+    assert isinstance(result, int)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("current", "expected"),
+    [(84, "below"), (85, "reported"), (86, "reported"),
+     (89, "reported"), (90, "ok"), (91, "ok"), (100, "ok"), (110, "ok")],
+)
+def test_target_length_status_at_report_and_tolerance_boundaries(current, expected):
+    assert target_length_status(100, current) == expected
+
+
+@pytest.mark.parametrize(
+    ("current", "expected"),
+    [(4759, "below"), (4760, "reported"),
+     (5039, "reported"), (5040, "ok")],
+)
+def test_target_length_status_for_planned_example(current, expected):
+    assert target_length_status(5600, current) == expected
+
+
+@pytest.mark.parametrize(
+    ("target", "current"),
+    [(0, 0), (0, 100), (-1, 0), (100, -1), (0, -1)],
+)
+def test_target_length_status_rejects_out_of_range_counts(target, current):
+    with pytest.raises(ValueError):
+        target_length_status(target, current)
+
+
+def test_target_length_status_accepts_zero_current_chars():
+    assert target_length_status(100, 0) == "below"
+
+
+def test_length_constants_leave_existing_design_limit_unchanged():
+    assert (LENGTH_TOLERANCE, LENGTH_REPORT_RATIO, FLOOR_SLACK) == (0.15, 0.10, 0.10)
+    assert DESIGN_SHORTAGE_LIMIT == 0.10
 
 
 def test_band_state_includes_endpoints():
@@ -230,3 +281,21 @@ def test_beat_scope_skips_non_expandable_beat():
     assert jobs == []
     assert LENGTH_TOKEN in result.escalated_beats
     assert any(note.startswith("LENGTH_NO_ELIGIBLE") for note in result.notes)
+
+
+def test_deepen_start_condition_and_work_target():
+    """計画 §10.1: 今の字数 × 1.15 が、仕上がり × 0.85 と床 × 0.9 の大きい方に届く稿だけ始める。"""
+    from metron.length import (
+        DEEPEN_MAX_GROWTH, can_start_deepen, deepen_start_lower, growth_cap, working_target_chars,
+    )
+
+    assert DEEPEN_MAX_GROWTH == 0.15
+    assert growth_cap(4000) == 4600 and growth_cap(3333) == 3832
+    # 仕上がり 5000・床 4000: 下限は max(4250, 3600) = 4250。今の字数 3696 なら 4250 に届く。
+    assert deepen_start_lower(5000, 4000) == 4250
+    assert can_start_deepen(3696, 5000, 4000) and not can_start_deepen(3695, 5000, 4000)
+    # 床のほうが高いときは床 × 0.9 が下限になる。
+    assert deepen_start_lower(3000, 4000) == 3600
+    # 作業目標は仕上がり × 1.08 と今の字数 × 1.15 の小さい方。
+    assert working_target_chars(5000, 4800) == 5400
+    assert working_target_chars(5000, 4000) == 4600

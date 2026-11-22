@@ -212,6 +212,7 @@ def validate_expansion(
     retention_threshold: float,
     others: tuple[str, ...] = (),
     allowed_repeats: tuple[str, ...] = (),
+    dialogue_turns_max: int | None = None,
 ) -> ExpansionCheck:
     if not 0 <= retention_threshold <= 1:
         raise ValueError("retention_threshold must be between 0 and 1")
@@ -230,6 +231,14 @@ def validate_expansion(
             ratio,
             "original sentence retention is below the calibrated threshold",
         )
+    if dialogue_turns_max is not None:
+        # 計画 §11.2: 会話の往復で所作の代わりにしない。計画の上限を超えて会話を増やす候補は採らない。
+        before_turns = _dialogue_turns(_body_lines(original_n))
+        after_turns = _dialogue_turns(_body_lines(candidate_n))
+        if after_turns > dialogue_turns_max and after_turns > before_turns:
+            return ExpansionCheck(
+                False, ratio,
+                f"candidate exceeds the planned dialogue turns ({after_turns} > {dialogue_turns_max})")
     hit = find_deepen_paraphrase(original_n, candidate_n)
     if hit is not None:
         return ExpansionCheck(
@@ -314,6 +323,7 @@ def run_expand_loop(
     max_attempts: int = 2,
     others: tuple[str, ...] = (),
     allowed_repeats: tuple[str, ...] = (),
+    dialogue_cap: bool = False,
 ) -> RepairResult:
     """provider を直接知らない Expand ループ。
 
@@ -336,6 +346,7 @@ def run_expand_loop(
             retention_threshold=retention_threshold,
             others=others,
             allowed_repeats=allowed_repeats,
+            dialogue_turns_max=beat.budget.dialogue_turns[1] if dialogue_cap else None,
         )
         checks.append(check)
         if check.accepted:
@@ -500,6 +511,8 @@ def _repair_scene_impl(
     checkpoint: Callable[[dict[str, str]], None] | None = None,
     force_deepen_ids: list[str] | None = None,
     force_ending_rush: bool = False,
+    scene_floor_deepen: bool = False,
+    dialogue_cap: bool = False,
     restrict_beat_ids: list[str] | None = None,
     allowed_repeats: tuple[str, ...] = (),
 ) -> SceneRepairResult:
@@ -511,6 +524,11 @@ def _repair_scene_impl(
 
     classification = classify_metrics(metrics, beat_plan, calibration, spans=spans)
     beat_texts = _text_by_beat(clean_text, beat_plan, spans)
+    # 明示の Deepen（目標なしの全体の深化）は、始めたときの字数の +15% までで追加の深化を止める（計画 §8.4）。
+    growth_limit: int | None = None
+    if scene_floor_deepen:
+        from .length import growth_cap
+        growth_limit = growth_cap(_scene_chars(beat_plan, beat_texts))
     if checkpoint:
         checkpoint(dict(beat_texts))
     if dispatch and checkpoint:
@@ -556,7 +574,7 @@ def _repair_scene_impl(
             ending_beat_id = None
     scene_too_short = any(
         finding.failure == Failure.TOO_SHORT
-        and finding.auto_repair
+        and scene_floor_deepen
         and finding.beat_id is None
         for finding in classification.findings
     )
@@ -615,7 +633,8 @@ def _repair_scene_impl(
         if (
             scene_too_short
             and beat_id not in required_deepen_set
-            and _scene_chars(beat_plan, beat_texts) >= scene_floor
+            and (_scene_chars(beat_plan, beat_texts) >= scene_floor
+                 or (growth_limit is not None and _scene_chars(beat_plan, beat_texts) >= growth_limit))
         ):
             continue
         beat = by_id[beat_id]
@@ -629,6 +648,7 @@ def _repair_scene_impl(
             retention_threshold=_retention_threshold(calibration),
             others=_other_texts(beat_plan, beat_texts, beat_id),
             allowed_repeats=allowed_repeats,
+            dialogue_cap=dialogue_cap,
         )
         expansions[beat_id] = result
         if result.accepted:
@@ -672,9 +692,12 @@ def _repair_scene_impl(
     # Visit other Beats first; all Deepen attempts still share the per-Beat cap.
     post_beats = sorted(beat_plan.beats, key=lambda beat: beat.id in expansions)
     for beat in post_beats:
-        if not needs_generation or truncated:
+        if not needs_generation or truncated or not scene_floor_deepen:
             break
         if _scene_chars(beat_plan, beat_texts) >= scene_floor:
+            break
+        if growth_limit is not None and _scene_chars(beat_plan, beat_texts) >= growth_limit:
+            notes.append(f"DEEPEN_GROWTH_CAP: stopped at +15% ({growth_limit} chars) before the scene floor")
             break
         if beat.id not in required_deepen_set and beat.id not in extra_set:
             continue
@@ -689,6 +712,7 @@ def _repair_scene_impl(
             retention_threshold=_retention_threshold(calibration), max_attempts=remaining,
             others=_other_texts(beat_plan, beat_texts, beat_id),
             allowed_repeats=allowed_repeats,
+            dialogue_cap=dialogue_cap,
         )
         if result.accepted:
             beat_texts[beat_id] = result.final_text
@@ -760,6 +784,8 @@ def repair_scene(
     expander: Callable[[str], str] | None = None,
     regenerator: Callable[[str], str] | None = None,
     seam_corrector: Callable[[str], str] | None = None,
+    scene_floor_deepen: bool = False,
+    dialogue_cap: bool = False,
 ) -> SceneRepairResult:
     """Compatibility driver for the same non-blocking repair step API."""
     from .repair_steps import begin_repair, next_job, submit_result, RepairJob
@@ -768,7 +794,9 @@ def repair_scene(
                          spans=spans, model="injected-callback",
                          seam_enabled=seam_corrector is not None,
                          deepen_enabled=expander is not None,
-                         regenerate_enabled=regenerator is not None)
+                         regenerate_enabled=regenerator is not None,
+                         scene_floor_deepen=scene_floor_deepen,
+                         dialogue_cap=dialogue_cap)
     while True:
         job = next_job(state)
         if not isinstance(job, RepairJob):

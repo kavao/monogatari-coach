@@ -54,7 +54,7 @@ def _pad_marked(work: Path, minimum: int) -> None:
 
 
 def _ops_bridge(tmp_path, *, chars: int, floor: int = 200, chronos: str = "OFF",
-                finish_reason: str | None = None, expandable: bool = True):
+                finish_reason: str | None = None, expandable: bool = True, thin: bool = False):
     work = _copy_ok(tmp_path)
     _set_flags(work, chronos=chronos)
     repo = tmp_path / "repo"
@@ -64,6 +64,11 @@ def _ops_bridge(tmp_path, *, chars: int, floor: int = 200, chronos: str = "OFF",
     (repo / "config" / "metron_models.yaml").write_text(yaml.safe_dump(
         {"models": {"fixture-writer": calibration.model_dump(mode="json")}}), encoding="utf-8")
     _set_floor(work, floor)
+    if thin:
+        path = work / "_metron/ch01-001/beats.yaml"
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data["beats"][0]["budget"]["paragraphs"] = [2, 2]
+        path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     if not expandable:
         path = work / "_metron/ch01-001/beats.yaml"
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -79,6 +84,12 @@ def _ops_bridge(tmp_path, *, chars: int, floor: int = 200, chronos: str = "OFF",
             candidate=work / "_metron/ch01-001/marked.md", request_id=None,
             finish_reason=finish_reason)
     return work, repo, work / "_work/writing/ch01-001/run-0001"
+
+
+def _begin_explicit(work, repo):
+    return repair_begin(work, scene_id="ch01-001", run_id="run-0001",
+                        model="fixture-writer", authorization="test-only fixture repair",
+                        repo_root=repo, intent="explicit_deepen")
 
 
 def test_e_advisory_tooshort_is_separated_and_does_not_begin(tmp_path):
@@ -199,7 +210,7 @@ def test_next_action_for_requires_c1_ready_and_idle_repair():
     assert next_action_for(**{**ok, "text_state": ItemStatus.UNRESOLVED}) is None
     assert next_action_for(**{**ok, "blocking": True}) is None
     assert next_action_for(**{**ok, "repair_active": True}) is None
-    assert next_action_for(**{**ok, "floor_met": False}) is None
+    assert next_action_for(**{**ok, "floor_met": False}) == SAVE_NEXT_ACTION
 
 
 def test_f1_auto_refuses_when_floor_met_without_required(tmp_path):
@@ -272,7 +283,7 @@ def test_f12_authorization_text_does_not_override_auto(tmp_path):
 
 def test_f2_next_completes_after_floor_reached(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     for index in range(8):
         state = read_state(run / "repair_state.json")
@@ -322,7 +333,7 @@ def test_f3_finish_discards_explicit_deepen_pending(tmp_path):
 
 def test_f4a_floor_met_reason_refuses_below_floor(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     with pytest.raises(BridgeError) as caught:
         repair_finish(work, scene_id="ch01-001", run_id="run-0001",
@@ -403,7 +414,7 @@ def test_f4b_author_stop_after_begin_without_next(tmp_path):
 
 def test_missing_pending_job_json_is_stale(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     job = read_state(run / "repair_state.json").session.pending
     (run / "jobs" / f"{job.job_id}.json").unlink()
@@ -417,7 +428,7 @@ def test_missing_pending_job_json_is_stale(tmp_path):
 
 def test_f4e_author_stop_after_scene_floor_no_eligible(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150, floor=500, expandable=False)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     state = read_state(run / "repair_state.json")
     assert state.status == "escalated"
@@ -450,7 +461,7 @@ def test_f4e_author_stop_after_scene_floor_no_eligible(tmp_path):
 
 def test_f4c_author_stop_below_floor_escalates(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     assert read_state(run / "repair_state.json").session.pending is not None
     code, message = repair_finish(work, scene_id="ch01-001", run_id="run-0001",
@@ -480,7 +491,7 @@ def test_f4d_coverage_failure_is_range_mismatch_not_not_needed(tmp_path):
 
 def test_f5_no_provider_seam_after_deepen(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     for _ in range(8):
         state = read_state(run / "repair_state.json")
         if state.status != "active" or state.session.pending is None:
@@ -497,7 +508,7 @@ def test_f5_no_provider_seam_after_deepen(tmp_path):
 
 def test_f6_marker_rewrite_rejected_without_seam(tmp_path):
     work, repo, run = _ops_bridge(tmp_path, chars=150)
-    _begin(work, repo)
+    _begin_explicit(work, repo)
     _next(work, repo)
     job = read_state(run / "repair_state.json").session.pending
     candidate = tmp_path / "moved.md"

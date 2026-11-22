@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 import pytest
 
@@ -95,8 +96,9 @@ def _length_begin(work, repo, target):
                         repo_root=repo, intent="length", length_target=target, **SCENE)
 
 
-@pytest.mark.parametrize("ratio", [0.15, 0.10])
-def test_length_adjustment_with_a_large_shortage_routes_to_design(tmp_path, ratio):
+@pytest.mark.parametrize("ratio", [0.30, 0.40])
+def test_length_adjustment_that_cannot_reach_the_band_routes_to_design(tmp_path, ratio):
+    """計画 §10.1: 今の字数 × 1.15 が許容帯の下限（目標 × 0.85 と床 × 0.9 の大きい方）に届かなければ始めない。"""
     work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
     current = _beat_chars(work)
     target = LengthTarget(target_chars=round(current / (1 - ratio)) + 1)
@@ -106,7 +108,23 @@ def test_length_adjustment_with_a_large_shortage_routes_to_design(tmp_path, rati
     assert not (run / "repair_state.json").exists()
     log = (work / "_metron/ch01-001/shortage_log.jsonl").read_text(encoding="utf-8").splitlines()
     entry = json.loads(log[-1])
-    assert entry["intent"] == "length" and entry["stopped"] and entry["shortage"] >= 0.10
+    # 不足率の記録は残す。止めるのは開始条件で、記録の stopped は使わない。
+    assert entry["intent"] == "length" and entry["over_limit"] and not entry["stopped"]
+
+
+@pytest.mark.parametrize("ratio", [0.10, 0.15])
+def test_shortage_within_reach_starts_with_a_capped_work_target(tmp_path, ratio):
+    """以前は不足 10% 以上で止めていた稿も、上限まで増やせば帯に届くなら始め、作業目標を +15% に抑える。"""
+    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
+    current = _beat_chars(work)
+    target = LengthTarget(target_chars=round(current / (1 - ratio)) + 1)
+    code, _ = _length_begin(work, repo, target)
+    assert code == 0
+    state = json.loads((run / "repair_state.json").read_text(encoding="utf-8"))
+    working = state["session"]["length"]["target"]["target_chars"]
+    assert working <= math.floor(current * 1.15)
+    if target.target_chars > math.floor(current * 1.15):
+        assert any(note.startswith("LENGTH_TARGET_CAPPED") for note in state["notes"])
 
 
 def test_length_adjustment_with_a_small_shortage_deepens(tmp_path):
@@ -119,20 +137,21 @@ def test_length_adjustment_with_a_small_shortage_deepens(tmp_path):
     assert not entry["over_limit"] and not entry["stopped"]
 
 
-def test_finish_target_shortage_uses_the_margin(tmp_path):
-    """仕上がり目標に対しては不足が10%未満でも、余地込みの目標で10%以上なら設計追加へ。"""
-    work, repo, _ = _ops_bridge(tmp_path, chars=220, floor=200)
+def test_finish_target_work_target_is_the_smaller_of_margin_and_cap(tmp_path):
+    """作業目標は仕上がり × 1.08 と今の字数 × 1.15 の小さい方（計画 §10.1）。"""
+    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
     current = _beat_chars(work)
     finish = round(current / 0.93)
-    assert shortage_ratio(finish, current) < DESIGN_SHORTAGE_LIMIT
-    with pytest.raises(BridgeError) as error:
-        _length_begin(work, repo, finish_target(finish))
-    assert error.value.code == "DESIGN_DENSITY"
+    code, _ = _length_begin(work, repo, finish_target(finish))
+    assert code == 0
+    state = json.loads((run / "repair_state.json").read_text(encoding="utf-8"))
+    working = state["session"]["length"]["target"]["target_chars"]
+    assert working == min(round(finish * 1.08), math.floor(current * 1.15))
 
 
 def test_auto_repair_only_measures_and_reports(tmp_path):
     """6-7: 自動修復（初稿直後を含む）は、不足10%以上でも止めずに報告と記録だけ行う。"""
-    work, repo, run = _ops_bridge(tmp_path, chars=150, floor=200)
+    work, repo, run = _ops_bridge(tmp_path, chars=150, floor=200, thin=True)
     code, _ = repair_begin(work, model="fixture-writer", authorization="test", repo_root=repo,
                            **SCENE)
     assert code == 0

@@ -247,3 +247,6 @@ def _before_d21_design_routing(monkeypatch):
     import metron.length
 
     monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)
+    # 計画 §10.1 の開始条件（今の字数 × 1.15 が許容帯の下限に届くか）も外し、作業目標を
+    # 仕上がり × 1.08 のままにする。開始条件は test_length_phase6.py で既定値のまま確かめる。
+    monkeypatch.setattr(metron.length, "DEEPEN_MAX_GROWTH", 100.0)

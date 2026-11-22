@@ -84,8 +84,8 @@ def test_deepen_prompt_carries_style_rules_and_avoid_words():
 
 
 def _auto_state(texts, *, allowed=()):
-    beats = [_beat(beat_id, chars_hint=400) for beat_id in texts]
-    plan = _plan(*beats, chars_floor=2000)  # 床未達にして Deepen を出させる
+    beats = [_beat(beat_id, chars_hint=400, paragraphs=(2, None)) for beat_id in texts]
+    plan = _plan(*beats, chars_floor=2000)  # 段落の計画下限不足で自動 Deepen を出す
     analyzed = analyze_marked_text(marked_text_for_measurement(plan, texts), plan, run=1)
     calibration = _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01,
                                ending_rush_threshold=0.0)
@@ -113,8 +113,9 @@ def test_finish_target_adds_the_margin_and_keeps_the_finish_band():
     target = finish_target(8000)
     assert DEFAULT_FINISH_MARGIN == 0.08
     assert target.target_chars == 8640 and target.finish_chars == 8000
-    plan = _plan(_beat("a"), chars_floor=8000)
-    assert finish_bounds(target, plan) == (8000, 8240)
+    # 仕上がりの帯の下限も緩めた床（× 0.9）で引き上げる。
+    plan = _plan(_beat("a"), chars_floor=9000)
+    assert finish_bounds(target, plan) == (8100, 8240)
     plan_low = _plan(_beat("a"), chars_floor=1)
     assert finish_bounds(target, plan_low) == (7760, 8240)
     assert finish_bounds(target.model_copy(update={"finish_chars": None}), plan_low) is None
@@ -160,11 +161,20 @@ def test_summary_with_refined_draft_reports_three_stages_and_records_trim(tmp_pa
     assert 0 < record["trim_ratio"] < 0.5 and record["refined_hash"].startswith("sha256:")
 
 
-def test_refined_draft_below_the_finish_band_is_flagged(tmp_path):
-    work, repo, run = _complete_length_run(tmp_path)
-    refined = _refined_copy(tmp_path, work, run, drop=ADDITION)
+@pytest.mark.parametrize(("finish", "drop", "flag"), [
+    # 仕上がり目標に 15% を超えて足りない → REFINED_BELOW_FINISH
+    (250, ADDITION, "REFINED_BELOW_FINISH"),
+    # 10% を超え 15% 以内 → 完了は止めず、報告に一行（LENGTH_REPORTED）
+    (None, ADDITION, "LENGTH_REPORTED"),
+    # 10% 以内 → どちらも出さない
+    (None, "母が時刻表を一度だけ確かめる。", None),
+])
+def test_refined_draft_is_judged_against_the_finish_target(tmp_path, finish, drop, flag):
+    work, repo, run = _complete_length_run(tmp_path, finish=finish)
+    refined = _refined_copy(tmp_path, work, run, drop=drop)
     _, text = repair_summary(work, repo_root=repo, refined_path=refined, **SCENE)
-    assert "REFINED_BELOW_FINISH" in text
+    for name in ("REFINED_BELOW_FINISH", "LENGTH_REPORTED"):
+        assert (name in text) == (name == flag), name
 
 
 def test_refined_draft_must_keep_beat_markers(tmp_path):
@@ -305,7 +315,8 @@ def test_beat_scope_judges_the_target_beat_not_the_whole_scene(tmp_path):
     _, text = repair_summary(work, repo_root=repo, refined_path=refined, **SCENE)
     assert "対象 Beat say_goodbye" in text
     assert "REFINED_BELOW_FINISH" in text
-    assert "Beat say_goodbye が" in text and "Beat の床 60" in text
+    # Beat の目安は記録だけ（完了は止めない）。
+    assert "BEAT_BELOW_HINT" in text and "Beat say_goodbye が" in text and "Beat の目安 60" in text
 
 
 def test_refined_draft_with_reordered_beats_is_refused(tmp_path):
@@ -342,11 +353,12 @@ def test_refined_draft_with_text_outside_beats_is_refused(tmp_path):
 def test_finish_band_that_cannot_meet_the_floor_is_refused(tmp_path):
     from metron.length import resolve_bounds
     with pytest.raises(LengthConfigError):
-        resolve_bounds(finish_target(190), _plan(_beat("a"), chars_floor=200))
+        # 床 200 の緩めた床は 180。仕上がり 170 の帯の上限 175 は届かない。
+        resolve_bounds(finish_target(170), _plan(_beat("a"), chars_floor=200))
     work, repo, _ = _ops_bridge(tmp_path, chars=220, floor=200)
     with pytest.raises(BridgeError) as error:
         repair_begin(work, model="fixture-writer", authorization="x", repo_root=repo,
-                     intent="length", length_target=finish_target(190), **SCENE)
+                     intent="length", length_target=finish_target(170), **SCENE)
     assert error.value.code == "LENGTH_CONFIG"
 
 
@@ -382,6 +394,9 @@ def _before_d21_design_routing(monkeypatch):
     import metron.length
 
     monkeypatch.setattr(metron.length, "DESIGN_SHORTAGE_LIMIT", 1.01)
+    # 計画 §10.1 の開始条件（今の字数 × 1.15 が許容帯の下限に届くか）も外し、作業目標を
+    # 仕上がり × 1.08 のままにする。開始条件は test_length_phase6.py で既定値のまま確かめる。
+    monkeypatch.setattr(metron.length, "DEEPEN_MAX_GROWTH", 100.0)
 
 
 def test_slop_profile_lists_stock_phrases_without_failing_strict(tmp_path, monkeypatch):

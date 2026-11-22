@@ -591,6 +591,7 @@ def test_publish_detects_created_and_deleted_canonical(tmp_path: Path, monkeypat
             run_id="run-0001",
             authorization=AUTH,
             repo_root=ROOT,
+            observations_path=OBS,
         )
     assert created.value.code == "STALE_EVIDENCE"
     assert text.read_text(encoding="utf-8") == "外部で作られた本文。\n"
@@ -606,12 +607,15 @@ def test_publish_detects_created_and_deleted_canonical(tmp_path: Path, monkeypat
 
     monkeypatch.setattr(module, "_save", delete_after_save)
     with pytest.raises(BridgeError) as deleted:
+        # C1 は publish_state.json を作る前に確かめるので、観察を渡して C1 を通し、
+        # 保存の直後に消えた正本の検出まで届かせる。
         publish(
             work2,
             scene_id="ch01-001",
             run_id="run-0001",
             authorization=AUTH,
             repo_root=ROOT,
+            observations_path=OBS,
         )
     assert deleted.value.code == "STALE_EVIDENCE"
     assert not target.exists()

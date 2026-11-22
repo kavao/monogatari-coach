@@ -196,7 +196,7 @@ def test_analysis_report_and_classification() -> None:
     )
     assert any(item.failure.value == "BeatThin" for item in result.findings)
     assert any(
-        item.failure.value == "TooShort" and item.beat_id == "b1" and item.auto_repair
+        item.failure.value == "TooShort" and item.beat_id == "b1" and not item.auto_repair
         for item in result.findings
     )
     thin = next(item for item in result.findings if item.failure.value == "BeatThin")
@@ -276,7 +276,7 @@ def test_truncation_suppresses_length_and_too_short_is_repairable() -> None:
     )
     too_short = [item for item in short.findings if item.failure.value == "TooShort"]
     assert too_short
-    assert all(item.auto_repair for item in too_short)
+    assert all(not item.auto_repair for item in too_short)
     assert any(item.beat_id is not None for item in too_short)
 
 
@@ -318,7 +318,7 @@ def test_scene_chars_floor_too_short_deepens_without_regenerate() -> None:
         spans=analyzed.spans,
     )
     assert any(
-        item.failure.value == "TooShort" and item.beat_id is None and item.auto_repair
+        item.failure.value == "TooShort" and item.beat_id is None and not item.auto_repair
         for item in classified.findings
     )
     regen_calls: list[str] = []
@@ -338,6 +338,7 @@ def test_scene_chars_floor_too_short_deepens_without_regenerate() -> None:
         _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
         clean_text=analyzed.clean_text,
         spans=analyzed.spans,
+        scene_floor_deepen=True,
         expander=expand,
         regenerator=regenerate,
         seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
@@ -655,10 +656,12 @@ def test_repair_verification_matches_final_and_reclassifies() -> None:
         _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
         clean_text=analyzed.clean_text,
         spans=analyzed.spans,
+        scene_floor_deepen=True,
         expander=expand,
         seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
     )
-    assert len(calls) >= 2
+    # 明示の Deepen は始めたときの字数の +15% で追加の深化を止める（計画 §8.4）。本文が短いので1回で止まる。
+    assert len(calls) >= 1
     assert repaired.verification_metrics.metrics.scene.chars == count_chars(
         repaired.final_text, strip_fm=False
     )
@@ -834,6 +837,7 @@ def test_scene_floor_extras_skip_saturated_picks_neighbor() -> None:
         _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
         clean_text=analyzed.clean_text,
         spans=analyzed.spans,
+        scene_floor_deepen=True,
         expander=expand,
         regenerator=lambda prompt: prompt,
         seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
@@ -901,6 +905,7 @@ def test_no_eligible_extras_adds_scene_floor_token() -> None:
         _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
         clean_text=analyzed.clean_text,
         spans=analyzed.spans,
+        scene_floor_deepen=True,
         expander=expander,
         regenerator=lambda prompt: prompt,
         seam_corrector=seam_corrector,
@@ -935,3 +940,53 @@ def test_validate_equal_chars_hint_is_warning_only(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "valid: ch01-001" in result.stdout
     assert "warning: equal_chars_hint scene=ch01-001 beats=3" in result.stderr
+
+
+def test_explicit_deepen_stops_extras_at_fifteen_percent_growth() -> None:
+    """明示の Deepen（目標なしの全体の深化）は、始めたときの字数の +15% に達したら追加の深化を止める。"""
+    plan = _plan(
+        _beat("a", paragraphs=(1, None), dialogue_turns=(0, 0), chars_hint=5),
+        _beat("b", paragraphs=(1, None), dialogue_turns=(0, 0), chars_hint=5),
+        _beat("c", paragraphs=(1, None), dialogue_turns=(0, 0), chars_hint=5),
+        chars_floor=1000,  # 床は遠く、床では止まらない
+    )
+    texts = [("a", "一つ目の動作を書く。"), ("b", "二つ目の動作を書く。"), ("c", "三つ目の動作を書く。")]
+    analyzed = analyze_marked_text(embed_beat_markers(texts), plan, run=1)
+    seen: list[str] = []
+
+    def expand(prompt: str) -> str:
+        for beat_id, body in texts:
+            if body in prompt:
+                seen.append(beat_id)
+                return body + "足音が遠くで鳴る。" * 3
+        raise AssertionError("unknown beat")
+
+    repaired = repair_scene(
+        analyzed.metrics,
+        plan,
+        _calibration(missing_span_ratio=0.0, beat_thin_ratio=0.01),
+        clean_text=analyzed.clean_text,
+        spans=analyzed.spans,
+        scene_floor_deepen=True,
+        expander=expand,
+        regenerator=lambda prompt: prompt,
+        seam_corrector=lambda prompt: prompt.split("結合稿:\n", 1)[1],
+    )
+    # 1つ目の深化で +15% を超えるので、残りの Beat は深めない。
+    assert len(seen) == 1
+    assert len(repaired.expansions) == 1
+
+
+def test_deepen_candidate_over_the_planned_dialogue_turns_is_rejected_when_capped() -> None:
+    """計画 §11.2: 会話の往復で所作の代わりにしない。上限を超えて会話を増やす候補は、印のある修復だけ棄却する。"""
+    from metron.repair import validate_expansion
+
+    original = "　母は鍵を確かめた。\n\n「行こう」"
+    candidate = original + "\n\n「うん」\n\n「切符は」\n\n「ある」"
+    capped = validate_expansion(original, candidate, retention_threshold=0.5, dialogue_turns_max=2)
+    assert not capped.accepted and "dialogue turns" in capped.reason
+    # 印が無ければ（古い修復）今までどおり採る。
+    assert validate_expansion(original, candidate, retention_threshold=0.5).accepted
+    # 上限以内なら採る。
+    assert validate_expansion(original, original + "\n\n「うん」", retention_threshold=0.5,
+                              dialogue_turns_max=2).accepted

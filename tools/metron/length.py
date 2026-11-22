@@ -33,6 +33,10 @@ LENGTH_TOKEN = "__length__"
 DEFAULT_FINISH_MARGIN = 0.08
 # 清書後が仕上がり目標から数%ずれる程度は誤差として扱い、無理に合わせない（床は別。ルールで厳守）。
 FINISH_SLACK = 0.05
+# 清書後の目標字数と場面の床を判定する閾値。
+LENGTH_TOLERANCE = 0.15
+LENGTH_REPORT_RATIO = 0.10
+FLOOR_SLACK = 0.10
 # D21: Deepen（OP-R）で埋めてよい不足の上限。これ以上の不足は、出来事を足す設計追加へ回す。
 DESIGN_SHORTAGE_LIMIT = 0.10
 
@@ -43,6 +47,61 @@ def shortage_ratio(target_chars: int, current_chars: int) -> float:
     if target_chars <= 0:
         return 0.0
     return max(0, target_chars - current_chars) / target_chars
+
+
+def effective_floor(floor: int) -> int:
+    """場面の床に緩めを適用し、必要な最低字数へ切り上げる。"""
+
+    return math.ceil(round(floor * (1 - FLOOR_SLACK), 6))
+
+
+def target_length_status(target_chars: int, current_chars: int) -> str:
+    """正の目標字数と非負の実測字数から ok / reported / below を返す。
+
+    目標の不足が 10% 以内なら ok、15% 以内なら reported、
+    15% を超えれば below。場面の床は別に判定する。
+    入力が範囲外のときは ValueError を送出する。
+    """
+
+    if target_chars <= 0 or current_chars < 0:
+        raise ValueError("target_chars must be positive and current_chars must be non-negative")
+    ratio = shortage_ratio(target_chars, current_chars)
+    if ratio > LENGTH_TOLERANCE:
+        return "below"
+    if ratio > LENGTH_REPORT_RATIO:
+        return "reported"
+    return "ok"
+
+
+# 全体の深化（規定量調整の増量を含む）で、一度に増やしてよい割合。目標が無いときはこれが上限になる。
+DEEPEN_MAX_GROWTH = 0.15
+
+
+def growth_cap(current_chars: int) -> int:
+    """一度の深化で届いてよい字数の上限（今の字数 × 1.15、切り捨て）。"""
+
+    return math.floor(round(current_chars * (1 + DEEPEN_MAX_GROWTH), 6))
+
+
+def deepen_start_lower(finish_chars: int, floor: int) -> int:
+    """深化を始めてよいかを決める下限（仕上がり目標 × 0.85 と床 × 0.9 の大きい方）。"""
+
+    return max(math.ceil(round(finish_chars * (1 - LENGTH_TOLERANCE), 6)), effective_floor(floor))
+
+
+def can_start_deepen(current_chars: int, finish_chars: int, floor: int) -> bool:
+    """上限まで増やせば許容帯の下限に届く稿だけ始める（計画 §10.1）。届かない稿は指示加筆か設計追加へ。"""
+
+    return growth_cap(current_chars) >= deepen_start_lower(finish_chars, floor)
+
+
+def working_target_chars(finish_chars: int, current_chars: int, *,
+                         margin: float = DEFAULT_FINISH_MARGIN) -> int:
+    """作業目標（仕上がり目標 × 1.08 と今の字数 × 1.15 の小さい方）。"""
+
+    return min(round(finish_chars * (1 + margin)), growth_cap(current_chars))
+
+
 # 引き締め候補の各文の文字が、元文のどれかの文へこの割合以上、順序どおりに含まれること。
 # 迂言の圧縮（「走るという行動を開始した」→「走り出した」）は通し、新しい文を検出する。
 TIGHTEN_CONTAINMENT = 0.6
@@ -81,7 +140,8 @@ def resolve_bounds(target: LengthTarget, plan: BeatPlan) -> LengthBounds:
 
     if target.scope == "chapter":
         raise LengthConfigError("chapter scope is not supported by METRON; adjust each scene")
-    scene_floor = plan.generation.chars_floor
+    # 場面の床は緩めた床（床 × 0.9）で守る。Beat の目安（chars_hint）は緩めない。
+    scene_floor = effective_floor(plan.generation.chars_floor)
     if target.scope == "beat":
         beat = next((item for item in plan.beats if item.id == target.beat_id), None)
         if beat is None:
@@ -121,7 +181,7 @@ def finish_bounds(target: LengthTarget, plan: BeatPlan) -> tuple[int, int] | Non
 
     if target.finish_chars is None:
         return None
-    floor = plan.generation.chars_floor
+    floor = effective_floor(plan.generation.chars_floor)
     if target.scope == "beat":
         beat = next(item for item in plan.beats if item.id == target.beat_id)
         floor = beat.budget.chars_hint

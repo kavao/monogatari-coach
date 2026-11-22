@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from .models import ItemStatus, ReportDocument, ReportFinding
 
-REQUIRED_METRON_CODES = frozenset({"BeatMissing", "GenerationTruncated"})
+REQUIRED_METRON_CODES = frozenset({"BeatMissing", "GenerationTruncated", "coverage", "span_order", "unmapped"})
 ADVISORY_METRON_CODES = frozenset({
     "TooShort",
     "BeatThin",
     "EndingRush",
     "SummaryCollapse",
 })
-SAVE_NEXT_ACTION = "床到達・必須なし → 保存へ"
+SAVE_NEXT_ACTION = "必須なし → 保存へ"
 
 
 def partition_findings(
@@ -50,7 +50,7 @@ def next_action_for(
     blocking: bool,
     repair_active: bool,
 ) -> str | None:
-    if not floor_met or has_required_metron(findings):
+    if has_required_metron(findings):
         return None
     if blocking or repair_active:
         return None
@@ -63,11 +63,9 @@ def metron_auto_repair_label(report: ReportDocument) -> str | None:
     if report.metron is ItemStatus.SKIPPED:
         return None
     required, _, _ = partition_findings(report.findings)
-    if report.next_action == SAVE_NEXT_ACTION:
-        return "none"
-    if required:
-        return "pending"
     flags = [item.auto_repair for item in report.findings if item.auto_repair is not None]
-    if not flags:
-        return None
-    return "pending" if any(flags) else "none"
+    if required or any(flags):
+        return "pending"
+    if report.next_action == SAVE_NEXT_ACTION or flags:
+        return "none"
+    return None

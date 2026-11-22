@@ -71,6 +71,9 @@ class RepairSession(StepModel):
     regenerate_enabled: bool = True
     force_deepen_ids: list[str] = Field(default_factory=list)
     force_ending_rush: bool = False
+    scene_floor_deepen: bool = False
+    # 新しく始めた修復だけ True（計画 §11.2 の会話の上限）。古い修復は再生の結果を変えないよう False のまま。
+    dialogue_cap: bool = False
     restrict_beat_ids: list[str] = Field(default_factory=list)
     length: LengthSpec | None = None
     contract_fix: ContractFixSpec | None = None
@@ -90,6 +93,8 @@ def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                  deepen_enabled: bool = True, regenerate_enabled: bool = True,
                  force_deepen_ids: list[str] | None = None,
                  force_ending_rush: bool = False,
+                 scene_floor_deepen: bool = False,
+                 dialogue_cap: bool = False,
                  restrict_beat_ids: list[str] | None = None,
                  length: LengthSpec | None = None,
                  contract_fix: ContractFixSpec | None = None,
@@ -114,6 +119,8 @@ def begin_repair(metrics, beat_plan, calibration, *, clean_text, spans,
                          deepen_enabled=deepen_enabled, regenerate_enabled=regenerate_enabled,
                          force_deepen_ids=list(force_deepen_ids or []),
                          force_ending_rush=force_ending_rush,
+                         scene_floor_deepen=scene_floor_deepen,
+                         dialogue_cap=dialogue_cap,
                          restrict_beat_ids=list(restrict_beat_ids or []))
 
 
@@ -175,6 +182,8 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
                 checkpoint=lambda texts: setattr(state, "working_texts", texts),
                 force_deepen_ids=state.force_deepen_ids,
                 force_ending_rush=state.force_ending_rush,
+                scene_floor_deepen=state.scene_floor_deepen,
+                dialogue_cap=state.dialogue_cap,
                 restrict_beat_ids=state.restrict_beat_ids,
                 allowed_repeats=tuple(state.allowed_repeats),
             )
@@ -234,7 +243,9 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
             check = validate_expansion(state.working_texts[beat_id],
                 strip_generation_markers(candidate),
                 retention_threshold=_retention_threshold(state.calibration),
-                others=others, allowed_repeats=tuple(state.allowed_repeats))
+                others=others, allowed_repeats=tuple(state.allowed_repeats),
+                dialogue_turns_max=(next(beat.budget.dialogue_turns[1] for beat in state.beat_plan.beats
+                                         if beat.id == beat_id) if state.dialogue_cap else None))
             if not check.accepted:
                 rejection = check.reason
         elif job.operation == "tighten":

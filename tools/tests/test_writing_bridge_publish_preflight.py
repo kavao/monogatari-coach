@@ -45,13 +45,13 @@ _SCOPE = re.compile(
 def _short_marked() -> str:
     return (
         "<!--beat:pack_bag-->\n"
-        "　朝の光が窓に届いた。\n"
+        "　朝の光が窓に届き、静かな玄関で旅の支度を確かめた。\n"
         "<!--/beat:pack_bag-->\n"
         "<!--beat:say_goodbye-->\n"
-        "「行ってくる」\n"
+        "「行ってくる。切符も定期も忘れていないよ」\n"
         "<!--/beat:say_goodbye-->\n"
         "<!--beat:reach_station-->\n"
-        "　駅へ向かった。\n"
+        "　二人は家を出て、駅の券売機の前へ向かった。\n"
         "<!--/beat:reach_station-->\n"
     )
 
