@@ -159,6 +159,8 @@ python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-
 
 実行後、Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書きます。マーカー行のあいだに残った連続空行は、段落1つ分（空行1つ）まで畳みます。対象外の場面は残します。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_work/metron/<scene>/adopted.<run_id>.md` に残ります。見出しだけの stub を先に正本へ置くと `STALE_EVIDENCE` になりえます。
 
+METRON ON の作品では、Beat の印（`<!--beat:ID-->`）の無い稿を受け取ると、検査で全部の Beat が欠落に見えてしまいます。そのため `receive` は印の無い稿を受け取らずに止め、本文が同じ印つきの稿が場面の記録に残っていれば、そのファイル名を表示します。後追い計測では、表示された稿を渡し直してください。
+
 保存の前に、Monogatari Coach は METRON の必須（Beat の欠落・生成の打ち切り・Beat の対応の崩れ）が残っていないかを確かめます。残っていれば正本へ書かずに止まります。このときは `publish_state.json` を作らないので、直した候補を同じ run で受け直して保存できます。床に届かないだけでは止まりません。
 
 保存直後に同じ run で再計測します。`report.json` の `text_save` は `success`、`target_text_sha256` は保存本文です。METRON と C1 は採用した場面稿で測り、保存ファイルとハッシュが違うときは findings に残します。文字数と句読点ゲートも findings に記録します。句読点の失敗で本文は戻しません。`_meta.md` のストーリー反映と rewrite 清書は既存スキルの手順です。同じターンで `_novel_text` の手編集と `publish` は重ねません。

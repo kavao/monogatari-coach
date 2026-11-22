@@ -305,3 +305,45 @@ def test_deepen_start_caps_the_work_target_even_when_missing_beats_come_first():
     assert target.target_chars == 115
     assert any(note.startswith("DESIGN_DENSITY") for note in notes)
     assert any(note.startswith("LENGTH_TARGET_CAPPED") for note in notes)
+
+
+def test_receive_refuses_unmarked_candidate_and_names_the_matching_marked_draft(tmp_path):
+    """計画 §14 案 A: METRON ON の場面は、印の無い稿を受け取らずに止め、本文が同じ印つきの稿を出す。"""
+    from writing_bridge.hashes import normalize_body
+
+    work, repo, run = _ready(tmp_path)
+    marked = work / "_metron/ch01-001/marked.md"
+    unmarked = tmp_path / "unmarked.md"
+    unmarked.write_text(normalize_body(marked.read_text(encoding="utf-8")), encoding="utf-8")
+    with pytest.raises(BridgeError) as error:
+        receive(work, scene_id="ch01-001", run_id="run-0001", candidate=unmarked, request_id=None)
+    assert error.value.code == "JOB_CONFLICT" and "Beat markers" in str(error.value)
+    # 受け取り済みの印つきの稿（marked.001.md など）が、本文の一致で案内される
+    assert error.value.refs["matches"]
+    other = tmp_path / "other.md"
+    other.write_text("まったく別の本文。\n", encoding="utf-8")
+    with pytest.raises(BridgeError) as error:
+        receive(work, scene_id="ch01-001", run_id="run-0001", candidate=other, request_id=None)
+    assert "locate-quote" in str(error.value) and error.value.refs["matches"] == []
+
+
+def test_inspect_flags_a_legacy_unmarked_draft(tmp_path):
+    """計画 §14 案 B: 受け取りで止める前の古い run に印の無い稿が残っていたら、報告に手がかりを出す。"""
+    from writing_bridge.hashes import normalize_body
+    from writing_bridge.commands import inspect
+
+    work, repo, run = _ready(tmp_path)
+    metron = work / "_metron/ch01-001"
+    received = sorted(metron.glob("marked.*.md"))[-1]
+    received.write_text(normalize_body(received.read_text(encoding="utf-8")), encoding="utf-8")
+    refs = json.loads((run / "artifact_refs.json").read_text(encoding="utf-8"))
+    from writing_bridge.hashes import raw_sha256 as _sha
+    refs["candidate"]["raw_sha256"] = _sha(received)
+    (run / "artifact_refs.json").write_text(json.dumps(refs, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        inspect(work, scene_id="ch01-001", run_id="run-0001", observations_path=None,
+                marked_path=None, repo_root=repo)
+    except BridgeError:
+        pass
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    assert any(item["code"] == "BEAT_MARKERS_ABSENT" for item in report["findings"])

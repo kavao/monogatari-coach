@@ -34,6 +34,7 @@ from .errors import BridgeError, ErrorDocument, ErrorItem
 from .hashes import (
     EMPTY_RAW_SHA256,
     EMPTY_TEXT_SHA256,
+    normalize_body,
     raw_sha256,
     read_normalized,
     text_sha256,
@@ -88,6 +89,54 @@ from .storage import (
 )
 
 _STATUS_BLOCK_MARK = re.compile(r"<!--\s*status:(?:begin|end)\s*-->")
+_BEAT_MARK = re.compile(r"<!--beat:[A-Za-z0-9_-]+-->")
+
+
+def _plain_body(text: str) -> str:
+    """印と空行を除いた本文（印つきの稿と印の無い稿を本文で照合するため）。"""
+    return "\n".join(line for line in normalize_body(text).splitlines() if line.strip())
+
+
+def matching_marked_drafts(root: Path, scene_id: str, text: str) -> list[str]:
+    """本文が同じで Beat の印を持つ稿（METRON 場面の marked.*.md・adopted.*.md）。"""
+    metron = metron_scene_dir(root, scene_id)
+    if not metron.is_dir():
+        return []
+    target = _plain_body(text)
+    names: list[str] = []
+    for path in sorted([*metron.glob("marked.*.md"), *metron.glob("adopted.*.md")]):
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if _BEAT_MARK.search(body) and _plain_body(body) == target:
+            names.append(path.name)
+    return names
+
+
+def _unmarked_hint(matches: list[str]) -> str:
+    if matches:
+        return "a marked draft with the same body exists: " + ", ".join(matches)
+    return "no marked draft with the same body was found; place the markers again (locate-quote)"
+
+
+def _refuse_unmarked_candidate(root: Path, request: "RequestDocument", candidate: Path) -> None:
+    """METRON ON の場面の候補は Beat の印を要る。印の無い稿は受け取らずに止める（計画 §14 案 A）。
+
+    印の無い稿は検査で全 Beat が欠落になり、本文の欠陥と取り違えやすい。本文が同じ印つきの稿が
+    残っていれば、その名前を出す。
+    """
+    text = candidate.read_text(encoding="utf-8")
+    if _BEAT_MARK.search(text):
+        return
+    matches = matching_marked_drafts(root, request.scene_id, text)  # 走査は1回だけ
+    raise BridgeError(
+        "JOB_CONFLICT",
+        "METRON candidates need Beat markers (<!--beat:ID-->); " + _unmarked_hint(matches),
+        refs={"matches": matches},
+    )
+
+
 _UNCALIBRATED_NOTE = "V1 classify skipped; only Beat mapping and truncation checked at publish"
 
 
@@ -455,6 +504,8 @@ def receive(
         )
     incoming = raw_sha256(candidate)
     _refuse_receive_after_terminal_repair(dest, incoming)
+    if request.flags.metron is FlagValue.ON and request.request_kind is not RequestKind.STATUS_BLOCK:
+        _refuse_unmarked_candidate(root, request, candidate)
     refs_path = dest / "artifact_refs.json"
     refs = (
         load_json_model(refs_path, ArtifactRefsDocument)
@@ -859,6 +910,13 @@ def _inspect_metron(
     precheck = required_repair_reasons(metrics, beats, None, clean_text, spans)
     mapping_notes = [ReportFinding(code=reason, note="Beat mapping requires repair")
                      for reason in precheck if reason != "GenerationTruncated"]
+    marked_text = marked.read_text(encoding="utf-8")
+    if "coverage" in precheck and not _BEAT_MARK.search(marked_text):
+        # 計画 §14 案 B: 受け取りで止める前の古い run に、印の無い稿が残っている場合の手がかり。
+        mapping_notes.append(ReportFinding(
+            code="BEAT_MARKERS_ABSENT",
+            note="the received draft has no Beat markers, so every Beat reads as missing; "
+                 + _unmarked_hint(matching_marked_drafts(root, request.scene_id, marked_text))))
     truncation_notes = [ReportFinding(code="GenerationTruncated",
                                       note=f"finish_reason={metrics.metrics.finish_reason!r}; generation was cut off")
                         for reason in precheck if reason == "GenerationTruncated"]

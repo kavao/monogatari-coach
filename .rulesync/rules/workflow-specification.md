@@ -46,7 +46,7 @@ CHRONOS の順序検査を使うときは、次を守る。
 1. `_meta.md` の「検査レイヤの予定」に、今の値・ON にする時期・計測対象の開始章を書く。
 2. ON にするときは config.md の METRON を ON にし（CHRONOS は休止中なので OFF のままでよい。ON にするなら `chronos/` を `chronos_cli.py init` で用意する）、`_work/metron/`（以前の作品は `_metron/`）を用意して `novel_project_check --check-inspection-layers` を実行する。
 3. 下書き期の章を当面計測しないときは、基本情報表に `| METRON_FROM | N |`（N は1以上の章番号）を置く。第N章より前は「計測対象外（下書き期）」として未計測ゲートから外れる。洗練の対象を広げるときは N を下げるか行を消す。値が整数でない・重複するときは設定エラー。
-4. 後追い計測: 既稿から章の出来事を変えずに契約・Beat を起こし（指示目標は既稿の分量を基準にする）、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側にマーカー付きの作業稿を作って `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`（既存の非空本文は heading で当該章を置き換える）。`_novel_text` にマーカーを後付けしない。`publish` 後はストーリー反映を行う。
+4. 後追い計測: 既稿から章の出来事を変えずに契約・Beat を起こし（指示目標は既稿の分量を基準にする）、執筆接続の作業フォルダ（`_work/writing/`。古い作品は `_writing/`）側にマーカー付きの作業稿を作って `prepare --allow-publish` → `receive` → `inspect` → 必要なら修復 → `publish`（既存の非空本文は heading で当該章を置き換える）。`_novel_text` にマーカーを後付けしない。METRON ON の `receive` は Beat の印の無い稿を受け取らずに止め、本文が同じ印つきの稿（`<METRON 場面>/marked.*.md`・`adopted.*.md`）があればその名前を出す。後追い計測ではまずそれを使い、無ければ `locate-quote` で印を置き直す。印の無い稿が古い run に残っていれば、検査の報告に `BEAT_MARKERS_ABSENT` が出る。`publish` 後はストーリー反映を行う。
 5. CHRONOS のイベントは、洗練する章から順に登録する（全章を一度に登録しない）。未登録の章は従来どおり「未確認」で、矛盾にしない。
 6. ON → OFF に戻すときは、active な run・修復を `repair-finish` などで閉じてから切り替える。閉じられないときは OFF にせず報告する。
 
