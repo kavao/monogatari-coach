@@ -398,6 +398,48 @@ uv run python tools/design_density.py novels/NNN_作品名 --chapter 3 --target 
 
 ---
 
+### `novel_length_judge.py` — 清書のあとの章の分量の判定
+
+清書を終えた章の合計字数を、章の目標字数と場面の床で判定します。本文も設計書も書き換えません。章末ステータスのブロックと通知の行は数えません。
+
+- **章の目標**: `--target` で渡した字数か、設計書の章の「**分量目安**」です。「4,000〜8,000文字程度」のような範囲は下限、「8,000字以上」は 8,000 として読みます。読めない書き方なら「保留」になり、場面の床だけで判定します。目標に 15% 足りないところまでは完了、10% を超えて足りなければ完了のまま報告に一行（`reported`）、それより足りなければ未完了（`below`）です。
+- **場面の床**: METRON を使う作品では、その章の場面の床 × 0.9 の合計と比べます。清書のあとの本文には場面の境目の印が無いので、場面ごとの判定は後追い計測で見ます。
+
+```bash
+# 第3章を判定する（終了コード 0 = 完了、1 = 未完了、3 = 保留。目標も場面の床も無い章は保留になる）
+uv run python tools/novel_length_judge.py novels/NNN_作品名 --chapter 3
+
+# 伝えられた目標 8000字で判定する。JSON で受け取る
+uv run python tools/novel_length_judge.py novels/NNN_作品名 --chapter 3 --target 8000 --json
+```
+
+数値の正は `tools/metron/length.py`、基準は `_how_to.example/length_ops.md` §4.1 です。
+
+---
+
+### `novel_instructed_addition.py` — 指示加筆の同期の記録
+
+「この場面に〇〇を足して」と頼んだあと、Monogatari Coach は本文を書いてから、設計書・`_meta.md`・子エピソード・Beat・イベントへ順に同期します。このコマンドは、その段がどこまで進んだかを `_work/additions/` に残します。本文も設計書も書き換えません。途中で止まっても、最初の未完了の段から続けられます。
+
+- 段は、本文の保存 → 設計書と `_meta.md` → 子エピソードの登録（出来事を足したとき）→ Beat の直し（METRON を使う作品）→ イベント（CHRONOS を使う作品）の順です。順番を飛ばすと止まります。
+- 子エピソードの段では、`episodes.yaml` に範囲（`span` の開始・終了の引用）が入り、`span_pending` が外れていることを確かめます。
+- Beat とイベントの段は、直す必要が無ければ理由を付けて飛ばせます。本文の保存・設計書の同期・子エピソードの登録は飛ばせません。
+
+```bash
+# 記録を始める（kind は event＝出来事を足す、detail＝ディテールを足す）
+uv run python tools/novel_instructed_addition.py start novels/NNN_作品名 --chapter 3 --kind event --instruction "駅の場面に母との会話を足す"
+
+# 段を済ませる（ID は start が表示する）
+uv run python tools/novel_instructed_addition.py mark novels/NNN_作品名 ch03-20261122T101500 --step text_saved
+uv run python tools/novel_instructed_addition.py mark novels/NNN_作品名 ch03-20261122T101500 --step episodes --scene-id ch03-001 --episode-id ep_mother
+uv run python tools/novel_instructed_addition.py mark novels/NNN_作品名 ch03-20261122T101500 --step beats --skip --reason "今の intent に収まる"
+
+# 進み具合を見る（終了コード 0 = 完了、3 = 未完了）
+uv run python tools/novel_instructed_addition.py status novels/NNN_作品名 ch03-20261122T101500
+```
+
+---
+
 ### `novel_meta_char_table.py` — 章別文字数表の生成と照合
 
 `_meta.md` I.1 の「章別文字数」表を、`novel_char_count.py` と同じ数え方で生成・照合します。このコマンドは `_meta.md` を書き換えません。表がある作品だけ在庫の正本として使い、無い作品へは自動では足しません。
@@ -1063,7 +1105,7 @@ uv run python tools/local_writer_cli.py generate --prompt prompt.md --out out.md
    - 会話の行の頭に付いた空白は、選ぶ前に外します（字は変えません）。依頼文でも、会話の行は空白を付けずに「から始めるよう伝えます。
 5. 3本とも外れたとき（全落ち）は、外れの理由の少ない候補を採り、その文だけで理由に当たる文（台詞は「」の一続き）を削ります。削って足りなくなった字数は、言い換えで埋めません。字数より読める文を優先するためです。
 6. Beat マーカー付きの作業稿を組み立て、床（場面と Beat の最低字数）までの不足を画面と記録に出します。本文の正本（`_novel_text/`）には書きません。
-7. 指示目標（床に余地を足した、書き手に渡した字数）に対して、場面か Beat が10%以上足りないときは、`DESIGN_DENSITY` と表示します。この大きさの不足は Deepen で埋めず、章に出来事（子エピソード）を足す案を作者へ出す合図です。知らせるだけで、設計も本文も変えません。表示には、案を作る手順が続きます。
+7. 指示目標（床に余地を足した、書き手に渡した字数）に対して、場面か Beat が10%以上足りないときは、`DESIGN_DENSITY` と表示します。知らせるだけで、設計も本文も変えません。起草の段では Deepen でも子エピソードでも埋めず、分量は清書の段で判定します。清書のあとも足りなければ、章に出来事（子エピソード）を足す案を作者へ出します。表示には、その手順の参照先が続きます。
    - 足りない Beat を親として「目的・障害・結果・変化」に分け、薄いところにだけ子エピソードを挿します。挿し方は [子エピソードによる増量](../../_how_to.example/episode/general/episode_sub_episode.md) の §2〜§3 です（`A → B` を `A → a1 → a2 → B` にする考え方）。
    - 案は、状態の変化・親とのつながり・後で使うものか具体的な効果があるかを確かめてから作者へ出します（METRON の子エピソード契約と同じ条件です）。
    - 承認されたら、設計と `episodes.yaml` へ足してから、その Beat を書き直します（[文章の伸縮操作規定](../../_how_to.example/length_ops.md) §4.7「設計追加の手順」）。
@@ -1099,7 +1141,7 @@ uv run python tools/novel_beat_draft.py run novels/NNN_作品名 --scene-id ch01
 - `selection.json`：Beat ごとに、どの候補を採ったか、外した理由、指標の値、全落ちの Beat と削った文、床までの不足（`shortfall`）、指示目標に対する不足率（`design_density`）
 - `beatN.prompt.md`・`beatN.cK.md`・`beatN.cK.json`：Beat ごとのプロンプト、候補、書き手の記録
 
-画面の最後に、続けて実行する `receive` のコマンドが表示されます。本文の正本へは、執筆接続の `receive` → `inspect` → `publish` で反映します。床に届かない分は、`inspect` のあと、出来事を足す加筆工程（作者の承認が要ります）か Deepen（既にある出来事を細かく書く修復）へ回します。途中で止まったときは、同じコマンドをもう一度実行すると、保存済みの候補を使って続きから進みます。
+画面の最後に、続けて実行する `receive` のコマンドが表示されます。本文の正本へは、執筆接続の `receive` → `inspect` → `publish` で反映します。床に届かない分は「清書待ち」として記録され、保存は止まりません。分量は清書の段で判定し、足りなければ全体の深化（既にある出来事を細かく書く）か、出来事を足す加筆工程（作者の承認が要ります）で足します。途中で止まったときは、同じコマンドをもう一度実行すると、保存済みの候補を使って続きから進みます。
 
 #### Cursor など別の道具で候補を作る（`--relay`）
 

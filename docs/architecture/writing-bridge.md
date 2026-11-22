@@ -9,7 +9,7 @@
    - `第1章を執筆してください。`
    - `この場面をDeepenしてください。`
    - `当該場面を保存してください。`（METRON ON では省略できます）
-3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら、第1章の初稿や単一章の依頼でも、契約と Beat を先に置いて `prepare` → 候補の `receive` / `inspect` に進みます。`_novel_text` へ直接書いてから測る流れにはしません。CHRONOS ON では inspect の前に observations を書きます。初稿は指示目標以上を1回で狙います（助言。未達でも床到達なら保存を止めません）。シーン床に届いていれば修復を始めず、`--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。未作成または空の正本には selector を付けません。床未達のとき、または「この場面をDeepen」と明示したときだけ `repair-*` します。修復を始めたら、今の CLI ではジョブを完走してから保存します。止めたいときはその旨を書いてください。保存のあと `_meta.md` のストーリー反映は別スキルです。場面に CHRONOS イベントが無い場合は、反映のあとに「未登録」と報告し、次回タスクへ登録を追記します（章の次回タスクは消しません）。
+3. **Monogatari Coach が行うこと** — フラグを読み、経路を一つ選びます。ON なら、第1章の初稿や単一章の依頼でも、契約と Beat を先に置いて `prepare` → 候補の `receive` / `inspect` に進みます。`_novel_text` へ直接書いてから測る流れにはしません。CHRONOS ON では inspect の前に observations を書きます。初稿は指示目標以上を1回で狙います（助言。未達でも保存は止めません）。必須修復も自動修復の対象も無ければ、床に届かなくても修復を始めず（その分は「清書待ち」として記録されます）、`--allow-publish` の run で `publish --dry-run` のあと `publish` まで進みます。未作成または空の正本には selector を付けません。必須修復か自動修復の対象が残るとき、または「この場面をDeepen」と明示したときだけ `repair-*` します。修復を始めたら、今の CLI ではジョブを完走してから保存します。止めたいときはその旨を書いてください。保存のあと `_meta.md` のストーリー反映は別スキルです。場面に CHRONOS イベントが無い場合は、反映のあとに「未登録」と報告し、次回タスクへ登録を追記します（章の次回タスクは消しません）。
 4. **ユーザーが確認できるもの** — `_work/writing/<scene>/<run>/`（以前の作品は `_writing/<scene>/<run>/`）の `report.json`、`jobs/` のプロンプト、`_work/metron/<scene>/` の計測、反映後の `_novel_text` と `_novel_text_backup`。（以前から `_metron/` に場面がある作品では、その場面は `_metron/` のまま使います。場面の置き場は `uv run python tools/work_paths.py resolve novels/NNN_作品名 metron <場面ID>` で確かめられます）
 
 清書（rewrite.md）は従来どおり別手順です。明示した `metron_cli.py` / `chronos_cli.py` はフラグ OFF でも拒否しません。
@@ -36,7 +36,7 @@
 
 1. METRON ON なら、最初から契約・Beat・マーカー付き初稿で進めます。CHRONOS だけ先に保存してから測り直す手順にはしません。
 2. 初稿は `context.md` の指示目標以上を1回で狙います（床 4,000 字なら目標 5,600 字が既定。助言であり、未達だけでは止めません）。床ちょうどは狙いません。
-3. 初回の検査でシーン床に届き、必須修復も無ければ、修復を始めません。Beat ごとの字数目安や末尾密度の指摘は残して、保存へ進みます。必須修復（打切り・Beat 欠落など）が残るときは床到達後でも修復を始めます。
+3. 初回の検査で必須修復も自動修復の対象（計画の段落・会話の下限を割った Beat など）も無ければ、床に届かなくても修復を始めません。床に届かない分は `report.json` に「清書待ち」（`length_status: refine_pending`）として残り、Beat ごとの字数目安や末尾密度の指摘も残して保存へ進みます。分量は清書の段で判定します。必須修復（打切り・Beat 欠落など）や自動修復の対象が残るときは修復を始めます。
 4. 途中の job を捨てて止めるときは `repair-finish` を使います。`--reason floor_met` は床到達時、`author_stop` は必須が無ければ床未達でも止められます。生成が途中で切れたときや、これ以上直せる箇所が無いときも、`repair-next` のあとに `author_stop` で証跡を残せます。発行済みジョブの記録ファイルが消えているときは止めます。
 5. 指定した Beat だけを Deepen するときは `--intent explicit_deepen --scope beats --beat-ids` です。指定していない Beat は直しません。生成が途中で切れて修復ジョブを出せないときは `escalated` になり、新しい `prepare` に切り替えます。
 6. 全文の書き直しは、修復開始前なら同じ起草 run へ受け直し、開始後なら新しい `prepare` に切り替えます。
@@ -99,7 +99,7 @@ C1 の引用座標を手計算する代わりに、正規化本文から一意�
 python tools/writing_bridge_cli.py locate-quote novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --quote "旅行用の上着"
 ```
 
-`repair: completed` は修復の試行が終了した意味です。適格な追加候補が無くシーン床に届かないとき、または生成打切りのように job を出せない必須が残るときは `repair: escalated` になります。その稿は同じ run へ受け直さず、新しい `prepare` に切り替えます。必須修復も追加候補も無いときは、初回の `repair-next` から `pending` は空で、結合校正の job も出しません。どちらも METRON・C1 の成功や本文保存を意味しません。このあと新しい稿でやり直すときは、同じ run へ `receive` せず、新しい `prepare` の run を切ります。旧 run の observations や metrics は本文ハッシュが一致するときだけ `--from-run` で流用できます。`text_save` は `skipped` のままです。残る指摘は `report.json`、棄却・生成失敗・意味レビューは `repair_history` と `repair_state.json` で確認できます。修復の途中で C1 根拠がまだ無いときは、`status` に未記録として残りますがコマンドは失敗しません。完了後に根拠が無いときは従来どおり止まります。`status` と `report.md` は required（`BeatMissing` / 打切り）と advisory（`TooShort` / `BeatThin` / `EndingRush`）を分けます。「床到達・必須なし → 保存へ」は、床到達・必須なしに加え、検査の blocking がなく、C1 が成功しているか対象外（`skipped`）で、修復が進行中でないときだけ出ます。C1 未確認や Deepen の修復中には出しません。そのとき `metron_auto_repair: none` です。`metron: findings` だけでは修復を始めません。同じ受領候補を再度 `inspect` しても、計測ファイルの版は増えません。
+`repair: completed` は修復の試行が終了した意味です。適格な追加候補が無くシーン床に届かないとき、または生成打切りのように job を出せない必須が残るときは `repair: escalated` になります。その稿は同じ run へ受け直さず、新しい `prepare` に切り替えます。必須修復も追加候補も無いときは、初回の `repair-next` から `pending` は空で、結合校正の job も出しません。どちらも METRON・C1 の成功や本文保存を意味しません。このあと新しい稿でやり直すときは、同じ run へ `receive` せず、新しい `prepare` の run を切ります。旧 run の observations や metrics は本文ハッシュが一致するときだけ `--from-run` で流用できます。`text_save` は `skipped` のままです。残る指摘は `report.json`、棄却・生成失敗・意味レビューは `repair_history` と `repair_state.json` で確認できます。修復の途中で C1 根拠がまだ無いときは、`status` に未記録として残りますがコマンドは失敗しません。完了後に根拠が無いときは従来どおり止まります。`status` と `report.md` は required（`BeatMissing` / 打切り）と advisory（`TooShort` / `BeatThin` / `EndingRush`）を分けます。「必須なし → 保存へ」は、必須の指摘が無いことに加え（床に届かなくても出ます。その分は「清書待ち」です）、検査の blocking がなく、C1 が成功しているか対象外（`skipped`）で、修復が進行中でないときだけ出ます。C1 未確認や Deepen の修復中には出しません。そのとき `metron_auto_repair: none` です。`metron: findings` だけでは修復を始めません。同じ受領候補を再度 `inspect` しても、計測ファイルの版は増えません。
 
 ## 本文正本への反映
 
@@ -127,7 +127,7 @@ python tools/writing_bridge_cli.py receive novels/NNN_作品名 --scene-id ch01-
 python tools/writing_bridge_cli.py inspect novels/NNN_作品名 --scene-id ch01-001 --run-id run-0001 --observations path/to/observations.json
 ```
 
-`inspect` のあと、`_work/writing/ch01-001/run-0001/report.json`（以前の作品は `_writing/ch01-001/run-0001/report.json`）でシーン床への到達と必須修復の有無を確認できます。届いていればレシピ1へ進み、同じ候補を保存用 run で受け直します。レシピ1の `--from-run run-0001` は、この起草 run を指します。床未達や必須修復が残るときは、起草 run のまま修復（`repair-*`）へ進みます。
+`inspect` のあと、`_work/writing/ch01-001/run-0001/report.json`（以前の作品は `_writing/ch01-001/run-0001/report.json`）で必須修復と自動修復の対象の有無、分量の状態（`length_status`）を確認できます。どちらも無ければ、床に届かなくてもレシピ1へ進み、同じ候補を保存用 run で受け直します。レシピ1の `--from-run run-0001` は、この起草 run を指します。必須修復や自動修復の対象が残るときは、起草 run のまま修復（`repair-*`）へ進みます。
 
 ```powershell
 # レシピ1: 未作成または空の正本。selector なし。
@@ -159,6 +159,8 @@ python tools/writing_bridge_cli.py publish novels/NNN_作品名 --scene-id ch01-
 
 実行後、Monogatari Coach は Beat / fact マーカーを除いた本文を `_novel_text` へ書きます。マーカー行のあいだに残った連続空行は、段落1つ分（空行1つ）まで畳みます。対象外の場面は残します。既存ファイルは `<元ファイル名>_vNNN.md` で退避します。`FINAL.md` は作りません。採用したマーカー稿は `_work/metron/<scene>/adopted.<run_id>.md` に残ります。見出しだけの stub を先に正本へ置くと `STALE_EVIDENCE` になりえます。
 
+保存の前に、Monogatari Coach は METRON の必須（Beat の欠落・生成の打ち切り・Beat の対応の崩れ）が残っていないかを確かめます。残っていれば正本へ書かずに止まります。このときは `publish_state.json` を作らないので、直した候補を同じ run で受け直して保存できます。床に届かないだけでは止まりません。
+
 保存直後に同じ run で再計測します。`report.json` の `text_save` は `success`、`target_text_sha256` は保存本文です。METRON と C1 は採用した場面稿で測り、保存ファイルとハッシュが違うときは findings に残します。文字数と句読点ゲートも findings に記録します。句読点の失敗で本文は戻しません。`_meta.md` のストーリー反映と rewrite 清書は既存スキルの手順です。同じターンで `_novel_text` の手編集と `publish` は重ねません。
 
 ```mermaid
@@ -167,9 +169,9 @@ flowchart TD
     Flags -->|OFF| Direct[_novel_textを直接更新]
     Flags -->|ON| Prepare[prepare]
     Prepare --> Receive[receiveとinspect]
-    Receive --> Floor{シーン床到達}
-    Floor -->|いいえ、必須修復、またはDeepen明示| Jobs[repair-beginからsubmit]
-    Floor -->|はい| MetronPub{METRON ONかつ止めなし}
+    Receive --> Floor{必須修復か自動修復の対象}
+    Floor -->|あり、またはDeepen明示| Jobs[repair-beginからsubmit]
+    Floor -->|なし（床未達でも）| MetronPub{METRON ONかつ止めなし}
     Jobs --> MetronPub
     MetronPub -->|はい| Publish[allow-publish runで publish]
     MetronPub -->|いいえ| Report[report.jsonを確認]

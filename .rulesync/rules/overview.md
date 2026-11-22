@@ -35,6 +35,9 @@ globs: ["**/*"]
 | プロットが平板・先が読めるのでアレンジしたい、展開を変えたい | `novel-plot-arrange`（構造論と流れ破壊の葉を工程正本として読む。黄金律は型を指定されたときだけ。清書では転を足さない） |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
+| 本文を「清書して」「冗長を減らして」と頼まれる | `novel-refinement-output`（引き締め清書） |
+| 本文に「〇〇を足して」と指示される | `novel-refinement-output`（指示加筆。指示を承認とみなし、書いたあとで `novel-story-reflection` で設計へ同期） |
+| 本文が「薄い」「量が足りない」「深めて」と頼まれる | `novel-refinement-output`（全体の深化。増やしてから、足した部分を清書） |
 | 設計の章出来事を「どうしてがわかるように」「動機が見えるように」直す | `novel-planning`（因果検査の単独起動。Gate B は再実施しない）。設計か本文かが取れないときは一言確かめる |
 | 設計の章出来事・あらすじの抽象を「誰が何をしたか分かる文に」直す | `novel-planning` の口語化（概念比喩検査と台詞検査。Gate B は再実施しない） |
 | 設計の章項の「しない」を括弧に分ける | `novel-planning`（執筆注の括弧分け。Gate B は再実施しない） |
