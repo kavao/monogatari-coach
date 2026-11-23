@@ -2,7 +2,7 @@ __pycache__/
 .venv/
 _how_to/*
 !_how_to/.gitkeep
-# _workingspace: 査証ログ・日記・計画の運用 README のみ追跡し、月次 *.md はコミットしない
+# _workingspace: 査証ログ・日記の運用 README のみ追跡。計画フォルダと月次 *.md はコミットしない
 _workingspace/*
 !_workingspace/.gitkeep
 !_workingspace/log/
@@ -13,7 +13,6 @@ _workingspace/diary/*
 !_workingspace/diary/README.md
 !_workingspace/plans/
 _workingspace/plans/*
-!_workingspace/plans/README.md
 writers/*
 !writers/000_default/writer_profile.md
 novels/*
