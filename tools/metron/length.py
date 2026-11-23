@@ -123,6 +123,38 @@ class LengthSpec(StrictModel):
     known_facts: str = ""
     # 減量で収束（OP-C）してよい子エピソード。作者が episodes.yaml に登録したものだけ。
     episodes: list[ChildEpisode] = Field(default_factory=list)
+    # 欠落 Beat を埋めたあとの字数で +15% の上限を当て直す（計画 §15.2）。新しく始めた調整だけ True。
+    # 古い調整は再生の結果を変えないよう False のまま（従来の D21 の不足率で判定する）。
+    recap_after_fill: bool = False
+    # 欠落を埋めたあとに抑えた作業目標。再生のたびに同じ値になる（完了判定・引き締め・収束が使う）。
+    capped_chars: int | None = None
+    # 欠落 Beat の埋めで新規事実の指示を出さず、意図の出来事だけを書かせる（計画 §16.4）。
+    # プロンプトが変わるので新しく始めた調整だけ True（古い記録の再生でジョブの照合を壊さない）。
+    fill_intent_only: bool = False
+
+    def effective_target(self) -> LengthTarget:
+        """作業で使う目標。欠落を埋めたあとに抑えていれば、その字数。"""
+        if self.capped_chars is None or self.capped_chars >= self.target.target_chars:
+            return self.target
+        return self.target.model_copy(update={"target_chars": self.capped_chars})
+
+
+def deepen_window(target: LengthTarget, plan: BeatPlan, current_chars: int) -> tuple[bool, int, int, int]:
+    """全体の深化の開始判定（計画 §10.1）。(届くか, 上限, 許容帯の下限, 作業目標) を返す。
+
+    上限は今の字数 × 1.15、下限は仕上がり目標 × 0.85 と床 × 0.9 の大きい方。作業目標は
+    仕上がり目標 × 1.08 と上限の小さい方（仕上がり目標が無ければ目標と上限の小さい方）。
+    """
+    finish = target.finish_chars if target.finish_chars is not None else target.target_chars
+    if target.scope == "beat":
+        floor = next(beat.budget.chars_hint for beat in plan.beats if beat.id == target.beat_id)
+    else:
+        floor = plan.generation.chars_floor
+    lower = deepen_start_lower(finish, floor)
+    cap = growth_cap(current_chars)
+    working = (working_target_chars(finish, current_chars) if target.finish_chars is not None
+               else min(target.target_chars, cap))
+    return cap >= lower, cap, lower, working
 
 
 @dataclass(frozen=True)
@@ -437,6 +469,7 @@ def length_adjust_impl(
     dispatch: Callable[..., str],
     checkpoint: Callable[[dict[str, str]], None] | None = None,
     allowed_repeats: tuple[str, ...] = (),
+    retarget: Callable[[int], None] | None = None,
 ):
     """一方向の伸縮を ``max_passes`` 回まで行う。却下された候補も回数に数える。"""
 
@@ -529,7 +562,8 @@ def length_adjust_impl(
     for beat_id in missing:
         index = next(position for position, beat in enumerate(beat_plan.beats) if beat.id == beat_id)
         prompt = build_beat_prompt(
-            by_id[beat_id], previous_context=_previous_text(index, beat_plan, texts))
+            by_id[beat_id], previous_context=_previous_text(index, beat_plan, texts),
+            include_new_facts=not length.fill_intent_only, intent_only=length.fill_intent_only)
         if checkpoint:
             checkpoint(dict(texts))
         candidate = dispatch("regenerate", beat_id, prompt)
@@ -548,14 +582,37 @@ def length_adjust_impl(
         }
         unrepaired.extend(beat_id for beat_id in missing
                           if beat_id in still and beat_id not in unrepaired)
-        notes.append("LENGTH_MISSING_FILLED: " + ", ".join(b for b in missing if b not in unrepaired))
+        filled_ids = [b for b in missing if b not in unrepaired]
+        if filled_ids:  # 埋まった Beat が無いときは出さない（計画 §16.3）
+            notes.append("LENGTH_MISSING_FILLED: " + ", ".join(filled_ids))
     if unrepaired:
         escalated.add(LENGTH_TOKEN)
         notes.append("LENGTH_REQUIRED_UNREPAIRED: missing beats were not filled: "
                      + ", ".join(unrepaired))
 
     start_state = "blocked" if unrepaired else band_state(current(), bounds)
-    if missing and start_state == "short":
+    if missing and start_state == "short" and length.recap_after_fill:
+        # 欠落の無い稿と同じ規則を、埋めたあとの字数で当てる（計画 §15.2）。開始時は埋める前の字数で
+        # 上限をかけない（欠落 Beat はほぼ空なので、埋める前の字数では届く・届かないを決められない）。
+        filled = current()
+        reachable, cap, lower, working = deepen_window(target, beat_plan, filled)
+        if not reachable:
+            escalated.add(LENGTH_TOKEN)
+            notes.append(
+                f"DESIGN_DENSITY: {filled} chars after filling missing beats can grow to {cap} "
+                f"(+{DEEPEN_MAX_GROWTH:.0%}) but the band lower is {lower}; do not deepen. "
+                "Propose an instructed addition or child episodes (tools/design_density.py)"
+            )
+            start_state = "design"
+        elif working < target.target_chars:
+            notes.append(f"LENGTH_TARGET_CAPPED: work target {target.target_chars} capped to {working} "
+                         f"(+{DEEPEN_MAX_GROWTH:.0%} of {filled} after filling missing beats)")
+            target = target.model_copy(update={"target_chars": working})
+            bounds = resolve_bounds(target, beat_plan)
+            if retarget:
+                retarget(working)
+            start_state = band_state(current(), bounds)
+    elif missing and start_state == "short":
         # D21: 欠落を埋めたあとも大きく足りない稿は、Deepen へ進まず設計追加へ回す。
         filled = current()
         ratio = shortage_ratio(target.target_chars, filled)

@@ -62,7 +62,7 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 
 ## 表現ミックス
 
-- 文種の相対重み。正本は `_meta.md` の「表現ミックス」節（ON/OFF）。INTERIORITY 低なら内面を増やさない。新規 beats へ写し、完了ゲートにしない。
+- 文種の相対重み。正本は `_meta.md` の「表現ミックス」節。新規作品は ON（OFF は明示時だけ）、節なしは OFF。INTERIORITY 低なら内面を増やさない。新規 beats へ写し、完了ゲートにしない。
 
 ## 文章の伸縮（清書・規定量調整）
 
@@ -147,4 +147,3 @@ globs: [".rulesync/**", "tools/**", "docs/**", "_workingspace/**", "rulesync.jso
 | METRON / CHRONOS / AUDIT_LOG | `workflow-specification.md` と `docs/architecture/` |
 | 執筆接続 | `writing_bridge` と `docs/architecture/writing-bridge.md` |
 | Rulesync | `docs/rulesync.md` と `rule-authoring.md` |
-| goal モード（完了条件つきの自律実行） | `novel-goal-mode` |

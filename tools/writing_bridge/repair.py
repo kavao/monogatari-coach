@@ -456,7 +456,7 @@ def _begin_length(root, dest, request, *, model, authorization, plan, analyzed, 
             clean_text=analyzed.clean_text, spans=analyzed.spans, model=model,
             context=full_context, seam_enabled=False,
             length=LengthSpec(target=target, known_facts=canon_review.known_facts_text(events),
-                              episodes=episodes),
+                              episodes=episodes, recap_after_fill=True, fill_intent_only=True),
             dialogue_cap=True, allowed_repeats=_allowed_repeats(root, request.scene_id))
     except (LengthConfigError, ValueError) as error:
         raise BridgeError("MODEL_UNCALIBRATED", str(error)) from error
@@ -490,6 +490,17 @@ def _episode_of(state, job):
     if job.episode_id is None or state.session.length is None:
         return None
     return next((item for item in state.session.length.episodes if item.id == job.episode_id), None)
+
+
+def _writer_slips(root: Path, state, job, original: str, candidate: str) -> list[str]:
+    """書き手の稿の崩れの補助の印（計画 §16.6）。元の稿にすでにある印は出さない。判定には使わない。"""
+    from metron.writer_slips import is_third_person, new_slips
+
+    beat = next((item for item in state.session.beat_plan.beats if item.id == job.beat_id), None)
+    config = root / "config.md"
+    third = is_third_person(config.read_text(encoding="utf-8")) if config.is_file() else False
+    body = re.sub(r"<!--/?beat:[^>]*-->", "", candidate)
+    return new_slips(original, body, intent=beat.intent if beat else "", third_person=third)
 
 
 def _candidate_beat_text(state, job, text):
@@ -572,14 +583,20 @@ def _expression_mix_note(root: Path, repo_root: Path) -> str:
         return str((catalog.get(category_id) or {}).get("label") or category_id)
 
     high = [label(key) for key, band in result.bands.items() if band == "high" and key != "metaphor"]
+    mid = [label(key) for key, band in result.bands.items() if band == "mid" and key != "metaphor"]
     low = [label(key) for key, band in result.bands.items() if band == "low"]
     lines = ["", "表現ミックス（作品の _meta.md。状態 ON）:",
              "- どこを深めるかは変えない。深める箇所では、次の種類の文を先に足す: "
              + ("、".join(high) if high else "（高い種類なし。ふだんどおり）"),
              "- 次の種類では足さない: " + ("、".join(low) if low else "（なし）"),
+             # 計画 §16.5: 高の種類だけで埋めて、中の内面・相手の反応を落とさない（138 第4章の試行）。
+             "- 中の種類" + (f"（{'、'.join(mid)}）" if mid else "")
+             + "は、その場面に要るなら足してよい。相手の反応と人物の迷いは、高の種類の文で置き換えない。",
              "- 会話の往復を増やして所作の代わりにしない。現場音だけの段落を新しく立てない。比喩で字数を増やさない。"]
     if result.interiority_capped:
         lines.append("- 見せ方軸で内面を抑える作品なので、独白を足さない。")
+    elif getattr(result, "interiority_mark", None) in {"+", "++"} and result.bands.get("interiority") != "low":
+        lines.append("- 見せ方軸で内面を厚くする作品なので、内面の文は帯が中でも削らない。")
     return "\n".join(lines) + "\n"
 
 
@@ -588,30 +605,22 @@ def _deepen_start(target, plan, current_chars: int, *, blocked: bool):
 
     上限（今の字数 × 1.15）まで増やしても許容帯の下限（仕上がり目標 × 0.85 と床 × 0.9 の
     大きい方）に届かない稿は始めない。作業目標は仕上がり目標 × 1.08 と上限の小さい方。
-    欠落 Beat があるときは先に欠落を埋めるので、届かなくても止めずに記録だけ残す。
+    欠落 Beat があるときは、ここでは判定も上限もかけない。欠落を埋めたあとの字数で同じ規則を
+    当て直す（`length_adjust_impl` の `recap_after_fill`。計画 §15.2）。
     """
     if current_chars >= target.target_chars:
         return target, []  # 減量はこの判定の対象外
-    finish = target.finish_chars if target.finish_chars is not None else target.target_chars
-    if target.scope == "beat":
-        floor = next(beat.budget.chars_hint for beat in plan.beats if beat.id == target.beat_id)
-    else:
-        floor = plan.generation.chars_floor
-    lower = length_rules.deepen_start_lower(finish, floor)
-    cap = length_rules.growth_cap(current_chars)
-    notes: list[str] = []
-    if cap < lower:
+    if not blocked:
+        return target, []
+    reachable, cap, lower, working = length_rules.deepen_window(target, plan, current_chars)
+    if not reachable:
         message = (f"DESIGN_DENSITY: {current_chars} chars can grow to {cap} "
                    f"(+{length_rules.DEEPEN_MAX_GROWTH:.0%}) but the band lower is {lower}; "
                    "do not deepen. Propose an instructed addition or child episodes "
                    "(tools/design_density.py)")
-        if blocked:
-            raise BridgeError("DESIGN_DENSITY", message,
-                              refs={"chars": current_chars, "cap": cap, "lower": lower})
-        # 欠落 Beat を先に埋める場合も止めずに記録し、作業目標には同じ上限をかける。
-        notes.append(message)
-    working = (length_rules.working_target_chars(finish, current_chars) if target.finish_chars is not None
-               else min(target.target_chars, length_rules.growth_cap(current_chars)))
+        raise BridgeError("DESIGN_DENSITY", message,
+                          refs={"chars": current_chars, "cap": cap, "lower": lower})
+    notes: list[str] = []
     if working < target.target_chars:
         notes.append(f"LENGTH_TARGET_CAPPED: work target {target.target_chars} capped to {working} "
                      f"(+{length_rules.DEEPEN_MAX_GROWTH:.0%} of {current_chars})")
@@ -839,6 +848,14 @@ def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
         raise BridgeError("UNKNOWN_REF", f"candidate not found: {candidate}")
     text = candidate.read_text(encoding="utf-8") if candidate else ""
     pending = state.session.pending
+    slips: list[str] = []
+    if candidate is not None and pending is not None and pending.job_id == job_id and pending.beat_id:
+        original_text = state.session.working_texts.get(pending.beat_id, "")
+        try:
+            _, slip_text = _candidate_beat_text(state, pending, text)
+        except BridgeError:
+            slip_text = text
+        slips = _writer_slips(root, state, pending, original_text, slip_text)
     # 提出済みのジョブの再送は submit_result の同一結果判定に任せる（応答喪失からの復旧）。
     resent = any(item.job.job_id == job_id for item in state.session.history)
     if state.intent in {"length", "contract_fix"} and candidate is not None and not resent:
@@ -864,7 +881,8 @@ def repair_submit(work_root: Path, *, scene_id: str, run_id: str,
     _advance(dest, state)
     code, message = _export(root, dest, request, state, repo_root, observations_path)
     _journal(dest, request, JournalAction.REPAIR_SUBMIT, job_id)
-    return code, f"result recorded; repair {state.status}; {message}"
+    slip_note = ("; WRITER_SLIPS（補助。判定には使わない）: " + "、".join(slips)) if slips else ""
+    return code, f"result recorded; repair {state.status}; {message}{slip_note}"
 
 
 def _reanalyze_current(root, dest, request, state, repo_root):
@@ -989,7 +1007,7 @@ def repair_finish(work_root: Path, *, scene_id: str, run_id: str,
     length_met = True
     if state.session.length is not None:
         # 規定量調整は床に加えて許容帯にも入っていなければ完了にしない。
-        target = state.session.length.target
+        target = state.session.length.effective_target()
         bounds = resolve_bounds(target, plan)
         texts = _text_by_beat(analyzed.clean_text, plan, analyzed.spans)
         chars = measured_chars(target, plan, texts)
@@ -1095,6 +1113,10 @@ def length_review(work_root: Path, *, scene_id: str, run_id: str, job_id: str,
         original, full,
         known_text=_length_known_text(root, state, events),
         names=canon_review.event_names(events))
+    slips = _writer_slips(root, state, pending, original, full)
+    newline = chr(10)
+    view = (view.rstrip(newline) + newline + "- 書き手の崩れ（読む前の目印）: "
+            + ("、".join(slips) or "なし") + newline)
     return 0, view
 
 
@@ -1218,7 +1240,7 @@ def _summary_text(root, dest, request, state, refined: dict[str, str] | None = N
         lines.append(f"- 字数（Beat 本文の合計）: 調整前 {before} → 増量後 {after} → 清書後 {polished}"
                      f"（清書で {trim:.1%} 削減、床 {plan.generation.chars_floor}）")
     if state.session.length is not None:
-        target = state.session.length.target
+        target = state.session.length.effective_target()
         bounds = resolve_bounds(target, plan)
         lines.append(f"- 増量の許容帯: {bounds.effective_lower}〜{bounds.upper_chars}")
         finish = finish_bounds(target, plan)

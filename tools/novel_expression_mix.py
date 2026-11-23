@@ -4,7 +4,12 @@
 
     uv run python tools/novel_expression_mix.py novels/<作品> resolve
     uv run python tools/novel_expression_mix.py novels/<作品> validate
+    uv run python tools/novel_expression_mix.py novels/<作品> freeze [--dry-run]
     uv run python tools/novel_expression_mix.py validate
+
+freeze は新規企画の既定 ON 用。`novel_meta_check.py ensure-section … expression-mix` が足したばかりの
+節（状態 OFF の1行だけ）を、状態 ON・指定 ジャンル既定・カタログ全 ID の重みに書き換える。
+作者が書いた節・状態 ON の節は書き換えない。
 
 作業用 `_how_to/expression/` に同名ファイルがあれば、その1ファイルだけを使う（標準と合成しない）。
 完了ゲートにはしない。既存の beats.yaml は書き換えない。
@@ -601,25 +606,113 @@ def format_result(result: MixResult) -> str:
     return "\n".join(lines)
 
 
+FILLER_FLAG_LINE = "- **状態**: OFF"
+NEWLINE = chr(10)
+
+
+def _format_weight(value: float) -> str:
+    text = f"{value:g}"
+    return text if "." in text or "e" in text else f"{text}.0"
+
+
+def freeze_section_lines(result: MixResult, catalog_ids: list[str], today: str) -> list[str]:
+    """ジャンル既定を凍結した節の本文（見出しを除く）。"""
+    lines = [
+        "- **状態**: ON",
+        "- **指定**: ジャンル既定",
+        f"- **採用時点**: {today}・新規企画の既定",
+        "- **重み**:",
+    ]
+    lines.extend(f"  - {key}: {_format_weight(result.weights[key])}" for key in catalog_ids)
+    return lines
+
+
+def freeze_meta_text(text: str, result: MixResult, catalog_ids: list[str], today: str) -> str:
+    """ensure-section の直後の節だけを ON の凍結に置き換えた `_meta.md` の本文（LF）。"""
+    lines = text.split(NEWLINE)
+    start: int | None = None
+    start_level = 2
+    for index, line in enumerate(lines):
+        if HEADING_MIX.match(line.strip()):
+            start = index
+            start_level = _heading_level(line) or 2
+            break
+    if start is None:
+        raise MixError("NO_SECTION", "_meta.md に「表現ミックス」節が無い。先に "
+                       "novel_meta_check.py ensure-section <作品> expression-mix で足す")
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        level = _heading_level(lines[index])
+        if level is not None and level <= start_level:
+            end = index
+            break
+    body = [line.strip() for line in lines[start + 1:end] if line.strip()]
+    if body != [FILLER_FLAG_LINE]:
+        if any(FLAG_LINE_RE.match(line) and line.rstrip().endswith("ON") for line in body):
+            raise MixError("ALREADY_ON", "_meta.md 表現ミックス: すでに状態 ON。凍結を書き換えない")
+        raise MixError("NOT_FILLER", "_meta.md 表現ミックス: 節に記入がある。freeze は ensure-section の"
+                       "直後（状態 OFF の1行だけ）にだけ使う。採り直しは手順どおり手で書く")
+    if result.conflicts:
+        raise MixError("CONFLICT", "複数ジャンルのプロファイルが同じカテゴリで衝突している。作者に確かめて custom で書く")
+    # 節の後ろの空行は残す（次の見出しとの間）。
+    tail_blank = [line for line in lines[start + 1:end] if not line.strip()]
+    new_body = freeze_section_lines(result, catalog_ids, today)
+    keep_blank = [""] if tail_blank else []
+    return NEWLINE.join([*lines[:start + 1], *new_body, *keep_blank, *lines[end:]])
+
+
+def freeze_work(work: Path, *, root: Path, dry_run: bool, today: str | None = None) -> str:
+    """新規企画の既定 ON を `_meta.md` に書く。書いた節（dry-run は書く予定の節）を返す。"""
+    import datetime
+
+    from novel_meta_check import MetaError, _StoryReflectionGuard, _backup, _newline_of, _read_meta, _write
+
+    today = today or datetime.date.today().isoformat()
+    work = work.resolve()
+    _, catalog = load_catalog(root)
+    catalog_ids = list(catalog)
+
+    def build() -> tuple[Path, str, bytes, str]:
+        path, text, raw = _read_meta(work)
+        result = resolve_mix(work, root=root)
+        return path, text, raw, freeze_meta_text(text, result, catalog_ids, today)
+
+    try:
+        if dry_run:
+            _, text, _, updated = build()
+            return extract_section(updated, HEADING_MIX)
+        with _StoryReflectionGuard(work):
+            path, text, raw, updated = build()  # 排他を取ってから読み直す
+            backup = _backup(work, raw)
+            _write(path, updated, _newline_of(raw))
+    except MetaError as error:
+        raise MixError(error.code, str(error)) from error
+    check = resolve_mix(work, root=root)
+    if not check.enabled:
+        raise MixError("FREEZE_UNREADABLE", "書いた節を状態 ON として読めない")
+    return extract_section(path.read_text(encoding="utf-8"), HEADING_MIX) + NEWLINE + f"（旧版: {backup.as_posix()}）"
+
+
 def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="表現ミックスの解決と検証（完了ゲートではない）")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="freeze で書かずに節を表示する")
     parser.add_argument("--root", type=Path, default=None, help=argparse.SUPPRESS)
-    parser.add_argument("tokens", nargs="+", help="novels/<作品> resolve|validate  /  validate")
+    parser.add_argument("tokens", nargs="+", help="novels/<作品> resolve|validate|freeze  /  validate")
     args = parser.parse_args(argv)
     tokens = list(args.tokens)
     work: Path | None = None
     command: str
     if len(tokens) == 1 and tokens[0] == "validate":
         command = "validate"
-    elif len(tokens) >= 2 and tokens[-1] in {"resolve", "validate"}:
+    elif len(tokens) >= 2 and tokens[-1] in {"resolve", "validate", "freeze"}:
         command = tokens[-1]
         work = Path(tokens[0] if len(tokens) == 2 else " ".join(tokens[:-1]))
-    elif tokens[0] in {"resolve", "validate"} and len(tokens) >= 2:
+    elif tokens[0] in {"resolve", "validate", "freeze"} and len(tokens) >= 2:
         command = tokens[0]
         work = Path(" ".join(tokens[1:]))
     else:
-        parser.error("使い方: novels/<作品> resolve|validate  /  validate")
+        parser.error("使い方: novels/<作品> resolve|validate|freeze  /  validate")
     args.command = command
     args.work = work
     return args
@@ -644,6 +737,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.work is None:
             raise MixError("NO_WORK", "作品フォルダが無い")
+        if args.command == "freeze":
+            validate_tree(root)
+            section = freeze_work(args.work, root=root, dry_run=args.dry_run)
+            if args.json:
+                print(json.dumps({"ok": True, "dry_run": args.dry_run, "section": section},
+                                 ensure_ascii=False, indent=2))
+            else:
+                print(("書く予定の節（dry-run）:" if args.dry_run else "凍結しました:") + NEWLINE + section)
+            return 0
         if args.command == "validate":
             validate_tree(root)
             result = resolve_mix(args.work, root=root)

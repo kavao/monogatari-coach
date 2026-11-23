@@ -133,7 +133,7 @@ Gate B を行うときは分類軸を分けて判定し、チャットまたは 
    - 筋・設定に触れる軸（同葉の区分「筋」）は、B3 で章出来事を作る前なら設計の材料にしてよい。設計を作ったあとは章出来事・`character.md` と照らし、食い違う値は当てはめず「設計との衝突」に書く（設計を優先する）。
    - 実効方針の要点を、軸の ID を書かない口語にして `config.md` の執筆方針に置く。
    - 作業用索引があり、`showing_axes.md` に追随していないときは選定対象外とし、選定補助に列挙して追随を案内する。節には「プリセット: 保留（作業用索引が未追随）」と書く。
-8. **表現ミックス**（新規企画では **状態** を必ず記録する。既定は `OFF`。短い正本は `concepts.md`「表現ミックス」。完了ゲートにしない）: `_meta.md` に「表現ミックス」節が無ければ `uv run python tools/novel_meta_check.py ensure-section novels/<作品> expression-mix` で足す（filler は `状態: OFF`）。ジャンル軸のあと `uv run python tools/novel_expression_mix.py novels/<作品> resolve` を見せる。作者が採ったら **状態: ON** と指定（ジャンル既定 / custom）を書き、resolve の weights を節の **重み** へカタログの ID 全部書く（ジャンル既定でも凍結。欠け・空欄は `validate` 失敗。カタログが増えたら重みを足して再採用）。採らなければ **状態: OFF**。書いたら `uv run python tools/novel_expression_mix.py novels/<作品> validate` で ON/OFF が読めることを確かめる（`ON` / `OFF` 以外は失敗。指定だけでは ON にしない）。`expression.md` は状態 ON のときだけ selected に入れる（`relative_id: expression.md`、role: 表現ミックス、why、`standard_path` / `working_path` / `effective_path`、`bound_at`）。OFF にしたら selected から外す。作業用索引があり `expression.md` に追随していなければ選定対象外とし、選定補助に列挙して追随を案内する。節には「状態: OFF」と「指定: 保留（作業用索引が未追随）」と書く。重み表は `_meta.md` と YAML に閉じ、あらすじ・本文にカテゴリ ID を書かない。
+8. **表現ミックス**（新規企画では **状態** を必ず記録する。既定は `ON`。OFF は作者が明示したときだけで、返答なしは既定 ON。短い正本は `concepts.md`「表現ミックス」。完了ゲートにしない）: `_meta.md` に「表現ミックス」節が無ければ `uv run python tools/novel_meta_check.py ensure-section novels/<作品> expression-mix` で足す（filler は `状態: OFF`。このあとの手順で書き換える）。ジャンル軸のあと `uv run python tools/novel_expression_mix.py novels/<作品> resolve` を見せる。作者が OFF も重みの指定もしなければ、`uv run python tools/novel_expression_mix.py novels/<作品> freeze` で **状態: ON**・指定 ジャンル既定・カタログ全 ID の重みを書く（filler の節だけを書き換える。作者が書いた節・状態 ON の節は `NOT_FILLER` / `ALREADY_ON` で止まる。複数ジャンルのプロファイルが衝突すれば `CONFLICT` で止まるので、作者に確かめて custom で書く）。作者が重みを指定したら **状態: ON**・指定 custom と、カタログの ID 全部の重みを手で書く（欠け・空欄は `validate` 失敗。カタログが増えたら重みを足して再採用）。作者が OFF を明示したら **状態: OFF**。書いたら `uv run python tools/novel_expression_mix.py novels/<作品> validate` で ON/OFF が読めることを確かめる（`ON` / `OFF` 以外は失敗。指定だけでは ON にしない）。`expression.md` は状態 ON のときだけ selected に入れる（`relative_id: expression.md`、role: 表現ミックス、why、`standard_path` / `working_path` / `effective_path`、`bound_at`）。OFF にしたら selected から外す。作業用索引があり `expression.md` に追随していなければ選定対象外とし、選定補助に列挙して追随を案内する。節には「状態: OFF」と「指定: 保留（作業用索引が未追随）」と書く。重み表は `_meta.md` と YAML に閉じ、あらすじ・本文にカテゴリ ID を書かない。
 
 ### B2. タイトル命名ゲート
 
@@ -215,7 +215,7 @@ B4 の後、B5 の前に、Consistency Audit の `design` を実行する（`起
 - 提示層での現れ: selected のジャンル葉で採った型・決定ごとに、`proposal.md` のログライン・あらすじ・キャラクター紹介のどの一文（人物・出来事）として現れたかを1行ずつ。設計書の章出来事だけを指して済ませない。指せない決定があれば、それらの欄を直してから Gate B を完了する。ジャンル軸が「なし」なら「なし（ジャンル軸なし）」と書く
 - Gate A で許容した WARN（あれば）
 - 見せ方軸: `_meta.md` の「見せ方軸」節を書いた（プリセット / custom / 指定なし / 保留）。葉を採ったときは selected に入っていること
-- 表現ミックス: `_meta.md` の「表現ミックス」節に **状態: ON または OFF** を書いた。ON のときだけ selected に `expression.md`。`novel_expression_mix.py … validate` が通る。本文保存の完了ゲートにはしない
+- 表現ミックス: `_meta.md` の「表現ミックス」節に **状態: ON または OFF** を書いた（既定 ON。OFF は作者が明示したときだけ）。ON のときだけ selected に `expression.md`。`novel_expression_mix.py … validate` が通る。本文保存の完了ゲートにはしない
 - 検査レイヤ: 標準 ON で確認済み（`_work/metron/`（以前の作品は `_metron/`）と `chronos/` を用意）/ ユーザー明示の OFF（ON にする予定を `_meta.md` に記載）/ 確認未応答で標準 ON
 
 旧形式（`how_to/` プレフィックス、リポジトリ根からの相対だけ、索引を読んだ一覧に含む）は、第3段の実在チェックで WARN にする。第1段では正規化規則を守って新形式を書き、既存行は触らない。

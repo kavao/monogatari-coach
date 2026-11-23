@@ -733,12 +733,14 @@ def inspect(
         length_status=(None if floor_met is None else "ok" if floor_met else "refine_pending"),
     )
     repair_active = False
+    repair_tried = False
     repair_path = dest / "repair_state.json"
     if repair_path.is_file():
         from .repair import read_state
         from metron.repair_steps import history_summary
         repair = read_state(repair_path)
         repair_active = repair.status == "active"
+        repair_tried = repair.status in {"completed", "escalated"}
         report.repair_history = history_summary(repair.session)
         for skipped in repair.skipped_jobs:
             report.repair_history.append({
@@ -767,6 +769,7 @@ def inspect(
         text_state=report.text_state,
         blocking=bool(blocking),
         repair_active=repair_active,
+        repair_tried=repair_tried,
     )
     write_model(dest / "report.json", report, json_format=True)
     write_text(dest / "report.md", _render_report_md(report))

@@ -32,6 +32,7 @@ def build_beat_prompt(
     *,
     previous_context: str | None = None,
     include_new_facts: bool = True,
+    intent_only: bool = False,
 ) -> str:
     """Beatの意図・構造予算・分量下限を含む Writer 向け指示を作る。
 
@@ -54,6 +55,10 @@ def build_beat_prompt(
         "Beatの冒頭で状況を再説明せず、直前の文脈から続ける。",
         "指定した出来事と結末を変更しない。",
     ]
+    if intent_only:
+        # 規定量調整の中の欠落の埋め（計画 §16.4）。新しい事実を足さない調整の中なので、新規事実の指示を出さない。
+        lines.append("この Beat の意図にある出来事を書く。意図にない事実・出来事は足さない。"
+                     "前後の Beat の出来事を先取りしたり、繰り返したりしない。")
     if include_new_facts and budget.new_facts > 0:
         lines.extend(
             [

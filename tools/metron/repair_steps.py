@@ -170,6 +170,7 @@ def _replay(state: RepairSession) -> RepairJob | SceneRepairResult:
                 clean_text=state.clean_text, spans=state.spans, length=state.length,
                 dispatch=dispatch, allowed_repeats=tuple(state.allowed_repeats),
                 checkpoint=lambda texts: setattr(state, "working_texts", texts),
+                retarget=lambda chars: setattr(state.length, "capped_chars", chars),
             )
         else:
             result = _repair_scene_impl(
@@ -252,9 +253,10 @@ def submit_result(state: RepairSession, *, job_id: str, model: str,
             if state.length is None:
                 rejection = "tighten requires a length adjustment session"
             else:
-                bounds = resolve_bounds(state.length.target, state.beat_plan)
+                target = state.length.effective_target()
+                bounds = resolve_bounds(target, state.beat_plan)
                 minimum = tighten_min_chars(beat_id, state.beat_plan, state.working_texts,
-                                            state.length.target, bounds)
+                                            target, bounds)
                 check = validate_tightening(state.working_texts[beat_id],
                     strip_generation_markers(candidate), min_chars=minimum)
                 if not check.accepted:
@@ -300,8 +302,9 @@ def _condense_rejection(state: RepairSession, job: RepairJob, candidate: str) ->
         return check.reason
     texts = dict(state.working_texts)
     texts[episode.beat_id] = splice(text, episode, candidate)
-    bounds = resolve_bounds(state.length.target, state.beat_plan)
-    if measured_chars(state.length.target, state.beat_plan, texts) < bounds.effective_lower:
+    target = state.length.effective_target()
+    bounds = resolve_bounds(target, state.beat_plan)
+    if measured_chars(target, state.beat_plan, texts) < bounds.effective_lower:
         return "condensing falls below the effective lower bound"
     if assembled_chars(state.beat_plan, texts) < bounds.scene_floor:
         return "condensing falls below the scene floor"

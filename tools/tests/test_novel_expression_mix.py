@@ -479,3 +479,89 @@ def test_hyphenated_catalog_id_can_freeze(tmp_path: Path) -> None:
     result = mix.resolve_mix(work, root=tmp_path)
     assert result.weights["custom-measure"] == 1.5
     assert mix.main([str(work), "validate", "--root", str(tmp_path)]) == 0
+
+
+# ── freeze（新規企画の既定 ON） ─────────────────────────────────────────────
+
+FILLER = "- **状態**: OFF"
+
+
+def _write_meta_with_tail(work: Path, *, genre: str = "genre/human_drama.md", section: str = FILLER) -> None:
+    _write_meta(work, genre=genre, freeze=section)
+    meta = work / "_meta.md"
+    meta.write_text(meta.read_text(encoding="utf-8") + "\n# II. 外部メタ情報\n\n## 1. カクヨム基本項目\n- **タグ**: 試し\n",
+                    encoding="utf-8")
+
+
+def test_freeze_writes_genre_default_on(tmp_path: Path) -> None:
+    _copy_example_expression(tmp_path)
+    work = tmp_path / "novels" / "001_hd"
+    _write_meta_with_tail(work)
+    section = mix.freeze_work(work, root=tmp_path, dry_run=False, today="2026-11-24")
+    assert "- **状態**: ON" in section
+    assert "- **指定**: ジャンル既定" in section
+    text = (work / "_meta.md").read_text(encoding="utf-8")
+    assert "  - daily: 2.0" in text and "  - metaphor: 0.4" in text
+    assert "## 1. カクヨム基本項目\n- **タグ**: 試し" in text  # 後ろの節は残る
+    assert FILLER not in text
+    result = mix.resolve_mix(work, root=tmp_path)
+    assert result.enabled is True and result.flag_source == "explicit"
+    assert result.freeze == "ジャンル既定"
+    assert result.bands["daily"] == "high"
+    assert list((work / "_novel_text_backup").glob("_meta_v*.md"))
+
+
+def test_freeze_dry_run_does_not_write(tmp_path: Path) -> None:
+    _copy_example_expression(tmp_path)
+    work = tmp_path / "novels" / "001_hd"
+    _write_meta_with_tail(work)
+    before = (work / "_meta.md").read_bytes()
+    section = mix.freeze_work(work, root=tmp_path, dry_run=True, today="2026-11-24")
+    assert "- **状態**: ON" in section
+    assert (work / "_meta.md").read_bytes() == before
+    assert not (work / "_novel_text_backup").exists()
+
+
+@pytest.mark.parametrize(
+    ("section", "code"),
+    [
+        ("- **状態**: ON\n- **指定**: ジャンル既定\n", "ALREADY_ON"),
+        ("- **状態**: OFF\n- **指定**: 指定なし\n", "NOT_FILLER"),
+        ("", "NO_SECTION"),
+    ],
+)
+def test_freeze_refuses_authored_sections(tmp_path: Path, section: str, code: str) -> None:
+    _copy_example_expression(tmp_path)
+    work = tmp_path / "novels" / "001_hd"
+    if section.startswith("- **状態**: ON"):
+        section = section + _freeze_weights(tmp_path)
+    _write_meta_with_tail(work, section=section)
+    if code == "NO_SECTION":
+        _write_meta(work)
+    before = (work / "_meta.md").read_bytes()
+    with pytest.raises(mix.MixError) as caught:
+        mix.freeze_work(work, root=tmp_path, dry_run=False, today="2026-11-24")
+    assert caught.value.code == code
+    assert (work / "_meta.md").read_bytes() == before
+
+
+def test_freeze_refuses_profile_conflict(tmp_path: Path) -> None:
+    _copy_example_expression(tmp_path)
+    profiles = tmp_path / "_how_to.example" / "expression" / "profiles"
+    (profiles / "aaa.yaml").write_text('schema_version: "1"\ngenre_id: aaa\nweights:\n  daily: 2.0\n', encoding="utf-8")
+    (profiles / "bbb.yaml").write_text('schema_version: "1"\ngenre_id: bbb\nweights:\n  daily: 0.5\n', encoding="utf-8")
+    work = tmp_path / "novels" / "001_two"
+    _write_meta_with_tail(work, genre="genre/aaa.md、genre/bbb.md")
+    with pytest.raises(mix.MixError) as caught:
+        mix.freeze_work(work, root=tmp_path, dry_run=False, today="2026-11-24")
+    assert caught.value.code == "CONFLICT"
+
+
+def test_freeze_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _copy_example_expression(tmp_path)
+    work = tmp_path / "novels" / "001_hd"
+    _write_meta_with_tail(work)
+    assert mix.main([str(work), "freeze", "--root", str(tmp_path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True and payload["dry_run"] is False
+    assert mix.main([str(work), "freeze", "--root", str(tmp_path)]) == 1

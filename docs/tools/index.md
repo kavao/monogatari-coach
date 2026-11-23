@@ -1678,6 +1678,18 @@ uv run python tools/novel_expression_mix.py novels/NNN_作品名 resolve
 uv run python tools/novel_expression_mix.py novels/NNN_作品名 validate
 ```
 
+新規企画では、ジャンルの既定の重みで **状態: ON** に凍結します（既定 ON）。`novel_meta_check.py ensure-section … expression-mix` で足したばかりの節（状態 OFF の1行だけ）を書き換えます。まず `--dry-run` で書く予定の節を確かめ、そのあと書きます。
+
+```bash
+# 書かずに、書く予定の節を表示する
+uv run python tools/novel_expression_mix.py novels/NNN_作品名 freeze --dry-run
+
+# 状態 ON・指定 ジャンル既定・カタログ全カテゴリの重みを書く（旧版は _novel_text_backup/ へ退避）
+uv run python tools/novel_expression_mix.py novels/NNN_作品名 freeze
+```
+
+書いたあとは `_meta.md` の「表現ミックス」節で確かめられます。作者が書いた節（`NOT_FILLER`）、すでに状態 ON の節（`ALREADY_ON`）、節が無い作品（`NO_SECTION`）、複数ジャンルの重みが食い違う作品（`CONFLICT`）では、書き換えずに終了コード 1 で止まります。
+
 `--json` で機械可読に出せます（`flag` は `ON` / `OFF`、`enabled` は起草に使うか）。作品の `_meta.md`「表現ミックス」節の **状態** が行全体として `ON` と `OFF` 以外、未知のカテゴリ ID、負の重みや数でない重み・空欄、状態 ON なのにカタログの重みが欠けている、写し先の欠落では終了コード 1 です。節が無い作品は `OFF`（implicit）です。指定欄だけでは ON になりません。状態 ON のときは節の重みだけを採用時の値として使い、いまのプロファイルで補いません。使い方は [企画・設計](../workflow/planning.md#文章の厚みを決める表現ミックス) です。
 
 ---

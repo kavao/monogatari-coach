@@ -79,6 +79,7 @@ def test_unfilled_missing_beat_stops_without_adjusting():
     assert [job.operation for job in jobs] == ["regenerate"]
     assert LENGTH_TOKEN in result.escalated_beats
     assert any(note.startswith("LENGTH_REQUIRED_UNREPAIRED") for note in result.notes)
+    assert not any(note.startswith("LENGTH_MISSING_FILLED") for note in result.notes)  # 計画 §16.3
 
 
 # ── D16: 床に届いたあとの EndingRush は報告だけ ─────────────────────
@@ -334,3 +335,78 @@ def _before_d21_design_routing(monkeypatch):
     # 計画 §10.1 の開始条件（今の字数 × 1.15 が許容帯の下限に届くか）も外し、作業目標を
     # 仕上がり × 1.08 のままにする。開始条件は test_length_phase6.py で既定値のまま確かめる。
     monkeypatch.setattr(metron.length, "DEEPEN_MAX_GROWTH", 100.0)
+
+
+# ── 計画 §15.2: 欠落を埋めたあとの字数で +15% の上限を当て直す ───────────
+
+
+FILLED_B = "　券売機の前で、兄は財布の中の硬貨を一枚ずつ数えた。" * 4
+
+
+def _recap_state(target: LengthTarget):
+    texts = dict(TEXTS, b="　短い。")
+    beats = [_beat("a", chars_hint=10), _beat("b", chars_hint=400)]
+    return _state(texts, beats, length=LengthSpec(target=target, recap_after_fill=True))
+
+
+def _filled_chars() -> int:
+    from metron.length import beat_chars
+    return beat_chars(TEXTS["a"]) + beat_chars(FILLED_B)
+
+
+def test_recap_after_fill_stops_when_the_filled_scene_cannot_reach_the_band():
+    from metron.length import growth_cap
+    filled = _filled_chars()
+    finish = growth_cap(filled) * 2  # 埋めたあと +15% でも仕上がり目標 × 0.85 に届かない
+    state = _recap_state(LengthTarget(target_chars=round(finish * 1.08), finish_chars=finish))
+    result, jobs = _drive(state, lambda job, text: (FILLED_B, None) if job.operation == "regenerate"
+                          else (text + "足した。", None))
+    assert [job.operation for job in jobs] == ["regenerate"]
+    assert LENGTH_TOKEN in result.escalated_beats
+    assert any(note.startswith("DESIGN_DENSITY") and "after filling missing beats" in note
+               for note in result.notes)
+    assert state.length.capped_chars is None
+
+
+def test_recap_after_fill_caps_the_work_target_from_the_filled_chars():
+    from metron.length import deepen_start_lower, growth_cap
+    filled = _filled_chars()
+    cap = growth_cap(filled)
+    finish = cap  # 下限 finish × 0.85 には届き、作業目標 finish × 1.08 は上限で抑えられる
+    assert deepen_start_lower(finish, 1) <= cap < round(finish * 1.08)
+    state = _recap_state(LengthTarget(target_chars=round(finish * 1.08), finish_chars=finish))
+    job = next_job(state)
+    assert job.operation == "regenerate"
+    submit_result(state, job_id=job.job_id, model="m", candidate=FILLED_B, review="confirmed")
+    job = next_job(state)
+    assert job.operation == "deepen"
+    from metron.length import measured_chars
+    actual_cap = growth_cap(measured_chars(state.length.target, state.beat_plan, state.working_texts))
+    assert deepen_start_lower(finish, 1) <= actual_cap < state.length.target.target_chars
+    assert state.length.capped_chars == actual_cap
+    assert state.length.effective_target().target_chars == actual_cap
+    cap = actual_cap
+    assert state.length.target.target_chars == round(finish * 1.08)  # 開始時の目標は残す
+    # 再生しても同じ値になる（印は一度だけ書かれる）
+    assert next_job(state) == job and state.length.capped_chars == cap
+
+
+def test_old_length_sessions_keep_the_previous_post_fill_check():
+    from metron.length import LengthSpec as Spec
+    assert Spec.model_fields["recap_after_fill"].default is False
+    state = _missing_session(max_passes=1)
+    assert state.length.recap_after_fill is False
+
+
+def test_bridge_length_with_missing_beat_marks_recap_and_does_not_cap_at_begin(tmp_path):
+    work, repo, run = _ops_bridge(tmp_path, chars=220, floor=200)
+    path = repo / "config" / "metron_models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["models"]["fixture-writer"]["missing_span_ratio"] = 0.95
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    code, _ = _begin_length(work, repo, LengthTarget(target_chars=4000))
+    assert code == 0
+    state = read_state(run / "repair_state.json")
+    assert state.session.length.recap_after_fill is True
+    assert state.session.length.target.target_chars == 4000
+    assert not any(note.startswith(("LENGTH_TARGET_CAPPED", "DESIGN_DENSITY")) for note in state.notes)
