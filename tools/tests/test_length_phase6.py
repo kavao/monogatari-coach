@@ -22,11 +22,16 @@ from writing_bridge.repair import read_state, repair_begin
 
 
 @pytest.mark.parametrize("target, items, verdict", [
-    (8000, 12, "推奨帯"),            # 約667字/項
-    (4000, 12, "帯の外だが許容"),     # 約333字/項。件数だけで「多すぎ」にしない
-    (4000, 14, "多すぎ"),            # 約286字/項
-    (3000, 10, "帯の外だが許容"),     # 300字/項ちょうどは「300字未満」に含めない
-    (8000, 6, "少なすぎ"),           # 約1333字/項
+    (4000, 12, "推奨帯"),            # 約333字/項（§4.7 の例文）
+    (5000, 14, "推奨帯"),            # 約357字/項（14項前後で 5000字が上限）
+    (5000, 13, "帯の外だが許容"),     # 約385字/項。推奨より字数が多い許容
+    (5000, 11, "少なすぎ"),          # 約455字/項
+    (8000, 12, "少なすぎ"),          # 約667字/項。旧帯（500〜800）では推奨だった
+    (4000, 17, "多すぎ"),            # 約235字/項
+    (2500, 10, "帯の外だが許容"),     # 250字/項ちょうどは「250字未満」に含めない
+    (3000, 10, "推奨帯"),            # 300字/項ちょうどは推奨の下限に含める
+    (3600, 10, "推奨帯"),            # 360字/項ちょうどは推奨の上限に含める
+    (4500, 10, "帯の外だが許容"),     # 450字/項ちょうどは「450字超」に含めない
     (8000, 0, "少なすぎ"),
     (None, 12, "保留"),
 ])
@@ -36,8 +41,8 @@ def test_density_verdicts(target, items, verdict):
 
 
 def test_recommended_item_counts():
-    assert recommended_items(8000) == (10, 16)
-    assert recommended_items(4000) == (5, 8)
+    assert recommended_items(4000) == (12, 13)
+    assert recommended_items(5000) == (14, 16)
 
 
 DESIGN = """# design_specification.md
@@ -57,7 +62,7 @@ DESIGN = """# design_specification.md
 2. 杏咲が背中を流す。
 3. 二人が向かい合う。
 
-**分量目安**：2,400字以上。初稿は 2,047字。
+**分量目安**：1,000字以上。初稿は 1,047字。
 
 ## ストーリー相関図
 
@@ -68,9 +73,9 @@ DESIGN = """# design_specification.md
 def test_chapter_target_comes_only_from_the_head_of_the_volume_note():
     rows = {row.chapter: row for row in chapter_densities(DESIGN)}
     assert rows[1].target is None and rows[1].verdict.startswith("保留")
-    assert rows[2].target == 2400 and rows[2].items == 3 and rows[2].verdict.startswith("推奨帯")
-    explicit = {row.chapter: row for row in chapter_densities(DESIGN, targets={1: 1400})}
-    assert explicit[1].target == 1400 and explicit[1].target_source == "明示"
+    assert rows[2].target == 1000 and rows[2].items == 3 and rows[2].verdict.startswith("推奨帯")
+    explicit = {row.chapter: row for row in chapter_densities(DESIGN, targets={1: 640})}
+    assert explicit[1].target == 640 and explicit[1].target_source == "明示"
     assert explicit[1].verdict.startswith("推奨帯")
 
 

@@ -390,11 +390,11 @@ uv run python tools/novel_web_export.py novels/NNN_作品名
 # 全章
 uv run python tools/design_density.py novels/NNN_作品名
 
-# 第3章を、伝えられた目標 8000字で判定する
-uv run python tools/design_density.py novels/NNN_作品名 --chapter 3 --target 8000
+# 第3章を、伝えられた目標 4000字で判定する
+uv run python tools/design_density.py novels/NNN_作品名 --chapter 3 --target 4000
 ```
 
-判定は、500〜800字/項が推奨帯、1000字超が少なすぎ（子エピソードを足す）、300字未満が多すぎ（統合を提案）、それ以外が帯の外だが許容です。推奨件数の列は目標 ÷ 800 〜 目標 ÷ 500 です。基準は `_how_to.example/length_ops.md` §4.7 にあります。
+判定は、300〜360字/項が推奨帯、450字超が少なすぎ（子エピソードを足す）、250字未満が多すぎ（統合を提案）、それ以外（250字以上300字未満、360字超450字以下）が帯の外だが許容です。推奨件数の列は目標 ÷ 360 〜 目標 ÷ 300 です（4000字なら12〜13項）。以前の帯（500〜800字）で作った既存の作品は少なすぎや多すぎと出ることがありますが、Gate B をやり直すか「密度を直して」と頼まない限り、Monogatari Coach は判定だけを理由に項を足したり統合したりしません。基準は `_how_to.example/length_ops.md` §4.7 にあります。
 
 ---
 

@@ -65,7 +65,7 @@ targets: ["*"]
 章を書く前（writing_bridge 経路では `prepare` の前）に、対象章の目標字数と章出来事の件数を見る。基準は `_how_to.example/length_ops.md` §4.7。
 
 1. **目標の取り先**: ユーザーが明示した字数か、`design_specification.md` の章の `**分量目安**：` の書き出しの字数だけ。どちらも無ければ密度は「保留」と報告して書き進めてよい。実測字数や場面の床を章の目標に読み替えない。
-2. **判定**: `uv run python tools/design_density.py <作品フォルダ> --chapter N [--target N]`。1項あたり 500〜800字が推奨帯、1000字超は少なすぎ、300字未満は多すぎ。あわせて各項の親（目的・障害・結果・変化）が薄くないかを人が見る。本文が無い段階では字数の不足率を使わない。
+2. **判定**: `uv run python tools/design_density.py <作品フォルダ> --chapter N [--target N]`。1項あたり 300〜360字が推奨帯、450字超は少なすぎ、250字未満は多すぎ。既存の作品は、Gate B の再実施か「密度を直して」の明示が無い限り、判定だけを理由に項を足さず統合もしない（`length_ops.md` §4.7）。あわせて各項の親（目的・障害・結果・変化）が薄くないかを人が見る。本文が無い段階では字数の不足率を使わない。
 3. **少なすぎ**: 本文を書かずに、足す子エピソードの案（「誰が何をした」の一文と、状態変化・持ち帰り・局所的効果）を出してユーザーの承認を待つ。承認されたら `design_specification.md` に項目を足し、同じ子エピソードを `<METRON 場面>/episodes.yaml` に `span_pending: true` で登録する（本文を書いたあと `span` の引用を補い、`span_pending` を外す）。CHRONOS ON なら当該場面の events を既存の承認手順で足し、METRON ON なら Beat と `chars_hint` を配り直してから書く。技法は `_how_to.example/episode/general/episode_sub_episode.md`。
 4. **多すぎ**: 統合案だけを出して止まる。設計・本文・events を消すのは改稿工程と同じ承認のあと。
 5. 依頼された章だけを判定し、既存作品の設計書を承認なしに増減しない。

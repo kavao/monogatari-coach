@@ -7,7 +7,10 @@
 「**分量目安**」の書き出しの字数だけ。書き出しが字数でなければ保留にする（同じ行の
 「初稿は 7,983字」などの実測字数を目標に流用しないため）。本文・設計書は書き換えない。
 
-    uv run python tools/design_density.py novels/NNN_作品名 [--chapter N] [--target 8000]
+判定は作品が既存かどうかを見ない。既存作品で項を足す・統合するかは
+_how_to.example/length_ops.md §4.7（明示が無い限り旧来どおり）に従う。
+
+    uv run python tools/design_density.py novels/NNN_作品名 [--chapter N] [--target 4000]
 """
 from __future__ import annotations
 
@@ -18,10 +21,10 @@ from pathlib import Path
 import re
 import sys
 
-PER_ITEM_LOW = 500    # 推奨帯の下限（1項あたりの仕上がり）
-PER_ITEM_HIGH = 800   # 推奨帯の上限
-TOO_FEW_ABOVE = 1000  # 1項あたりこれを超える見込みなら、項目が少なすぎる
-TOO_MANY_BELOW = 300  # 1項あたりこれ未満の見込みなら、項目が多すぎる（300 ちょうどは含めない）
+PER_ITEM_LOW = 300    # 推奨帯の下限（1項あたりの仕上がり。000_default 基準）
+PER_ITEM_HIGH = 360   # 推奨帯の上限（14項前後で 5000字）
+TOO_FEW_ABOVE = 450   # 1項あたりこれを超える見込みなら、項目が少なすぎる
+TOO_MANY_BELOW = 250  # 1項あたりこれ未満の見込みなら、項目が多すぎる（250 ちょうどは含めない）
 
 _CHAPTER_RE = re.compile(r"^###\s*第\s*([0-9０-９]+)\s*章(.*)$")
 # 章出来事は行頭（字下げなし）の番号付き項目だけ。字下げした入れ子の補足やコード例は数えない。
@@ -47,7 +50,7 @@ def _number(text: str) -> int:
 
 
 def recommended_items(target: int) -> tuple[int, int]:
-    """推奨帯（500〜800字/項）に入る件数の幅。"""
+    """推奨帯（300〜360字/項）に入る件数の幅。"""
     return math.ceil(target / PER_ITEM_HIGH), math.floor(target / PER_ITEM_LOW)
 
 
