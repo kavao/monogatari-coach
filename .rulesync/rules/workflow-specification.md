@@ -122,6 +122,28 @@ ON の新規場面は「執筆接続の起動判定」に従い `prepare` から
   - 「止めて手で書き足す」はしない。`_meta.md` の節を足すのは `ensure-section` だけ。用語集の旧形式から新しい書式への移行の提案（`_how_to.example/world_glossary.md` §2）は、この勧めと同じ回にまとめて一度だけ行う。
   - 移すときは、`novel_work_migrate.py`（機械の記録）と `novel_meta_check.py migrate`（`_meta.md`）を、どちらも `--dry-run` で見せてから実行する。
 
+## 改訂枝（作品分岐）
+
+計画: `_workingspace/plans/20261122_novel-compare-branch.md`。手順はスキル `novel-revision-branch`、CLI は `tools/novel_branch.py`（fork / list / diff）。
+
+- **フォルダ名**: `^(?P<code>\d+)(?P<branch>[a-z])?_(?P<title>.+)$`。枝は数字の直後の英小文字1文字（`051a_タイトル`）。`051ab_`・`051A_` は不正（scan の `invalid_branch`）、`051_a_タイトル` は元（題が `a_タイトル`）。解析は `novel_code_allocate.parse_folder_name()` 一か所で持ち、ほかのツールはそれを使う。
+- **採番**: `next_code` は数字の最大 + 1 のまま。枝は番号を消費しない。重複は同じ code かつ同じ branch のときだけ。同じ code の元が無い枝は `orphan_branches`。
+- **config.md の基本情報表**（枝だけ）: `| branch | a |`・`| parent_ID | 051 |`・`| branch_reason | revision または compare |`。`novel_ID` は数字のまま。`verify` は、フォルダの枝と `branch` の一致、`parent_ID` と番号の一致、`branch_reason` の値、同じ番号の元フォルダの存在を見る。元に `branch` / `parent_ID` 行があればエラー。
+- **層と範囲**:
+
+  | 範囲 | 写す層 |
+  |------|--------|
+  | `skeleton`（骨格） | 作品直下のファイル（圧縮ファイルと出版の lock を除く） |
+  | `skeleton_text`（骨格と本文。既定） | 骨格 ＋ `_novel_text/` |
+  | `full`（全体） | 上に加え `_source_material/`・`references/`・`tag/` `manga/` `illustrations/` `cover/`（画像の実体を除く）・そのほかのフォルダ |
+
+  - どの範囲でも写さない: `_work/`・`_writing/`・`_metron/`・`_story_reflection_op.*`・`_story_work/`・`_reader/_work/`・`_reader/_sr_staging/`・キャッシュ・lock・隠しファイル。
+  - `--include` で明示したときだけ写す: `reader`（`_reader/` の中身）・`backup`（`_novel_text_backup/`）・`images`・`chronos`・`publication`（`book.lock.yaml`・`_publication_output/`）・`archives`。骨格の範囲では `source`・`references` も。
+  - `_novel_text/` と `_reader/` は写さないときも空で用意する。METRON ON なら空の `_work/metron/` だけ用意する。
+- **書くもの**: 枝の config に上の3行（METRON / CHRONOS / AUDIT_LOG は元の値のまま）。枝と元の `_meta.md` の「1. 執筆フェーズ・ステータス」節の中に `### 改訂枝`（`##` の並びは変えない。古い形の `_meta.md` では末尾の `## 改訂枝`）。元の `_meta.md` は `_novel_text_backup/_meta_vNNN.md` へ退避してから1行足す。複製から元への記録まで、ストーリー反映と同じ排他を持つ。元のストーリー反映が途中なら `TRUNK_BUSY` で作らない。同じ番号の元フォルダが複数ある番号（既存の重複）からは `AMBIGUOUS_TRUNK` で作らない（`parent_ID` で元が決まらないため）。枝の `### 改訂枝` には、写す前の進捗の記述が元の時点のものであることと、枝に無い層を書く。複製は `novels/.<枝>.forking` に作ってから名前を替える。
+- **差分**（`diff`）: 層 `canon`・`design`・`profile`・`text` ごとに内容差と片方だけのファイル、本文の章別・合計文字数、設計書・人物表の見出し・番号項・欄の数。`_reader/` は件数だけ。
+- **第1版に無いもの**: 枝から元への反映（promote）・章単位の取り込み（absorb）・元から枝への追従。仕様の案は計画書 §6。
+
 ## 執筆接続の起動判定
 
 通常の執筆依頼（「続きを書いて」「この場面をDeepenして」「当該場面を保存して」）は、対象作品のフラグを読んで経路を一つにする。詳細手順はスキル `novel-text-file-output` / `novel-refinement-output` / `novel-story-reflection`。複数章依頼の章境界は `concepts.md` の「完了扱い条件」と本文スキル（清書は `novel-refinement-output` の参照）に従い、経路の短い不変条件は `concepts.md` の「執筆接続（writing_bridge）」に従う。
@@ -1302,7 +1324,7 @@ Plan Mode では **Gate A（骨格）のあと Gate B（知識・厚さ・洗練
 資料の全量把握、Monogatari Coach 形式への対応付け、作品フォルダへの展開、原資料の保全はスキル **`source-material-intake`** と `docs/workflow/source-material-intake.md` を参照する。原資料は改変せず、必要に応じて `novels/<作品>/_source_material/` に参照用として退避する。
 
 #### 命名・採番ルール（原則）
-- `novel_code` は `novels/` 内で振られているの最大番号+1を基本とする。
+- `novel_code` は `novels/` 内で振られているの最大番号+1を基本とする。改訂枝（`051a_タイトル`）は番号を消費しない（「改訂枝（作品分岐）」）。
 - 作品名が資料内で揺れる場合は、暫定名でもよいが `config.md` に「資料上の別名」もメモとして残す。
 - **厳密な採番・検証**はリポジトリ同梱の **`tools/novel_code_allocate.py`** の結果を正とする（定義・手順はスキル **`novel-code-allocate`**（`.rulesync/skills/novel-code-allocate/SKILL.md`）に従う）。
 

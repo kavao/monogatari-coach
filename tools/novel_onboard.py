@@ -28,7 +28,7 @@ _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
-from novel_code_allocate import scan_novels  # noqa: E402
+from novel_code_allocate import parse_folder_name, scan_novels  # noqa: E402
 from novel_scaffold import bootstrap_novel   # noqa: E402
 from inspection_bootstrap import (          # noqa: E402
     InspectionBootstrapError,
@@ -41,8 +41,6 @@ from novel_status import (                  # noqa: E402
     _run_project_check,
     determine_next_step,
 )
-
-_NOVEL_FOLDER_RE = re.compile(r"^(\d+)_(.+)$")
 
 _W = 52
 
@@ -73,9 +71,16 @@ def resolve_target(raw: str, root: Path) -> tuple[int, Path]:
     # novels/ 配下のパスとして解釈できるか試みる
     if "/" in raw or "\\" in raw or (p.parts and p.parts[0] == "novels"):
         resolved = (root / p).resolve() if not p.is_absolute() else p.resolve()
-        m = _NOVEL_FOLDER_RE.match(resolved.name)
-        if m:
-            return int(m.group(1)), resolved
+        parsed = parse_folder_name(resolved.name)
+        if parsed:
+            if parsed.branch and not resolved.exists():
+                # 改訂枝は新規作品として起こさない（元から複製する）
+                raise ValueError(
+                    f"改訂枝 {resolved.name} はまだありません。新規作品としては起こしません。\n"
+                    f"元から分岐するときは: uv run python tools/novel_branch.py fork "
+                    f"--from novels/<{parsed.digits}_元フォルダ>（既定で dry-run）"
+                )
+            return parsed.code, resolved
         # パスが与えられたが NNN_ 形式でない → エラー
         raise ValueError(
             f"フォルダ名が 'NNN_タイトル' 形式ではありません: {resolved.name}\n"
@@ -191,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
                 initialize_new_layers(
                     novel_dir,
                     novel_code,
-                    novel_dir.name.partition("_")[2],
+                    parse_folder_name(novel_dir.name).title,
                     metron=args.metron,
                     chronos=args.chronos,
                 )

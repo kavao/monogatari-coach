@@ -64,10 +64,12 @@ class CompareInputs:
 
 
 def work_code(work_dir: Path) -> str:
-    code = work_dir.name.split("_", 1)[0]
-    if not code.isdigit():
+    from novel_code_allocate import parse_folder_name
+
+    parsed = parse_folder_name(work_dir.name)
+    if parsed is None:
         raise CompareError(f"作品フォルダ名が <code>_<title> ではない: {work_dir.name}")
-    return code
+    return parsed.label
 
 
 def chapter_of(scene_id: str) -> int:

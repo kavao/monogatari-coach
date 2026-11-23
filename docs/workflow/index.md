@@ -26,6 +26,7 @@ Monogatari Coach を「どう動かすか」をユーザー視点で把握する
 - **ユーザスキル（プラグイン相当）**: [ユーザスキルと雛形の置き場](user-skills.md) — `_how_to/skills/` に手書きスキルを置くときの正本／雛形／ツールパス（例: カクヨムルビ連携）
 - **資料取り込み**: [Source Material Intake](source-material-intake.md)
 - **企画・設計**: [Planning](planning.md)
+- **改訂版の分岐**: [改訂版を分岐する](novel-revision-branch.md) — 時期が過ぎた・設定が変わった作品を、元を残して `051a_作品名` として改訂する／比較用に分岐して差分を見る
 - **プロットのアレンジ**: [転と山の当て方](plot-arrange.md) — 平板・先が読める展開を診断し、型（三幕構成など）を使う／使わないを選んで転の案を出す
 - **漢字エンブレム命名**: [漢字の当て字・既存名の改修](kanji-emblem-naming.md)
 - **ヤンキー美学**: [人物・集団・装飾を設計する](yankee-aesthetics.md)

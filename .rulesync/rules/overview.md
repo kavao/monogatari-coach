@@ -34,6 +34,7 @@ globs: ["**/*"]
 | 企画、設定、人物、世界観を整える | `novel-planning`、`novel-character-profile` |
 | プロットが平板・先が読めるのでアレンジしたい、展開を変えたい | `novel-plot-arrange`（構造論と流れ破壊の葉を工程正本として読む。黄金律は型を指定されたときだけ。清書では転を足さない） |
 | 原資料を作品形式へ展開する | `source-material-intake`、`novel-code-allocate` |
+| 時期が過ぎた・状況が変わった作品を改訂版として分岐する、比較用に分岐する、元と枝を比べる | `novel-revision-branch`（元は残し `051a_` を兄弟に作る。dry-run で範囲を見せて止まる。Gate B は再実施しない） |
 | 小説本文を書き、追記し、清書する | `novel-project-readiness`、`novel-text-file-output`、必要に応じ `novel-refinement-output` |
 | 本文を「清書して」「冗長を減らして」と頼まれる | `novel-refinement-output`（引き締め清書） |
 | 本文に「〇〇を足して」と指示される | `novel-refinement-output`（指示加筆。指示を承認とみなし、書いたあとで `novel-story-reflection` で設計へ同期） |

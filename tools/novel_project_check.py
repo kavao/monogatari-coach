@@ -922,6 +922,14 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 2
+            new_parsed = nca.parse_folder_name(work.name)
+            if was_absent and new_parsed is not None and new_parsed.branch:
+                print(
+                    "error: 改訂枝は --bootstrap で新規に起こしません。"
+                    "元から tools/novel_branch.py fork --from <元フォルダ> で分岐してください（既定で dry-run）",
+                    file=sys.stderr,
+                )
+                return 2
             if was_absent:
                 try:
                     work.mkdir(parents=True, exist_ok=False)
@@ -931,9 +939,10 @@ def main(argv: list[str] | None = None) -> int:
             for rel, status in bootstrap_novel(work, scaffold_root()):
                 print(f"  {rel}: {status}")
             if was_absent:
-                code = nca.parse_folder_code(work.name)
-                assert code is not None
-                title = work.name.split("_", 1)[1]
+                parsed_new = nca.parse_folder_name(work.name)
+                assert parsed_new is not None
+                code = parsed_new.code
+                title = parsed_new.title
                 for rel, status in initialize_new_layers(
                     work,
                     code,
