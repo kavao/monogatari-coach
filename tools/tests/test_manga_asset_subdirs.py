@@ -153,3 +153,43 @@ def test_scaffold_creates_comic_pages_backgrounds(tmp_path: Path) -> None:
     base = novel / "manga" / "_assets" / "manga_01"
     assert created == [base / "comic", base / "pages", base / "backgrounds", base / "names", base / "assembled"]
     assert all(path.is_dir() for path in created)
+
+
+def test_panel_negative_omit_after_panel_additions(tmp_path: Path) -> None:
+    import yaml
+    from tag_prompt_mask import load_novel_negative_omit
+
+    novel = _yaml_novel(tmp_path)
+    (novel / "_meta.yaml").write_text("character_tag_batch:\n  omit_negative_tags: [child]\nmanga_tag_batch:\n  omit_negative_tags: [loli]\n", encoding="utf-8")
+    page_path = next(p for p in (novel / "manga" / "pages").glob("manga_01_p*.yaml") if not p.name.endswith(".bubbles.yaml"))
+    page = yaml.safe_load(page_path.read_text(encoding="utf-8"))
+    page.setdefault("technical", {})["negative_tags"] = ["technical_bad", "loli"]
+    page["panels"][0]["omit_negative_tags"] = ["panel_local"]
+    page["panels"][0]["negative_tags"] = ["panel_local", "child", "cli_bad"]
+    page_path.write_text(yaml.safe_dump(page, allow_unicode=True), encoding="utf-8")
+    rules = (*load_novel_negative_omit(novel, primary_key="manga_tag_batch", fallback_key="character_tag_batch"), "cli_bad")
+    jobs = manga_batch.iter_yaml_manga_jobs(novel, "manga_01", "step1-panels", "forge", None, cli_negative_prompt="panel_local, child, keep", prompt_formatter="tag_csv", negative_omit=rules)
+    job = next(job for job in jobs if job["page"] == "1" and job["koma"] == "1")
+    assert job["negative_prompt"] == "keep, technical_bad, panel_local"
+    assert job["negative_omitted"] == ["child", "loli", "cli_bad"]
+    unchanged = manga_batch.iter_yaml_manga_jobs(novel, "manga_01", "step1-panels", "forge", None, cli_negative_prompt="panel_local, child, keep", prompt_formatter="tag_csv")
+    assert "child" in unchanged[0]["negative_prompt"]
+    assert "panel_local" in unchanged[0]["negative_prompt"]
+
+
+def test_manga_cli_negative_omit_and_unsupported_warning(tmp_path, monkeypatch, capsys) -> None:
+    from types import SimpleNamespace
+    novel = _yaml_novel(tmp_path)
+    (novel / "_meta.yaml").write_text("character_tag_batch:\n  omit_negative_tags: [child]\nmanga_tag_batch:\n  omit_negative_tags: [loli]\n", encoding="utf-8")
+    monkeypatch.setattr(manga_batch, "dotenv_or_env", lambda *a, **kw: None)
+    monkeypatch.setattr(manga_batch, "resolve_novelai_reference", lambda *a, **kw: SimpleNamespace(paths=[], source="none", strength=0.5, information_extracted=0.5))
+    monkeypatch.setattr(manga_batch, "preview_merged_params", lambda *a, **kw: {})
+    code = manga_batch.main([str(novel), "--manga-stem", "manga_01", "--input", "yaml", "--source", "step1-panels", "--provider", "forge", "--dry-run", "--negative-prompt", "child, loli, cli_bad, keep", "--omit-negative-tags", "cli_bad"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "omit_negative_tags: child, loli, cli_bad" in out
+    assert "negative omitted: child, loli, cli_bad" in out
+    assert "negative: keep" in out
+    code = manga_batch.main([str(novel), "--manga-stem", "manga_01", "--input", "yaml", "--source", "step1-pages", "--provider", "forge", "--dry-run", "--omit-negative-tags", "cli_bad"])
+    assert code == 0
+    assert "omit_negative_tags は YAML step1-panels のみ" in capsys.readouterr().err

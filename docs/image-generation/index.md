@@ -383,13 +383,13 @@ python tools/image_provider_novel_tag_batch.py novels/<作品> \
 | キャラ | `tag/characters/<id>.yaml` の `tag_batch`（任意） |
 | CLI | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW`（その実行のみ） |
 
-マスクは YAML IR を変えず、生成直前のプロンプトにだけ効きます。negative も同様に `prepend_negative_tags` / `append_negative_tags`（YAML・CLI・`_meta.yaml`）。詳細は [tools/index.md](../tools/index.md) の `image_provider_novel_tag_batch.py` 節。
+マスクは YAML IR を変えず、生成直前のプロンプトにだけ効きます。negative には `prepend_negative_tags` / `append_negative_tags` で追加できます。作品の `character_tag_batch.omit_negative_tags` または `--omit-negative-tags` で指定した語は、追加分も含め合成後に除外します。NovelAI の UC プリセットは除外対象外です。詳細は [ツール一覧](../tools/index.md) のキャラ一括生成の節を参照してください。
 
-**漫画コマ（step1-panels）のマスク**: 同じ `omit_tags` / `replace_tags` を `image_provider_novel_manga_batch.py` でも使えます。`_meta.yaml` の `manga_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`（step1-panels のみ）。
+**漫画コマ（step1-panels）のマスク**: `image_provider_novel_manga_batch.py` で指定できます。作品の `character_tag_batch` と `manga_tag_batch` の除外指定は合算します。`omit_negative_tags` と `--omit-negative-tags` は YAML 入力のコマ生成に適用し、コマが追加した negative からも除外します。コマ固有の `panels[].omit_negative_tags` はコマ追加前に適用します。
 
-**挿絵・表紙のマスク**: `image_provider_novel_illustration_batch.py` でも同じ規則を使えます。`_meta.yaml` の `illustration_tag_batch` が優先で、無ければ `character_tag_batch` を下敷きにします。CLI は `--omit-tags` / `--replace-tag`。
+**挿絵・表紙のマスク**: `image_provider_novel_illustration_batch.py` では `character_tag_batch` と `illustration_tag_batch` の除外指定を合算します。`omit_negative_tags` と `--omit-negative-tags` を使うと、合成後の negative から指定語を除外できます。
 
-dry-run の出力で `provider: grok_pro` / `jobs: 4` / `prepend_tags: ...` / `replace_tags: ...` / `omit_tags: ...` などを確認し、ユーザーの「OK」「進めて」などの承認後に `--dry-run` を外して本番実行します。
+dry-run の出力で `omit_negative_tags` の設定値と各ジョブの `negative omitted`（実際に除外した語）を確認し、ユーザーの承認後に `--dry-run` を外して本番実行します。照合は大小文字と半角空白／アンダースコアを同一視した完全一致です。
 
 ---
 

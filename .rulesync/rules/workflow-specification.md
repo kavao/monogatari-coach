@@ -805,6 +805,7 @@ lint / check 側では、`character_checklist.yaml` の profile に **`suggested
 
 - キャラ画像は `tools/image_provider_novel_tag_batch.py` の compose 後に適用する（適用順: replace → omit）。
 - 漫画コマ（`step1-panels`）は `tools/image_provider_novel_manga_batch.py` でタグ組み立て後に適用する。`manga_tag_batch` が無ければ `character_tag_batch` の omit/replace を下敷きにする。
+- negative の `omit_negative_tags` は作品・CLI を合算し、キャラ／漫画 YAML コマ／挿絵の合成後に適用する。漫画はコマ追加ネガも対象で、コマ固有の除外順は維持する。NovelAI UC は対象外。dry-run で実際の除外語をジョブごとに確認する。
 - dry-run で置換・除外を確認してから本番する。
 
 禁止:

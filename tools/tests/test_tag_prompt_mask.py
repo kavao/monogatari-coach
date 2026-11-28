@@ -187,3 +187,57 @@ character_tag_batch:
     )
     assert "pointed ears" in rules.omit_tags
     assert rules.replace_map()["childlike_mature"] == "toddler, Short stack"
+
+
+def test_negative_omit_preserves_unmatched_order_and_duplicates() -> None:
+    from tag_prompt_mask import apply_negative_omit
+
+    source = "  Child Body, keep, keep, CHILD_BODY, childhood, (child:1.2) "
+    assert apply_negative_omit(source, []) == (source, [])
+    result, omitted = apply_negative_omit(source, ["child_body", "absent"])
+    assert result == "keep, keep, childhood, (child:1.2)"
+    assert omitted == ["Child Body", "CHILD_BODY"]
+
+
+def test_negative_omit_meta_combines_sections_and_rejects_bad_type(tmp_path) -> None:
+    from tag_prompt_mask import load_novel_negative_omit
+
+    meta = tmp_path / "_meta.yaml"
+    meta.write_text("character_tag_batch:\n  omit_negative_tags: [child]\nmanga_tag_batch:\n  omit_negative_tags: [loli, child]\n", encoding="utf-8")
+    assert load_novel_negative_omit(tmp_path, primary_key="manga_tag_batch", fallback_key="character_tag_batch") == ("child", "loli")
+    meta.write_text("character_tag_batch:\n  omit_negative_tags: child\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="omit_negative_tags"):
+        load_novel_negative_omit(tmp_path, primary_key="character_tag_batch")
+
+
+def test_character_batch_negative_dry_run(tmp_path, monkeypatch, capsys) -> None:
+    from types import SimpleNamespace
+    import image_provider_novel_tag_batch as batch
+    import image_provider_novel_manga_batch as manga
+
+    novel = tmp_path / "novel"
+    char_dir = novel / "tag" / "characters"
+    char_dir.mkdir(parents=True)
+    (novel / "_meta.yaml").write_text("character_tag_batch:\n  prepend_negative_tags: [child]\n  append_negative_tags: [loli]\n  omit_negative_tags: [child, yaml_bad]\n", encoding="utf-8")
+    (char_dir / "one.yaml").write_text("character_id: one\nnegative_tags: [yaml_bad, keep]\nprompt_variants:\n  - variant_id: normal\n    danbooru_tags: [1girl]\n", encoding="utf-8")
+    monkeypatch.setattr(manga, "resolve_novelai_reference", lambda *a, **kw: SimpleNamespace(paths=[], source="none", strength=0.5, information_extracted=0.5))
+    assert batch.main([str(novel), "--provider", "forge", "--dry-run", "--negative-prompt", "child, keep, cli_bad", "--omit-negative-tags", "loli", "cli_bad"]) == 0
+    out = capsys.readouterr().out
+    assert "omit_negative_tags: child, yaml_bad, loli, cli_bad" in out
+    assert "negative omitted: child, child, cli_bad, yaml_bad, loli" in out
+    layers = batch.load_novel_tag_batch_layers(novel).merge(batch.TagBatchLayers(omit_negative_tags=("loli", "cli_bad")))
+    source = batch.compose_negative_prompt("child, keep, cli_bad", ["yaml_bad", "keep"], layers)
+    from tag_prompt_mask import apply_negative_omit
+    assert apply_negative_omit(source, layers.omit_negative_tags)[0] == "keep, keep"
+
+    import json
+    captured = {}
+    def fake_run(command, **kwargs):
+        captured.update(json.loads(Path(command[3]).read_text(encoding="utf-8")))
+        return SimpleNamespace(returncode=0, stdout="ok", stderr="")
+    monkeypatch.setattr(batch.subprocess, "run", fake_run)
+    assert batch.main([str(novel), "--provider", "forge", "--negative-prompt", "child, keep, cli_bad", "--omit-negative-tags", "loli", "cli_bad"]) == 0
+    assert captured["negative_prompt"] == "keep, keep"
+    assert batch.main([str(novel), "--provider", "forge", "--omit-negative-tags", "lowres"]) == 0
+    assert "lowres" not in captured["negative_prompt"].split(", ")
+    assert "worst quality" in captured["negative_prompt"]

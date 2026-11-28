@@ -144,7 +144,7 @@ def test_illustration_mask_applies_character_tag_batch_rules() -> None:
     assert "black_hair" in masked
 
 
-def test_iter_illustration_jobs_respects_mask_rules(tmp_path: Path) -> None:
+def test_iter_illustration_jobs_respects_mask_rules(tmp_path: Path, monkeypatch, capsys) -> None:
     novel = tmp_path / "088_test"
     pages = novel / "illustrations" / "pages"
     pages.mkdir(parents=True)
@@ -157,6 +157,8 @@ meta:
   aspect_ratio: "2:3"
 manga:
   panel_layout: 枠線なし・一枚絵
+technical:
+  negative_tags: [tech_bad, keep_tech]
 scene:
   location: 浴室
   location_en: bathroom
@@ -192,10 +194,11 @@ color_palette:
     jobs = iter_illustration_jobs(
         novel,
         None,
-        cli_negative_prompt="bad anatomy",
+        cli_negative_prompt="bad anatomy, cli_bad",
         provider="novelai",
         prompt_formatter="tag_csv",
         mask_rules=rules,
+        negative_omit=("tech_bad", "cli_bad"),
     )
     assert len(jobs) == 1
     prompt = jobs[0]["prompt"]
@@ -204,3 +207,24 @@ color_palette:
     assert "pointed ears" not in prompt
     assert "toddler" in prompt
     assert "black_hair" in prompt
+    assert jobs[0]["negative_prompt"] == "bad anatomy, keep_tech"
+    assert jobs[0]["negative_omitted"] == ["cli_bad", "tech_bad"]
+    unchanged = iter_illustration_jobs(novel, None, cli_negative_prompt="cli_bad, keep", provider="novelai", prompt_formatter="tag_csv")
+    assert unchanged[0]["negative_prompt"] == "cli_bad, keep, tech_bad, keep_tech"
+
+    from types import SimpleNamespace
+    import image_provider_novel_illustration_batch as batch
+    (novel / "_meta.yaml").write_text("character_tag_batch:\n  omit_negative_tags: [tech_bad]\nillustration_tag_batch:\n  omit_negative_tags: [local_bad]\n", encoding="utf-8")
+    monkeypatch.setattr(batch, "dotenv_or_env", lambda *a, **kw: None)
+    monkeypatch.setattr(batch, "resolve_novelai_reference", lambda *a, **kw: SimpleNamespace(paths=[], source="none", strength=0.5, information_extracted=0.5))
+    monkeypatch.setattr(batch, "preview_merged_params", lambda *a, **kw: {})
+    assert batch.main([str(novel), "--provider", "forge", "--prompt-formatter", "tag_csv", "--dry-run", "--negative-prompt", "cli_bad, local_bad, keep", "--omit-negative-tags", "cli_bad"]) == 0
+    out = capsys.readouterr().out
+    assert "omit_negative_tags: tech_bad, local_bad, cli_bad" in out
+    assert "negative omitted: cli_bad, local_bad, tech_bad" in out
+    assert "negative: keep, keep_tech" in out
+    natural = iter_illustration_jobs(novel, None, cli_negative_prompt="cli_bad, keep", provider="grok", prompt_formatter="natural_sections", negative_omit=("cli_bad", "tech_bad"))
+    assert natural[0]["negative_prompt"] == ""
+    assert "cli_bad" not in natural[0]["prompt"]
+    assert "tech_bad" not in natural[0]["prompt"]
+    assert "keep_tech" in natural[0]["prompt"]

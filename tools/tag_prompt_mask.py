@@ -237,6 +237,45 @@ def apply_omit(
     return out, omitted
 
 
+def apply_negative_omit(prompt: str, omit_tags: Iterable[str]) -> tuple[str, list[str]]:
+    """カンマ区切り negative から完全一致の断片を除き、実際の除外を返す。"""
+    keys = {normalize_tag(tag) for tag in omit_tags if normalize_tag(tag)}
+    if not keys:
+        return prompt, []
+    kept: list[str] = []
+    omitted: list[str] = []
+    for part in prompt.split(","):
+        token = part.strip()
+        if not token:
+            continue
+        if normalize_tag(token) in keys:
+            omitted.append(token)
+        else:
+            kept.append(token)
+    return ", ".join(kept), omitted
+
+
+def load_novel_negative_omit(
+    novel_dir: Any, *, primary_key: str, fallback_key: str | None = None,
+) -> tuple[str, ...]:
+    """作品・用途別の除外指定をこの順に合算する。"""
+    from novel_meta_yaml import load_meta_yaml
+
+    meta = load_meta_yaml(novel_dir) or {}
+    tags: list[str] = []
+    for key in (fallback_key, primary_key):
+        if not key:
+            continue
+        section = meta.get(key) or {}
+        if not isinstance(section, dict):
+            continue
+        value = section.get("omit_negative_tags")
+        if value is not None and not isinstance(value, list):
+            raise ValueError("omit_negative_tags は list である必要があります")
+        tags.extend(str(x).strip() for x in (value or []) if x is not None)
+    return tuple(dedupe_preserve(tags))
+
+
 def apply_mask(
     tags: Iterable[str],
     rules: MaskRuleSet | None,

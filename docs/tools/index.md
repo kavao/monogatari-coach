@@ -1429,8 +1429,10 @@ python tools/image_provider_novel_tag_batch.py novels/NNN_作品名 \
 | 指定場所 | キー / フラグ |
 |----------|----------------|
 | 作品 `_meta.yaml` | `character_tag_batch.prepend_tags` / `append_tags` / `omit_tags` / `replace_tags` など |
-| `tag/characters/<id>.yaml` | `tag_batch.*`（任意。同キー） |
+| `tag/characters/<id>.yaml` | `tag_batch` の prepend / append 系（任意） |
 | CLI（その実行のみ） | `--prepend-tags` / `--append-tags` / `--omit-tags` / `--replace-tag OLD=NEW` / negative 系 |
+
+negative は作品の `character_tag_batch.omit_negative_tags` と CLI `--omit-negative-tags child loli` を合算し、prepend・既定または CLI・キャラ YAML・append の合成後に除外できます。dry-run の `negative omitted` に実際に除外された語がジョブごとに表示されます。NovelAI の UC プリセットは対象外です。
 
 マスクは **生成時のみ** 適用し、`tag/characters/*.yaml` の正本は書き換えません。dry-run では適用した置換・除外をジョブごとに表示します。
 
@@ -1479,6 +1481,8 @@ python tools/image_provider_novel_manga_batch.py novels/NNN_作品名 \
 
 **生成時マスク（step1-panels）**: YAML IR は変えず、組み立て後のタグ列に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `manga_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
 
+YAML のコマ生成では `character_tag_batch.omit_negative_tags`、`manga_tag_batch.omit_negative_tags`、CLI `--omit-negative-tags` も合算し、コマ追加分を含む negative から除外できます。その他の入力では指定は無視され、警告が出ます。
+
 生成モードの詳細は [Image Generation](../image-generation/index.md) の「生成モードとプロバイダの対応」テーブルを参照。
 
 生成画像の保存先:
@@ -1511,6 +1515,8 @@ python tools/image_provider_novel_illustration_batch.py novels/NNN_作品名 \
 ```
 
 **生成時マスク**: YAML IR は変えず、タグ組み立て後に `replace_tags` → `omit_tags` を適用します。設定は作品 `_meta.yaml` の `illustration_tag_batch`（無ければ `character_tag_batch` の omit/replace を下敷き）と CLI `--replace-tag` / `--omit-tags`。
+
+negative の除外には `character_tag_batch.omit_negative_tags` と `illustration_tag_batch.omit_negative_tags`、CLI `--omit-negative-tags` を合算して使えます。dry-run では実際に除外された語を確認できます。
 
 生成画像の保存先: `novels/<作品>/illustrations/_assets/<illustration_XX>/`
 

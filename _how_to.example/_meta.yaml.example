@@ -31,6 +31,7 @@ novelai:
 #   prepend_tags: [simple_background, white_background]
 #   append_tags: []
 #   omit_tags: []
+#   omit_negative_tags: []
 #   replace_tags:
 #     - from: old_token
 #       to: new_token
@@ -42,6 +43,7 @@ novelai:
 # manga_tag_batch があれば後勝ちでマージ。
 # manga_tag_batch:
 #   omit_tags: []
+#   omit_negative_tags: []
 #   replace_tags:
 #     - from: old_token
 #       to: new_token
@@ -51,6 +53,7 @@ novelai:
 # illustration_tag_batch があれば後勝ちでマージ。CLI: --omit-tags / --replace-tag
 # illustration_tag_batch:
 #   omit_tags: []
+#   omit_negative_tags: []
 #   replace_tags:
 #     - from: old_token
 #       to: new_token

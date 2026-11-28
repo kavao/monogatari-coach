@@ -49,6 +49,8 @@ from manga_prompt_ir.prompt_formatters import (  # noqa: E402
     resolve_prompt_formatter,
 )
 from tag_prompt_mask import (  # noqa: E402
+    apply_negative_omit,
+    load_novel_negative_omit,
     MaskRuleSet,
     apply_mask,
     load_novel_mask_rules,
@@ -123,11 +125,12 @@ def iter_illustration_jobs(
     provider: str,
     prompt_formatter: str,
     mask_rules: MaskRuleSet | None = None,
-) -> list[dict[str, str]]:
+    negative_omit: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
     characters = load_character_ir_map(novel_dir)
     pages_dir = novel_dir / "illustrations"
     rules = mask_rules or MaskRuleSet.empty()
-    jobs: list[dict[str, str]] = []
+    jobs: list[dict[str, Any]] = []
     for index, path in enumerate(iter_illustration_paths(novel_dir, only_stem), start=1):
         page = load_yaml(path)
         model = MangaPagePrompt.model_validate(page)
@@ -148,6 +151,7 @@ def iter_illustration_jobs(
             [],
             [],
         )
+        negative_prompt, negative_omitted = apply_negative_omit(negative_prompt, negative_omit)
         bundle = format_illustration_prompt(
             page,
             tag_prompt=tags,
@@ -162,6 +166,7 @@ def iter_illustration_jobs(
                 "prefix": f"{stem}_p{page_num:02d}",
                 "prompt": bundle.prompt,
                 "negative_prompt": bundle.negative_prompt,
+                "negative_omitted": negative_omitted,
                 "prompt_formatter": bundle.formatter,
                 "negative_mode": bundle.negative_mode,
                 "output_dir": (pages_dir / "_assets" / stem).resolve().as_posix(),
@@ -309,6 +314,8 @@ def run_provider_job(
         print(f"  [{job['prefix']}] -> {job['output_dir']}")
         print(f"    prompt_formatter: {job['prompt_formatter']}")
         print(f"    negative_mode: {job['negative_mode']}")
+        omitted = job.get("negative_omitted", [])
+        print(f"    negative omitted: {', '.join(omitted) if omitted else '(none)'}")
         try:
             merged = preview_merged_params(root, provider, payload)
             print(f"    width×height: {merged.get('width')}×{merged.get('height')}")
@@ -430,6 +437,10 @@ def main(argv: list[str] | None = None) -> int:
         help="生成時に除外するタグ（カンマ区切り可・複数指定可）。_meta.yaml に後勝ちマージ",
     )
     parser.add_argument(
+        "--omit-negative-tags", nargs="*", default=None, metavar="TAG",
+        help="生成時に negative から除外（カンマ区切り可）",
+    )
+    parser.add_argument(
         "--replace-tag",
         action="append",
         default=None,
@@ -485,6 +496,10 @@ def main(argv: list[str] | None = None) -> int:
             replace_pairs=cli_replace,
         )
         mask_rules = novel_mask.merge(cli_mask)
+        negative_omit = tuple(dict.fromkeys([
+            *load_novel_negative_omit(novel, primary_key="illustration_tag_batch", fallback_key="character_tag_batch"),
+            *(part.strip() for raw in (args.omit_negative_tags or []) for part in raw.split(",") if part.strip()),
+        ]))
         jobs = iter_illustration_jobs(
             novel,
             args.illustration_stem,
@@ -492,6 +507,7 @@ def main(argv: list[str] | None = None) -> int:
             provider=provider,
             prompt_formatter=prompt_formatter,
             mask_rules=mask_rules,
+            negative_omit=negative_omit,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -577,6 +593,8 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
     print(f"jobs: {len(jobs)}")
+    if negative_omit:
+        print(f"omit_negative_tags: {', '.join(negative_omit)}")
 
     for job in jobs:
         code = run_provider_job(

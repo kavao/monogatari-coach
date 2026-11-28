@@ -81,6 +81,8 @@ from manga_prompt_ir.user_directives import (
     omit_tags_for_panel as user_directives_omit_tags,
 )
 from tag_prompt_mask import (
+    apply_negative_omit,
+    load_novel_negative_omit,
     MaskApplyResult,
     MaskRuleSet,
     apply_mask,
@@ -2317,6 +2319,7 @@ def iter_yaml_manga_jobs(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
+    negative_omit: tuple[str, ...] = (),
     page_compiler: str = "legacy",
     text_mode: str | None = None,
     bubble_frame_mode: str | None = None,
@@ -2760,6 +2763,7 @@ def iter_yaml_manga_jobs(
                     panel_neg,
                     panel_omit,
                 )
+                merged_neg, negative_omitted = apply_negative_omit(merged_neg, negative_omit)
                 bundle = format_manga_panel_prompt(
                     page,
                     panel,
@@ -2783,6 +2787,7 @@ def iter_yaml_manga_jobs(
                     "prefix": f"{stem}_p{page_num:02d}_k{panel_index:02d}",
                     "prompt": bundle.prompt,
                     "negative_prompt": bundle.negative_prompt,
+                    "negative_omitted": negative_omitted,
                     "prompt_formatter": bundle.formatter,
                     "negative_mode": bundle.negative_mode,
                     "output_dir": comic_dir.as_posix(),
@@ -2815,6 +2820,7 @@ def iter_jobs_by_input(
     omit_panel_background: bool = False,
     include_panel_summary: bool = False,
     mask_rules: MaskRuleSet | None = None,
+    negative_omit: tuple[str, ...] = (),
     page_compiler: str = "legacy",
     text_mode: str | None = None,
     bubble_frame_mode: str | None = None,
@@ -2838,6 +2844,7 @@ def iter_jobs_by_input(
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
             mask_rules=mask_rules,
+            negative_omit=negative_omit,
             page_compiler=page_compiler,
             text_mode=text_mode,
             bubble_frame_mode=bubble_frame_mode,
@@ -3021,6 +3028,10 @@ def main(argv: list[str] | None = None) -> int:
             "生成時に positive タグ列から除外（YAML IR は変更しない・step1-panels）。"
             "カンマ区切り1引数可"
         ),
+    )
+    p.add_argument(
+        "--omit-negative-tags", nargs="*", default=None, metavar="TAG",
+        help="YAML step1-panels の negative から除外（カンマ区切り可）",
     )
     p.add_argument(
         "--replace-tag",
@@ -3427,6 +3438,10 @@ def main(argv: list[str] | None = None) -> int:
             replace_pairs=cli_replace,
         )
         mask_rules = novel_mask.merge(cli_mask)
+        negative_omit = tuple(dict.fromkeys([
+            *load_novel_negative_omit(novel, primary_key="manga_tag_batch", fallback_key="character_tag_batch"),
+            *(part.strip() for raw in (args.omit_negative_tags or []) for part in raw.split(",") if part.strip()),
+        ]))
     except ValueError as e:
         print(f"error: マスク設定: {e}", file=sys.stderr)
         return 2
@@ -3437,6 +3452,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         mask_rules = MaskRuleSet.empty()
+    if negative_omit and (args.source != "step1-panels" or args.input != "yaml"):
+        print("warning: omit_negative_tags は YAML step1-panels のみ適用します（無視します）", file=sys.stderr)
+        negative_omit = ()
     try:
         input_used, jobs = iter_jobs_by_input(
             novel,
@@ -3454,6 +3472,7 @@ def main(argv: list[str] | None = None) -> int:
             omit_panel_background=omit_panel_background,
             include_panel_summary=include_panel_summary,
             mask_rules=mask_rules,
+            negative_omit=negative_omit,
             page_compiler=args.page_compiler,
             text_mode=args.text_mode,
             bubble_frame_mode=args.bubble_frame_mode,
@@ -3511,6 +3530,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"aspect_ratio: {aspect_effective} (manga page default)")
     print(f"jobs: {len(jobs)}")
+    if negative_omit:
+        print(f"omit_negative_tags: {', '.join(negative_omit)}")
     if args.model is not None:
         print(f"model: {args.model} (--model)")
     if args.grok_image_quality is not None:
@@ -3676,6 +3697,9 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"    mask replaced: {rep}")
                 if mask_result.omitted:
                     print(f"    mask omitted: {', '.join(mask_result.omitted)}")
+            if "negative_omitted" in job:
+                omitted = job["negative_omitted"]
+                print(f"    negative omitted: {', '.join(omitted) if omitted else '(none)'}")
             neg_show = payload["negative_prompt"]
             if len(neg_show) > 160:
                 neg_show = neg_show[:160] + "..."

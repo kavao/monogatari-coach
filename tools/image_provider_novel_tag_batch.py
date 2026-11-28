@@ -39,7 +39,7 @@ prepend / append の指定（後勝ちではなく連結。重複は先勝ちで
   優先マージは prepend と同じ層順。replace の同 from は後勝ち。
   CLI: --replace-tag old=new / --omit-tags
 
-negative は DEFAULT_NEGATIVE + prepend_negative + YAML negative_tags + append_negative。
+negative は prepend_negative + DEFAULT_NEGATIVE + YAML negative_tags + append_negative。
 """
 
 from __future__ import annotations
@@ -55,6 +55,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tag_prompt_mask import (
+    apply_negative_omit,
+    load_novel_negative_omit,
     MaskApplyResult,
     MaskRuleSet,
     apply_mask,
@@ -167,6 +169,7 @@ class TagBatchLayers:
     append_tags: tuple[str, ...] = ()
     prepend_negative_tags: tuple[str, ...] = ()
     append_negative_tags: tuple[str, ...] = ()
+    omit_negative_tags: tuple[str, ...] = ()
     omit_tags: tuple[str, ...] = ()
     replace_pairs: tuple[tuple[str, str], ...] = ()
 
@@ -192,6 +195,7 @@ class TagBatchLayers:
             append_negative_tags=tuple(
                 dedupe_tags([*self.append_negative_tags, *other.append_negative_tags])
             ),
+            omit_negative_tags=tuple(dedupe_tags([*self.omit_negative_tags, *other.omit_negative_tags])),
             omit_tags=merged_mask.omit_tags,
             replace_pairs=merged_mask.replace_pairs,
         )
@@ -257,7 +261,9 @@ def load_novel_tag_batch_layers(novel_dir: Path) -> TagBatchLayers:
     meta = load_meta_yaml(novel_dir)
     if not meta:
         return TagBatchLayers.empty()
-    return layers_from_mapping(meta.get("character_tag_batch"))
+    from dataclasses import replace
+    layers = layers_from_mapping(meta.get("character_tag_batch"))
+    return replace(layers, omit_negative_tags=load_novel_negative_omit(novel_dir, primary_key="character_tag_batch"))
 
 
 def compose_positive_tags(
@@ -602,6 +608,10 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--omit-negative-tags", nargs="*", default=None, metavar="TAG",
+        help="生成時に negative から除外（カンマ区切り可）",
+    )
+    p.add_argument(
         "--replace-tag",
         action="append",
         default=None,
@@ -697,6 +707,7 @@ def main(argv: list[str] | None = None) -> int:
             prepend_negative_tags=tuple(parse_tag_tokens(args.prepend_negative_tags)),
             append_negative_tags=tuple(parse_tag_tokens(args.append_negative_tags)),
             omit_tags=tuple(parse_tag_tokens(args.omit_tags)),
+            omit_negative_tags=tuple(parse_tag_tokens(args.omit_negative_tags)),
             replace_pairs=cli_replace,
         )
     except ValueError as e:
@@ -767,6 +778,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"replace_tags: {pairs}")
     if run_layers.omit_tags:
         print(f"omit_tags: {', '.join(run_layers.omit_tags)}")
+    if run_layers.omit_negative_tags:
+        print(f"omit_negative_tags: {', '.join(run_layers.omit_negative_tags)}")
     conflicts = run_layers.mask_rules().conflict_from_in_omit()
     if conflicts:
         print(
@@ -806,6 +819,7 @@ def main(argv: list[str] | None = None) -> int:
             job["neg_extra"],
             job_layers,
         )
+        negative, negative_omitted = apply_negative_omit(negative, job_layers.omit_negative_tags)
 
         payload = {
             "provider": provider,
@@ -826,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             print(f"  [{job['prefix']}] -> {job['output_dir']}")
             print(f"    prompt[:120]: {payload['prompt'][:120]}...")
+            print(f"    negative omitted: {', '.join(negative_omitted) if negative_omitted else '(none)'}")
             mask_result: MaskApplyResult | None = job.get("mask_result")
             if mask_result and (mask_result.replaced or mask_result.omitted):
                 if mask_result.replaced:
