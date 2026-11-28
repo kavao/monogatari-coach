@@ -263,7 +263,7 @@ def test_expression_md_has_context_usage_notes() -> None:
 
 
 def test_official_profiles_exist() -> None:
-    for name in ("human_drama", "romcom", "dungeon"):
+    for name in ("human_drama", "romcom", "dungeon", "isekai_craft"):
         path = EXAMPLE_EXPR / "profiles" / f"{name}.yaml"
         assert path.is_file(), path
 

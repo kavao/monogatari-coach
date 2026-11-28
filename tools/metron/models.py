@@ -126,6 +126,20 @@ class Beat(StrictModel):
     isolated: bool = False
     expandable: bool = True
     budget: BeatBudget
+    # ジャンルの芯（genre 葉の「起草での芯」）のうち、この Beat で使う項の名前。
+    # None（欄なし）は全部の行、[] は芯を使わない（「芯の使い方」「避けること」だけ）。
+    core: list[str] | None = None
+
+    @model_validator(mode="after")
+    def validate_core(self) -> "Beat":
+        if self.core is None:
+            return self
+        # str_strip_whitespace で前後の空白は落ちている。validate_assignment があるので self へは代入しない
+        if any(not name for name in self.core):
+            raise ValueError("core names must be non-empty")
+        if len(self.core) != len(set(self.core)):
+            raise ValueError("core names must be unique")
+        return self
 
 
 class GenerationSpec(StrictModel):

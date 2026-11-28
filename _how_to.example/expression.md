@@ -31,6 +31,8 @@ ID の定義と METRON への写し先は [`expression/catalog.yaml`](expression
 | `daily` | 生活行動 | `type: action` |
 | `metaphor` | 比喩 | 写さない。崩れる文は書かない |
 
+公式の重みを直した稿の差から決めるときに、本文の文をどの種類に数えるかは [`expression/classification_guide.md`](expression/classification_guide.md)（重みを決める作業のときだけ読む）。
+
 接触音など成熟専用のカテゴリは核に入れない。作業用 `catalog.yaml` で足し、そのプロファイルだけ重みを上げる。
 
 ## 3. 重みの解決

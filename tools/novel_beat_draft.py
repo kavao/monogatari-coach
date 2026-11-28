@@ -49,6 +49,7 @@ import prose_signals as ps  # noqa: E402
 from novel_glossary import first_chapter_in  # noqa: E402
 from novel_punctuation_metrics import measure_text  # noqa: E402
 from writer_profiles import UNSPECIFIED_IDS, WriterProfile, WriterProfileError, get_profile  # noqa: E402
+from writing_bridge.context_build import select_core_lines  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = "beat_draft"
@@ -284,8 +285,9 @@ def beat_prompt(
     first: bool,
     *,
     craft_notes: list[str] | None = None,
+    core_lines: list[dict[str, str]] | None = None,
 ) -> str:
-    story = f"（まだない。第{materials.chapter}章の書き出しから書く）" if first else prior
+    story =f"（まだない。第{materials.chapter}章の書き出しから書く）" if first else prior
     extras: list[str] = []
     turns = _range_ja(beat.get("dialogue_turns"))
     if turns:
@@ -296,8 +298,12 @@ def beat_prompt(
         extras.append(f"内面描写: 少なくとも {beat['interiority']} 箇所")
     extra_block = ("\n".join(extras) + "\n\n") if extras else ""
     notes_block = ""
-    if craft_notes:
-        notes_block = "技法の使い方:\n" + "\n".join(f"- {note}" for note in craft_notes) + "\n\n"
+    # ジャンルの芯は、この Beat の core に合う行だけを技法の使い方へ足す（再開の照合は技法の塊ごとに行う）
+    notes = list(craft_notes or []) + [
+        line["text"] for line in select_core_lines(core_lines or [], beat.get("core"))
+    ]
+    if notes:
+        notes_block = "技法の使い方:\n" + "\n".join(f"- {note}" for note in notes) + "\n\n"
     return (
         materials.background(show)
         + "\n\n---\n\n# これまでの本文\n\n"
@@ -559,6 +565,7 @@ def draft(
             target,
             i == 0,
             craft_notes=list(context.get("craft_notes") or []),
+            core_lines=list(context.get("core_lines") or []),
         )
         # 先取りの比べ先: 後の Beat の intent（設計の同じ項を分けた Beat でも、残りの出来事を先に書かせない）
         later = "".join(str(b.get("intent", "")) for b in beats[i + 1 :])

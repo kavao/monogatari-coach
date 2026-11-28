@@ -1,0 +1,14 @@
+schema_version: "1"
+genre_id: isekai_craft
+# 根拠: 144（異世界クラフト）で作者が出した指示「解決案をわかりやすく話し、人々が驚き読者も感心するように／
+# 人物の関係を掘り下げる」による加筆（全4章・+4,192字）の種類分け。足した字の 34% が会話往復、28% が所作、
+# 16% が時間の伸び（手順）で、情景と比喩は0だった。作者の清書（初稿→清書版）は種類の割合を動かさなかった。
+# 加筆の文は Claude が書いたので、書き手の癖が混ざっている可能性がある。ほかの作品で同じ流れを行ったら見直す。
+# 集計: novels/144_直すしか能のない男が、山の村で水車を組む/_work/expression_mix/tally_20261125.md
+# 採用: 2026-11-25 作者（計画 _workingspace/plans/20261121_expression-mix-weights.md §5）
+weights:
+  dialogue: 1.6
+  gesture: 1.6
+  process: 1.5
+  environment: 0.6
+  metaphor: 0.3

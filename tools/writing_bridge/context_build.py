@@ -30,6 +30,10 @@ from .models import (
 from .paths import resolve_work_path, unit_rel
 
 CONTEXT_USAGE_MARK = "context_usage:"
+# ジャンルの芯（genre 葉の小見出し）。行の頭の語が項の名前（計画 20261124_genre-core-notes §4.2）
+CORE_SECTION_TITLE = "起草での芯"
+CORE_ALWAYS = ("芯の使い方", "避けること")
+_CORE_LABEL = re.compile(r"^([^:：\s]{1,30})[:：]\s*")
 _MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
 _LEADING_NUMBER = re.compile(r"^[0-9０-９]+[.．)）]?\s*")
 
@@ -198,8 +202,46 @@ def extract_usage_notes(text: str) -> list[str]:
             _is_usage_mark(line) for line, skip in zip(block, block_inert, strict=True) if not skip
         ):
             continue
+        if title == CORE_SECTION_TITLE:
+            continue
         notes.extend(_notes_from_usage_block(title, block, block_inert))
     return notes
+
+
+def extract_core_lines(text: str) -> list[dict[str, str]]:
+    """「起草での芯」節の行を、項の名前つきで取る。名前は行の頭の「名前:」。"""
+    lines, inert = _inert_mask(text.splitlines())
+    out: list[dict[str, str]] = []
+    index = 0
+    while index < len(lines):
+        if inert[index] or _heading_level(lines[index]) is None:
+            index += 1
+            continue
+        title = _LEADING_NUMBER.sub("", lines[index].strip().lstrip("#").strip(), count=1)
+        index += 1
+        start = index
+        while index < len(lines):
+            if not inert[index] and _heading_level(lines[index]) is not None:
+                break
+            index += 1
+        if title != CORE_SECTION_TITLE:
+            continue
+        block = lines[start:index]
+        block_inert = inert[start:index]
+        if not any(_is_usage_mark(line) for line, skip in zip(block, block_inert, strict=True) if not skip):
+            continue
+        for note in _notes_from_usage_block(title, block, block_inert):
+            match = _CORE_LABEL.match(note)
+            out.append({"label": match.group(1) if match else "", "text": note})
+    return out
+
+
+def select_core_lines(core_lines: list[dict[str, str]], beat_core: list[str] | None) -> list[dict[str, str]]:
+    """Beat の core に合う行。None は全部、[] は常に載せる行だけ。名前の無い行はいつも載せる（黙って落とさない）。"""
+    if beat_core is None:
+        return list(core_lines)
+    wanted = set(beat_core) | set(CORE_ALWAYS)
+    return [line for line in core_lines if not line.get("label") or line.get("label") in wanted]
 
 
 def _is_expression_leaf(relative_id: str, path: Path) -> bool:
@@ -221,8 +263,8 @@ def _expression_mix_on(work_root: Path) -> bool:
         return False
 
 
-def load_selected_usage(work_root: Path) -> list[str]:
-    """契約の selected 葉から、使い方段落を集める。"""
+def _selected_leaf_texts(work_root: Path) -> list[tuple[str, str]]:
+    """契約の selected 葉の (relative_id, 本文)。表現ミックスが OFF なら expression.md を除く。"""
     meta = work_root / "_meta.md"
     if not meta.is_file():
         return []
@@ -236,7 +278,7 @@ def load_selected_usage(work_root: Path) -> list[str]:
     except (OSError, ValueError):
         return []
     mix_on = _expression_mix_on(work_root)
-    notes: list[str] = []
+    texts: list[tuple[str, str]] = []
     for item in result.selected:
         path, errors = resolve_effective(item, root, new_format=result.format == "new")
         if errors or path is None or not path.is_file():
@@ -244,10 +286,27 @@ def load_selected_usage(work_root: Path) -> list[str]:
         if _is_expression_leaf(item.relative_id, path) and not mix_on:
             continue
         try:
-            notes.extend(extract_usage_notes(path.read_text(encoding="utf-8")))
+            texts.append((item.relative_id, path.read_text(encoding="utf-8")))
         except OSError:
             continue
+    return texts
+
+
+def load_selected_usage(work_root: Path) -> list[str]:
+    """契約の selected 葉から、使い方段落を集める（ジャンルの芯の節は除く）。"""
+    notes: list[str] = []
+    for _, text in _selected_leaf_texts(work_root):
+        notes.extend(extract_usage_notes(text))
     return notes
+
+
+def load_selected_core(work_root: Path) -> list[dict[str, str]]:
+    """契約の selected 葉から、ジャンルの芯の行を集める（葉の relative_id を source に残す）。"""
+    lines: list[dict[str, str]] = []
+    for relative_id, text in _selected_leaf_texts(work_root):
+        for line in extract_core_lines(text):
+            lines.append({**line, "source": relative_id})
+    return lines
 
 
 def peek_model_calibrated(config_path: Path, model_id: str) -> bool:
@@ -441,6 +500,7 @@ def build_context(
         instruction_chars=instruction,
         chars_floor=chars_floor,
         craft_notes=load_selected_usage(work_root),
+        core_lines=load_selected_core(work_root),
         states=states,
         unresolved=unresolved,
         prose_start_end=prose,
@@ -489,7 +549,18 @@ def _beat_context_entry(beat: Beat) -> dict[str, Any]:
         "interiority": beat.budget.interiority,
         "advisory": True,
         "expandable": beat.expandable,
+        "core": list(beat.core) if beat.core is not None else None,
     }
+
+
+def _core_text(core: list[str] | None, known: set[str | None]) -> str | None:
+    """Beat の芯の表示。欄なしは None（各行の場面で選ぶ）。"""
+    if core is None:
+        return None
+    if not core:
+        return "芯: 使わない"
+    names = [name if name in known else f"{name}（芯に無い項）" for name in core]
+    return "芯: " + "・".join(names)
 
 
 def render_context_md(context: ContextDocument) -> str:
@@ -517,6 +588,11 @@ def render_context_md(context: ContextDocument) -> str:
         lines.append("- 語の例は技法葉にあり、この context には載せない。")
         lines.extend(f"- {note}" for note in context.craft_notes)
         lines.append("")
+    if context.core_lines:
+        lines.append("ジャンルの芯（Beat に「芯:」があればその項と、芯の使い方・避けることだけを使う。無ければ各行の場面で選ぶ）:")
+        lines.extend(f"- {line['text']}" for line in context.core_lines)
+        lines.append("")
+    known_core = {line.get("label") for line in context.core_lines}
     for beat in context.beats:
         intent = beat.get("intent")
         floor = beat.get("chars_floor", beat.get("chars_hint"))
@@ -528,13 +604,17 @@ def render_context_md(context: ContextDocument) -> str:
             extras.append(f"感覚{beat['sensory']}")
         if beat.get("interiority") is not None:
             extras.append(f"内面{beat['interiority']}")
+        core_text = _core_text(beat.get("core"), known_core) if context.core_lines else None
+        if core_text:
+            extras.append(core_text)
         extra = " / ".join(extras)
         if target is not None:
             lines.append(
                 f"- beat {beat.get('id')}: {intent} / 下限{floor} / 目標{target}（助言） / {extra}"
             )
         else:
-            lines.append(f"- beat {beat.get('id')}: {intent}")
+            tail = f" / {core_text}" if core_text else ""
+            lines.append(f"- beat {beat.get('id')}: {intent}{tail}")
     if context.prose_start_end:
         lines.append("")
         lines.append("prose_start_end は CHRONOS 値ではない。")
